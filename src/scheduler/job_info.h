@@ -377,7 +377,7 @@ int find_resresv_set(status *policy, resresv_set **rsets, char *user, char *grou
 int find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *resresv);
 
 /* create the array of resdef's to use to create resresv->req*/
-std::vector<resdef *> create_resresv_sets_resdef(status *policy);
+std::unordered_set<resdef *> create_resresv_sets_resdef(status *policy);
 
 /* Create an array of resresv_sets based on sinfo*/
 resresv_set **create_resresv_sets(status *policy, server_info *sinfo);

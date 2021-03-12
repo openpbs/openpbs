@@ -118,8 +118,8 @@ config::config()
 	decay_time = 86400;
 	fairshare_res = "cput";
 	fairshare_ent = "euser";
-	ignore_res.push_back("mpiprocs");
-	ignore_res.push_back("ompthreads");
+	ignore_res.insert("mpiprocs");
+	ignore_res.insert("ompthreads");
 	memset(prime, 0, sizeof(prime));
 	holiday_year = 0;			/* the year the holidays are for */
 	unknown_shares = 0;			/* unknown group shares */
@@ -390,7 +390,7 @@ parse_config(const char *fname)
 					// mpiprocs and ompthreads are added in the constructor
 					strarr = break_comma_list(config_value);
 					for (int i = 0; strarr[i] != NULL; i++)
-						tmpconf.ignore_res.emplace_back(strarr[i]);
+						tmpconf.ignore_res.insert(strarr[i]);
 					free_string_array(strarr);
 
 				}
@@ -421,13 +421,13 @@ parse_config(const char *fname)
 
 					strarr = break_comma_list(config_value);
 					for (int i = 0; strarr[i] != NULL; i++)
-						tmpconf.res_to_check.emplace_back(strarr[i]);
+						tmpconf.res_to_check.insert(strarr[i]);
 					free_string_array(strarr);
 
 					if (need_host)
-						tmpconf.res_to_check.emplace_back("host");
+						tmpconf.res_to_check.insert("host");
 					if (need_vnode)
-						tmpconf.res_to_check.emplace_back("vnode");
+						tmpconf.res_to_check.insert("vnode");
 				} else if (!strcmp(config_name, PARSE_DEDICATED_PREFIX))
 					tmpconf.ded_prefix = config_value;
 				else if (!strcmp(config_name, PARSE_PRIMETIME_PREFIX))

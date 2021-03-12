@@ -1084,6 +1084,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
  * @retval found resource
  * @retval fres/zres/ustr if not found
  * @retval if indirect, point to the real resource
+ * @retval NULL if resource is to be ignored
  */
 schd_resource *
 find_check_resource(schd_resource *reslist, resource_req *resreq, unsigned int flags)
@@ -1099,7 +1100,7 @@ find_check_resource(schd_resource *reslist, resource_req *resreq, unsigned int f
 		/* if resources_assigned.res is unset and resources is in
 		 * resource_unset_infinite, ignore the check and assume a match
 		 */
-		if (std::find(conf.ignore_res.begin(), conf.ignore_res.end(), resreq->name) != conf.ignore_res.end())
+		if (conf.ignore_res.find(resreq->name) != conf.ignore_res.end())
 			return NULL;
 	}
 
@@ -1140,7 +1141,7 @@ find_check_resource(schd_resource *reslist, resource_req *resreq, unsigned int f
  */
 
 int
-do_compare(schd_resource *res, resource_req *resreq, unsigned int flags, enum sched_error_code fail_code, schd_error *err)
+match_resource(schd_resource *res, resource_req *resreq, unsigned int flags, enum sched_error_code fail_code, schd_error *err)
 {
 	sch_resource_t avail; /* amount of available resource */
 	long long num_chunk = SCHD_INFINITY;
@@ -1232,8 +1233,7 @@ do_compare(schd_resource *res, resource_req *resreq, unsigned int flags, enum sc
  *							than what is currently available
  *							ONLY_COMP_NONCONS - only compare non-consumable resources
  *							ONLY_COMP_CONS - only compare consumable resources
- * @param[in]	checklist	-	array of resources to check
-					If NULL, all resources are checked.
+ * @param[in]	checklist	-	set of resources to check
  * @param[in]	fail_code	-	error code if resource request is rejected
  *	@param[out]	perr	-	if not NULL the the reason request is not
  *							satisfiable (i.e. the resource there is not
@@ -1247,7 +1247,7 @@ do_compare(schd_resource *res, resource_req *resreq, unsigned int flags, enum sc
  */
 long long
 check_avail_resources(schd_resource *reslist, resource_req *reqlist,
-	unsigned int flags, std::vector<resdef *>& checklist,
+	unsigned int flags, std::unordered_set<resdef *>& checklist,
 	enum sched_error_code fail_code, schd_error *perr)
 {
 	long long num_chunk = SCHD_INFINITY;
@@ -1267,13 +1267,13 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 
 	for (resource_req *resreq = reqlist; resreq != NULL; resreq = resreq->next) {
 		if (((flags & CHECK_ALL_BOOLS) && resreq->type.is_boolean) ||
-			(std::find(checklist.begin(), checklist.end(), resreq->def) != checklist.end())) {
+			(checklist.find(resreq->def) != checklist.end())) {
 
 			schd_resource *res = find_check_resource(reslist, resreq, flags);
 			if (res == NULL)
 				continue;
 
-			num_chunk = do_compare(res, resreq, flags, fail_code, err);
+			num_chunk = match_resource(res, resreq, flags, fail_code, err);
 
 			if (num_chunk == 0) {
 				any_fail = 1;
@@ -1329,7 +1329,7 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 		if (res == NULL)
 			continue;
 
-		num_chunk = do_compare(res, resreq, flags, fail_code, err);
+		num_chunk = match_resource(res, resreq, flags, fail_code, err);
 
 		if (num_chunk == 0) {
 			any_fail = 1;

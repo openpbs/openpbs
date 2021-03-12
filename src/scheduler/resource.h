@@ -101,14 +101,14 @@ void reset_global_resource_ptrs(void);
 int is_res_avail_set(schd_resource *res);
 
 /* create a resource signature for a set of resources */
-char *create_resource_signature(schd_resource *reslist, std::vector<resdef *>& resources, unsigned int flags);
+char *create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& resources, unsigned int flags);
 
 /* collect a unique list of resources from an array of requests */
-std::vector<resdef *>collect_resources_from_requests(resource_resv **resresv_arr);
+std::unordered_set<resdef *>collect_resources_from_requests(resource_resv **resresv_arr);
 
 /* convert an array of string resource names into resdefs */
-std::vector<resdef *>resstr_to_resdef(const std::vector<std::string>&);
-std::vector<resdef *>resstr_to_resdef(const char * const *resstr);
+std::unordered_set<resdef *>resstr_to_resdef(const std::unordered_set<std::string>&);
+std::unordered_set<resdef *>resstr_to_resdef(const char * const *resstr);
 
 /* filter function for filter_array().  Used to filter out host and vnode */
 int no_hostvnode(void *v, void *arg);

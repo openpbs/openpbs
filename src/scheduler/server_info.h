@@ -204,7 +204,7 @@ schd_resource *dup_resource_list(schd_resource *res);
 
 /* dup a resource list selectively only duping specific resources */
 
-schd_resource *dup_selective_resource_list(schd_resource *res, std::vector<resdef*>& deflist, unsigned flags);
+schd_resource *dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef*>& deflist, unsigned flags);
 
 /*
  *	dup_ind_resource_list - dup a resource list - if a resource is indirect

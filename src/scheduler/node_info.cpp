@@ -4064,10 +4064,8 @@ parse_selspec(const std::string& sspec)
 						num_cpus += (num_chunks * req->amount);
 					}
 					const auto& rtc = conf.res_to_check;
-					if (!invalid && (req->type.is_boolean || rtc.empty() ||
-						std::find(rtc.begin(), rtc.end(), kv[i].kv_keyw) != rtc.end())) {
-						if (std::find(spec->defs.begin(), spec->defs.end(), req->def) == spec->defs.end())
-							spec->defs.push_back(req->def);
+					if (!invalid && (req->type.is_boolean || rtc.empty() || rtc.find(kv[i].kv_keyw) != rtc.end())) {
+						spec->defs.insert(req->def);
 						if (req_head == NULL)
 							req_end = req_head = req;
 						else {

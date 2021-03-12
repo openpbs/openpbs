@@ -785,8 +785,7 @@ chunk_to_nspec(status *policy, chunk *chk, node_info *node, char *aoename)
 		}
 	}
 	for (cur_req = chk->req; cur_req != NULL; cur_req = cur_req->next) {
-		const auto& rdc = policy->resdef_to_check;
-		if (std::find(rdc.begin(), rdc.end(), cur_req->def) != rdc.end() && cur_req->def->type.is_consumable) {
+		if (policy->resdef_to_check.find(cur_req->def) != policy->resdef_to_check.end() && cur_req->def->type.is_consumable) {
 			req = dup_resource_req(cur_req);
 			if (req == NULL) {
 				free_nspec(ns);
@@ -914,9 +913,9 @@ int job_should_use_buckets(resource_resv *resresv) {
 
 	/* Job's requesting specific hosts or vnodes use the standard path */
 	const auto& defs = resresv->select->defs;
-	if (std::find(defs.begin(), defs.end(), getallres(RES_HOST)) != defs.end())
+	if (defs.find(getallres(RES_HOST)) != defs.end())
 		return 0;
-	if (std::find(defs.begin(), defs.end(), getallres(RES_VNODE)) != defs.end())
+	if (defs.find(getallres(RES_VNODE)) != defs.end())
 		return 0;
 	/* If a job has an execselect, it means it's requesting vnode */
 	if (resresv->execselect != NULL)

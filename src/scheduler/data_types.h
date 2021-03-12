@@ -54,6 +54,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <time.h>
@@ -123,7 +124,6 @@ typedef struct chunk chunk;
 typedef struct resdef resdef;
 typedef struct timed_event timed_event;
 typedef struct event_list event_list;
-typedef struct status status;
 typedef struct fairshare_head fairshare_head;
 typedef struct node_scratch node_scratch;
 typedef struct resresv_set resresv_set;
@@ -302,7 +302,7 @@ class selspec
 	public:
 	int total_chunks;
 	int total_cpus;			/* # of cpus requested in this select spec */
-	std::vector<resdef *> defs;			/* the resources requested by this select spec*/
+	std::unordered_set<resdef *> defs;			/* the resources requested by this select spec*/
 	chunk **chunks;
 	selspec();
 	selspec(selspec&);
@@ -336,17 +336,17 @@ struct status
 	unsigned prime_spill;			/* the amount of time a job can spill into the next prime state */
 	unsigned int backfill_depth;		/* number of top jobs to backfill around */
 
-	std::vector<resdef *> resdef_to_check;		/* resources to match as definitions */
-	std::vector<resdef *> resdef_to_check_no_hostvnode;	/* resdef_to_check without host/vnode*/
-	std::vector<resdef *> resdef_to_check_rassn;		/* resdef_to_check intersects res_rassn */
-	std::vector<resdef *> resdef_to_check_rassn_select;	/* resdef_to_check intersects res_rassn and host level resource */
-	std::vector<resdef *> resdef_to_check_noncons;	/* non-consumable resources to match */
-	std::vector<resdef *> equiv_class_resdef;		/* resources to consider for job equiv classes */
+	std::unordered_set<resdef *> resdef_to_check;		/* resources to match as definitions */
+	std::unordered_set<resdef *> resdef_to_check_no_hostvnode;	/* resdef_to_check without host/vnode*/
+	std::unordered_set<resdef *> resdef_to_check_rassn;		/* resdef_to_check intersects res_rassn */
+	std::unordered_set<resdef *> resdef_to_check_rassn_select;	/* resdef_to_check intersects res_rassn and host level resource */
+	std::unordered_set<resdef *> resdef_to_check_noncons;	/* non-consumable resources to match */
+	std::unordered_set<resdef *> equiv_class_resdef;		/* resources to consider for job equiv classes */
 
 
 	time_t prime_status_end;		/* the end of prime or nonprime */
 
-	std::vector<resdef *> rel_on_susp;	    /* resources to release on suspend */
+	std::unordered_set<resdef *> rel_on_susp;	    /* resources to release on suspend */
 
 	/* not really policy... but kinda just left over here */
 	time_t current_time;			/* current time in the cycle */
@@ -1145,8 +1145,8 @@ struct config
 	bool non_prime_sto:1;
 #endif /* localmod 034 */
 
-	std::vector<struct sort_info> prime_sort;	/* prime time sort */
-	std::vector<struct sort_info> non_prime_sort;	/* non-prime time sort */
+	std::vector<sort_info> prime_sort;	/* prime time sort */
+	std::vector<sort_info> non_prime_sort;	/* non-prime time sort */
 
 	enum smp_cluster_dist prime_smp_dist;	/* how to dist jobs during prime*/
 	enum smp_cluster_dist non_prime_smp_dist;/* how do dist jobs during nonprime*/
@@ -1168,15 +1168,15 @@ struct config
 	std::string fairshare_res;		/* resource to calc fairshare usage */
 	float fairshare_decay_factor;		/* decay factor used when decaying fairshare tree */
 	std::string fairshare_ent;			/* job attribute to use as fs entity */
-	std::vector<std::string> res_to_check;		/* the resources schedule on */
-	std::vector<resdef *> resdef_to_check;		/* the res to schedule on in def form */
-	std::vector<std::string> ignore_res;		/* resources - unset implies infinite */
+	std::unordered_set<std::string> res_to_check;		/* the resources schedule on */
+	std::unordered_set<resdef *> resdef_to_check;		/* the res to schedule on in def form */
+	std::unordered_set<std::string> ignore_res;		/* resources - unset implies infinite */
 	time_t max_starve;			/* starving threshold */
 	/* order to preempt jobs */
-	std::vector<struct sort_info> prime_node_sort;	/* node sorting primetime */
-	std::vector<struct sort_info> non_prime_node_sort;	/* node sorting non primetime */
-	std::vector<struct dyn_res> dynamic_res; /* for server_dyn_res */
-	std::vector<struct peer_queue> peer_queues;/* peer local -> remote queue map */
+	std::vector<sort_info> prime_node_sort;	/* node sorting primetime */
+	std::vector<sort_info> non_prime_node_sort;	/* node sorting non primetime */
+	std::vector<dyn_res> dynamic_res; /* for server_dyn_res */
+	std::vector<peer_queue> peer_queues;/* peer local -> remote queue map */
 #ifdef NAS
 	/* localmod 034 */
 	time_t max_borrow;			/* job share borrowing limit */

@@ -340,13 +340,13 @@ query_server(status *pol, int pbs_sd)
 	policy->resdef_to_check = collect_resources_from_requests(sinfo->all_resresv);
 	for (const auto& rd: policy->resdef_to_check) {
 		if (!(rd == getallres(RES_HOST) || rd == getallres(RES_VNODE)))
-			policy->resdef_to_check_no_hostvnode.push_back(rd);
+			policy->resdef_to_check_no_hostvnode.insert(rd);
 		
 		if (rd->flags & ATR_DFLAG_RASSN)
-			policy->resdef_to_check_rassn.push_back(rd);
+			policy->resdef_to_check_rassn.insert(rd);
 
 		if ((rd->flags & ATR_DFLAG_RASSN) && (rd->flags & ATR_DFLAG_CVTSLT))
-			policy->resdef_to_check_rassn_select.push_back(rd);
+			policy->resdef_to_check_rassn_select.insert(rd);
 	}
 
 	sinfo->calendar = create_event_list(sinfo);
@@ -1436,7 +1436,7 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 			continue;
 		if ((flags & USE_RESOURCE_LIST)) {
 			const auto& rtc = policy->resdef_to_check;
-			if (std::find(rtc.begin(), rtc.end(), cur_r2->def) == rtc.end() && !cur_r2->type.is_boolean)
+			if (rtc.find(cur_r2->def) == rtc.end() && !cur_r2->type.is_boolean)
 				continue;
 		}
 
@@ -2481,7 +2481,7 @@ dup_resource_list(schd_resource *res)
  * @par MT-Safe:	no
  */
 schd_resource *
-dup_selective_resource_list(schd_resource *res, std::vector<resdef *>& deflist, unsigned flags)
+dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef *>& deflist, unsigned flags)
 {
 	schd_resource *pres;
 	schd_resource *nres;
@@ -2491,7 +2491,7 @@ dup_selective_resource_list(schd_resource *res, std::vector<resdef *>& deflist, 
 
 	for (pres = res; pres != NULL; pres = pres->next) {
 		if (((flags & ADD_ALL_BOOL) && pres->type.is_boolean) ||
-			std::find(deflist.begin(), deflist.end(), pres->def) != deflist.end()) {
+			deflist.find(pres->def) != deflist.end()) {
 			nres = dup_resource(pres);
 			if (nres == NULL) {
 				free_resource_list(head);
@@ -3044,8 +3044,8 @@ update_universe_on_end(status *policy, resource_resv *resresv, const char *job_s
 			int need_metadata_update = 0;
 			for (const auto& sdef: resresv->execselect->defs) {
 				const auto &rdc = policy->resdef_to_check;
-				if (std::find(rdc.begin(), rdc.end(), sdef) == rdc.end()) {
-					policy->resdef_to_check.push_back(sdef);
+				if (rdc.find(sdef) == rdc.end()) {
+					policy->resdef_to_check.insert(sdef);
 					need_metadata_update = 1;
 				}
 			}

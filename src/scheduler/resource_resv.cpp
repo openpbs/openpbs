@@ -973,7 +973,7 @@ resource_count *dup_resource_count_list(resource_count *orcount)
  *
  */
 resource_req *
-dup_selective_resource_req_list(resource_req *oreq, std::vector<resdef *>& deflist)
+dup_selective_resource_req_list(resource_req *oreq, std::unordered_set<resdef *>& deflist)
 {
 	resource_req *req;
 	resource_req *nreq;
@@ -984,7 +984,7 @@ dup_selective_resource_req_list(resource_req *oreq, std::vector<resdef *>& defli
 	prev = NULL;
 
 	for (req = oreq; req != NULL; req = req->next) {
-		if (std::find(deflist.begin(), deflist.end(), req->def) != deflist.end()) {
+		if (deflist.find(req->def) != deflist.end()) {
 			if ((nreq = dup_resource_req(req)) != NULL) {
 				if (head == NULL)
 					head = nreq;
@@ -1495,7 +1495,7 @@ compare_resource_req(resource_req *req1, resource_req *req2) {
  * @retval 0 two lists are not equal
  */
 int
-compare_resource_req_list(resource_req *req1, resource_req *req2, std::vector<resdef *>& comparr) {
+compare_resource_req_list(resource_req *req1, resource_req *req2, std::unordered_set<resdef *>& comparr) {
 	resource_req *cur_req1;
 	resource_req *cur_req2;
 	resource_req *cur;
@@ -1510,7 +1510,7 @@ compare_resource_req_list(resource_req *req1, resource_req *req2, std::vector<re
 		return 0;
 
 	for (cur_req1 = req1; ret1 && cur_req1 != NULL; cur_req1 = cur_req1->next) {
-		if (std::find(comparr.begin(), comparr.end(), cur_req1->def) != comparr.end()) {
+		if (comparr.find(cur_req1->def) != comparr.end()) {
 			cur = find_resource_req(req2, cur_req1->def);
 			if (cur == NULL)
 				ret1 = 0;
@@ -1520,7 +1520,7 @@ compare_resource_req_list(resource_req *req1, resource_req *req2, std::vector<re
 	}
 
 	for (cur_req2 = req2; ret2 && cur_req2 != NULL; cur_req2 = cur_req2->next) {
-		if (std::find(comparr.begin(), comparr.end(), cur_req2->def) != comparr.end()) {
+		if (comparr.find(cur_req2->def) != comparr.end()) {
 			cur = find_resource_req(req1, cur_req2->def);
 			if (cur == NULL)
 				ret2 = 0;

@@ -168,7 +168,7 @@ int set_resource_req(resource_req *req, const char *val);
  */
 resource_req *dup_resource_req_list(resource_req *oreq);
 
-resource_req *dup_selective_resource_req_list(resource_req *oreq, std::vector<resdef *>& deflist);
+resource_req *dup_selective_resource_req_list(resource_req *oreq, std::unordered_set<resdef *>& deflist);
 
 
 /*
@@ -277,7 +277,7 @@ int compare_res_to_str(schd_resource *res, char *str, enum resval_cmpflag);
 int compare_non_consumable(schd_resource *res, resource_req *req);
 
 /* compare two resource req lists for equality.  Only compare resources in comparr */
-int compare_resource_req_list(resource_req *req1, resource_req *req2, std::vector<resdef *>& comparr);
+int compare_resource_req_list(resource_req *req1, resource_req *req2, std::unordered_set<resdef *>& comparr);
 
 /* compare two resource_reqs for equality*/
 int compare_resource_req(resource_req *req1, resource_req *req2);

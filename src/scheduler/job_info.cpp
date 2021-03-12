@@ -2473,9 +2473,9 @@ resresv_set_which_selspec(resource_resv *resresv)
  * @retval array of resdefs for creating resresv_set's resources.
  * @retval NULL on error
  */
-std::vector<resdef *>
+std::unordered_set<resdef *>
 create_resresv_sets_resdef(status *policy) {
-	std::vector<resdef *> defs;
+	std::unordered_set<resdef *> defs;
 	schd_resource *limres;
 
 	if (policy == NULL)
@@ -2484,18 +2484,15 @@ create_resresv_sets_resdef(status *policy) {
 	limres = query_limres();
 
 	defs = policy->resdef_to_check;
-	defs.push_back(getallres(RES_CPUT));
-	defs.push_back(getallres(RES_WALLTIME));
-	defs.push_back(getallres(RES_MAX_WALLTIME));
-	defs.push_back(getallres(RES_MIN_WALLTIME));
+	defs.insert(getallres(RES_CPUT));
+	defs.insert(getallres(RES_WALLTIME));
+	defs.insert(getallres(RES_MAX_WALLTIME));
+	defs.insert(getallres(RES_MIN_WALLTIME));
 	if(sc_attrs.preempt_targets_enable)
-		defs.push_back(getallres(RES_PREEMPT_TARGETS));
+		defs.insert(getallres(RES_PREEMPT_TARGETS));
 
-	for (auto cur_res = limres; cur_res != NULL; cur_res = cur_res->next) {
-		/* There may be overlap between resdef_to_check and limres */
-		if (std::find(defs.begin(), defs.end(), cur_res->def) == defs.end())
-			defs.push_back(cur_res->def);
-	}
+	for (auto cur_res = limres; cur_res != NULL; cur_res = cur_res->next)
+			defs.insert(cur_res->def);
 
 	return defs;
 }
@@ -3735,7 +3732,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 					if (policy->resdef_to_check_noncons.empty()) {
 						for (const auto& rtc: policy->resdef_to_check) {
 							if (rtc->type.is_non_consumable)
-								policy->resdef_to_check_noncons.push_back(rtc);
+								policy->resdef_to_check_noncons.insert(rtc);
 						}
 					}
 					only_check_noncons = true;
@@ -5006,7 +5003,7 @@ nspec **create_res_released_array(status *policy, resource_resv *resresv)
 		for (i = 0; nspec_arr[i] != NULL; i++) {
 			for (req = nspec_arr[i]->resreq; req != NULL; req = req->next) {
 				auto ros = policy->rel_on_susp;
-				if (req->type.is_consumable == 1 && std::find(ros.begin(), ros.end(), req->def) == ros.end())
+				if (req->type.is_consumable == 1 && ros.find(req->def) == ros.end())
 					req->amount = 0;
 			}
 		}
@@ -5036,9 +5033,9 @@ resource_req *create_resreq_rel_list(status *policy, resource_resv *pjob)
 
 	for (req = pjob->resreq; req != NULL; req = req->next) {
 		auto rdc = policy->resdef_to_check_rassn;
-		if (std::find(rdc.begin(), rdc.end(), req->def) != rdc.end()) {
+		if (rdc.find(req->def) != rdc.end()) {
 			auto ros = policy->rel_on_susp;
-			if (!policy->rel_on_susp.empty() && std::find(ros.begin(), ros.end(), req->def) == ros.end())
+			if (!policy->rel_on_susp.empty() && ros.find(req->def) == ros.end())
 				continue;
 			rel = find_alloc_resource_req(resreq_rel, req->def);
 			if (rel != NULL) {

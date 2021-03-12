@@ -641,7 +641,7 @@ add_resource_sig(char **sig, int *sig_size, schd_resource *res)
  * @par	it is the responsibility of the caller to free string returned
  */
 char *
-create_resource_signature(schd_resource *reslist, std::vector<resdef *>& resources, unsigned int flags)
+create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& resources, unsigned int flags)
 {
 	char *sig = NULL;
 	int sig_size = 0;
@@ -676,7 +676,7 @@ create_resource_signature(schd_resource *reslist, std::vector<resdef *>& resourc
 
 	if ((flags & ADD_ALL_BOOL)) {
 		for (i = 0; boolres[i] != NULL; i++) {
-			if (std::find(resources.begin(), resources.end(), boolres[i]) == resources.end()) {
+			if (resources.find(boolres[i]) == resources.end()) {
 				res = find_resource(reslist, boolres[i]);
 				if (res != NULL) {
 					add_resource_sig(&sig, &sig_size, res);
@@ -774,16 +774,16 @@ update_resource_defs(int pbs_sd)
  * @return	resdef array
  * @retval	NULL	: on error
  */
-std::vector<resdef *>
-resstr_to_resdef(const std::vector<std::string>& resstr)
+std::unordered_set<resdef *>
+resstr_to_resdef(const std::unordered_set<std::string>& resstr)
 {
-	std::vector<resdef *> defs;
+	std::unordered_set<resdef *> defs;
 	resdef *def;
 
 	for (const auto& str: resstr) {
 		def = find_resdef(allres, str);
 		if (def != NULL)
-			defs.push_back(def);
+			defs.insert(def);
 		else {
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, str, "Unknown Resource");
 		}
@@ -792,16 +792,16 @@ resstr_to_resdef(const std::vector<std::string>& resstr)
 	return defs;
 }
 
-std::vector<resdef *>
+std::unordered_set<resdef *>
 resstr_to_resdef(const char * const*resstr)
 {
-	std::vector<resdef *> defs;
+	std::unordered_set<resdef *> defs;
 	resdef *def;
 
 	for (int i = 0; resstr[i] != NULL; i++) {
 		def = find_resdef(allres, resstr[i]);
 		if (def != NULL)
-			defs.push_back(def);
+			defs.insert(def);
 		else {
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, resstr[i], "Unknown Resource");
 		}
@@ -834,22 +834,20 @@ getallres(enum resource_index ind)
  *
  * @return	array of resource definitions
  */
-std::vector<resdef *>
+std::unordered_set<resdef *>
 collect_resources_from_requests(resource_resv **resresv_arr)
 {
 	int i;
 	resource_req *req;
-	std::vector<resdef *> defvec;
+	std::unordered_set<resdef *> defset;
 
 	for (i = 0; resresv_arr[i] != NULL; i++) {
 		resource_resv *r = resresv_arr[i];
 
 		/* schedselect: node resources - resources to be satisfied on the nodes */
 		if (r->select != NULL) {
-			for (const auto& sdef: r->select->defs) {
-				if (std::find(defvec.begin(), defvec.end(), sdef) == defvec.end())
-					defvec.push_back(sdef);
-			}
+			for (const auto &sdef : r->select->defs)
+				defset.insert(sdef);
 		}
 		/*
 		 * execselect: select created from the exec_vnode.  This is likely to
@@ -860,11 +858,9 @@ collect_resources_from_requests(resource_resv **resresv_arr)
 		 */
 		if (r->execselect != NULL) {
 			if ((r->job != NULL && in_runnable_state(r)) ||
-				(r->resv != NULL && (r->resv->resv_state == RESV_BEING_ALTERED || r->resv->resv_substate == RESV_DEGRADED))) {
-				for (const auto& esd: r->execselect->defs) {
-					if (std::find(defvec.begin(), defvec.end(), esd) == defvec.end())
-						defvec.push_back(esd);
-				}
+			    (r->resv != NULL && (r->resv->resv_state == RESV_BEING_ALTERED || r->resv->resv_substate == RESV_DEGRADED))) {
+				for (const auto &esd : r->execselect->defs)
+					defset.insert(esd);
 			}
 		}
 		/* Resource_List: job wide resources: resources submitted with
@@ -872,13 +868,11 @@ collect_resources_from_requests(resource_resv **resresv_arr)
 		 * sums all the requested amounts in the select and sets job wide
 		 */
 		for (req = r->resreq; req != NULL; req = req->next) {
-			if (std::find(conf.resdef_to_check.begin(), conf.resdef_to_check.end(), req->def) != conf.resdef_to_check.end()) {
-				if (std::find(defvec.begin(), defvec.end(), req->def) == defvec.end())
-					defvec.push_back(req->def);
-			}
+			if (conf.resdef_to_check.find(req->def) != conf.resdef_to_check.end())
+				defset.insert(req->def);
 		}
 	}
-	return defvec;
+	return defset;
 }
 
 /**
