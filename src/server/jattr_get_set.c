@@ -239,6 +239,25 @@ get_jattr_long(const job *pjob, int attr_idx)
 }
 
 /**
+ * @brief	Getter function for job attribute of type long long
+ *
+ * @param[in]	pjob - pointer to the job
+ * @param[in]	attr_idx - index of the attribute to return
+ *
+ * @return	long long
+ * @retval	long long value of the attribute
+ * @retval	-1 if pjob is NULL
+ */
+long long
+get_jattr_ll(const job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		return get_attr_ll(get_jattr(pjob, attr_idx));
+
+	return -1;
+}
+
+/**
  * @brief	Getter function for job attribute's user_encoded value
  *
  * @param[in]	pjob - pointer to the job
@@ -371,6 +390,30 @@ set_jattr_l_slim(job *pjob, int attr_idx, long val, enum batch_op op)
 
 	return 0;
 }
+
+/**
+ * @brief	"fast" job attribute setter for long long values
+ *
+ * @param[in]	pjob - pointer to job
+ * @param[in]	attr_idx - attribute index to set
+ * @param[in]	val - new val to set
+ * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	1 for failure
+ */
+int
+set_jattr_ll_slim(job *pjob, int attr_idx, long long val, enum batch_op op)
+{
+	if (pjob == NULL)
+		return 1;
+
+	set_attr_ll(get_jattr(pjob, attr_idx), val, op);
+
+	return 0;
+}
+
 
 /**
  * @brief	"fast" job attribute setter for boolean values

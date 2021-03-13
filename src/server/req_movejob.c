@@ -202,13 +202,13 @@ req_movejob(struct batch_request *req)
 void
 req_orderjob(struct batch_request *req)
 {
-	int      jt1, jt2;            /* job type */
-	job	*pjob;
-	job	*pjob1;
-	job	*pjob2;
-	long	 rank;
-	int	 rc;
-	char	 tmpqn[PBS_MAXQUEUENAME + 1];
+	int jt1, jt2; /* job type */
+	job *pjob;
+	job *pjob1;
+	job *pjob2;
+	long long rank;
+	int rc;
+	char tmpqn[PBS_MAXQUEUENAME + 1];
 
 	if ((pjob1 = chk_job_request(req->rq_ind.rq_move.rq_jid, req, &jt1, NULL)) == NULL)
 		return;
@@ -248,9 +248,9 @@ req_orderjob(struct batch_request *req)
 
 	/* now swap the order of the two jobs in the queue lists */
 
-	rank = get_jattr_long(pjob1, JOB_ATR_qrank);
-	set_jattr_l_slim(pjob1, JOB_ATR_qrank, get_jattr_long(pjob2, JOB_ATR_qrank), SET);
-	set_jattr_l_slim(pjob2, JOB_ATR_qrank, rank, SET);
+	rank = get_jattr_ll(pjob1, JOB_ATR_qrank);
+	set_jattr_ll_slim(pjob1, JOB_ATR_qrank, get_jattr_ll(pjob2, JOB_ATR_qrank), SET);
+	set_jattr_ll_slim(pjob2, JOB_ATR_qrank, rank, SET);
 
 	if (pjob1->ji_qhdr != pjob2->ji_qhdr) {
 		(void)strcpy(tmpqn, pjob1->ji_qs.ji_queue);
