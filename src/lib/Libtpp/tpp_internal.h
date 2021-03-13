@@ -513,8 +513,6 @@ int tpp_mod_fd(int, int, int);
  * set handlers using pthread_atfork.
  */
 pthread_mutex_t tpp_nslookup_mutex;
-int tpp_nslookup_mutex_lock();
-int tpp_nslookup_mutex_unlock();
 void tpp_nslookup_atfork_prepare();
 void tpp_nslookup_atfork_parent();
 void tpp_nslookup_atfork_child();
