@@ -106,7 +106,8 @@ dist_ptlmodulelib_PYTHON = \
 	ptl/lib/ptl_entities.py \
 	ptl/lib/ptl_fairshare.py \
 	ptl/lib/ptl_resourceresv.py \
-	ptl/lib/ptl_service.py
+	ptl/lib/ptl_service.py \
+	ptl/lib/ptl_wrappers.py
 
 ptlmoduleutilsdir = $(ptlmoduledir)/utils
 
