@@ -131,6 +131,7 @@ class Wrappers(PBSService):
                            SCHED: [ATTR_sched_cycle_len, ATTR_scheduling,
                                    ATTR_schedit, ATTR_logevents,
                                    ATTR_sched_server_dyn_res_alarm,
+                                   ATTR_SchedHost,
                                    'preempt_prio', 'preempt_queue_prio',
                                    'throughput_mode', 'job_run_wait',
                                    'partition', 'sched_priv', 'sched_log'],
