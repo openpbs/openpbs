@@ -3644,7 +3644,7 @@ event.accept()
         self.moms_list[2].log_match("Event type is execjob_abort",
                                     starttime=now)
 
-        self.moms_list[1].restart()
+        self.moms_list[1].pi.restart()
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=15)
