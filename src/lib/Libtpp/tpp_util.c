@@ -2333,6 +2333,42 @@ tpp_set_logmask(long logmask)
 }
 
 
+#ifndef WIN32
+
+/**
+ * @brief
+ *	wrapper function for tpp_nslookup_mutex_lock().
+ *
+ */
+void
+tpp_nslookup_atfork_prepare()
+{
+	tpp_lock(&tpp_nslookup_mutex);
+}
+
+/**
+ * @brief
+ *	wrapper function for tpp_nslookup_mutex_unlock().
+ *
+ */
+void
+tpp_nslookup_atfork_parent()
+{
+	tpp_unlock(&tpp_nslookup_mutex);
+}
+
+/**
+ * @brief
+ *	wrapper function for tpp_nslookup_mutex_unlock().
+ *
+ */
+void
+tpp_nslookup_atfork_child()
+{
+	tpp_unlock(&tpp_nslookup_mutex);
+}
+#endif
+
 /**
  * @brief encrypt the pkt  with the authdata provided
  *

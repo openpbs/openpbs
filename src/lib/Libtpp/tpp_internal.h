@@ -508,6 +508,15 @@ int tpp_add_fd(int, int, int);
 int tpp_del_fd(int, int);
 int tpp_mod_fd(int, int, int);
 
+/* a new mutex introduced to prevent inheriting lock from tpp thread
+ * from getaddrinfo(nslookup) during fork for periodic hook
+ * set handlers using pthread_atfork.
+ */
+pthread_mutex_t tpp_nslookup_mutex;
+void tpp_nslookup_atfork_prepare();
+void tpp_nslookup_atfork_parent();
+void tpp_nslookup_atfork_child();
+
 int tpp_validate_hdr(int, char *);
 tpp_addr_t *tpp_get_addresses(char *, int *);
 tpp_addr_t *tpp_get_local_host(int);
