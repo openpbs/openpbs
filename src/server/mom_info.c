@@ -488,8 +488,21 @@ delete_svrmom_entry(mominfo_t *pmom)
 			log_err(errno, __func__, log_buffer);
 		}
 	}
-	memset((void *)psvrmom, 0, sizeof(mom_svrinfo_t));
+
 	delete_daemon_info(pmom);
+
+#ifndef PBS_MOM
+	for (i = 0; i < psvrmom->msr_num_action; ++i) {
+		if (psvrmom->msr_action[i] != NULL) {
+			free(psvrmom->msr_action[i]);
+			psvrmom->msr_action[i] = NULL;
+		}
+	}
+	free(psvrmom->msr_action);
+#endif
+
+	memset((void *)psvrmom, 0, sizeof(mom_svrinfo_t));
+
 	delete_mom_entry(pmom);
 }
 
