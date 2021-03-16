@@ -343,7 +343,7 @@ post_routejob(struct work_task *pwt)
 				/* Job Delete in progress, just set to queued status */
 
 				svr_setjobstate(jobp, JOB_STATE_LTR_QUEUED,
-					JOB_SUBSTATE_ABORT);
+					JOB_SUBSTATE_ABORT, true);
 				return;
 			}
 			add_dest(jobp);		/* else mark destination as bad */
@@ -351,7 +351,7 @@ post_routejob(struct work_task *pwt)
 		default :	/* try routing again */
 			/* force re-eval of job state out of Transit */
 			svr_evaljobstate(jobp, &newstate, &newsub, 1);
-			svr_setjobstate(jobp, newstate, newsub);
+			svr_setjobstate(jobp, newstate, newsub, true);
 			jobp->ji_retryok = 1;
 			if ((r = job_route(jobp)) == PBSE_ROUTEREJ)
 				(void)job_abt(jobp, msg_routebad);
@@ -490,7 +490,7 @@ post_movejob(struct work_task *pwt)
 		if (jobp) {
 			/* force re-eval of job state out of Transit */
 			svr_evaljobstate(jobp, &newstate, &newsub, 1);
-			svr_setjobstate(jobp, newstate, newsub);
+			svr_setjobstate(jobp, newstate, newsub, true);
 		}
 		if (move_type == MOVE_TYPE_Move_Run)
 			r = wstat;
@@ -1101,7 +1101,7 @@ net_move(job *jobp, struct batch_request *req)
 		data      = 0;
 	}
 
-	svr_setjobstate(jobp, JOB_STATE_LTR_TRANSIT, JOB_SUBSTATE_TRNOUT);
+	svr_setjobstate(jobp, JOB_STATE_LTR_TRANSIT, JOB_SUBSTATE_TRNOUT, true);
 	return (send_job(jobp, hostaddr, port, move_type, post_func, data));
 }
 

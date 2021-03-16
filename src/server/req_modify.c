@@ -375,7 +375,7 @@ req_modifyjob(struct batch_request *preq)
 	/* if job is not running, may need to change its state */
 	if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 0);
-		svr_setjobstate(pjob, newstate, newsubstate);
+		svr_setjobstate(pjob, newstate, newsubstate, true);
 	}
 
 	job_save_db(pjob); /* we must save the updates anyway, if any */
@@ -670,7 +670,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 	}
 
 	if (newstate != -1 && newsubstate != -1) {
-		svr_setjobstate(pjob, newstate, newsubstate);
+		svr_setjobstate(pjob, newstate, newsubstate, true);
 	}
 
 	if (newaccruetype != -1)

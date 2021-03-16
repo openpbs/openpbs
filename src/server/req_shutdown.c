@@ -339,7 +339,7 @@ shutdown_preempt_chkpt(job *pjob)
 	if (relay_to_mom(pjob, phold, func) == 0) {
 
 		if (check_job_state(pjob, JOB_STATE_LTR_TRANSIT))
-			svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_RUNNING);
+			svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_RUNNING, true);
 		pjob->ji_qs.ji_svrflags |= (JOB_SVFLG_HASRUN | JOB_SVFLG_CHKPT | JOB_SVFLG_HASHOLD);
 		(void)job_save_db(pjob);
 		return (0);

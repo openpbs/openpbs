@@ -248,7 +248,7 @@ static void clear_preempt_hold(job *pjob)
 
 	if (old_hold != get_jattr_long(pjob, JOB_ATR_hold)) {
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
-		svr_setjobstate(pjob, newstate, newsub); /* saves job */
+		svr_setjobstate(pjob, newstate, newsub, true); /* saves job */
 	}
 	if (get_jattr_long(pjob, JOB_ATR_hold) == 0)
 		free_jattr(pjob, JOB_ATR_Comment);

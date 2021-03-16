@@ -194,7 +194,7 @@ check_and_provision_job(struct batch_request *preq, job *pjob, int *need_prov)
 
 		/* put system hold and move to held state */
 		set_jattr_b_slim(pjob, JOB_ATR_hold, HOLD_s, INCR);
-		svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD);
+		svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD, true);
 		set_jattr_str_slim(pjob, JOB_ATR_Comment, "job held, provisioning failed to start", NULL);
 
 		/* not offlining vnodes, since its not a vnode's fault. vnode */
@@ -207,7 +207,7 @@ check_and_provision_job(struct batch_request *preq, job *pjob, int *need_prov)
 
 	/* provisioning was needed and enqueued */
 
-	svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_PROVISION);
+	svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_PROVISION, true);
 	DBPRT(("%s: Sucessfully enqueued provisioning for job %s\n", __func__, pjob->ji_qs.ji_jobid))
 
 	/* log accounting line for start of prov for a job */
@@ -817,12 +817,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		req_reject(rc, 0, preq);
 	}
 
-	/* if a subjob, the job wouldn't have gotten saved yet, let's save it now */
-	/* Note: we are saving it here and not before the call to svr_startjob because
-	 * svr_startjob calls svr_setjobstate, which write to db if the job's 'newobj' bit is
-	 * unset. That bit gets unset by job_save_db(), so we avoid calling job_save_db() for subjobs until here
-	 */
-	if (save_subjob(pjob)) {
+	if (job_save_db(pjob)) {
 		free_nodes(pjob);
 		req_reject(PBSE_SAVE_ERR, 0, preq);
 	}
@@ -924,7 +919,7 @@ post_stagein(struct work_task *pwt)
 				set_jattr_l_slim(paltjob, JOB_ATR_exectime, time_now + PBS_STAGEFAIL_WAIT, SET);
 				job_set_wait(pwait, paltjob, 0);
 			}
-			svr_setjobstate(paltjob, JOB_STATE_LTR_WAITING, JOB_SUBSTATE_STAGEFAIL);
+			svr_setjobstate(paltjob, JOB_STATE_LTR_WAITING, JOB_SUBSTATE_STAGEFAIL, true);
 
 			if (preq->rq_reply.brp_choice == BATCH_REPLY_CHOICE_Text)
 				svr_mailowner(pjob, MAIL_STAGEIN, MAIL_FORCE,
@@ -937,7 +932,7 @@ post_stagein(struct work_task *pwt)
 				svr_strtjob2(pjob, NULL);
 			} else {
 				svr_evaljobstate(pjob, &newstate, &newsub, 0);
-				svr_setjobstate(pjob, newstate, newsub);
+				svr_setjobstate(pjob, newstate, newsub, true);
 			}
 		}
 	}
@@ -977,7 +972,7 @@ svr_stagein(job *pjob, struct batch_request *preq, char state, int substate)
 		rc = relay_to_mom(pjob, momreq, post_stagein);
 		if (rc == 0) {
 
-			svr_setjobstate(pjob, state, substate);
+			svr_setjobstate(pjob, state, substate, true);
 			/*
 			 * show resources allocated as stage-in may take
 			 * take sufficient time to run into another
@@ -1160,9 +1155,8 @@ svr_startjob(job *pjob, struct batch_request *preq)
 static int
 svr_strtjob2(job *pjob, struct batch_request *preq)
 {
-	char	old_state;
-	int	old_subst;
-
+	char old_state;
+	int old_subst;
 
 	old_state = get_job_state(pjob);
 	old_subst = get_job_substate(pjob);
@@ -1181,8 +1175,7 @@ svr_strtjob2(job *pjob, struct batch_request *preq)
 			NULL, SET);
 
 	if (old_subst != JOB_SUBSTATE_PROVISION)
-		svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING,
-			JOB_SUBSTATE_PRERUN);
+		svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_PRERUN, false);
 
 
 	if (send_job(pjob, pjob->ji_qs.ji_un.ji_exect.ji_momaddr,
@@ -1231,7 +1224,7 @@ svr_strtjob2(job *pjob, struct batch_request *preq)
 
 		clear_exec_on_run_fail(pjob);
 		svr_evaljobstate(pjob, &old_state, &old_subst, 1);
-		svr_setjobstate(pjob, old_state, old_subst);
+		svr_setjobstate(pjob, old_state, old_subst, false);
 		return (pbs_errno);
 	}
 }
@@ -1269,7 +1262,7 @@ complete_running(job *jobp)
 		parent = jobp->ji_parentaj;
 		if (check_job_state(parent, JOB_STATE_LTR_QUEUED) ||
 			(check_job_state(parent, JOB_STATE_LTR_BEGUN) && parent->ji_qs.ji_stime == 0)) {
-			svr_setjobstate(parent, JOB_STATE_LTR_BEGUN, JOB_SUBSTATE_BEGUN);
+			svr_setjobstate(parent, JOB_STATE_LTR_BEGUN, JOB_SUBSTATE_BEGUN, true);
 
 			/* Also set the parent job's stime */
 			parent->ji_qs.ji_stime = time_now;
@@ -1306,7 +1299,7 @@ complete_running(job *jobp)
 	 * - EXITING if the Obit was received before send_job's exit status.
 	 */
 	if (check_job_substate(jobp, JOB_SUBSTATE_PROVISION)) {
-		svr_setjobstate(jobp, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_PRERUN);
+		svr_setjobstate(jobp, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_PRERUN, true);
 		/* above saves job structure */
 	}
 
@@ -1397,7 +1390,7 @@ check_failed_attempts(job *jobp)
 
 		if (jobp->ji_parentaj) {
 			char comment_buf[100 + PBS_MAXSVRJOBID];
-			svr_setjobstate(jobp->ji_parentaj, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD);
+			svr_setjobstate(jobp->ji_parentaj, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD, true);
 			set_jattr_b_slim(jobp->ji_parentaj, JOB_ATR_hold, HOLD_s, INCR);
 			sprintf(comment_buf, "Job Array Held, too many failed attempts to run subjob %s", jobp->ji_qs.ji_jobid);
 			set_jattr_str_slim(jobp->ji_parentaj, JOB_ATR_Comment, comment_buf, NULL);
@@ -1739,7 +1732,7 @@ post_sendmom(struct work_task *pwt)
 				}
 
 				svr_evaljobstate(jobp, &newstate, &newsub, 1);
-				svr_setjobstate(jobp, newstate, newsub);
+				svr_setjobstate(jobp, newstate, newsub, true);
 			} else {
 				if (preq)
 					req_reject(PBSE_BADSTATE, 0, preq);

@@ -506,7 +506,7 @@ svr_dequejob(job *pjob)
  */
 
 int
-svr_setjobstate(job *pjob, char newstate, int newsubstate)
+svr_setjobstate(job *pjob, char newstate, int newsubstate, bool db_write)
 {
 	pbs_queue *pque = pjob->ji_qhdr;
 	pbs_sched *psched;
@@ -601,10 +601,11 @@ svr_setjobstate(job *pjob, char newstate, int newsubstate)
 		}
 	}
 
-	if (pjob->newobj) /* object was never saved/loaded before, so new object */
-		return 0;
+	/* Write only if object is old and db_write is set */
+	if (!(pjob->newobj) && db_write)
+		return job_save_db(pjob);
 
-	return (job_save_db(pjob));
+	return 0;
 }
 
 /**
@@ -1478,7 +1479,7 @@ job_wait_over(struct work_task *pwt)
 	/* clear the exectime attribute */
 	free_jattr(pjob, JOB_ATR_exectime);
 	svr_evaljobstate(pjob, &newstate, &newsub, 0);
-	svr_setjobstate(pjob, newstate, newsub);
+	svr_setjobstate(pjob, newstate, newsub, true);
 }
 
 /**

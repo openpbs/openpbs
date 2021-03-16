@@ -4948,7 +4948,7 @@ fail_vnode_job(struct prov_vnode_info * prov_vnode_info, int hold_or_que)
 		clear_exec_on_run_fail(pjob);
 		set_jattr_b_slim(pjob, JOB_ATR_hold, HOLD_s, INCR);
 		set_jattr_str_slim(pjob, JOB_ATR_Comment, "job held, provisioning failed to start", NULL);
-		svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD);
+		svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD, true);
 	} else if (hold_or_que == 1) {
 		/* don't purge job, instead requeue */
 		(void)force_reque(pjob);

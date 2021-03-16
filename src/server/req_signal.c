@@ -324,7 +324,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 				} else {
 					/* not from scheduler, change substate so the  */
 					/* scheduler will resume the job when possible */
-					svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_SCHSUSP);
+					svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_SCHSUSP, true);
 					if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 						set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
 					else {
@@ -462,7 +462,7 @@ post_signal_req(struct work_task *pwt)
 				}
 				pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Suspend;
 				/* update all released resources */
-				svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, ss);
+				svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, ss, true);
 				rel_resc(pjob); /* release resc and nodes */
 				job_save(pjob); /* save released resc and nodes */
 				log_suspend_resume_record(pjob, PBS_ACCT_SUSPEND);
@@ -486,7 +486,7 @@ post_signal_req(struct work_task *pwt)
 			free_jattr(pjob, JOB_ATR_resc_released_list);
 			mark_jattr_not_set(pjob, JOB_ATR_resc_released_list);
 
-			svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_RUNNING);
+			svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_RUNNING, true);
 			log_suspend_resume_record(pjob, PBS_ACCT_RESUME);
 
 			set_jattr_generic(pjob, JOB_ATR_Comment,

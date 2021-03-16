@@ -2132,7 +2132,7 @@ stat_update(int stream)
 					complete_running(pjob);
 					/* this causes a save of the job */
 					svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING,
-						JOB_SUBSTATE_RUNNING);
+						JOB_SUBSTATE_RUNNING, true);
 					/*
 					 * If JOB_DEPEND_TYPE_BEFORESTART dependency is set for the current job
 					 * then release the after dependency for its childs as the current job

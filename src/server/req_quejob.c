@@ -1823,7 +1823,7 @@ req_commit_now(struct batch_request *preq,  job *pj)
 	delete_link(&pj->ji_alljobs);
 
 	svr_evaljobstate(pj, &newstate, &newsub, 1);
-	svr_setjobstate(pj, newstate, newsub);
+	svr_setjobstate(pj, newstate, newsub, true);
 
 	gettimeofday(&tval, NULL);
 	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);

@@ -1012,7 +1012,7 @@ extern int   site_allow_u(char *user, char *host);
 extern void  svr_dequejob(job *);
 extern int   svr_enquejob(job *, char *);
 extern void  svr_evaljobstate(job *, char *, int *, int);
-extern int   svr_setjobstate(job *, char, int);
+extern int   svr_setjobstate(job *, char, int, bool);
 extern int   state_char2int(char);
 extern char	 state_int2char(int);
 extern int   uniq_nameANDfile(char*, char*, char*);

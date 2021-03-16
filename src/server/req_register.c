@@ -753,7 +753,7 @@ depend_on_que(attribute *pattr, void *pobj, int mode)
 						 check_job_substate(djob, JOB_SUBSTATE_DEPNHOLD))) {
 						/* If the dependent job is running or has system hold, then put this job on hold too*/
 						set_jattr_b_slim(pjob, JOB_ATR_hold, HOLD_s, INCR);
-						svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_DEPNHOLD);
+						svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_DEPNHOLD, true);
 					}
 				}
 				rc = send_depend_req(pjob, pparent, type,
@@ -967,7 +967,7 @@ int depend_runone_hold_all(job *pjob)
 			d_pjob = find_job(pdj->dc_child);
 			if (d_pjob) {
 				set_jattr_b_slim(d_pjob, JOB_ATR_hold, HOLD_s, INCR);
-				svr_setjobstate(d_pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD);
+				svr_setjobstate(d_pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD, true);
 			}
 		}
 	}
@@ -1006,7 +1006,7 @@ int depend_runone_release_all(job *pjob)
 			if (d_pjob) {
 				set_jattr_b_slim(d_pjob, JOB_ATR_hold, HOLD_s, DECR);
 				svr_evaljobstate(d_pjob, &newstate, &newsub, 0);
-				svr_setjobstate(d_pjob, newstate, newsub); /* saves job */
+				svr_setjobstate(d_pjob, newstate, newsub, true); /* saves job */
 			}
 		}
 	}
@@ -1157,14 +1157,14 @@ set_depend_hold(job *pjob, attribute *pattr)
 			(check_job_substate(pjob, JOB_SUBSTATE_DEPNHOLD))) {
 			set_jattr_b_slim(pjob, JOB_ATR_hold, HOLD_s, DECR);
 			svr_evaljobstate(pjob, &newstate, &newsubst, 0);
-			svr_setjobstate(pjob, newstate, newsubst);
+			svr_setjobstate(pjob, newstate, newsubst, true);
 		}
 	} else {
 
 		/* there are dependencies, set system hold accordingly */
 
 		set_jattr_b_slim(pjob, JOB_ATR_hold, HOLD_s, INCR);
-		svr_setjobstate(pjob, JOB_STATE_LTR_HELD, substate);
+		svr_setjobstate(pjob, JOB_STATE_LTR_HELD, substate, true);
 	}
 	return;
 }

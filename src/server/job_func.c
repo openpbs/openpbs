@@ -232,7 +232,7 @@ job_abt(job *pjob, char *text)
 	}
 
 	if ((old_state == JOB_STATE_LTR_RUNNING) && (old_substate != JOB_SUBSTATE_PROVISION)) {
-		svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_ABORT);
+		svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_ABORT, true);
 		rc = issue_signal(pjob, "SIGKILL", release_req, 0);
 		if (rc != 0) {
 			(void)sprintf(log_buffer, msg_abt_err,
@@ -255,21 +255,21 @@ job_abt(job *pjob, char *text)
 			pjob->ji_qs.ji_jobid, old_substate);
 		log_err(-1, __func__, log_buffer);
 	} else if (old_substate == JOB_SUBSTATE_PROVISION) {
-		svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_ABORT);
+		svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_ABORT, true);
 		/*
 		 * Check if the history of the finished job can be saved or it needs to be purged .
 		 */
 		svr_saveorpurge_finjobhist(pjob);
 	} else if (old_state == JOB_STATE_LTR_HELD && old_substate == JOB_SUBSTATE_DEPNHOLD &&
 		  (is_jattr_set(pjob, JOB_ATR_depend))) {
-		svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_ABORT);
+		svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_ABORT, true);
 		depend_on_term(pjob);
 		/*
 		 * Check if the history of the finished job can be saved or it needs to be purged .
 		 */
 		svr_saveorpurge_finjobhist(pjob);
 	} else {
-		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_ABORT);
+		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_ABORT, true);
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
 			/* notify creator that job is exited */
 			issue_track(pjob);

@@ -1352,7 +1352,7 @@ pbsd_init_job(job *pjob, int type)
 					/* was sending to Mom, requeue for now */
 
 					svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
-					svr_setjobstate(pjob, newstate, newsubstate);
+					svr_setjobstate(pjob, newstate, newsubstate, true);
 				} else {
 					/* requeue as is - rdy to cmt */
 

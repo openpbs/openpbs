@@ -754,7 +754,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 	subj->ji_qs.ji_svrflags &= ~JOB_SVFLG_ArrayJob;
 	subj->ji_qs.ji_svrflags |=  JOB_SVFLG_SubJob;
 	set_job_substate(subj, JOB_SUBSTATE_TRANSICM);
-	svr_setjobstate(subj, JOB_STATE_LTR_QUEUED, JOB_SUBSTATE_QUEUED);
+	svr_setjobstate(subj, JOB_STATE_LTR_QUEUED, JOB_SUBSTATE_QUEUED, true);
 
 	/* subjob needs to borrow eligible time from parent job array.
 	 * expecting only to accrue eligible_time and nothing else.

@@ -243,7 +243,7 @@ req_holdjob(struct batch_request *preq)
 		if (old_hold != hold_val) {
 			/* indicate attributes changed     */
 			svr_evaljobstate(pjob, &newstate, &newsub, 0);
-			svr_setjobstate(pjob, newstate, newsub);
+			svr_setjobstate(pjob, newstate, newsub, true);
 		}
 		/* Reject preemption because job requested -c n */
 		if (pjob->ji_pmt_preq != NULL)
@@ -318,7 +318,7 @@ req_releasejob(struct batch_request *preq)
 			post_attr_set(etime);
 #endif /* localmod 105 */
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
-		svr_setjobstate(pjob, newstate, newsub); /* saves job */
+		svr_setjobstate(pjob, newstate, newsub, true); /* saves job */
 
 	}
 
@@ -342,7 +342,7 @@ req_releasejob(struct batch_request *preq)
 					post_attr_set(etime);
 #endif /* localmod 105 */
 					svr_evaljobstate(psubjob, &newstate, &newsub, 0);
-					svr_setjobstate(psubjob, newstate, newsub); /* saves job */
+					svr_setjobstate(psubjob, newstate, newsub, true); /* saves job */
 				}
 				if (get_jattr_long(psubjob, JOB_ATR_hold) == HOLD_n)
 					free_jattr(psubjob, JOB_ATR_Comment);

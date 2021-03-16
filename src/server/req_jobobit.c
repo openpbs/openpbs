@@ -400,7 +400,7 @@ on_job_exit(struct work_task *ptask)
 			end_job(pjob, 1);
 			return;
 		} else if (rc > 0 && !hs)
-			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITED);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITED, true);
 	}
 
 	if (is_jattr_set(pjob, JOB_ATR_relnodes_on_stageout) &&
@@ -425,7 +425,7 @@ on_job_exit(struct work_task *ptask)
 		case JOB_SUBSTATE_ABORT:
 
 
-			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_STAGEOUT);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_STAGEOUT, true);
 			ptask->wt_type = WORK_Immed;
 
 			/* Initialize retryok */
@@ -471,7 +471,7 @@ on_job_exit(struct work_task *ptask)
 					}
 
 				} else {		/* no files to copy, any to delete? */
-					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_STAGEDEL);
+					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_STAGEDEL, true);
 					ptask = set_task(WORK_Immed, 0, on_job_exit, pjob);
 					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
@@ -517,7 +517,7 @@ on_job_exit(struct work_task *ptask)
 
 			free_br(preq);
 			preq = NULL;
-			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_STAGEDEL);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_STAGEDEL, true);
 			ptask->wt_type = WORK_Immed;
 
 			/* NO BREAK - FALL INTO THE NEXT CASE */
@@ -559,7 +559,7 @@ on_job_exit(struct work_task *ptask)
 					}
 
 				} else {		/* preq == 0, no files to delete   */
-					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITED);
+					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITED, true);
 					ptask = set_task(WORK_Immed, 0, on_job_exit, pjob);
 					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
@@ -607,7 +607,7 @@ on_job_exit(struct work_task *ptask)
 			}
 			free_br(preq);
 			preq = NULL;
-			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITED);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITED, true);
 
 			ptask->wt_type = WORK_Immed;
 
@@ -826,7 +826,7 @@ on_job_rerun(struct work_task *ptask)
 
 					/* files don`t need to be moved, go to next step */
 
-					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN1);
+					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN1, true);
 					ptask = set_task(WORK_Immed, 0, on_job_rerun, pjob);
 					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
@@ -877,7 +877,7 @@ on_job_rerun(struct work_task *ptask)
 				}
 				on_exitrerun_msg(pjob, msg_obitnocpy);
 			}
-			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN1);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN1, true);
 			ptask->wt_type = WORK_Immed;
 			free_br(preq);
 			preq = NULL;
@@ -912,7 +912,7 @@ on_job_rerun(struct work_task *ptask)
 					/* we will "fall" into the post reply side */
 
 				} else {		/* no files to copy, any to delete? */
-					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN2);
+					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN2, true);
 					ptask = set_task(WORK_Immed, 0, on_job_rerun, pjob);
 					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
@@ -952,7 +952,7 @@ on_job_rerun(struct work_task *ptask)
 
 			free_br(preq);
 			preq = NULL;
-			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN2);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN2, true);
 			ptask->wt_type = WORK_Immed;
 
 			/* NO BREAK - FALL INTO THE NEXT CASE */
@@ -980,7 +980,7 @@ on_job_rerun(struct work_task *ptask)
 						/* we will "fall" into the post reply side */
 					}
 				} else {
-					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN3);
+					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN3, true);
 					ptask = set_task(WORK_Immed, 0, on_job_rerun, pjob);
 					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
@@ -1002,7 +1002,7 @@ on_job_rerun(struct work_task *ptask)
 			}
 			free_br(preq);
 			preq = NULL;
-			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN3);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN3, true);
 			ptask->wt_type = WORK_Immed;
 
 			/* NO BREAK, FALL THROUGH TO NEXT CASE */
@@ -1115,7 +1115,7 @@ on_job_rerun(struct work_task *ptask)
 
 				pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_StagedIn;
 				svr_evaljobstate(pjob, &newstate, &newsubst, 0);
-				svr_setjobstate(pjob, newstate, newsubst);
+				svr_setjobstate(pjob, newstate, newsubst, true);
 			}
 	}
 }
@@ -1594,7 +1594,7 @@ job_obit(ruu *pruu, int stream)
 
 				set_job_substate(pjob, JOB_SUBSTATE_HELD);
 				svr_evaljobstate(pjob, &newstate, &newsubst, 0);
-				svr_setjobstate(pjob, newstate, newsubst);
+				svr_setjobstate(pjob, newstate, newsubst, true);
 
 				msg = pruu->ru_comment ? pruu->ru_comment : "";
 				mailmsg = (char *) malloc(strlen(msg) + 1 + strlen(msg_bad_password) + 1);
@@ -1659,7 +1659,7 @@ RetryJob:
 				pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HASRUN | JOB_SVFLG_CHKPT;
 
 				svr_evaljobstate(pjob, &newstate, &newsubst, 1);
-				svr_setjobstate(pjob, newstate, newsubst);
+				svr_setjobstate(pjob, newstate, newsubst, true);
 				if (pjob->ji_mom_prot == PROT_TCP)
 					svr_disconnect(pjob->ji_momhandle);
 
@@ -1702,7 +1702,7 @@ RetryJob:
 				set_jattr_str_slim(pjob, JOB_ATR_Comment,
 						"job held due to possible security breach of job tmpdir, failed to start", NULL);
 				rel_resc(pjob);
-				svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD);
+				svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD, true);
 				free(mailbuf);
 				free(acctbuf);
 				return 0;
@@ -1751,7 +1751,7 @@ RetryJob:
 		(!check_job_substate(pjob, JOB_SUBSTATE_RERUN) && !check_job_substate(pjob, JOB_SUBSTATE_RERUN2))) {
 		DBPRT(("%s: Job %s is terminating and not rerun.\n", __func__, pjob->ji_qs.ji_jobid))
 
-		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITING);
+		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITING, true);
 		if (alreadymailed == 0 && mailbuf != NULL)
 			svr_mailowner(pjob, MAIL_END, MAIL_NORMAL, mailbuf);
 	}
@@ -1777,7 +1777,7 @@ RetryJob:
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HASRUN;
 			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_HASHOLD;
 			svr_evaljobstate(pjob, &newstate, &newsubst, 1);
-			svr_setjobstate(pjob, newstate, newsubst);
+			svr_setjobstate(pjob, newstate, newsubst, true);
 			if (pjob->ji_mom_prot == PROT_TCP)
 				svr_disconnect(pjob->ji_momhandle);
 			pjob->ji_momhandle = -1;
@@ -1801,7 +1801,7 @@ RetryJob:
 		if ((pjob->ji_qs.ji_svrflags & (JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) == 0)
 			free_jattr(pjob, JOB_ATR_resc_used);
 
-		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, get_job_substate(pjob));
+		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, get_job_substate(pjob), true);
 		ptask = set_task(WORK_Immed, 0, on_job_rerun, (void *) pjob);
 		append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 

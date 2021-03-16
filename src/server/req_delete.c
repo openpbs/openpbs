@@ -925,7 +925,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		 * deleted from mom as well.
 		 */
 		if ((rc || is_mgr) && forcedel) {
-			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITED);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITED, true);
 			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
 				issue_track(pjob);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -988,7 +988,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 
 		/* job has restart file at mom, do end job processing */
 
-		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITING);
+		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITING, true);
 		pjob->ji_momhandle = -1; /* force new connection */
 		pjob->ji_mom_prot = PROT_INVALID;
 		set_task(WORK_Immed, 0, on_job_exit, (void *) pjob);
@@ -1508,7 +1508,7 @@ resend:
 		/* Mom running a site supplied Terminate Job script   */
 		/* Put job into special Exiting state and we are done */
 
-		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_TERM);
+		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_TERM, true);
 		return;
 	}
 }

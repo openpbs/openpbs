@@ -179,7 +179,7 @@ req_movejob(struct batch_request *req)
 				int newsub;
 				/* force re-eval of job state out of Transit */
 				svr_evaljobstate(jobp, &newstate, &newsub, 1);
-				svr_setjobstate(jobp, newstate, newsub);
+				svr_setjobstate(jobp, newstate, newsub, true);
 			}
 			if (jobp && jobp->ji_clterrmsg)
 				reply_text(req, pbs_errno, jobp->ji_clterrmsg);

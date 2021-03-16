@@ -184,7 +184,7 @@ force_reque(job *pjob)
 	free_jattr(pjob, JOB_ATR_jobdir);
 	unset_extra_attributes(pjob);
 	svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
-	svr_setjobstate(pjob, newstate, newsubstate);
+	svr_setjobstate(pjob, newstate, newsubstate, true);
 }
 
 /**
@@ -462,7 +462,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	pjob->ji_qs.ji_svrflags = (pjob->ji_qs.ji_svrflags &
 		~(JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) |
 	JOB_SVFLG_HASRUN;
-	svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_RERUN);
+	svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_RERUN, true);
 
 	sprintf(log_buffer, msg_manager, msg_jobrerun,
 		preq->rq_user, preq->rq_host);

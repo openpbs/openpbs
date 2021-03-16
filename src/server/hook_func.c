@@ -2576,7 +2576,7 @@ set_exec_time(job *pjob, char *new_exec_time_str, char *msg,
 
 		snprintf(msg, msg_len, "'%s' hook set job's %s = %s", hook_name, ATTR_a, exec_time_ctime);
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
-		svr_setjobstate(pjob, newstate, newsub);
+		svr_setjobstate(pjob, newstate, newsub, true);
 
 		fp_debug_out = pbs_python_get_hook_debug_output_fp();
 		if (fp_debug_out != NULL) {
@@ -2677,7 +2677,7 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 		FILE	*fp_debug_out = NULL;
 		/* indicate attributes changed */
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
-		svr_setjobstate(pjob, newstate, newsub);
+		svr_setjobstate(pjob, newstate, newsub, true);
 
 		fp_debug_out = pbs_python_get_hook_debug_output_fp();
 		if (fp_debug_out != NULL) {
@@ -3267,7 +3267,7 @@ attribute_jobmap_restore(job *pjob, struct attribute_jobmap *a_map)
 	}
 
 	svr_evaljobstate(pjob, &newstate, &newsub, 0);
-	svr_setjobstate(pjob, newstate, newsub);
+	svr_setjobstate(pjob, newstate, newsub, true);
 }
 
 /*
