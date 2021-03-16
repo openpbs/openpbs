@@ -81,16 +81,16 @@ static struct map *new_map(int);
 /* Map a sequence of words to a list of indices by which
  * they are represented in the passed string str.
  */
-static void direct_map(dictionary *, char *);
+static int direct_map(dictionary *, char *);
 
 /* find a word in a dictionary */
 static struct word *find_word(dictionary *, char *);
 
 /* Append word to dictionary */
-static void append_to_dict(dictionary *, char *, int);
+static int append_to_dict(dictionary *, char *, int);
 
 /* Append the index of a word in a string to the mapping of the word */
-static void append_to_word(dictionary *, struct word *, int);
+static int append_to_word(dictionary *, struct word *, int);
 
 /* Create a string out of all words in a dictionary and their corresponding mapped indices */
 static char *dict_to_str(dictionary *);
@@ -209,9 +209,11 @@ static struct map *new_map(int val)
  *	If the string exists in the dictionary, its index is appended
  * 	to the word entry. Otherwise it is added as a new word to the dictionary
  *
- * @return Fills the dictionary structure.
+ * @return int
+ * @retval 1 error
+ * @retval 0 success
  */
-static void
+static int
 direct_map(dictionary *dict, char *str)
 {
 	struct word *w;
@@ -220,26 +222,32 @@ direct_map(dictionary *dict, char *str)
 	int i = 0;
 
 	if (dict == NULL || str == NULL)
-		return;
+		return 1;
 
 	if ((str_copy = strdup(str)) == NULL) {
 		DBPRT(("new_word: %s\n", MALLOC_ERR_MSG));
-		return;
+		return 1;
 	}
 
 	str_tok = strtok(str_copy, TOKEN_SEPARATOR);
-	while (str_tok!=NULL) {
+	while (str_tok != NULL) {
 		w = (struct word *)find_word(dict, str_tok);
-		if (w == NULL)
-			append_to_dict(dict, str_tok, i);
-		else
-			append_to_word(dict, w, i);
+		if (w == NULL) {
+			if (append_to_dict(dict, str_tok, i)) {
+				free(str_copy);
+				return 1;
+			}
+		} else
+			if (append_to_word(dict, w, i)) {
+			free(str_copy);
+			return 1;
+			}
 		i++;
 		str_tok = strtok(NULL, TOKEN_SEPARATOR);
 	}
 	dict->max_idx = i;
 	free(str_copy);
-	return;
+	return 0;
 }
 
 /**
@@ -279,21 +287,25 @@ static struct word *find_word(dictionary *dict, char *str)
  * @param[in] dict - The dictionary considered.
  * @param[in] str - The string representation of the word to append
  * @param[in] val - The index at which the string resides in the original string.
+ * 
+ * @return int
+ * @retval 1 error
+ * @retval 0 success
  *
  */
-static void
+static int
 append_to_dict(dictionary *dict, char *str, int val)
 {
 	struct word *nw;
 	struct word *tmp;
 
 	if (dict == NULL || str == NULL || val < 0)
-		return;
+		return 1;
 
 	nw = new_word(str);
 
 	if (nw == NULL)
-		return;
+		return 1;
 
 	if (dict->first == NULL) {
 		dict->first = nw;
@@ -307,14 +319,14 @@ append_to_dict(dictionary *dict, char *str, int val)
 	nw->map = new_map(val);
 
 	if (nw->map == NULL)
-		return;
+		return 1;
 
 	nw->count++;
 	dict->length += strlen(str);
 	dict->length += MAX_INT_LENGTH;
 	dict->count++;
 
-	return;
+	return 0;
 }
 
 /**
@@ -324,16 +336,20 @@ append_to_dict(dictionary *dict, char *str, int val)
  * @param[in] dict - The dictionary considered
  * @param[in] w - The word to append to
  * @param[in] val - The index value to append to the word
+ * 
+ * @return int
+ * @retval 1 error
+ * @retval 0 success
  *
  */
-static void
+static int
 append_to_word(dictionary *dict, struct word *w, int val)
 {
 
 	struct map *m, *tmp;
 
 	if (dict == NULL || w == NULL || val < 0)
-		return;
+		return 1;
 
 	m = w->map;
 	tmp = m;
@@ -341,7 +357,7 @@ append_to_word(dictionary *dict, struct word *w, int val)
 		m = new_map(val);
 
 		if (m == NULL)
-			return;
+			return 1;
 
 		w->map = m;
 	}
@@ -351,14 +367,14 @@ append_to_word(dictionary *dict, struct word *w, int val)
 		}
 		tmp->next = new_map(val);
 
-		if (tmp->next == NULL)
-			return;
+		if (tmp->next == NULL) 
+			return 1;
 	}
 	w->count++;
 	/* MAX_INT_LENGTH is the length of a string representation of an index */
 	dict->length += MAX_INT_LENGTH;
 
-	return;
+	return 0;
 }
 
 /**
@@ -376,7 +392,7 @@ append_to_word(dictionary *dict, struct word *w, int val)
  *
  */
 char *
-condense_execvnode_seq(char *str)
+condense_execvnode_seq(const char *str)
 {
 	dictionary *dict;
 	char *s_tmp;
@@ -396,7 +412,11 @@ condense_execvnode_seq(char *str)
 		free(dict);
 		return NULL;
 	}
-	direct_map(dict, s_tmp);
+	if (direct_map(dict, s_tmp)) {
+		free(s_tmp);
+		free_dict(dict);
+		return NULL;
+	}
 	cp = dict_to_str(dict);
 	/* Free up all memory allocated */
 	free_dict(dict);

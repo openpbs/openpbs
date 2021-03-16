@@ -2392,11 +2392,13 @@ req_resvSub(struct batch_request *preq)
 		/* rc is set by check_rrule to report any possible icalendar
 		 * syntax or time problem
 		 */
-		if (rc!=0) {
+		if (rc != 0) {
 			resv_free(presv);
 			req_reject(rc, 0, preq);
 			return;
 		}
+
+		set_rattr_l_slim(presv, RESV_ATR_resv_count, resv_count, SET);
 
 		/* If more than 1 occurrence are requested then alter the
 		 * reservation and queue first character
@@ -2406,7 +2408,8 @@ req_resvSub(struct batch_request *preq)
 			qbuf[0] = PBS_STDNG_RESV_ID_CHAR;
 		} else /* If only 1 occurrence, treat it as an advance reservation */
 			set_rattr_l_slim(presv, RESV_ATR_resv_standing, 0, SET);
-	}
+	} else
+		set_rattr_l_slim(presv, RESV_ATR_resv_count, 1, SET);
 
 	if (is_maintenance)
 		rid[0] = qbuf[0] = PBS_MNTNC_RESV_ID_CHAR;
