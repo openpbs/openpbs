@@ -1567,15 +1567,6 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
  						}
 					}
 
-					if (rr->nodepart_name != NULL) {
-						if (array != NULL)
-							update_job_attr(pbs_sd, array, ATTR_pset, NULL,
-								array->nodepart_name, NULL, UPDATE_NOW);
-						else
-							update_job_attr(pbs_sd, rr, ATTR_pset, NULL,
-								rr->nodepart_name, NULL, UPDATE_NOW);
-					}
-
 #ifdef NAS /* localmod 031 */
 					/* debug dpr - Log vnodes assigned to job */
 					time_t tm = time(NULL);

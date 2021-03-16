@@ -122,7 +122,6 @@ static enum job_atr attrs_to_copy[] = {
 	JOB_ATR_umask,
 	JOB_ATR_cred,
 	JOB_ATR_runcount,
-	JOB_ATR_pset,
 	JOB_ATR_eligible_time,
 	JOB_ATR_sample_starttime,
 	JOB_ATR_executable,

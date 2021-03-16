@@ -840,7 +840,6 @@ clear_exec_on_run_fail(job *jobp)
 		free_jattr(jobp, JOB_ATR_exec_host);
 		free_jattr(jobp, JOB_ATR_exec_host2);
 		free_jattr(jobp, JOB_ATR_exec_vnode);
-		free_jattr(jobp, JOB_ATR_pset);
 		jobp->ji_qs.ji_destin[0] = '\0';
 	}
 }
@@ -895,7 +894,6 @@ post_stagein(struct work_task *pwt)
 			free_jattr(pjob, JOB_ATR_exec_host);
 			free_jattr(pjob, JOB_ATR_exec_host2);
 			free_jattr(pjob, JOB_ATR_exec_vnode);
-			free_jattr(pjob, JOB_ATR_pset);
 
 			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
 				/* for subjob, "wait" the parent array */
@@ -1117,7 +1115,6 @@ svr_startjob(job *pjob, struct batch_request *preq)
 				free_jattr(pjob, JOB_ATR_exec_host);
 				free_jattr(pjob, JOB_ATR_exec_host2);
 				free_jattr(pjob, JOB_ATR_exec_vnode);
-				free_jattr(pjob, JOB_ATR_pset);
 			}
 		}
 
@@ -1936,7 +1933,6 @@ assign_hosts(job  *pjob, char *given, int set_exec_vnode)
 				free_jattr(pjob, JOB_ATR_exec_host);
 				free_jattr(pjob, JOB_ATR_exec_host2);
 				free_jattr(pjob, JOB_ATR_exec_vnode);
-				free_jattr(pjob, JOB_ATR_pset);
 				return (PBSE_BADHOST);
 			}
 		}
