@@ -57,7 +57,7 @@ AC_DEFUN([PBS_AC_WITH_PYTHON],
           -a "$PYTHON_VERSION" != "3.8" \
           -a "$PYTHON_VERSION" != "3.9" ],
     AC_MSG_ERROR([Python must be version 3.5, 3.6, 3.7, 3.8 or 3.9]))
-  with_extra_arg=""
+  _extra_arg=""
   AS_IF([test "$PYTHON_VERSION" = "3.8"], [_extra_arg="--embed"])
   AS_IF([test "$PYTHON_VERSION" = "3.9"], [_extra_arg="--embed"])
   [PYTHON_INCLUDES=`$PYTHON_CONFIG --includes ${_extra_arg}`]
