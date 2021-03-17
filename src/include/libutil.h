@@ -109,7 +109,7 @@ struct map {
 };
 
 /* Compress a delimited string into a dictionary compressed representation */
-char *condense_execvnode_seq(char *);
+char *condense_execvnode_seq(const char *);
 
 /* Decompress a compress string into an array of words (strings) indexed by
  * their associated indices */
