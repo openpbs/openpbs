@@ -54,11 +54,14 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-extern char server_host[PBS_MAXHOSTNAME + 1];
+extern char	server_host[PBS_MAXHOSTNAME + 1];
 extern unsigned int	pbs_server_port_dis;
+extern	time_t	time_now;
+
 static int svridx = -1;
 pbs_list_head peersvrl;
 static void *alien_node_idx;
+static msvr_stat_t msvr_stat = {0};
 
 /**
  * @brief
@@ -263,6 +266,65 @@ create_svr_struct(struct sockaddr_in *addr, char *hostname)
 }
 
 /**
+ * @brief Get the day avg value for the msvr stat type passed
+ * 
+ * @param[in] type - msvr stat type
+ * @return ulong - day avg rounded off
+ */
+static ulong
+get_day_avg(msvr_stat_type_t type)
+{
+	return (msvr_stat.stat[type] / ((time_now - msvr_stat.last_logged_tm) / HOUR_IN_SEC)) * 24;
+}
+
+/**
+ * @brief log multi-server statitistics at most once in a day
+ * 
+ * @return int
+ * @retval 1 - not logged
+ * @retval 0 - logged
+ */
+static int
+log_msvr_stat()
+{
+	if ((time_now - msvr_stat.last_logged_tm) < STAT_LOG_INTL)
+		return 1;
+
+	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+		   "Average msvr statistical info for last 24 hours\n"
+		   "CACHE_MISS = %ld\n"
+		   "CACHE_REFR_TM = %ld\n"
+		   "NUM_RESC_UPDATE = %ld\n"
+		   "NUM_MOVE_RUN = %ld\n"
+		   "NUM_SCHED_MISS = %ld\n",
+		   get_day_avg(CACHE_MISS),
+		   get_day_avg(CACHE_REFR_TM),
+		   get_day_avg(NUM_RESC_UPDATE),
+		   get_day_avg(NUM_MOVE_RUN),
+		   get_day_avg(NUM_SCHED_MISS));
+
+	msvr_stat = (const msvr_stat_t){0};
+	msvr_stat.last_logged_tm = time_now;
+
+	return 0;
+}
+
+/**
+ * @brief update multi-svr stat with the value and for the type provided.
+ * This function is event driven and should not be invoked in a non-msvr case.
+ * 
+ * @param[in] val - stat value
+ * @param[in] type - msvr stat type
+ */
+void
+update_msvr_stat(ulong val, msvr_stat_type_t type)
+{
+	msvr_stat.stat[type] += val;
+
+	log_msvr_stat();
+}
+
+/**
  * @brief free the resource update structure
  * 
  * @param[in,out] ru_head - head of the resource update object list
@@ -339,9 +401,8 @@ reverse_resc_update(psvr_ru_t *ru_head)
 
 	for (ru_cur = ru_head; ru_cur;
 	     ru_cur = GET_NEXT(ru_cur->ru_link)) {
-		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-			   "Reversing resc update jobid=%s, op=%d, execvnode=%s",
-			   ru_cur->jobid, ru_cur->op, ru_cur->execvnode);
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, ru_cur->jobid,
+			   "Reversing resc update op=%d, execvnode=%s", ru_cur->op, ru_cur->execvnode);
 		update_jobs_on_node(ru_cur->jobid, ru_cur->execvnode, DECR, ru_cur->share_job);
 		job_attr_def[JOB_ATR_exec_vnode].at_decode(&pexech, job_attr_def[JOB_ATR_exec_vnode].at_name, NULL, ru_cur->execvnode);
 		update_node_rassn(&pexech, DECR);
@@ -1012,6 +1073,7 @@ process_status_reply(int c)
 {
 	struct batch_status *bstat;
 	int obj_type = -1;
+	time_t time_start = time(NULL);
 
 	if ((bstat = PBSD_status_get(c, NULL, &obj_type, PROT_TPP)) == NULL)
 		return pbs_errno;
@@ -1025,6 +1087,8 @@ process_status_reply(int c)
 	default:
 		break;
 	}
+
+	update_msvr_stat(time(NULL) - time_start, CACHE_REFR_TM);
 
 	return 0;
 }

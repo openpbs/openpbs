@@ -195,6 +195,29 @@ struct peersvr_resc_update {
 };
 typedef struct peersvr_resc_update psvr_ru_t;
 
+/*
+ * enums indicating stat update flag
+ */
+enum msvr_stats_type {
+	CACHE_MISS,		/* Number of node cache miss */
+	CACHE_REFR_TM,		/* time spent in refreshing node cache */
+	NUM_RESC_UPDATE,	/* number of peer server resource updates */
+	NUM_MOVE_RUN,		/* number of move and run */
+	NUM_SCHED_MISS,		/* number of times when acks were not received by the next sched cycle */
+	END_OF_STAT		/* Indicates end of types */
+};
+typedef enum msvr_stats_type msvr_stat_type_t;
+
+/* Multi-svr statistical logging */
+struct msvr_stats {
+	time_t last_logged_tm;	/* Time when we logged last */
+	ulong stat[END_OF_STAT];	/* Number of node cache miss */
+};
+typedef struct msvr_stats msvr_stat_t;
+
+#define HOUR_IN_SEC	60 * 60
+#define STAT_LOG_INTL	24 * HOUR_IN_SEC /* 24 hours */
+
 /* multi-server gloabls and functions */
 
 extern pbs_list_head peersvrl;
@@ -229,6 +252,7 @@ void mcast_resc_update_all(void *);
 void clean_saved_rsc(void*);
 int process_status_reply(int);
 void *get_peersvr_from_svrid(char *);
+void update_msvr_stat(ulong, msvr_stat_type_t);
 
 /* end of multi-svr functions */
 

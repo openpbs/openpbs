@@ -6512,7 +6512,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			* we get the reply from all peer servers and the alien nodes are cached.
 			*/
 			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-				   pjob->ji_qs.ji_jobid, "Unkown node received");
+				   pjob->ji_qs.ji_jobid, "Unknown node received");
 			send_nodestat_req();
 			return PBSE_UNKNODE;
 		}
@@ -6584,7 +6584,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				free(execvncopy);
 				rc = PBSE_UNKNODE;
 				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-					   pjob->ji_qs.ji_jobid, "Unkown node received");
+					   pjob->ji_qs.ji_jobid, "Unknown node received");
 				send_nodestat_req();
 				goto end;
 			}
@@ -6674,7 +6674,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 					(phowl + ndindex)->hw_natvn = find_nodebyname(peh);
 					if ((phowl + ndindex)->hw_natvn == NULL) {
 						log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-							   pjob->ji_qs.ji_jobid, "Unkown node %s received", peh);
+							   pjob->ji_qs.ji_jobid, "Unknown node %s received", peh);
 						free(phowl);
 						free(execvncopy);
 						send_nodestat_req();

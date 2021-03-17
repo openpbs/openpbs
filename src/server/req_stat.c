@@ -840,6 +840,7 @@ req_stat_svr_ready(struct work_task *ptask)
 				return;
 			}
 
+			update_msvr_stat(1, NUM_SCHED_MISS);
 			log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 				  "Server is not ready to serve scheduler stat request due to "
 				  "pending replies from peer server %s, Deferring reply.",

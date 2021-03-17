@@ -133,6 +133,8 @@ send_resc_usage(int mtfd, psvr_ru_t *psvr_ru, int ct, int incr_ct)
 	int count;
 	int *strms;
 
+	update_msvr_stat(1, NUM_RESC_UPDATE);
+
 	/* account messages sent */
 	if (psvr_ru->broadcast) {
 		for (psvr = GET_NEXT(peersvrl); psvr; psvr = GET_NEXT(psvr->mi_link)) {
@@ -266,6 +268,8 @@ send_nodestat_req(void)
 	int mtfd = open_ps_mtfd();
 	int rc;
 	static int time_last_sent = 0;
+
+	update_msvr_stat(1, CACHE_MISS);
 
 	/* Do not udate the cache too often */
 	if (time_now < time_last_sent + 2)
