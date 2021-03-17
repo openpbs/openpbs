@@ -64,7 +64,6 @@
 #include "log.h"
 
 
-char    log_buffer[LOG_BUF_SIZE];
 /**
  * @brief
  * 		main	-	The main function of chk_tree

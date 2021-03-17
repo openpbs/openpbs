@@ -426,7 +426,7 @@ typedef struct {
 	int conn_type;
 } conn_auth_t;
 
-int tpp_terminated_in_child; /* whether a forked child called tpp_terminate or not? initialized to 0 */
+extern int tpp_terminated_in_child; /* whether a forked child called tpp_terminate or not? initialized to 0 */
 
 conn_auth_t *tpp_make_authdata(struct tpp_config *, int, char *, char *);
 int tpp_handle_auth_handshake(int, int, conn_auth_t *, int, void *, size_t);
