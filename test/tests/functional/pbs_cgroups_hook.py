@@ -1431,13 +1431,13 @@ sleep 300
         # actually tinkers with the hooks once more,
         # MoM will already have gone through its initial setup
         # after the new hello from the server
-        time.sleep(4)
+        time.sleep(6)
 
         # HUP mom so exechost_startup hook is run for each mom...
         for mom in self.moms_list:
             mom.signal('-HUP')
         # ...then wait for exechost_startup updates to propagate to server
-        time.sleep(4)
+        time.sleep(6)
 
         # queuejob hook
         self.qjob_hook_body = """
@@ -2005,8 +2005,14 @@ if %s e.job.in_ms_mom():
             "handling exechost_periodic event: TypeError"
         self.moms_list[0].log_match(err_msg, max_attempts=3,
                                     interval=1, n=100, existence=False)
+
         # Allow some time to pass for values to be updated
+        # sleep one second: make sure no old log lines will match 'begin' time
+        time.sleep(1)
         begin = time.time()
+        # sleep 1s to allow for small time differences and rounding errors
+        time.sleep(1)
+
         self.logger.info('Waiting for periodic hook to update usage data.')
         # loop to check if cput, mem, vmem are expected values
         cput_usage = 0.0
@@ -2213,10 +2219,12 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP3'
         self.load_config(self.cfg14 % ('true', 'true'))
 
-        # Restart mom for changes made by cgroups hook to take effect
+        # sleep one second: make sure no old log lines will match 'begin' time
+        time.sleep(1)
         begin = time.time()
-        # sleep 5s to ensure log matching will not catch older log lines
-        time.sleep(5)
+        # sleep 1s to allow for small time differences and rounding errors
+        time.sleep(1)
+        # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
 
         # Make sure the MoM is restarted
@@ -2247,10 +2255,12 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP3'
         self.load_config(self.cfg14 % ('true', 'false'))
 
-        # Restart mom for changes made by cgroups hook to take effect
+        # sleep one second: make sure no old log lines will match 'begin' time
+        time.sleep(1)
         begin = time.time()
-        # sleep 5s to ensure log matching will not catch older log lines
-        time.sleep(5)
+        # sleep 1s to allow for small time differences and rounding errors
+        time.sleep(1)
+        # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
 
         # Make sure the MoM is restarted
@@ -2282,10 +2292,12 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP3'
         self.load_config(self.cfg14 % ('false', 'true'))
 
-        # Restart mom for changes made by cgroups hook to take effect
+        # sleep one second: make sure no old log lines will match 'begin' time
+        time.sleep(1)
         begin = time.time()
-        # sleep 5s to ensure log matching will not catch older log lines
-        time.sleep(5)
+        # sleep 1s to allow for small time differences and rounding errors
+        time.sleep(1)
+        # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
 
         # Make sure the MoM is restarted
@@ -4494,11 +4506,15 @@ sleep 300
 
         self.load_config(self.cfg15
                          % ('true' if vnode_per_numa_node else 'false'))
-        # Restart mom for changes made by cgroups hook to take effect
+
+        # sleep one second: make sure no old log lines will match 'begin' time
+        time.sleep(1)
         begin = time.time()
-        # sleep 2s to ensure log matching will not catch older log lines
-        time.sleep(2)
+        # sleep 1s to allow for small time differences and rounding errors
+        time.sleep(1)
+        # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
+
         # Make sure the MoM is restarted
         self.mom.log_match('Hook handler returned success'
                            ' for exechost_startup',
@@ -4607,11 +4623,15 @@ sleep 300
 
         self.load_config(self.cfg16
                          % enforce_flags)
-        # Restart mom for changes made by cgroups hook to take effect
+
+        # sleep one second: make sure no old log lines will match 'begin' time
+        time.sleep(1)
         begin = time.time()
-        # sleep 2s to ensure log matching will not catch older log lines
-        time.sleep(2)
+        # sleep 1s to allow for small time differences and rounding errors
+        time.sleep(1)
+        # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
+
         # Make sure the MoM is restarted
         self.mom.log_match('Hook handler returned success'
                            ' for exechost_startup',
@@ -4649,7 +4669,7 @@ sleep 300
         self.logger.info("total available mem: %d"
                          % mem_avail_in_bytes)
         self.assertTrue(mem_avail_in_bytes is not None,
-                        "Unable to read total memsw available")
+                        "Unable to read total memory available")
 
         # Get total phys+swap memory available
         vmem_avail = os.path.join(mem_base,
@@ -4707,7 +4727,9 @@ sleep 300
                             % (mem_limit_in_bytes, 100 * 1024 * 1024))
         else:
             self.assertTrue(mem_avail_in_bytes == mem_limit_in_bytes,
-                            "job mem limit is not total mem available")
+                            "job mem limit (%d) should be identical to "
+                            "total mem available (%d)"
+                            % (mem_limit_in_bytes, mem_avail_in_bytes))
             self.logger.info("job mem limit is total mem available (%d)"
                              % mem_avail_in_bytes)
         if enforce_flags[1] == 'true' and not exclhost:
@@ -4721,8 +4743,8 @@ sleep 300
         else:
             if swap_avail:
                 self.assertTrue(vmem_avail_in_bytes == vmem_limit_in_bytes,
-                                "job memsw limit (%d) should be total memsw "
-                                "available (%d) but is not"
+                                "job memsw limit (%d) should be identical to "
+                                "total memsw available (%d)"
                                 % (vmem_limit_in_bytes, vmem_avail_in_bytes))
                 self.logger.info("job memsw limit is total memsw available "
                                  " (%d)" % vmem_avail_in_bytes)

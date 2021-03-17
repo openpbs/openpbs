@@ -5886,8 +5886,14 @@ def set_global_vars():
 def missing_str(memspecs):
     if 'vmem' in memspecs and 'mem' in memspecs:
         try:
-            vmem_size = pbs.size(memspecs['vmem'])
-            mem_size = pbs.size(memspecs['mem'])
+            if size_as_int(memspecs['vmem']) > 0:
+                vmem_size = pbs.size(memspecs['vmem'])
+            else:
+                vmem_size = pbs.size("0b")
+            if size_as_int(memspecs['mem']) > 0:
+                mem_size = pbs.size(memspecs['mem'])
+            else:
+                mem_size = pbs.size("0b")
             if mem_size > vmem_size:
                 event.reject("invalid specification: vmem>mem")
             elif mem_size == vmem_size:
@@ -5904,8 +5910,16 @@ def missing_str(memspecs):
 
     if 'mem' in memspecs and 'cgswap' in memspecs:
         try:
-            vmem_size = (pbs.size(memspecs['mem'])
-                         + pbs.size(memspecs['cgswap']))
+            if size_as_int(memspecs['mem']) > 0:
+                mem_size = pbs.size(memspecs['mem'])
+            else:
+                mem_size = pbs.size("0b")
+            if size_as_int(memspecs['cgswap']) > 0:
+                cgswap_size = pbs.size(memspecs['mem'])
+            else:
+                cgswap_size = pbs.size("0b")
+
+            vmem_size = mem_size + cgswap_size
             return ("vmem="
                     + str(vmem_size))
         except Exception:
@@ -5915,7 +5929,10 @@ def missing_str(memspecs):
 
     if 'vmem' in memspecs and 'cgswap' in memspecs:
         try:
-            vmem_size = pbs.size(memspecs['vmem'])
+            if size_as_int(memspecs['vmem']) > 0:
+                vmem_size = pbs.size(memspecs['vmem'])
+            else:
+                vmem_size = pbs.size("0b")
             # Woraround for bug: no arithmetic on zero pbs.size
             # since user may have specified e.g. "0mb" cgswap
             if size_as_int(memspecs['cgswap']) == 0:
