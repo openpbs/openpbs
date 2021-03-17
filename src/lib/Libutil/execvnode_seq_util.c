@@ -239,8 +239,8 @@ direct_map(dictionary *dict, char *str)
 			}
 		} else
 			if (append_to_word(dict, w, i)) {
-			free(str_copy);
-			return 1;
+				free(str_copy);
+				return 1;
 			}
 		i++;
 		str_tok = strtok(NULL, TOKEN_SEPARATOR);
@@ -556,8 +556,10 @@ unroll_execvnode_seq(char *str, char ***tofree)
  * 	Get the total number of indices represented in the condensed string
  * 	which corresponds to the total number of occurrences in the execvnode string
  *
- * @param[in] str - The condensed execvnode sequence string of which the first token
- * 		    is the total number of tokens.
+ * @param[in] str - Either a condensed execvnode_seq or a single execvnode
+ * 		The format expected is in the form of:
+ * 		execvnode_seq: N#(execvnode){0-N-1} e.g. 10:(mars:ncpus=1){0-9}
+ * 		Single execvnode: (mars:ncpus=1)
  *
  * @return	int
  * @retval	The number of occurrences. If the first token is
