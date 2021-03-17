@@ -65,11 +65,10 @@ def get_hook_body(hook_msg):
             pbs.logjobmsg(job.id, 'endjob hook, resv:%%s' %% (job.resv.resvid,))
             pbs.logjobmsg(job.id, 'endjob hook, resv_nodes:%%s' %% (job.resv.resv_nodes,))
             pbs.logjobmsg(job.id, 'endjob hook, resv_state:%%s' %% (job.resv.reserve_state,))
-            #pbs.logjobmsg(job.id, 'endjob hook, resv:%%s' %% (vars(job.resv),))
         else:
             pbs.logjobmsg(job.id, 'endjob hook, resv:(None)')
         pbs.logjobmsg(job.id, 'endjob hook, job endtime:%%d' %%(job.endtime) )
-        #spbs.logjobmsg(pbs.REVERSE_JOB_STATE.get(int(job.job_state), str(job.job_state)))
+        #pbs.logjobmsg(pbs.REVERSE_JOB_STATE.get(job.state))
         pbs.logjobmsg(job.id, 'endjob hook ended')
     except Exception as err:
         ty, _, tb = sys.exc_info()
@@ -282,141 +281,6 @@ class TestHookJob(TestFunctional):
                                 max_attempts=10, interval=2)
 
         self.server.expect(JOB, {'job_state': 'F'}, extend='x',
-                                offset=4, id=jid, max_attempts=10,
-                                interval=2)
-        ret = self.server.delete_hook(hook_name)
-        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
-        self.server.log_match(hook_msg, starttime=start_time)
-        self.logger.info("**************** HOOK END ****************")
-
-    def test_hook_endjob_delete(self):
-        """
-        By creating an import hook, it executes a job hook.
-        """
-        self.logger.info("**************** HOOK START ****************")
-        hook_name = "hook_endjob_delete"
-        hook_msg = 'running %s' % hook_name
-        hook_body = get_hook_body(hook_msg)
-        attrs = {'event': 'endjob', 'enabled': 'True'}
-        start_time = time.time()
-
-        ret = self.server.create_hook(hook_name, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % hook_name)
-        ret = self.server.import_hook(hook_name, hook_body)
-        self.assertEqual(ret, True, "Could not import hook %s" % hook_name)
-
-        a = {'job_history_enable': 'True'}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
-
-        j = Job(TEST_USER)
-        j.set_sleep_time(4)
-        jid = self.server.submit(j)
-
-        # check job array is running
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid,
-                                max_attempts=10)
-        # delete job
-        try:
-            self.server.delete(jid)
-        except:
-            self.logger.info("exception occurred during job delete attampt")
-
-        # check that the substate is set to 91 (TERMINATED) which indicates job was deleted
-        self.server.expect(JOB, {'substate': 91}, extend='x',
-                                offset=4, id=jid, max_attempts=10,
-                                interval=2)
-        ret = self.server.delete_hook(hook_name)
-        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
-        self.server.log_match(hook_msg, starttime=start_time)
-        self.logger.info("**************** HOOK END ****************")
-
-    def test_hook_endjob_delete_array(self):
-        """
-        By creating an import hook, it executes a job hook.
-        """
-        self.logger.info("**************** HOOK START ****************")
-        hook_name = "hook_endjob_delete_array"
-        hook_msg = 'running %s' % hook_name
-        hook_body = get_hook_body(hook_msg)
-        attrs = {'event': 'endjob', 'enabled': 'True'}
-        start_time = time.time()
-
-        ret = self.server.create_hook(hook_name, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % hook_name)
-        ret = self.server.import_hook(hook_name, hook_body)
-        self.assertEqual(ret, True, "Could not import hook %s" % hook_name)
-
-        a = {'job_history_enable': 'True'}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
-        a = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
-        num_array_jobs = 3
-        attr_j_str = '1-' + str(num_array_jobs)
-        j = Job(TEST_USER, attrs={
-            ATTR_J: attr_j_str, 'Resource_List.select': 'ncpus=1'})
-
-        j.set_sleep_time(20)
-
-        jid = self.server.submit(j)
-
-        subjid = []
-        subjid.append(jid)
-        #subjid.append(jid)
-        for i in range (1,(num_array_jobs+1)):
-            subjid.append( j.create_subjob_id(jid, i) )
-
-        # 1. check job array has begun
-        self.server.expect(JOB, {'job_state': 'B'}, jid)
-
-        for i in range (1,(num_array_jobs+1)):
-            self.server.expect(JOB, {'job_state': 'R'},
-                               id=subjid[i])
-            # delete subjob
-            self.server.delete(id=subjid[i])
-             # check that the substate is set to 91 (TERMINATED) which
-             # indicates job was deleted
-            self.server.expect(JOB, {'substate': 91}, extend='x',
-                               id=subjid[i])
-
-        ret = self.server.delete_hook(hook_name)
-        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
-        self.server.log_match(hook_msg, starttime=start_time)
-        self.logger.info("**************** HOOK END ****************")
-
-    def test_hook_endjob_delete_force(self):
-        """
-        By creating an import hook, it executes a job hook.
-        """
-        self.logger.info("**************** HOOK START ****************")
-        hook_name = "hook_endjob_delete_force"
-        hook_msg = 'running %s' % hook_name
-        hook_body = get_hook_body(hook_msg)
-        attrs = {'event': 'endjob', 'enabled': 'True'}
-        start_time = time.time()
-
-        ret = self.server.create_hook(hook_name, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % hook_name)
-        ret = self.server.import_hook(hook_name, hook_body)
-        self.assertEqual(ret, True, "Could not import hook %s" % hook_name)
-
-        a = {'job_history_enable': 'True'}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
-
-        j = Job(TEST_USER)
-        j.set_sleep_time(4)
-        jid = self.server.submit(j)
-
-        # check job array is running
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid,
-                                max_attempts=10)
-        # delete job
-        try:
-            self.server.delete(jid, extend='force')
-        except:
-            self.logger.info("exception occurred during job delete attempt")
-
-        # check that the substate is set to 91 (TERMINATED) which indicates job was deleted
-        self.server.expect(JOB, {'substate': 91}, extend='x',
                                 offset=4, id=jid, max_attempts=10,
                                 interval=2)
         ret = self.server.delete_hook(hook_name)

@@ -674,7 +674,6 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 {
 	int abortjob = 0;
 	char *sig;
-	char hook_msg[HOOK_MSG_SIZE] = {0};
 	int forcedel = 0;
 	struct work_task *pwtold;
 	struct work_task *pwtnew;
@@ -861,10 +860,6 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 
 		rc = issue_signal(pjob, sig, post_delete_mom1, temp_preq);
 
-		/* set job endtime to time_now */
-		pjob->ji_qs.ji_endtime = time_now;
-		set_jattr_l_slim(pjob, JOB_ATR_endtime, pjob->ji_qs.ji_endtime, SET);
-
 		/*
 		 * If forcedel is set and request is from a manager,
 		 * job is deleted from server regardless
@@ -881,23 +876,6 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 				pjob->ji_qs.ji_jobid, "Delete forced");
 			acct_del_write(pjob->ji_qs.ji_jobid, pjob, preq, 0);
 
-			/* Allocate space for the endjob hook event params */
-			temp_preq = alloc_br(PBS_BATCH_EndJob);
-			if (temp_preq == NULL) {
-				log_err(PBSE_INTERNAL, __func__, "rq_endjob alloc failed");
-			} else {
-				(temp_preq->rq_ind.rq_end).rq_pjob = pjob;
-
-				/*
-				* Call process_hooks
-				*/
-				rc = process_hooks(temp_preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
-				if (rc == -1) {
-					sprintf(log_buffer, "rq_endjob process_hooks call failed");
-					log_err(-1, __func__, log_buffer);
-				}
-				free_br(temp_preq);
-			}
 			/*
 			 * If we are waiting for preemption to be complete and someone does a qdel -Wforce
 			 * we need to reply back to the scheduler.  We need to reply success so we don't
@@ -951,25 +929,6 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		sprintf(log_buffer, msg_delrunjobsig, sig);
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
-
-		/* Allocate space for the endjob hook event params */
-		temp_preq = alloc_br(PBS_BATCH_EndJob);
-		if (temp_preq == NULL) {
-			log_err(PBSE_INTERNAL, __func__, "rq_endjob alloc failed");
-		} else {
-			(temp_preq->rq_ind.rq_end).rq_pjob = pjob;
-
-			/*
-			* Call process_hooks
-			*/
-			rc = process_hooks(temp_preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
-			if (rc == -1) {
-				sprintf(log_buffer, "rq_endjob process_hooks call failed");
-				log_err(-1, __func__, log_buffer);
-			}
-			free_br(temp_preq);
-		}
-
 		return;
 	} else if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) != 0) {
 
