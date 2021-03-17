@@ -1429,9 +1429,9 @@ sleep 300
 
         # Make sure that by the time we send a HUP and the test
         # actually tinkers with the hooks once more,
-        # MoM will already have gone through its initial setup
-        # after the new hello from the server
-        time.sleep(6)
+        # MoMs will already have gone through their initial setup
+        # and copied the hooks after the new hello from the server
+        time.sleep(10)
 
         # HUP mom so exechost_startup hook is run for each mom...
         for mom in self.moms_list:
