@@ -574,6 +574,9 @@ get_execvnodes_count(char *str)
 	if (str == NULL)
 		return 0;
 
+	if (str[0] == '(')
+		return 1;
+
 	if ((str_copy = strdup(str)) == NULL)
 		return 0;
 	word = strtok(str_copy, COUNT_TOK);
