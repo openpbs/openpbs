@@ -321,7 +321,7 @@ class TestPbsExecjobEnd(TestFunctional):
              '1:ncpus=1:host=%s+1:ncpus=1:host=%s' %
              (self.momA.shortname, self.momB.shortname)}
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(30)
+        j.set_sleep_time(60)
         jid = self.server.submit(j)
         self.job_list.append(jid)
 
