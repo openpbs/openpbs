@@ -295,14 +295,13 @@ update_sj_parent(job *parent, job *sj, char *sjid, char oldstate, char newstate)
 			int pe = 0;
 			if (is_jattr_set(parent, JOB_ATR_exit_status))
 				pe = get_jattr_long(parent, JOB_ATR_exit_status);
-			if (pe != 2) {
-				if (e > 0)
-					pe = 1;
-				else if (e < 0)
-					pe = 2;
-				else
-					pe = 0;
-			}
+			if (e > 0)
+				pe = 1;
+			else if (e < 0)
+				pe = 2;
+			else
+				pe = 0;
+
 			set_jattr_l_slim(parent, JOB_ATR_exit_status, pe, SET);
 		}
 		if (is_jattr_set(sj, JOB_ATR_stageout_status)) {
