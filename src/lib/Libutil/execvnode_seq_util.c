@@ -367,7 +367,7 @@ append_to_word(dictionary *dict, struct word *w, int val)
 		}
 		tmp->next = new_map(val);
 
-		if (tmp->next == NULL) 
+		if (tmp->next == NULL)
 			return 1;
 	}
 	w->count++;
