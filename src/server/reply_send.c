@@ -468,6 +468,8 @@ reply_free(struct batch_reply *prep)
 		pdelstat = prep->brp_un.brp_deletejoblist.brp_delstatc;
 		while (pdelstat) {
 			pdelstatx = pdelstat->next;
+			if (pdelstat->name)
+				free(pdelstat->name);
 			free(pdelstat);
 			pdelstat = pdelstatx;
 	}

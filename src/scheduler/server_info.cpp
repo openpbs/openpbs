@@ -120,17 +120,18 @@
 #include <signal.h>
 #include <sys/wait.h>
 
+#include "pbs_entlim.h"
 #include "pbs_ifl.h"
 #include "pbs_error.h"
 #include "log.h"
 #include "pbs_share.h"
 #include "libpbs.h"
-#include "server_info.h"
 #include "constant.h"
+#include "config.h"
+#include "server_info.h"
 #include "queue_info.h"
 #include "job_info.h"
 #include "misc.h"
-#include "config.h"
 #include "node_info.h"
 #include "globals.h"
 #include "resv_info.h"
@@ -146,7 +147,6 @@
 #include "simulate.h"
 #include "fairshare.h"
 #include "check.h"
-// #include "pbs_sched.h"
 #include "fifo.h"
 #include "buckets.h"
 #include "parse.h"
@@ -473,12 +473,9 @@ query_server(status *pol, int pbs_sd)
 		 */
 		if (np != NULL) {
 			int i;
-			server_psets spset;
 
 			for (i = 0; i < sinfo->num_parts; i++) {
-				spset.svr_inst_id = np[i]->ninfo_arr[0]->svr_inst_id;
-				spset.np = np[i];
-				sinfo->svr_to_psets.push_back(spset);
+				sinfo->svr_to_psets[np[i]->ninfo_arr[0]->svr_inst_id] = np[i];
 			}
 		}
 		free(np);
@@ -982,18 +979,46 @@ find_resource(schd_resource *reslist, resdef *def)
 }
 
 /**
- * @brief	free server_psets vector
+ * @brief	free the sinfo->svr_to_psets map
+ * 			Note: this won't be needed once we convert node_partition to a class
  *
- * @param[out]	spsets - vector of server psets
+ * @param[out]	spsets - the sinfo->svr_to_psets map
  *
  * @return void
  */
 static void
-free_server_psets(std::vector<server_psets>& spsets)
+free_server_psets(std::unordered_map<std::string, node_partition *>& spsets)
 {
 	for (auto& spset: spsets) {
-		free_node_partition(spset.np);
+		free_node_partition(spset.second);
+		spset.second = NULL;
 	}
+}
+
+/**
+ * @brief	dup a sinfo->svr_to_psets map (deep copy)
+ * 			Note: this might not be needed once we convert node_partition to a class
+ *
+ * @param[in]	spsets - map of server psets
+ * @param[in]	sinfo - sinfo in the duplicated universe
+ *
+ * @return std::unordered_map<std::string, node_partition *>
+ * @retval An unordered_map containing copy of the input
+ */
+static std::unordered_map<std::string, node_partition *>
+dup_server_psets(std::unordered_map<std::string, node_partition *>& spsets, server_info *sinfo)
+{
+	std::unordered_map<std::string, node_partition *> newpset;
+
+	for (auto& spset: spsets) {
+		newpset[spset.first] = dup_node_partition(spset.second, sinfo);
+		if (newpset[spset.first] == NULL) {
+			free_server_psets(newpset);
+			return {};
+		}
+	}
+
+	return newpset;
 }
 
 /**
@@ -1180,7 +1205,6 @@ new_server_info(int limallocflag)
 	sinfo->eligible_time_enable = 0;
 	sinfo->provision_enable = 0;
 	sinfo->power_provisioning = 0;
-	sinfo->has_nonCPU_licenses = 0;
 	sinfo->use_hard_duration = 0;
 	sinfo->pset_metadata_stale = 0;
 	sinfo->num_parts = 0;
@@ -2026,7 +2050,7 @@ create_server_arrays(server_info *sinfo)
  * @retval	1	: job is running
  */
 int
-check_run_job(resource_resv *job, void *arg)
+check_run_job(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL)
 		return job->job->is_running;
@@ -2045,7 +2069,7 @@ check_run_job(resource_resv *job, void *arg)
  * @retval	1	: if job is exiting
  */
 int
-check_exit_job(resource_resv *job, void *arg)
+check_exit_job(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL)
 		return job->job->is_exiting;
@@ -2085,7 +2109,7 @@ check_run_resv(resource_resv *resv, void *arg)
  * @retval	0	: if job is not suspended
  */
 int
-check_susp_job(resource_resv *job, void *arg)
+check_susp_job(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL)
 		return job->job->is_suspended;
@@ -2105,7 +2129,7 @@ check_susp_job(resource_resv *job, void *arg)
  * @retval	0	: if job is not running
  */
 int
-check_job_running(resource_resv *job, void *arg)
+check_job_running(resource_resv *job, const void *arg)
 {
 	if (job->is_job && (job->job->is_running || job->job->is_exiting || job->job->is_userbusy))
 		return 1;
@@ -2125,7 +2149,7 @@ check_job_running(resource_resv *job, void *arg)
  * @retval	0	: if job is not running or not in a reservation
  */
 int
-check_running_job_in_reservation(resource_resv *job, void *arg)
+check_running_job_in_reservation(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL && job->job->resv != NULL &&
 		(check_job_running(job, arg) == 1))
@@ -2146,7 +2170,7 @@ check_running_job_in_reservation(resource_resv *job, void *arg)
  * @retval	0	: if job is not running or in a reservation
  */
 int
-check_running_job_not_in_reservation(resource_resv *job, void *arg)
+check_running_job_not_in_reservation(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL && job->job->resv == NULL &&
 		(check_job_running(job, arg) == 1))
@@ -2167,7 +2191,7 @@ check_running_job_not_in_reservation(resource_resv *job, void *arg)
  * @retval	0	: if reservation is not running on node passed in arg
  */
 int
-check_resv_running_on_node(resource_resv *resv, void *arg)
+check_resv_running_on_node(resource_resv *resv, const void *arg)
 {
 	if (resv->is_resv && resv->resv != NULL) {
 		if (resv->resv->is_running || resv->resv->resv_state == RESV_BEING_DELETED)
@@ -2224,7 +2248,6 @@ dup_server_info(server_info *osinfo)
 	nsinfo->eligible_time_enable = osinfo->eligible_time_enable;
 	nsinfo->provision_enable = osinfo->provision_enable;
 	nsinfo->power_provisioning = osinfo->power_provisioning;
-	nsinfo->has_nonCPU_licenses = osinfo->has_nonCPU_licenses;
 	nsinfo->use_hard_duration = osinfo->use_hard_duration;
 	nsinfo->pset_metadata_stale = osinfo->pset_metadata_stale;
 	nsinfo->name = string_dup(osinfo->name);
@@ -2399,8 +2422,8 @@ dup_server_info(server_info *osinfo)
 		}
 	}
 
-	/* Copy the vector of server psets */
-	nsinfo->svr_to_psets = osinfo->svr_to_psets;
+	/* Copy the map of server psets */
+	nsinfo->svr_to_psets = dup_server_psets(osinfo->svr_to_psets, nsinfo);
 
 	return nsinfo;
 }
@@ -3200,7 +3223,7 @@ find_indirect_resource(schd_resource *res, node_info **nodes)
 				error = 1;
 				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
 						"Resource %s is indirect, and does not exist on indirect node %s",
-						res->name, ninfo->name);
+						res->name, ninfo->name.c_str());
 			}
 		} else {
 			error = 1;
@@ -3505,7 +3528,7 @@ free_queue_list(queue_info *** queue_list)
  * @return	void
  */
 void
-create_total_counts(server_info *sinfo, queue_info * qinfo,
+create_total_counts(server_info *sinfo, queue_info *qinfo,
 	resource_resv *resresv, int mode)
 {
 	if (mode == SERVER || mode == ALL) {

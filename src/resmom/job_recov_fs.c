@@ -135,7 +135,6 @@ job_save_fs(job *pjob)
 	int	redo;
 	int	pmode;
 	int quick = 1;
-	struct attribute *pattr;
 
 #ifdef WIN32
 	pmode = _S_IWRITE | _S_IREAD;
@@ -159,9 +158,8 @@ job_save_fs(job *pjob)
 		quick = 0;
 	}
 
-	pattr = pjob->ji_wattr;
 	for (i = 0; i < JOB_ATR_LAST; i++) {
-		if ((pattr+i)->at_flags & ATR_VFLAG_MODIFY) {
+		if ((get_jattr(pjob, i))->at_flags & ATR_VFLAG_MODIFY) {
 			quick = 0;
 			break;
 		}

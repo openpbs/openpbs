@@ -47,10 +47,7 @@
  * Functions included are:
  * 	query_nodes()
  * 	query_node_info()
- * 	new_node_info()
  * 	free_nodes()
- * 	free_node_info()
- * 	set_node_type()
  * 	set_node_info_state()
  * 	remove_node_state()
  * 	add_node_state()
@@ -201,7 +198,7 @@ query_node_info_chunk(th_data_query_ninfo *data)
 		if (node_in_partition(ninfo, sc_attrs.partition)) {
 			ninfo_arr[nidx++] = ninfo;
 		} else
-			free_node_info(ninfo);
+			delete ninfo;
 	}
 	ninfo_arr[nidx] = NULL;
 
@@ -280,7 +277,6 @@ query_nodes(int pbs_sd, server_info *sinfo)
 			ATTR_maxuserrun,
 			ATTR_maxgrprun,
 			ATTR_queue,
-			ATTR_NODE_pcpus,
 			ATTR_p,
 			ATTR_NODE_Sharing,
 			ATTR_NODE_License,
@@ -452,15 +448,10 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 	int check_expiry = 0;
 	time_t expiry = 0;
 
-	if ((ninfo = new_node_info()) == NULL)
+	if ((ninfo = new node_info(node->name)) == NULL)
 		return NULL;
 
 	attrp = node->attribs;
-
-	if ((ninfo->name = string_dup(node->name)) == NULL) {
-		free_node_info(ninfo);
-		return NULL;
-	}
 
 	ninfo->server = sinfo;
 
@@ -472,7 +463,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
 			ninfo->svr_inst_id = string_dup(attrp->value);
 			if (ninfo->svr_inst_id == NULL) {
-				free_node_info(ninfo);
+				delete ninfo;
 				return NULL;
 			}
 		}
@@ -482,7 +473,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 			if (ninfo->mom)
 				free(ninfo->mom);
 			if ((ninfo->mom = string_dup(attrp->value)) == NULL) {
-				free_node_info(ninfo);
+				delete ninfo;
 				return NULL;
 			}
 		}
@@ -495,10 +486,6 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		}
 		else if (!strcmp(attrp->name, ATTR_NODE_jobs))
 			ninfo->jobs = break_comma_list(attrp->value);
-
-		/* the node type... i.e. a pbs node  */
-		else if (!strcmp(attrp->name, ATTR_NODE_ntype))
-			set_node_type(ninfo, attrp->value);
 		else if (!strcmp(attrp->name, ATTR_maxrun)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
@@ -518,11 +505,6 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		}
 		else if (!strcmp(attrp->name, ATTR_queue))
 			ninfo->queue_name = string_dup(attrp->value);
-		else if (!strcmp(attrp->name, ATTR_NODE_pcpus)) {
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp == '\0')
-				ninfo->pcpus = count;
-		}
 		else if (!strcmp(attrp->name, ATTR_p)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
@@ -540,7 +522,6 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 			switch (attrp->value[0]) {
 				case ND_LIC_TYPE_locked:
 					ninfo->lic_lock = 1;
-					sinfo->has_nonCPU_licenses = 1;
 					break;
 				case ND_LIC_TYPE_cloud:
 					check_expiry = 1;
@@ -560,7 +541,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 					ninfo->res = res;
 
 				if (set_resource(res, attrp->value, RF_AVAIL) == 0) {
-					free_node_info(ninfo);
+					delete ninfo;
 					ninfo = NULL;
 					break;
 				}
@@ -579,7 +560,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 				ninfo->res = res;
 			if (res != NULL) {
 				if (set_resource(res, attrp->value, RF_ASSN) == 0) {
-					free_node_info(ninfo);
+					delete ninfo;
 					ninfo = NULL;
 					break;
 				}
@@ -630,111 +611,97 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		attrp = attrp->next;
 	}
 	if (check_expiry) {
-		if (time(NULL) < expiry) {
+		if (time(NULL) < expiry)
 			ninfo->lic_lock = 1;
-			sinfo->has_nonCPU_licenses = 1;
-		}
 	}
+
+	if (ninfo->lic_lock != 1)
+		ninfo->nscr |= NSCR_CYCLE_INELIGIBLE;
+
 	return ninfo;
 }
 
 /**
  * @brief
- *      new_node_info - allocates a new node_info
- *
- * @return	the new node_info
- *
+ *	node_info constructor
  */
-node_info *
-new_node_info()
+node_info::node_info(const std::string& nname): name(nname)
 {
-	node_info *nnode;
+	svr_inst_id = NULL;
+	is_down = 0;
+	is_free = 0;
+	is_offline = 0;
+	is_unknown = 0;
+	is_exclusive = 0;
+	is_job_exclusive = 0;
+	is_resv_exclusive = 0;
+	is_sharing = 0;
+	is_busy = 0;
+	is_job_busy = 0;
+	is_stale = 0;
+	is_maintenance = 0;
+	is_provisioning = 0;
+	is_sleeping = 0;
+	is_multivnoded = 0;
+	has_ghost_job = 0;
 
-	if ((nnode = static_cast<node_info *>(malloc(sizeof(node_info)))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
+	lic_lock = 0;
 
-	nnode->svr_inst_id = NULL;
-	nnode->is_down = 0;
-	nnode->is_free = 0;
-	nnode->is_offline = 0;
-	nnode->is_unknown = 0;
-	nnode->is_exclusive = 0;
-	nnode->is_job_exclusive = 0;
-	nnode->is_resv_exclusive = 0;
-	nnode->is_sharing = 0;
-	nnode->is_pbsnode = 0;
-	nnode->is_busy = 0;
-	nnode->is_job_busy = 0;
-	nnode->is_stale = 0;
-	nnode->is_maintenance = 0;
-	nnode->is_provisioning = 0;
-	nnode->is_sleeping = 0;
-	nnode->is_multivnoded = 0;
-	nnode->has_ghost_job = 0;
+	has_hard_limit = 0;
+	no_multinode_jobs = 0;
+	resv_enable = 0;
+	provision_enable = 0;
+	power_provisioning = 0;
 
-	nnode->lic_lock = 0;
+	sharing = VNS_DFLT_SHARED;
 
-	nnode->has_hard_limit = 0;
-	nnode->no_multinode_jobs = 0;
-	nnode->resv_enable = 0;
-	nnode->provision_enable = 0;
-	nnode->power_provisioning = 0;
+	num_jobs = 0;
+	num_run_resv = 0;
+	num_susp_jobs = 0;
 
-	nnode->sharing = VNS_DFLT_SHARED;
+	priority = 0;
 
-	nnode->num_jobs = 0;
-	nnode->num_run_resv = 0;
-	nnode->num_susp_jobs = 0;
+	rank = 0;
 
-	nnode->priority = 0;
+	nodesig_ind = -1;
 
-	nnode->pcpus = 0;
+	mom = NULL;
+	jobs = NULL;
+	resvs = NULL;
+	job_arr = NULL;
+	run_resvs_arr = NULL;
+	res = NULL;
+	server = NULL;
+	queue_name = NULL;
+	group_counts = NULL;
+	user_counts = NULL;
 
-	nnode->rank = 0;
+	max_running = SCHD_INFINITY;
+	max_user_run = SCHD_INFINITY;
+	max_group_run = SCHD_INFINITY;
 
-	nnode->nodesig_ind = -1;
+	current_aoe = NULL;
+	current_eoe = NULL;
+	nodesig = NULL;
+	last_state_change_time = 0;
+	last_used_time = 0;
 
-	nnode->name = NULL;
-	nnode->mom = NULL;
-	nnode->jobs = NULL;
-	nnode->resvs = NULL;
-	nnode->job_arr = NULL;
-	nnode->run_resvs_arr = NULL;
-	nnode->res = NULL;
-	nnode->server = NULL;
-	nnode->queue_name = NULL;
-	nnode->group_counts = NULL;
-	nnode->user_counts = NULL;
+	svr_node = NULL;
+	hostset = NULL;
 
-	nnode->max_running = SCHD_INFINITY;
-	nnode->max_user_run = SCHD_INFINITY;
-	nnode->max_group_run = SCHD_INFINITY;
+	node_events = NULL;
+	bucket_ind = -1;
+	node_ind = -1;
 
-	nnode->current_aoe = NULL;
-	nnode->current_eoe = NULL;
-	nnode->nodesig = NULL;
-	nnode->last_state_change_time = 0;
-	nnode->last_used_time = 0;
-
-	nnode->svr_node = NULL;
-	nnode->hostset = NULL;
-
-	nnode->node_events = NULL;
-	nnode->bucket_ind = -1;
-	nnode->node_ind = -1;
-
-	nnode->nscr = NSCR_NONE;
+	nscr = NSCR_NONE;
 
 #ifdef NAS
 	/* localmod 034 */
-	nnode->sh_type = 0;
-	nnode->sh_cls = 0;
+	sh_type = 0;
+	sh_cls = 0;
 #endif
-	nnode->partition = NULL;
-	nnode->np_arr = NULL;
-	return nnode;
+	partition = NULL;
+	np_arr = NULL;
 }
 
 /**
@@ -757,7 +724,7 @@ free_node_info_chunk(th_data_free_ninfo *data)
 	end = data->eidx;
 
 	for (i = start; i <= end && ninfo_arr[i] != NULL; i++) {
-		free_node_info(ninfo_arr[i]);
+		delete ninfo_arr[i];
 	}
 }
 
@@ -866,96 +833,26 @@ free_nodes(node_info **ninfo_arr)
 
 /**
  * @brief
- *      free_node_info - frees memory used by a node_info
- *
- * @param[in,out]	ninfo	-	the node to free
- *
- * @return	nothing
- *
+ *      node_info destructor
  */
-void
-free_node_info(node_info *ninfo)
+node_info::~node_info()
 {
-	if (ninfo != NULL) {
-		if (ninfo->name != NULL)
-			free(ninfo->name);
-
-		if (ninfo->mom != NULL)
-			free(ninfo->mom);
-
-		if (ninfo->queue_name != NULL)
-			free(ninfo->queue_name);
-
-		if (ninfo->jobs != NULL)
-			free_string_array(ninfo->jobs);
-
-		if (ninfo->resvs != NULL)
-			free_string_array(ninfo->resvs);
-
-		if (ninfo->job_arr != NULL)
-			free(ninfo->job_arr);
-
-		if (ninfo->run_resvs_arr != NULL)
-			free(ninfo->run_resvs_arr);
-
-		if (ninfo->res != NULL)
-			free_resource_list(ninfo->res);
-
-		if (ninfo->group_counts != NULL)
-			free_counts_list(ninfo->group_counts);
-
-		if (ninfo->user_counts != NULL)
-			free_counts_list(ninfo->user_counts);
-
-		if (ninfo->current_aoe != NULL)
-			free(ninfo->current_aoe);
-
-		if (ninfo->current_eoe != NULL)
-			free(ninfo->current_eoe);
-
-		if (ninfo->nodesig != NULL)
-			free(ninfo->nodesig);
-
-		if(ninfo->node_events != NULL)
-			free_te_list(ninfo->node_events);
-
-		if (ninfo->partition != NULL)
-			free(ninfo->partition);
-
-		if (ninfo->np_arr != NULL)
-			free(ninfo->np_arr);
-
-		if (ninfo->svr_inst_id != NULL)
-			free(ninfo->svr_inst_id);
-
-		free(ninfo);
-	}
-}
-
-/**
- * @brief
- *		set_node_type - set the node type bits
- *
- * @param[in,out]	ninfo	-	the node to set the type
- * @param[in]	ntype	-	the type string from the server
- *
- * @return	non-zero	: on error
- *
- */
-int
-set_node_type(node_info *ninfo, char *ntype)
-{
-	if (ntype != NULL && ninfo != NULL) {
-		if (!strcmp(ntype, ND_pbs))
-			ninfo->is_pbsnode = 1;
-		else {
-			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
-				ninfo->name, "Unknown node type: %s", ntype);
-			return 1;
-		}
-		return 0;
-	}
-	return 1;
+	free(mom);
+	free(queue_name);
+	free_string_array(jobs);
+	free_string_array(resvs);
+	free(job_arr);
+	free(run_resvs_arr);
+	free_resource_list(res);
+	free_counts_list(group_counts);
+	free_counts_list(user_counts);
+	free(current_aoe);
+	free(current_eoe);
+	free(nodesig);
+	free_te_list(node_events);
+	free(partition);
+	free(np_arr);
+	free(svr_inst_id);
 }
 
 /**
@@ -1071,6 +968,11 @@ remove_node_state(node_info *ninfo, const char *state)
 		&& !ninfo->is_unknown  && !ninfo->is_down && !ninfo->is_maintenance)
 		ninfo->is_free = 1;
 
+	if (ninfo->is_free)
+		ninfo->nscr &= ~NSCR_CYCLE_INELIGIBLE;
+	else
+		ninfo->nscr |= NSCR_CYCLE_INELIGIBLE;
+
 	return 0;
 }
 
@@ -1138,8 +1040,11 @@ add_node_state(node_info *ninfo, const char *state)
 	}
 
 	/* Remove the free state unless it was specifically the state being added */
-	if (!set_free)
+	if (!set_free) {
 		ninfo->is_free = 0;
+		ninfo->nscr |= NSCR_CYCLE_INELIGIBLE;
+	} else
+		ninfo->nscr &= ~NSCR_CYCLE_INELIGIBLE;
 
 	return 0;
 }
@@ -1196,26 +1101,22 @@ node_filter(node_info **nodes, int size,
 }
 
 /**
- * @brief
- *		find_node_info - find a node in a node array
- *
- * @param[in]	nodename	-	the node to find
- * @param[in]	ninfo_arr	-	the array of nodes to look in
- *
- * @return	the node
- * @retval	NULL	: if not found
- *
+ * @brief find a node by string
+ * @param[in] ninfo_arr - node array to search
+ * @param[in] nodename - name of node to searh for
+ * @return node_info *
+ * @retval found node
+ * @retval NULL if not found or on error
  */
 node_info *
-find_node_info(node_info **ninfo_arr, char *nodename)
+find_node_info(node_info **ninfo_arr, const std::string& nodename)
 {
 	int i;
 
-	if (nodename == NULL || ninfo_arr == NULL)
+	if (ninfo_arr == NULL)
 		return NULL;
 
-	for (i = 0; ninfo_arr[i] != NULL &&
-		strcmp(nodename, ninfo_arr[i]->name) ; i++)
+	for (i = 0; ninfo_arr[i] != NULL && nodename != ninfo_arr[i]->name ; i++)
 		;
 
 	return ninfo_arr[i];
@@ -1446,7 +1347,7 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 						ninfo = find_node_info(onodes, nnodes[i]->name);
 						ores = find_resource(ninfo->res, nres->def);
 						if (ores->indirect_res != NULL) {
-							sprintf(namebuf, "@%s", nnodes[i]->name);
+							sprintf(namebuf, "@%s", nnodes[i]->name.c_str());
 							for (j = i+1; nnodes[j] != NULL; j++) {
 								tres = find_resource(nnodes[j]->res, nres->def);
 								if (tres != NULL) {
@@ -1494,19 +1395,17 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
  *
  */
 node_info *
-dup_node_info(node_info *onode, server_info *nsinfo,
-	unsigned int flags)
+dup_node_info(node_info *onode, server_info *nsinfo, unsigned int flags)
 {
 	node_info *nnode;
 
 	if (onode == NULL)
 		return NULL;
 
-	if ((nnode = new_node_info()) == NULL)
+	if ((nnode = new node_info(onode->name)) == NULL)
 		return NULL;
 
 	nnode->server = nsinfo;
-	nnode->name = string_dup(onode->name);
 	nnode->mom = string_dup(onode->mom);
 	nnode->queue_name = string_dup(onode->queue_name);
 
@@ -1520,7 +1419,6 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	nnode->is_resv_exclusive = onode->is_resv_exclusive;
 	nnode->is_sharing = onode->is_sharing;
 	nnode->is_busy = onode->is_busy;
-	nnode->is_pbsnode = onode->is_pbsnode;
 	nnode->is_job_busy = onode->is_job_busy;
 	nnode->is_stale = onode->is_stale;
 	nnode->is_maintenance = onode->is_maintenance;
@@ -1530,7 +1428,6 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	nnode->sharing = onode->sharing;
 
 	nnode->lic_lock = onode->lic_lock;
-	nnode->pcpus = onode->pcpus;
 
 	nnode->rank = onode->rank;
 
@@ -1593,7 +1490,7 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	if (onode->partition != NULL) {
 		nnode->partition = string_dup(onode->partition);
 		if (nnode->partition == NULL) {
-			free_node_info(nnode);
+			 delete nnode;
 			return NULL;
 		}
 	}
@@ -1670,7 +1567,7 @@ collect_resvs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int s
 
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
 		ninfo_arr[i]->run_resvs_arr = resource_resv_filter(resresv_arr, size,
-			check_resv_running_on_node, ninfo_arr[i]->name, 0);
+			check_resv_running_on_node, ninfo_arr[i]->name.c_str(), 0);
 		/* the count of running resvs on the node is set in query_reservations */
 	}
 	return 1;
@@ -1914,43 +1811,39 @@ update_node_on_run(nspec *ns, resource_resv *resresv, const char *job_state)
 		update_counts_on_run(cts, ns->resreq);
 	}
 
-	if (ninfo->is_pbsnode) {
-		/* if we're a cluster node and we have no cpus available, we're job_busy */
-		if (ncpusres == NULL)
-			ncpusres = find_resource(ninfo->res, getallres(RES_NCPUS));
+	/* if we're a cluster node and we have no cpus available, we're job_busy */
+	if (ncpusres == NULL)
+		ncpusres = find_resource(ninfo->res, getallres(RES_NCPUS));
 
-		if (ncpusres != NULL) {
-			if (dynamic_avail(ncpusres) == 0)
-				set_node_info_state(ninfo, ND_jobbusy);
+	if (ncpusres != NULL) {
+		if (dynamic_avail(ncpusres) == 0)
+			set_node_info_state(ninfo, ND_jobbusy);
+	}
+
+	/* if node selected for provisioning, this node is no longer available */
+	if (ns->go_provision == 1) {
+		set_node_info_state(ninfo, ND_prov);
+
+		/* for jobs inside reservation, update the server's node info as well */
+		if (resresv->job != NULL && resresv->job->resv != NULL &&
+		    ninfo->svr_node != NULL) {
+			set_node_info_state(ninfo->svr_node, ND_prov);
 		}
 
-		/* if node selected for provisioning, this node is no longer available */
-		if (ns->go_provision == 1) {
-			set_node_info_state(ninfo, ND_prov);
+		set_current_aoe(ninfo, resresv->aoename);
+	}
 
-			/* for jobs inside reservation, update the server's node info as well */
-			if (resresv->job != NULL && resresv->job->resv != NULL &&
-				ninfo->svr_node != NULL) {
-				set_node_info_state(ninfo->svr_node, ND_prov);
-			}
+	/* if job has eoe setting this node gets current_eoe set */
+	if (resresv->is_job && resresv->eoename != NULL)
+		set_current_eoe(ninfo, resresv->eoename);
 
-
-			set_current_aoe(ninfo, resresv->aoename);
-		}
-
-		/* if job has eoe setting this node gets current_eoe set */
-		if (resresv->is_job && resresv->eoename != NULL)
-			set_current_eoe(ninfo, resresv->eoename);
-
-		if (is_excl(resresv->place_spec, ninfo->sharing)) {
-			if (resresv->is_resv) {
-				add_node_state(ninfo, ND_resv_exclusive);
-			}
-			else {
-				add_node_state(ninfo, ND_job_exclusive);
-				if (ninfo->svr_node != NULL)
-					add_node_state(ninfo->svr_node, ND_job_exclusive);
-			}
+	if (is_excl(resresv->place_spec, ninfo->sharing)) {
+		if (resresv->is_resv) {
+			add_node_state(ninfo, ND_resv_exclusive);
+		} else {
+			add_node_state(ninfo, ND_job_exclusive);
+			if (ninfo->svr_node != NULL)
+				add_node_state(ninfo->svr_node, ND_job_exclusive);
 		}
 	}
 
@@ -2368,10 +2261,11 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	} else
 		clear_schd_error(failerr);
 
-	/* clear the node scratch space for use for node searching */
-	for (i = 0; ninfo_arr[i] != NULL; i++) {
-		ninfo_arr[i]->nscr = NSCR_NONE;
-	}
+	/* Remove visited, scattered and ineligible bits from ncsr for node searching
+	 * Since statebusy is a per cycle bit, it shouldn't be changed
+	 */
+	for (i = 0; ninfo_arr[i] != NULL; i++)
+		ninfo_arr[i]->nscr &= ~(NSCR_VISITED | NSCR_SCATTERED | NSCR_INELIGIBLE);
 
 	pl = placespec;
 
@@ -3282,8 +3176,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 					if (failerr->status_code == SCHD_UNKWN)
 						copy_schd_error(failerr, err);
 				}
-			}
-			else {
+			} else {
 				ninfo_arr[i]->nscr |= NSCR_VISITED;
 				if (failerr->status_code == SCHD_UNKWN)
 					copy_schd_error(failerr, err);
@@ -3658,7 +3551,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 							set_current_aoe(node, resresv->aoename);
 						if (resresv->is_job) {
 							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_NOTICE, resresv->name,
-								"Vnode %s selected for provisioning with AOE %s", node->name, resresv->aoename);
+								"Vnode %s selected for provisioning with AOE %s", node->name.c_str(), resresv->aoename);
 						}
 					}
 
@@ -3674,7 +3567,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 
 						if (resresv->is_job)
 							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_NOTICE, resresv->name,
-								"Vnode %s selected for power with EOE %s", node->name, resresv->eoename);
+								"Vnode %s selected for power with EOE %s", node->name.c_str(), resresv->eoename);
 					}
 
 					if (num_chunks > num)
@@ -3729,7 +3622,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 			}
 
 			if (pl->pack && num_chunks == 1 && cstat.smp_dist == SMP_ROUND_ROBIN)
-				pbs_strncpy(last_node_name, node->name, sizeof(last_node_name));
+				pbs_strncpy(last_node_name, node->name.c_str(), sizeof(last_node_name));
 			return 1;
 		}
 	}
@@ -3775,7 +3668,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 			}
 
 			if (pl->pack && cstat.smp_dist == SMP_ROUND_ROBIN)
-				pbs_strncpy(last_node_name, node->name, sizeof(last_node_name));
+				pbs_strncpy(last_node_name, node->name.c_str(), sizeof(last_node_name));
 		}
 		return num_chunks;
 	}
@@ -3898,7 +3791,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 				else {
 					ns = NULL;
 					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, resresv->name,
-						"Event %s is a run/end event w/o nspec array, ignoring event", event->name);
+						"Event %s is a run/end event w/o nspec array, ignoring event", event->name.c_str());
 				}
 
 				is_run_event = (event->event_type == TIMED_RUN_EVENT);
@@ -4341,7 +4234,7 @@ create_execvnode(nspec **ns)
 				return NULL;
 		}
 
-		if (pbs_strcat(&buf, &bufsize, ns[i]->ninfo->name) ==NULL)
+		if (pbs_strcat(&buf, &bufsize, ns[i]->ninfo->name.c_str()) ==NULL)
 			return NULL;
 
 		end_of_chunk = ns[i]->end_of_chunk;
@@ -4400,7 +4293,7 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 	char *excvndup;
 	char *node_name;
 	int num_el;
-	struct key_value_pair *kv;
+	struct key_value_pair *kv = NULL;
 
 	nspec **nspec_arr;
 	node_info *ninfo;
@@ -4787,7 +4680,7 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 
 
 	if (last_node_name[0] == '\0' && nodes[0] != NULL)
-		snprintf(last_node_name, sizeof(last_node_name), "%s", nodes[0]->name);
+		pbs_strncpy(last_node_name, nodes[0]->name.c_str(), sizeof(last_node_name));
 
 	if (resresv != NULL) {
 		if (resresv->aoename != NULL && conf.provision_policy == AVOID_PROVISION) {
@@ -4821,7 +4714,7 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 			memcpy(tmparr, nodes, nsize * sizeof(node_info *));
 			qsort(tmparr, nsize, sizeof(node_info *), cmp_node_host);
 
-			for (i = 0; i < nsize && strcmp(last_node_name, tmparr[i]->name); i++)
+			for (i = 0; i < nsize && tmparr[i]->name != last_node_name; i++)
 				;
 
 			if (i < nsize) {
@@ -5407,7 +5300,7 @@ node_in_str(node_info *node, void *strarr)
 	if (node == NULL || strarr == NULL)
 		return 0;
 
-	if (is_string_in_arr((char **)strarr, node->name))
+	if (is_string_in_arr((char **)strarr, node->name.c_str()))
 		return 1;
 
 	return 0;
@@ -5717,8 +5610,7 @@ check_node_eligibility_chunk(th_data_nd_eligible *data)
 		node_info *node;
 
 		node = ninfo_arr[i];
-		if (!(node->nscr & NSCR_INELIGIBLE)) {
-			clear_schd_error(err);
+		if (!node->nscr) {
 			if (is_vnode_eligible(node, resresv, pl, err) == 0) {
 				node->nscr |= NSCR_INELIGIBLE;
 				if (node->hostset != NULL) {
@@ -5741,6 +5633,7 @@ check_node_eligibility_chunk(th_data_nd_eligible *data)
 						copy_schd_error(misc_err, err);
 					schdlogerr(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, node->name, NULL, err);
 				}
+				clear_schd_error(err);
 			}
 		}
 	}

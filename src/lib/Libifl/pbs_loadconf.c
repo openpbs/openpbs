@@ -272,34 +272,41 @@ parse_config_line(FILE *fp, char **key, char **val)
 int
 parse_psi(char *conf_value)
 {
-	char **list;
+	char **list = NULL;
 	int i;
 	char *svrname = NULL;
-	
+	char *local_conf = NULL;
+
 	free(pbs_conf.psi);
+	free(pbs_conf.psi_str);
 
-	if (conf_value == NULL)
-		return -1;
+	if (conf_value == NULL) {
+		char *dfltsvr = pbs_default();
+		if (dfltsvr == NULL)
+			return -1;
+		pbs_asprintf(&local_conf, "%s:%d", pbs_default(), pbs_conf.batch_service_port);
+		if (local_conf == NULL)
+			return -1;
+	} else
+		local_conf = conf_value;
 
-	list = break_comma_list(conf_value);
+	list = break_comma_list(local_conf);
 	if (list == NULL)
-		return -1;
+		goto err;
 
 	for (i = 0; list[i] != NULL; i++)
 		;
 
 	if (!(pbs_conf.psi = calloc(i, sizeof(psi_t)))) {
-		fprintf(stderr, "Out of memory while parsing configuration %s", conf_value);
-		free_string_array(list);
-		return -1;
+		fprintf(stderr, "Out of memory while parsing configuration %s", local_conf);
+		goto err;
 	}
 
 	for (i = 0; list[i] != NULL; i++) {
 		svrname = parse_servername(list[i], &(pbs_conf.psi[i].port));
 		if (svrname == NULL) {
 			fprintf(stderr, "Error parsing PBS_SERVER_INSTANCES %s \n", list[i]);
-			free_string_array(list);
-			return -1;
+			goto err;
 		}
 		strcpy(pbs_conf.psi[i].name, svrname);
 
@@ -308,18 +315,23 @@ parse_psi(char *conf_value)
         			get_fullhostname(pbs_conf.psi[i].name, pbs_conf.psi[i].name, PBS_MAXHOSTNAME);
 		}
 
-		if (pbs_conf.psi[i].port == 0) {
-			if (is_same_host(pbs_conf.psi[i].name, pbs_conf.pbs_server_name))
-				pbs_conf.psi[i].port = pbs_conf.batch_service_port;
-			else
-				pbs_conf.psi[i].port = PBS_BATCH_SERVICE_PORT;
-		}
+		if (pbs_conf.psi[i].port == 0)
+			pbs_conf.psi[i].port = PBS_BATCH_SERVICE_PORT;
 	}
 	free_string_array(list);
 	pbs_conf.pbs_num_servers = i;
-	pbs_conf.psi_str = strdup(conf_value);
+	if (conf_value)
+		pbs_conf.psi_str = strdup(local_conf);
+	else
+		pbs_conf.psi_str = local_conf;
 
 	return 0;
+
+err:
+	free_string_array(list);
+	if (conf_value == NULL)
+		free(local_conf);
+	return -1;
 }
 
 
@@ -344,7 +356,9 @@ parse_psi(char *conf_value)
  *	will be void. In that case, access to every pbs_conf.variable has to be
  *	synchronized against the reload of those variables.
  *
- * @param[in] reload		Whether to attempt a reload
+ * @param[in] reload	Whether to attempt a reload
+ * 						Note: The following parameters will not be reloaded:
+ * 						- PBS_SERVER_INSTANCES
  *
  * @return int
  * @retval 1 Success
@@ -1100,10 +1114,12 @@ __pbs_loadconf(int reload)
 
 	pbs_conf.loaded = 1;
 
-	if (parse_psi(psi_value ? psi_value : pbs_default()) == -1) {
-		fprintf(stderr, "Couldn't find a valid server instance to connect to\n");
-		free(psi_value);
-		goto err;
+	if (!reload) {
+		if (parse_psi(psi_value) == -1) {
+			fprintf(stderr, "Couldn't parse PBS_SERVER_INSTANCES\n");
+			free(psi_value);
+			goto err;
+		}
 	}
 
 	if (pbs_client_thread_unlock_conf() != 0)
@@ -1368,4 +1384,3 @@ get_num_servers(void)
 {
 	return pbs_conf.pbs_num_servers;
 }
-

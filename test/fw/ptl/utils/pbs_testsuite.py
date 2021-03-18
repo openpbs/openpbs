@@ -89,6 +89,7 @@ default_requirements = {
     'min_mom_disk': 1,
     'min_server_ram': .128,
     'min_server_disk': 1,
+    'mom_on_server': False,
     'no_mom_on_server': False,
     'no_comm_on_server': False,
     'no_comm_on_mom': True
@@ -860,7 +861,13 @@ class PBSTestSuite(unittest.TestCase):
                 cls.schedulers[sched.server.name] = sched.server.schedulers
         # creating a short hand for current host server.schedulers
         cls.scheds = cls.server.schedulers
-        cls.scheduler = cls.scheds['default']
+        try:
+            cls.scheduler = cls.scheds['default']
+        except KeyError:
+            cls.logger.error("Could not get default scheduler:%s, "
+                             "check the server(core), server.isUp:%s" %
+                             (str(cls.scheds), cls.server.isUp()))
+            raise
 
     @classmethod
     def init_moms(cls, init_mom_func=None, skip='nomom'):
@@ -1605,7 +1612,7 @@ class PBSTestSuite(unittest.TestCase):
         :param frequency: Frequency of monitoring
         :type frequency: int
         """
-        if self._procmon is not None:
+        if self._process_monitoring:
             self.logger.info('A process monitor is already instantiated')
             return
         self.logger.info('starting process monitoring of ' + name +

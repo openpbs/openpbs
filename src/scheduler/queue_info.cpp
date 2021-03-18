@@ -970,7 +970,7 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 			/* For standing reservations, we need to restore the resv_queue pointers for all occurrences */
 			int i;
 			for(i = 0; nqinfo->server->resvs[i] != NULL; i++) {
-				if (!strcmp(nqinfo->server->resvs[i]->name, nqinfo->resv->name))
+				if (nqinfo->server->resvs[i]->name == nqinfo->resv->name)
 					nqinfo->server->resvs[i]->resv->resv_queue = nqinfo;
 			}
 		}

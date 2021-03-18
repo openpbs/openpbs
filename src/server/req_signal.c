@@ -453,7 +453,7 @@ post_signal_req(struct work_task *pwt)
 					ss = JOB_SUBSTATE_SCHSUSP;
 				else
 					ss = JOB_SUBSTATE_SUSPEND;
-				if ((server.sv_attr[(int) SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET)) {
+				if (is_sattr_set(SVR_ATR_restrict_res_to_release_on_suspend)) {
 					if (create_resreleased(pjob) == 1) {
 						sprintf(log_buffer, "Unable to create resource released list");
 						log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -526,7 +526,7 @@ create_resreleased(job *pjob)
 	char *dflt_ncpus_rel = ":ncpus=0";
 	int no_res_rel = 1;
 
-	attribute *pexech = &pjob->ji_wattr[(int) JOB_ATR_exec_vnode];
+	attribute *pexech = get_jattr(pjob, JOB_ATR_exec_vnode);
 	/* Multiplying by 2 to take care of superchunks of the format
 	 * (node:resc=n+node:resc=m) which will get converted to
 	 * (node:resc=n)+(node:resc=m). This will add room for this
@@ -547,14 +547,14 @@ create_resreleased(job *pjob)
 		strcat(resreleased, "(");
 		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
 			strcat(resreleased, noden);
-			if (server.sv_attr[SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET) {
-				for (j = 0; j < nelem; ++j) {
+			if (is_sattr_set(SVR_ATR_restrict_res_to_release_on_suspend)) {
+				struct array_strings *pval = get_sattr_arst(SVR_ATR_restrict_res_to_release_on_suspend);
+				for (j = 0; pval != NULL && j < nelem; ++j) {
 					int k;
-					int np;
-					np = server.sv_attr[SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr;
+					int np = pval->as_usedptr;
 					for (k = 0; np != 0 && k < np; k++) {
 						char *res;
-						res = server.sv_attr[SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[k];
+						res = pval->as_string[k];
 						if ((res != NULL) && (strcmp(pkvp[j].kv_keyw,res) == 0)) {
 							sprintf(buf, ":%s=%s", res, pkvp[j].kv_val);
 							strcat(resreleased, buf);
@@ -640,11 +640,11 @@ void set_admin_suspend(job *pjob, int set_remove_nstate) {
 			pnode = find_nodebyname(vname);
 			if(pnode) {
 				if(set_remove_nstate) {
-					set_arst(&pnode->nd_attr[(int)ND_ATR_MaintJobs], &new, INCR);
+					set_arst(get_nattr(pnode, ND_ATR_MaintJobs), &new, INCR);
 					set_vnode_state(pnode, INUSE_MAINTENANCE, Nd_State_Or);
 				} else {
-					set_arst(&pnode->nd_attr[(int)ND_ATR_MaintJobs], &new, DECR);
-					if (pnode->nd_attr[(int)ND_ATR_MaintJobs].at_val.at_arst->as_usedptr == 0)
+					set_arst(get_nattr(pnode, ND_ATR_MaintJobs), &new, DECR);
+					if ((get_nattr_arst(pnode, ND_ATR_MaintJobs))->as_usedptr == 0)
 						set_vnode_state(pnode, ~INUSE_MAINTENANCE, Nd_State_And);
 				}
 			}

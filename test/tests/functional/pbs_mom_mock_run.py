@@ -58,13 +58,13 @@ class TestMomMockRun(TestFunctional):
 
         # Submit a job requesting ncpus, mem and walltime
         attr = {ATTR_l + ".select": "1:ncpus=1:mem=5mb",
-                ATTR_l + ".walltime": "00:00:05"}
+                ATTR_l + ".walltime": "00:00:20"}
         j = Job(attrs=attr)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-        # This job should end in 5 seconds, let's sleep
-        time.sleep(7)
+        self.logger.info("Waiting until job finishes")
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=22)
 
         # Check accounting record for this job
         used_ncpus = "resources_used.ncpus=1"

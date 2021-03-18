@@ -54,9 +54,12 @@ AC_DEFUN([PBS_AC_WITH_PYTHON],
   AS_IF([test "$PYTHON_VERSION" != "3.5" \
           -a "$PYTHON_VERSION" != "3.6" \
           -a "$PYTHON_VERSION" != "3.7" \
-          -a "$PYTHON_VERSION" != "3.8" ],
-    AC_MSG_ERROR([Python must be version 3.5, 3.6, 3.7 or 3.8]))
-  AS_IF([test "$PYTHON_VERSION" = "3.8"], [_extra_arg="--embed"], [_extra_arg=""])
+          -a "$PYTHON_VERSION" != "3.8" \
+          -a "$PYTHON_VERSION" != "3.9" ],
+    AC_MSG_ERROR([Python must be version 3.5, 3.6, 3.7, 3.8 or 3.9]))
+  _extra_arg=""
+  AS_IF([test "$PYTHON_VERSION" = "3.8"], [_extra_arg="--embed"])
+  AS_IF([test "$PYTHON_VERSION" = "3.9"], [_extra_arg="--embed"])
   [PYTHON_INCLUDES=`$PYTHON_CONFIG --includes ${_extra_arg}`]
   AC_SUBST(PYTHON_INCLUDES)
   [PYTHON_CFLAGS=`$PYTHON_CONFIG --cflags ${_extra_arg}`]

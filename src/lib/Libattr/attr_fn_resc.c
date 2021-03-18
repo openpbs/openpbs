@@ -113,7 +113,7 @@ void *resc_attrdef_idx = NULL;
  */
 
 int
-decode_resc(struct attribute *patr, char *name, char *rescn, char *val)
+decode_resc(attribute *patr, char *name, char *rescn, char *val)
 {
 	resource	*prsc;
 	resource_def	*prdef;
@@ -151,7 +151,7 @@ decode_resc(struct attribute *patr, char *name, char *rescn, char *val)
 		((resc_access_perm & ATR_DFLAG_ACCESS) != ATR_DFLAG_ACCESS))
 		return (PBSE_ATTRRO);
 
-	patr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(patr);
 
 	if ((resc_access_perm & ATR_PERM_ALLOW_INDIRECT) && (*val == '@')) {
 		if (strcmp(rescn, "ncpus") != 0)
@@ -293,7 +293,7 @@ encode_resc(const attribute *attr, pbs_list_head *phead, char *atname, char *rsn
  */
 
 int
-set_resc(struct attribute *old, struct attribute *new, enum batch_op op)
+set_resc(attribute *old, attribute *new, enum batch_op op)
 {
 	enum batch_op local_op;
 	resource *newresc;
@@ -358,7 +358,7 @@ set_resc(struct attribute *old, struct attribute *new, enum batch_op op)
 
 		newresc = (resource *)GET_NEXT(newresc->rs_link);
 	}
-	old->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(old);
 	return (0);
 }
 
@@ -381,7 +381,7 @@ set_resc(struct attribute *old, struct attribute *new, enum batch_op op)
  */
 
 int
-comp_resc(struct attribute *attr, struct attribute *with)
+comp_resc(attribute *attr, attribute *with)
 {
 	resource *atresc;
 	resource *wiresc;
@@ -506,7 +506,7 @@ find_resc_def(resource_def *resc_def, char *name)
 
 	if (pbs_idx_find(resc_attrdef_idx, (void **) &name, (void **)&found_def, NULL) == PBS_IDX_RET_OK)
 		def = &resc_def[found_def - resc_def];
-		
+
 	return def;
 }
 
@@ -588,7 +588,7 @@ add_resource_entry(attribute *pattr, resource_def *prdef)
 	} else {
 		append_link(&pattr->at_val.at_list, &new->rs_link, new);
 	}
-	pattr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(pattr);
 	return (new);
 }
 

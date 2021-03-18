@@ -96,16 +96,16 @@
  */
 
 int
-decode_ll(struct attribute *patr, char *name, char *rescn, char *val)
+decode_ll(attribute *patr, char *name, char *rescn, char *val)
 {
 	char *pc;
 
 	if ((val != NULL) && (strlen(val) != 0)) {
 
-		patr->at_val.at_ll = (Long)strTouL(val, &pc, 0);
+		patr->at_val.at_ll = strtoll(val, &pc, 0);
 		if (*pc != '\0')
 			return (PBSE_BADATVAL);	 /* invalid string */
-		patr->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(patr);
 	} else {
 		ATR_UNSET(patr);
 		patr->at_val.at_ll = 0;
@@ -178,7 +178,7 @@ encode_ll(const attribute *attr, pbs_list_head *phead, char *atname, char *rsnam
  */
 
 int
-set_ll(struct attribute *attr, struct attribute *new, enum batch_op op)
+set_ll(attribute *attr, attribute *new, enum batch_op op)
 {
 	assert(attr && new && (new->at_flags & ATR_VFLAG_SET));
 
@@ -194,7 +194,7 @@ set_ll(struct attribute *attr, struct attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(attr);
 	return (0);
 }
 
@@ -212,7 +212,7 @@ set_ll(struct attribute *attr, struct attribute *new, enum batch_op op)
  */
 
 int
-comp_ll(struct attribute *attr, struct attribute *with)
+comp_ll(attribute *attr, attribute *with)
 {
 	if (!attr || !with)
 		return (-1);
@@ -223,6 +223,62 @@ comp_ll(struct attribute *attr, struct attribute *with)
 	else
 		return (0);
 }
+
+/**
+ * @brief	Attribute setter function for long type values
+ *
+ * @param[in]	pattr	-	pointer to attribute being set
+ * @param[in]	value	-	value to be set
+ * @param[in]	op		-	operation to do
+ *
+ * @return	void
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ *
+ */
+void
+set_attr_ll(attribute *pattr, long long value, enum batch_op op)
+{
+	if (pattr == NULL) {
+		log_err(-1, __func__, "Invalid pointer to attribute");
+		return;
+	}
+
+	switch (op) {
+		case SET:
+			pattr->at_val.at_ll = value;
+			break;
+		case INCR:
+			pattr->at_val.at_ll += value;
+			break;
+		case DECR:
+			pattr->at_val.at_ll -= value;
+			break;
+		default:
+			return;
+	}
+
+	post_attr_set(pattr);
+}
+
+/**
+ * @brief	Attribute getter function for long long type values
+ *
+ * @param[in]	pattr	-	pointer to the attribute
+ *
+ * @return	long long
+ * @retval	long long value of the attribute
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ */
+long long
+get_attr_ll(const attribute *pattr)
+{
+	return  pattr->at_val.at_ll;
+}
+
 
 /*
  * free_ll - use free_null to (not) free space

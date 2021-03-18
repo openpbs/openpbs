@@ -45,6 +45,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <time.h>
 #include <ctype.h>
 #include <string.h>
@@ -316,7 +317,7 @@ skip_line(char *line)
  *	@return nothing
  */
 void
-schdlogerr(int event, int event_class, int sev, const char *name, const char *text,
+schdlogerr(int event, int event_class, int sev, const std::string& name, const char *text,
 	schd_error *err)
 {
 	char logbuf[MAX_LOG_SIZE];
@@ -331,6 +332,55 @@ schdlogerr(int event, int event_class, int sev, const char *name, const char *te
 		else
 			log_eventf(event, event_class, sev, name, "%s %s", text, logbuf);
 	}
+}
+
+/**
+ * @brief
+ * 	log_eventf - a combination of log_event() and printf()
+ *
+ * @param[in] eventtype - event type
+ * @param[in] objclass - event object class
+ * @param[in] sev - indication for whether to syslogging enabled or not
+ * @param[in] objname - object name stating log msg related to which object
+ * @param[in] fmt - format string
+ * @param[in] ... - arguments to format string
+ *
+ * @return void
+ */
+void
+log_eventf(int eventtype, int objclass, int sev, const std::string& objname, const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	do_log_eventf(eventtype, objclass, sev, objname.c_str(), fmt, args);
+	va_end(args);
+}
+
+/**
+ * @brief
+ * 	log_event - log a server event to the log file
+ *
+ *	Checks to see if the event type is being recorded.  If they are,
+ *	pass off to log_record().
+ *
+ *	The caller should ensure proper formating of the message if "text"
+ *	is to contain "continuation lines".
+ *
+ * @param[in] eventtype - event type
+ * @param[in] objclass - event object class
+ * @param[in] sev - indication for whether to syslogging enabled or not
+ * @param[in] objname - object name stating log msg related to which object
+ * @param[in] text - log msg to be logged.
+ *
+ *	Note, "sev" or severity is used only if syslogging is enabled,
+ *	see syslog(3) and log_record.c for details.
+ */
+
+void
+log_event(int eventtype, int objclass, int sev, const std::string& objname, const char *text)
+{
+	if (will_log_event(eventtype))
+		log_record(eventtype, objclass, sev, objname.c_str(), text);
 }
 
 /**
@@ -442,7 +492,7 @@ enum match_string_array_ret match_string_array(const char * const *strarr1, cons
 	strarr2_len = count_array(strarr2);
 
 	for (i = 0; strarr1[i] != NULL; i++) {
-		if (is_string_in_arr(const_cast<char **>(strarr2), const_cast<char *>(strarr1[i])))
+		if (is_string_in_arr(const_cast<char **>(strarr2), strarr1[i]))
 			match++;
 	}
 

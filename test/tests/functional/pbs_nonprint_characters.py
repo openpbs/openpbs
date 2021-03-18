@@ -191,7 +191,7 @@ sleep 5
                 a = {ATTR_v: "var1=\'A,B,%s,C,D\'" % ch}
             else:
                 a = {ATTR_v: r"var1=\'A\,B\,%s\,C\,D\'" % ch}
-            script = ['sleep 5']
+            script = ['sleep 10']
             script += ['env | grep var1']
             jid = self.create_and_submit_job(attribs=a, content=script)
             # Check if qstat -f output contains the escaped character

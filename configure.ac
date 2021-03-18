@@ -361,6 +361,7 @@ AC_CONFIG_FILES([
 	src/cmds/scripts/modulefile
 	src/cmds/scripts/pbs_habitat
 	src/cmds/scripts/pbs_init.d
+	src/cmds/scripts/pbs_reload
 	src/cmds/scripts/pbs_poerun
 	src/cmds/scripts/pbs_postinstall
 	src/cmds/scripts/pbs.service

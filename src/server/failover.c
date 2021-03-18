@@ -201,15 +201,14 @@ primary_handshake(struct work_task *pwt)
 		/* see if Secondary has taken over even though we are up */
 
 		if (stat(path_secondaryact , &sb) != -1) {
-			server.sv_attr[(int)SVR_ATR_State].at_val.at_long = SV_STATE_SECIDLE;  /* cause myself to recycle */
+			set_sattr_l_slim(SVR_ATR_State, SV_STATE_SECIDLE, SET); /* cause myself to recycle */
 			DBPRT(("Primary server found secondary active, restarting\n"))
 		}
 	}
 
 	/* reset work_task to call this again */
 
-	(void)set_task(WORK_Timed, time_now + HANDSHAKE_TIME,
-		primary_handshake, NULL);
+	(void)set_task(WORK_Timed, time_now + HANDSHAKE_TIME, primary_handshake, NULL);
 
 	return;
 }
@@ -259,7 +258,7 @@ secondary_handshake(struct work_task *pwt)
 static void
 fo_shutdown_reply(struct work_task *pwt)
 {
-	server.sv_attr[(int)SVR_ATR_State].at_val.at_long &= ~SV_STATE_PRIMDLY;
+	set_sattr_l_slim(SVR_ATR_State, get_sattr_long(SVR_ATR_State) & ~SV_STATE_PRIMDLY, SET);
 	release_req(pwt);
 }
 /**
@@ -472,7 +471,7 @@ req_failover(struct batch_request *preq)
 			 * This is the only failover request normally
 			 * seen by the Secondary while it is active.
 			 */
-			server.sv_attr[(int)SVR_ATR_State].at_val.at_long = SV_STATE_SECIDLE;
+			set_sattr_l_slim(SVR_ATR_State, SV_STATE_SECIDLE, SET);
 			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_CRIT,
 				msg_daemonname, msg_takeover);
 			(void)unlink(path_secondaryact); /* remove file */

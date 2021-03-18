@@ -146,12 +146,18 @@ start_db()
 
 	rc = pbs_start_db(conn_db_host, pbs_conf.pbs_data_service_port);
 	if (rc != 0) {
-		pbs_db_get_errmsg(PBS_DB_ERR, &failstr);
-		snprintf(log_buffer, LOG_BUF_SIZE, "%s %s", "Failed to start PBS dataservice.", failstr ? failstr : "");
+		if (rc == PBS_DB_OOM_ERR) {
+			pbs_db_get_errmsg(PBS_DB_OOM_ERR, &failstr);
+			snprintf(log_buffer, LOG_BUF_SIZE, "%s %s", "WARNING:", failstr ? failstr : "");
+		} else {
+			pbs_db_get_errmsg(PBS_DB_ERR, &failstr);
+			snprintf(log_buffer, LOG_BUF_SIZE, "%s %s", "Failed to start PBS dataservice.", failstr ? failstr : "");
+		}
 		log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_ERR, msg_daemonname, log_buffer);
 		fprintf(stderr, "%s\n", log_buffer);
 		free(failstr);
-		return PBS_DB_DOWN;
+		if (rc != PBS_DB_OOM_ERR)
+			return PBS_DB_DOWN;
 	}
 
 	sleep(1); /* give time for database to atleast establish the ports */

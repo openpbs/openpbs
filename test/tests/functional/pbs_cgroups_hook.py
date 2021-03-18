@@ -208,14 +208,15 @@ class TestCgroupsHook(TestFunctional):
         self.moms_list = []
         self.hosts_list = []
         self.nodes_list = []
+        self.paths = {}
         for cnt in range(0, len(self.moms)):
             mom = self.moms.values()[cnt]
             if mom.is_cray():
                 self.iscray = True
             host = mom.shortname
             # Check if mom has needed cgroup mounted, otherwise skip test
-            self.paths = self.get_paths(host)
-            if not self.paths['cpuset']:
+            self.paths[host] = self.get_paths(host)
+            if not self.paths[host]['cpuset']:
                 self.skipTest('cpuset subsystem not mounted')
             self.logger.info("%s: cgroup cpuset is mounted" % host)
             if self.iscray:
@@ -251,9 +252,9 @@ class TestCgroupsHook(TestFunctional):
 
         self.serverA = self.servers.values()[0].name
         self.mem = 'true'
-        if not self.paths['memory']:
+        if not self.paths[host]['memory']:
             self.mem = 'false'
-        self.swapctl = is_memsw_enabled(self.paths['memsw'])
+        self.swapctl = is_memsw_enabled(self.paths[host]['memsw'])
         self.server.set_op_mode(PTL_CLI)
         self.server.cleanup_jobs()
         if not self.iscray:
@@ -1199,6 +1200,54 @@ sleep 300
     }
 }
 """
+        self.cfg14 = """{
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : [],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : false,
+    "vnode_per_numa_node"   : false,
+    "online_offlined_nodes" : false,
+    "use_hyperthreads"      : false,
+    "discover_gpus"         : %s,
+    "cgroup":
+    {
+        "cpuacct":
+        {
+            "enabled"         : true
+        },
+        "cpuset":
+        {
+            "enabled"         : false
+        },
+        "devices":
+        {
+            "enabled"         : %s,
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : [],
+            "allow"           : [
+                "b *:* rwm",
+                ["console","rwm"],
+                ["tty0","rwm", "*"],
+                "c 1:* rwm",
+                "c 10:* rwm"
+            ]
+        },
+        "hugetlb":
+        {
+            "enabled"         : false
+        },
+        "memory":
+        {
+            "enabled"         : true
+        },
+        "memsw":
+        {
+            "enabled"         : false
+        }
+    }
+}
+"""
+
         Job.dflt_attributes[ATTR_k] = 'oe'
         # Increase the server log level
         a = {'log_events': '4095'}
@@ -1208,10 +1257,15 @@ sleep 300
         self.scheduler.set_sched_config(a)
         # Create resources
         attr = {'type': 'long', 'flag': 'nh'}
-        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='nmics',
-                            logerr=False)
-        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='ngpus',
-                            logerr=False)
+
+        rss = self.server.status(RSC)
+        self.logger.info('resources on server are: %s' % str(rss))
+        if not next((item for item in rss if item['id'] == 'nmics'), None):
+            self.server.manager(MGR_CMD_CREATE, RSC, attr, id='nmics',
+                                logerr=False)
+        if not next((item for item in rss if item['id'] == 'ngpus'), None):
+            self.server.manager(MGR_CMD_CREATE, RSC, attr, id='ngpus',
+                                logerr=False)
         # Import the hook
         self.hook_file = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                       'lib',
@@ -1377,7 +1431,7 @@ if %s e.job.in_ms_mom():
         """
         Returns path of subsystem for jobid
         """
-        basedir = self.paths[subsys]
+        basedir = self.paths[host][subsys]
         # One of the entries in the following list should exist
         #
         # This cleaned version assumes cgroup_prefix is always pbs_jobs,
@@ -1650,7 +1704,7 @@ if %s e.job.in_ms_mom():
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
         self.logger.info('memory subsystem is at location %s' %
-                         self.paths['memory'])
+                         self.paths[self.hosts_list[0]]['memory'])
         cpath = self.get_cgroup_job_dir('memory', jid, self.hosts_list[0])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))
         self.moms_list[0].log_match(
@@ -1770,7 +1824,7 @@ if %s e.job.in_ms_mom():
         """
         Test to verify that cgroups are reporting usage for cput and mem
         """
-        if not self.paths['memory']:
+        if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP13'
         conf = {'freq': 2}
@@ -1820,7 +1874,7 @@ if %s e.job.in_ms_mom():
             # Faster systems might have expected usage after 8 seconds
             # TH3 can take up to a minute
             time.sleep(8)
-            if self.paths['cpuacct'] and cput_usage <= 1.0:
+            if self.paths[self.hosts_list[0]]['cpuacct'] and cput_usage <= 1.0:
                 lines = self.moms_list[0].log_match(
                     '%s;update_job_usage: CPU usage:' %
                     jid, allmatch=True, starttime=begin)
@@ -1831,7 +1885,8 @@ if %s e.job.in_ms_mom():
                     cput_usage = float(match.groups()[0])
                     if cput_usage > 1.0:
                         break
-            if self.paths['memory'] and mem_usage <= 400000:
+            if (self.paths[self.hosts_list[0]]['memory'] and
+                    mem_usage <= 400000):
                 lines = self.moms_list[0].log_match(
                     '%s;update_job_usage: Memory usage: mem=' % jid,
                     allmatch=True, starttime=begin)
@@ -1870,7 +1925,7 @@ if %s e.job.in_ms_mom():
         Check to see that cpuset.cpus=0, cpuset.mems=0 and that
         memory.limit_in_bytes = 314572800
         """
-        if not self.paths['memory']:
+        if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP1'
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
@@ -1916,7 +1971,7 @@ if %s e.job.in_ms_mom():
         memory.limit_in_bytes = 100663296
         memory.memsw.limit_in_bytes = 100663296
         """
-        if not self.paths['memory']:
+        if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP2'
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
@@ -1951,7 +2006,7 @@ if %s e.job.in_ms_mom():
         Test to verify that the cgroup prefix is set to "sbp" and that
         the devices subsystem exists with the correct devices allowed
         """
-        if not self.paths['devices']:
+        if not self.paths[self.hosts_list[0]]['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
         self.load_config(self.cfg2)
@@ -1967,7 +2022,7 @@ if %s e.job.in_ms_mom():
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
-        devd = self.paths['devices']
+        devd = self.paths[self.hosts_list[0]]['devices']
         scr = self.du.run_cmd(
             cmd=[self.check_dirs_script % (jid, devd)],
             as_script=True)
@@ -2000,6 +2055,114 @@ if %s e.job.in_ms_mom():
             self.assertTrue(device in scr_out,
                             '"%s" not found in: %s' % (device, scr_out))
         self.logger.info('device_list check passed')
+
+    def test_devices_and_gpu_discovery(self):
+        """
+        Test to verify that if the device subsystem is enabled
+        and discover_gpus is true, _discover_gpus is called
+
+        The GPU tests should in theory make this redundant,
+        but they require a test harness that has GPUs. This test will
+        allow to see if the GPU discovery is at least called even when
+        the test harness has no GPUs.
+        """
+        if not self.paths[self.hosts_list[0]]['devices']:
+            self.skipTest('Skipping test since no devices subsystem defined')
+        name = 'CGROUP3'
+        self.load_config(self.cfg14 % ('true', 'true'))
+
+        # Restart mom for changes made by cgroups hook to take effect
+        begin = time.time()
+        # sleep 5s to ensure log matching will not catch older log lines
+        time.sleep(5)
+        self.mom.restart()
+
+        # Make sure the MoM is restarted
+        self.moms_list[0].log_match('Hook handler returned success'
+                                    ' for exechost_startup',
+                                    starttime=begin, existence=True,
+                                    interval=1, tail=False)
+
+        # These will throw an exception if the routines that should not
+        # have been called were called.
+        # n='ALL' is needed because the cgroup hook is so verbose
+        # that 50 lines will not suffice
+        self.moms_list[0].log_match('_discover_devices', starttime=begin,
+                                    existence=True, max_attempts=2,
+                                    interval=1, tail=False, n='ALL')
+        self.moms_list[0].log_match('NVIDIA SMI', starttime=begin,
+                                    existence=True, max_attempts=2,
+                                    interval=1, tail=False, n='ALL')
+        self.logger.info('devices_and_gpu_discovery check passed')
+
+    def test_suppress_devices_discovery(self):
+        """
+        Test to verify that if the device subsystem is turned off,
+        neither _discover_devices nor _discover_gpus is called
+        """
+        if not self.paths[self.hosts_list[0]]['devices']:
+            self.skipTest('Skipping test since no devices subsystem defined')
+        name = 'CGROUP3'
+        self.load_config(self.cfg14 % ('true', 'false'))
+
+        # Restart mom for changes made by cgroups hook to take effect
+        begin = time.time()
+        # sleep 5s to ensure log matching will not catch older log lines
+        time.sleep(5)
+        self.mom.restart()
+
+        # Make sure the MoM is restarted
+        self.moms_list[0].log_match('Hook handler returned success'
+                                    ' for exechost_startup',
+                                    starttime=begin, existence=True,
+                                    interval=1, tail=False)
+
+        # These will throw an exception if the routines that should not
+        # have been called were called.
+        # n='ALL' is needed because the cgroup hook is so verbose
+        # that 50 lines will not suffice
+        self.moms_list[0].log_match('_discover_devices', starttime=begin,
+                                    existence=False, max_attempts=2,
+                                    interval=1, tail=False, n='ALL')
+        self.moms_list[0].log_match('_discover_gpus', starttime=begin,
+                                    existence=False, max_attempts=2,
+                                    interval=1, tail=False, n='ALL')
+        self.logger.info('suppress_devices_discovery check passed')
+
+    def test_suppress_gpu_discovery(self):
+        """
+        Test to verify that if the device subsystem is enabled
+        and discover_gpus is false, nvidia-smi is not called
+        discover_gpus is called but just returns {}
+        """
+        if not self.paths[self.hosts_list[0]]['devices']:
+            self.skipTest('Skipping test since no devices subsystem defined')
+        name = 'CGROUP3'
+        self.load_config(self.cfg14 % ('false', 'true'))
+
+        # Restart mom for changes made by cgroups hook to take effect
+        begin = time.time()
+        # sleep 5s to ensure log matching will not catch older log lines
+        time.sleep(5)
+        self.mom.restart()
+
+        # Make sure the MoM is restarted
+        self.moms_list[0].log_match('Hook handler returned success'
+                                    ' for exechost_startup',
+                                    starttime=begin, existence=True,
+                                    interval=1, tail=False)
+
+        # These will throw an exception if the routines that should not
+        # have been called were called.
+        # n='ALL' is needed because the cgroup hook is so verbose
+        # that 50 lines will not suffice
+        self.moms_list[0].log_match('_discover_devices', starttime=begin,
+                                    existence=True, max_attempts=2,
+                                    interval=1, tail=False, n='ALL')
+        self.moms_list[0].log_match('NVIDIA SMI', starttime=begin,
+                                    existence=False, max_attempts=2,
+                                    interval=1, tail=False, n='ALL')
+        self.logger.info('suppress_gpu_discovery check passed')
 
     def test_cgroup_cpuset(self):
         """
@@ -2148,7 +2311,7 @@ if %s e.job.in_ms_mom():
         Test to verify that the job is killed when it tries to
         use more memory then it requested
         """
-        if not self.paths['memory']:
+        if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP5'
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
@@ -2174,13 +2337,13 @@ if %s e.job.in_ms_mom():
         Test to verify that the job is killed when it tries to
         use more vmem then it requested
         """
-        if not self.paths['memory']:
+        if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         # run the test if swap space is available
         if have_swap() == 0:
             self.skipTest('no swap space available on the local host')
         # Get the grandparent directory
-        fn = self.paths['memory']
+        fn = self.paths[self.hosts_list[0]]['memory']
         fn = os.path.join(fn, 'memory.memsw.limit_in_bytes')
         if not self.is_file(fn, self.hosts_list[0]):
             self.skipTest('vmem resource not present on node')
@@ -2217,10 +2380,10 @@ if %s e.job.in_ms_mom():
         verify that the node is offlined when it can't clean up the cgroup
         and brought back online once the cgroup is cleaned up.
         """
-        if 'freezer' not in self.paths:
+        if 'freezer' not in self.paths[self.hosts_list[0]]:
             self.skipTest('Freezer cgroup is not mounted')
         # Get the grandparent directory
-        fdir = self.paths['freezer']
+        fdir = self.paths[self.hosts_list[0]]['freezer']
         if not self.is_dir(fdir, self.hosts_list[0]):
             self.skipTest('Freezer cgroup is not found')
         # Configure the hook
@@ -2484,7 +2647,7 @@ if %s e.job.in_ms_mom():
         mem: 950MB - 900MB = 50MB = 51200KB
         vmem: 1905MB - 1810MB = 95MB = 97280KB
         """
-        if not self.paths['memory']:
+        if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
@@ -2580,7 +2743,7 @@ if %s e.job.in_ms_mom():
         """
         Test that cgroups are created for subjobs like a regular job
         """
-        if not self.paths['memory']:
+        if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP17'
         self.load_config(self.cfg1 % ('', '', '', '', self.mem, self.swapctl))
@@ -2684,7 +2847,7 @@ if %s e.job.in_ms_mom():
                            interval=1, offset=1)
         # verify that cgroup files for this job are gone even if
         # epilogue and periodic events are disabled
-        for subsys, path in self.paths.items():
+        for subsys, path in self.paths[self.hosts_list[0]].items():
             # only check under subsystems that are enabled
             enabled_subsys = ['cpuacct', 'cpuset', 'memory', 'memsw']
             if (any([x in subsys for x in enabled_subsys])):
@@ -2707,7 +2870,7 @@ if %s e.job.in_ms_mom():
         Test to verify that job requesting mem larger than any single vnode
         works properly
         """
-        if not self.paths['memory']:
+        if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
 
         vn_attrs = {ATTR_rescavail + '.ncpus': 1,
@@ -2802,10 +2965,10 @@ if %s e.job.in_ms_mom():
         """
         Confirm that mem_fences affects setting of cpuset.mems
         """
-        if not self.paths['memory']:
+        if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         # Get the grandparent directory
-        cpuset_base = self.paths['cpuset']
+        cpuset_base = self.paths[self.hosts_list[0]]['cpuset']
         cpuset_mems = os.path.join(cpuset_base, 'cpuset.mems')
         result = self.du.cat(hostname=self.hosts_list[0], filename=cpuset_mems,
                              sudo=True)
@@ -2866,7 +3029,7 @@ if %s e.job.in_ms_mom():
         """
         Confirm that mem_hardwall affects setting of cpuset.mem_hardwall
         """
-        if not self.paths['memory']:
+        if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'false', self.mem, self.swapctl))
@@ -2923,7 +3086,7 @@ if %s e.job.in_ms_mom():
         Note: This assumes all GPUs have the same MIG configuration,
         either on or off.
         """
-        if not self.paths['devices']:
+        if not self.paths[self.hosts_list[0]]['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
         self.load_config(self.cfg2)
@@ -2975,7 +3138,7 @@ if %s e.job.in_ms_mom():
         Confirm that mem_spread_page affects setting of
         cpuset.memory_spread_page
         """
-        if not self.paths['memory']:
+        if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'false', self.mem, self.swapctl))
@@ -3028,8 +3191,9 @@ if %s e.job.in_ms_mom():
         now = time.time()
         # Remove PBS directories from memory subsystem
         cpath = None
-        if 'memory' in self.paths and self.paths['memory']:
-            cdir = self.paths['memory']
+        if ('memory' in self.paths[self.hosts_list[0]] and
+                self.paths[self.hosts_list[0]]['memory']):
+            cdir = self.paths[self.hosts_list[0]]['memory']
             cpath = self.find_main_cpath(cdir)
         else:
             self.skipTest(
@@ -3047,8 +3211,9 @@ if %s e.job.in_ms_mom():
         # check where cpath is once more
         # since we loaded a new cgroup config file
         cpath = None
-        if 'memory' in self.paths and self.paths['memory']:
-            cdir = self.paths['memory']
+        if ('memory' in self.paths[self.hosts_list[0]] and
+                self.paths[self.hosts_list[0]]['memory']):
+            cdir = self.paths[self.hosts_list[0]]['memory']
             cpath = self.find_main_cpath(cdir)
         # Verify that memory.use_hierarchy is enabled
         fpath = os.path.join(cpath, "memory.use_hierarchy")
@@ -3479,7 +3644,7 @@ event.accept()
         self.moms_list[2].log_match("Event type is execjob_abort",
                                     starttime=now)
 
-        self.moms_list[1].restart()
+        self.moms_list[1].pi.restart()
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=15)
@@ -4147,7 +4312,7 @@ sleep 300
         still run a basic job, and cleans up cpuset upon qdel.
         """
         # The default hook config has 'memory' subsystem enabled
-        if not self.paths['memory']:
+        if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         self.load_default_config()
         # Reduce the noise in mom_logs for existence=False matching
@@ -4188,9 +4353,9 @@ sleep 300
         self.du.rm(hostname=self.serverA, path=self.tempfile, force=True,
                    recursive=True, sudo=True)
         # Cleanup frozen jobs
-        if 'freezer' in self.paths:
+        if 'freezer' in self.paths[self.hosts_list[0]]:
             self.logger.info('Cleaning up frozen jobs ****')
-            fdir = self.paths['freezer']
+            fdir = self.paths[self.hosts_list[0]]['freezer']
             if os.path.isdir(fdir):
                 self.logger.info('freezer directory present')
                 fpath = os.path.join(fdir, 'PtlPbs')
@@ -4220,9 +4385,10 @@ sleep 300
                          'memory', 'hugetlb', 'perf_event', 'freezer',
                          'blkio', 'pids', 'net_cls', 'net_prio')
         for subsys in cgroup_subsys:
-            if subsys in self.paths and self.paths[subsys]:
+            if (subsys in self.paths[self.hosts_list[0]] and
+                    self.paths[self.hosts_list[0]][subsys]):
                 self.logger.info('Looking for orphaned jobdir in %s' % subsys)
-                cdir = self.paths[subsys]
+                cdir = self.paths[self.hosts_list[0]][subsys]
                 if os.path.isdir(cdir):
                     cpath = self.find_main_cpath(cdir)
                     if cpath is not None and os.path.isdir(cpath):

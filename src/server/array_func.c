@@ -123,7 +123,6 @@ static enum job_atr attrs_to_copy[] = {
 	JOB_ATR_umask,
 	JOB_ATR_cred,
 	JOB_ATR_runcount,
-	JOB_ATR_pset,
 	JOB_ATR_eligible_time,
 	JOB_ATR_sample_starttime,
 	JOB_ATR_executable,
@@ -297,14 +296,13 @@ update_sj_parent(job *parent, job *sj, char *sjid, char oldstate, char newstate)
 			int pe = 0;
 			if (is_jattr_set(parent, JOB_ATR_exit_status))
 				pe = get_jattr_long(parent, JOB_ATR_exit_status);
-			if (pe != 2) {
-				if (e > 0)
-					pe = 1;
-				else if (e < 0)
-					pe = 2;
-				else
-					pe = 0;
-			}
+			if (e > 0)
+				pe = 1;
+			else if (e < 0)
+				pe = 2;
+			else
+				pe = 0;
+
 			set_jattr_l_slim(parent, JOB_ATR_exit_status, pe, SET);
 		}
 		if (is_jattr_set(sj, JOB_ATR_stageout_status)) {
@@ -564,8 +562,8 @@ setup_ajinfo(job *pjob, int mode)
 		return PBSE_BADATVAL;
 
 	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_ALTER)) {
-		if (server.sv_attr[(int) SVR_ATR_maxarraysize].at_flags & ATR_VFLAG_SET)
-			limit = server.sv_attr[(int) SVR_ATR_maxarraysize].at_val.at_long;
+		if (is_sattr_set(SVR_ATR_maxarraysize))
+			limit = get_sattr_long(SVR_ATR_maxarraysize);
 		else
 			limit = PBS_MAX_ARRAY_JOB_DFL; /* default limit 10000 */
 
@@ -705,18 +703,18 @@ fixup_arrayindicies(attribute *pattr, void *pobj, int mode)
 job *
 create_subjob(job *parent, char *newjid, int *rc)
 {
-	pbs_list_head  attrl;
-	int	   i;
-	int	   j;
-	char	  *index;
+	pbs_list_head attrl;
+	int i;
+	int j;
+	char *index;
 	attribute_def *pdef;
 	attribute *ppar;
 	attribute *psub;
-	svrattrl  *psatl;
-	job 	  *subj;
-	long	   eligibletime;
-	long	    time_msec;
-	struct timeval	    tval;
+	svrattrl *psatl;
+	job *subj;
+	long eligibletime;
+	long long time_usec;
+	struct timeval tval;
 	char path[MAXPATHLEN + 1];
 
 	if (newjid == NULL) {
@@ -763,16 +761,15 @@ create_subjob(job *parent, char *newjid, int *rc)
 	CLEAR_HEAD(attrl);
 	for (i = 0; attrs_to_copy[i] != JOB_ATR_LAST; i++) {
 		j    = (int)attrs_to_copy[i];
-		ppar = &parent->ji_wattr[j];
-		psub = &subj->ji_wattr[j];
+		ppar = get_jattr(parent, j);
+		psub = get_jattr(subj, j);
 		pdef = &job_attr_def[j];
 
 		if (pdef->at_encode(ppar, &attrl, pdef->at_name, NULL,
 			ATR_ENCODE_MOM, &psatl) > 0) {
 			for (psatl = (svrattrl *)GET_NEXT(attrl); psatl;
 				psatl = ((svrattrl *)GET_NEXT(psatl->al_link))) {
-				pdef->at_decode(psub, psatl->al_name, psatl->al_resc,
-					psatl->al_value);
+				set_attr_generic(psub, pdef, psatl->al_value, psatl->al_resc, INTERNAL);
 			}
 			/* carry forward the default bit if set */
 			psub->at_flags |= (ppar->at_flags & ATR_VFLAG_DEFLT);
@@ -793,7 +790,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 	/* subjob needs to borrow eligible time from parent job array.
 	 * expecting only to accrue eligible_time and nothing else.
 	 */
-	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (get_sattr_long(SVR_ATR_EligibleTimeEnable) == 1) {
 
 		eligibletime = get_jattr_long(parent, JOB_ATR_eligible_time);
 
@@ -804,9 +801,9 @@ create_subjob(job *parent, char *newjid, int *rc)
 	}
 
 	gettimeofday(&tval, NULL);
-	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
+	time_usec = (tval.tv_sec * 1000000L) + tval.tv_usec;
 	/* set the queue rank attribute */
-	set_jattr_l_slim(subj, JOB_ATR_qrank, time_msec, SET);
+	set_jattr_ll_slim(subj, JOB_ATR_qrank, time_usec, SET);
 	if (svr_enquejob(subj, NULL) != 0) {
 		job_purge(subj);
 		*rc = PBSE_IVALREQ;

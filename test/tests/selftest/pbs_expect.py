@@ -94,8 +94,7 @@ class TestExpect(TestSelf):
         self.server.expect(HOOK, 'alarm', op=UNSET, id=hook_name)
 
         a = {'partition': 'P1',
-             'sched_host': self.server.hostname,
-             'sched_port': '15050'}
+             'sched_host': self.server.hostname}
         self.server.manager(MGR_CMD_CREATE, SCHED,
                             a, id="sc1")
         new_sched_home = os.path.join(self.server.pbs_conf['PBS_HOME'],
@@ -106,7 +105,7 @@ class TestExpect(TestSelf):
         self.server.expect(SCHED, 'sched_priv', op=UNSET, id='sc1')
 
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+        self.mom.create_vnodes(attrib=a, num=2, vname='vn')
         self.server.manager(MGR_CMD_UNSET, VNODE,
                             'resources_available.ncpus', id='vn[1]')
         self.server.expect(VNODE, 'resources_available.ncpus',

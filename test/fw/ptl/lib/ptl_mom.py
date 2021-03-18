@@ -165,7 +165,10 @@ class MoM(PBSService):
         # This is true by default, but can be set to False if
         # required by a test
         self.revert_to_default = True
-        self.sleep_cmd = '/bin/sleep'
+        pbs_conf = self.du.parse_pbs_config()
+        self.sleep_cmd = os.path.join(pbs_conf['PBS_EXEC'], 'bin', 'pbs_sleep')
+        if not os.path.isfile(self.sleep_cmd):
+            self.sleep_cmd = '/bin/sleep'
 
     def create_and_format_stagein_path(self, storage_info={}, asuser=None):
         """

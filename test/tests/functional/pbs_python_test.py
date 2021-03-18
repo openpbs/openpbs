@@ -65,3 +65,35 @@ class Test_pbs_python(TestFunctional):
         rc = self.du.run_cmd(cmd=cmd, sudo=True)
         self.assertTrue('out' in rc)
         self.assertEqual(rc['out'], msg)
+
+    def test_pbs_python_zero_size(self):
+        """
+        This method verifies that there are no shenanigans
+        when using pbs.size('0mb') et al
+        """
+        fn = self.du.create_temp_file(
+            prefix='test_0mb', suffix='.py',
+            body="import pbs\n"
+                 "if pbs.size('10mb') > pbs.size('0mb'):\n"
+                 "    pbs.event().accept()\n"
+                 "else:\n"
+                 "    pbs.event().reject()\n",
+            text=True)
+        self.logger.info("created test python script " + fn)
+        fn2 = self.du.create_temp_file(
+            prefix='dummy',
+            suffix='.in',
+            body="pbs.event().type=exechost_startup\n",
+            text=True)
+        self.logger.info("created dummy input file " + fn2)
+
+        msg = "pbs.event().accept=True"
+        pbs_python = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                  "bin", "pbs_python")
+        cmd = [pbs_python] + ['--hook', '-i', fn2, fn]
+        self.logger.info("running %s" % repr(cmd))
+        rc = self.du.run_cmd(cmd=cmd, sudo=True)
+        self.assertTrue('out' in rc, "command has no output")
+        combined_output = '\n'.join(rc['out'])
+        self.assertTrue(msg in combined_output, "Test hooklet rejected event")
+        self.logger.info("Test hooklet accepted event")

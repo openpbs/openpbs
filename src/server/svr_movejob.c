@@ -165,7 +165,7 @@ svr_movejob(job	*jobp, char *destination, struct batch_request *req)
 	if ((toserver = strchr(destination, '@')) != NULL) {
 		/* check to see if the part after '@' is this server */
 		int comp = -1;
-		comp = comp_svraddr(pbs_server_addr, parse_servername(++toserver, &port));
+		comp = comp_svraddr(pbs_server_addr, parse_servername(++toserver, &port), NULL);
 		if ((comp == 1) ||
 			(port != pbs_server_port_dis)) {
 			return (net_move(jobp, req));	/* not a local dest */
@@ -204,11 +204,11 @@ int
 local_move(job *jobp, struct batch_request *req)
 {
 	pbs_queue *qp;
-	char	  *destination = jobp->ji_qs.ji_destin;
-	int	   mtype;
-	long	newtype = -1;
-	long	time_msec;
-	struct timeval	tval;
+	char *destination = jobp->ji_qs.ji_destin;
+	int mtype;
+	long newtype = -1;
+	long long time_usec;
+	struct timeval tval;
 
 	/* search for destination queue */
 	if ((qp = find_queuebyname(destination)) == NULL) {
@@ -248,9 +248,9 @@ local_move(job *jobp, struct batch_request *req)
 	pbs_strncpy(jobp->ji_qs.ji_queue, qp->qu_qs.qu_name, PBS_MAXQUEUENAME + 1);
 
 	gettimeofday(&tval, NULL);
-	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
+	time_usec = (tval.tv_sec * 1000000L) + tval.tv_usec;
 
-	set_jattr_l_slim(jobp, JOB_ATR_qrank, time_msec, SET);
+	set_jattr_ll_slim(jobp, JOB_ATR_qrank, time_usec, SET);
 
 	if (qp->qu_resvp) {
 		set_jattr_generic(jobp, JOB_ATR_reserve_ID, qp->qu_resvp->ri_qs.ri_resvID, NULL, INTERNAL);
@@ -258,7 +258,7 @@ local_move(job *jobp, struct batch_request *req)
 	} else
 		set_jattr_generic(jobp, JOB_ATR_reserve_ID, NULL, NULL, INTERNAL);
 
-	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (get_sattr_long(SVR_ATR_EligibleTimeEnable) == 1) {
 		newtype = determine_accruetype(jobp);
 		update_eligible_time(newtype, jobp);
 	}
@@ -531,7 +531,6 @@ int
 send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct batch_request *request)
 {
 	pbs_list_head attrl;
-	attribute *pattr;
 	mominfo_t *pmom = NULL;
 	int stream = -1;
 	int encode_type;
@@ -591,14 +590,12 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 		encode_type = ATR_ENCODE_MOM;
 	}
 
-	pattr = jobp->ji_wattr;
 	for (i = 0; i < (int) JOB_ATR_LAST; i++) {
 		if (i == JOB_ATR_server_inst_id)
 			continue;
 		if ((job_attr_def + i)->at_flags & resc_access_perm) {
-			(void)(job_attr_def + i)->at_encode(pattr + i, &attrl,
-				(job_attr_def + i)->at_name, NULL, encode_type,
-				NULL);
+			(void)(job_attr_def + i)->at_encode(get_jattr(jobp, i), &attrl,
+				(job_attr_def + i)->at_name, NULL, encode_type, NULL);
 		}
 	}
 	attrl_fixlink(&attrl);
@@ -762,7 +759,6 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	int encode_type;
 	int i;
 	char job_id[PBS_MAXSVRJOBID + 1];
-	attribute *pattr;
 	pid_t pid;
 	struct attropl *pqjatr; /* list (single) of attropl for quejob */
 	char script_name[MAXPATHLEN + 1];
@@ -878,19 +874,16 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	/* Note: if job is being sent for execution on mom, then don't calc eligible time */
 
 	if ((get_jattr_long(jobp, JOB_ATR_accrue_type) == JOB_ELIGIBLE) &&
-		(server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) &&
+		(get_sattr_long(SVR_ATR_EligibleTimeEnable) == 1) &&
 		(move_type != MOVE_TYPE_Exec)) {
 		tempval = ((long)time_now - get_jattr_long(jobp, JOB_ATR_sample_starttime));
 		set_jattr_l_slim(jobp, JOB_ATR_eligible_time, tempval, INCR);
-		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_MOD_MCACHE;
 	}
 
-	pattr = jobp->ji_wattr;
 	for (i=0; i < (int)JOB_ATR_LAST; i++) {
 		if ((job_attr_def+i)->at_flags & resc_access_perm) {
-			(void)(job_attr_def+i)->at_encode(pattr+i, &attrl,
-				(job_attr_def+i)->at_name, NULL,
-				encode_type, NULL);
+			(void)(job_attr_def+i)->at_encode(get_jattr(jobp, i), &attrl,
+				(job_attr_def+i)->at_name, NULL, encode_type, NULL);
 		}
 	}
 	attrl_fixlink(&attrl);

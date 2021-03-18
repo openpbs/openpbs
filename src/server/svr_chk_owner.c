@@ -151,7 +151,7 @@ svr_chk_owner(struct batch_request *preq, job *pjob)
 	get_jobowner(get_jattr_str(pjob, JOB_ATR_job_owner), owner);
 	pu = site_map_user(owner, get_hostPart(get_jattr_str(pjob, JOB_ATR_job_owner)));
 
-	if (server.sv_attr[(int)SVR_ATR_FlatUID].at_val.at_long) {
+	if (get_sattr_long(SVR_ATR_FlatUID)) {
 		/* with flatuid, all that must match is user names */
 		return (strcmp(rmtuser, pu));
 	} else  {
@@ -260,18 +260,18 @@ svr_get_privilege(char *user, char *host)
 		return (priv | ATR_DFLAG_MGRD | ATR_DFLAG_MGWR | ATR_DFLAG_OPRD | ATR_DFLAG_OPWR);
 #endif	/* PBS_ROOT_ALWAYS_ADMIN */
 
-	if (!(server.sv_attr[(int)SVR_ATR_managers].at_flags & ATR_VFLAG_SET)) {
+	if (!is_sattr_set(SVR_ATR_managers)) {
 		if (is_root)
 			priv |= (ATR_DFLAG_MGRD | ATR_DFLAG_MGWR);
 
-	} else if (acl_check(&server.sv_attr[SVR_ATR_managers], uh, ACL_User))
+	} else if (acl_check(get_sattr(SVR_ATR_managers), uh, ACL_User))
 		priv |= (ATR_DFLAG_MGRD | ATR_DFLAG_MGWR);
 
-	if (!is_attr_set(&server.sv_attr[SVR_ATR_operators])) {
+	if (!is_attr_set(get_sattr(SVR_ATR_operators))) {
 		if (is_root)
 			priv |= (ATR_DFLAG_OPRD | ATR_DFLAG_OPWR);
 
-	} else if (acl_check(&server.sv_attr[SVR_ATR_operators], uh, ACL_User))
+	} else if (acl_check(get_sattr(SVR_ATR_operators), uh, ACL_User))
 		priv |= (ATR_DFLAG_OPRD | ATR_DFLAG_OPWR);
 
 	return (priv);
@@ -307,12 +307,12 @@ authenticate_user(struct batch_request *preq, struct connection *pcred)
 
 	/* If Server's Acl_User enabled, check if user in list */
 
-	if (server.sv_attr[SVR_ATR_AclUserEnabled].at_val.at_long) {
+	if (get_sattr_long(SVR_ATR_AclUserEnabled)) {
 
 		(void)strcpy(uath, preq->rq_user);
 		(void)strcat(uath, "@");
 		(void)strcat(uath, preq->rq_host);
-		if (acl_check(&server.sv_attr[SVR_ATR_AclUsers],
+		if (acl_check(get_sattr(SVR_ATR_AclUsers),
 			uath, ACL_User) == 0) {
 			/* not in list, next check if listed as a manager */
 
@@ -548,8 +548,8 @@ svr_chk_ownerResv(struct batch_request *preq, resc_resv *presv)
 		return (-1);
 	(void)strncpy(rmtuser, pu, PBS_MAXUSER);
 
-	get_jobowner(presv->ri_wattr[(int)RESV_ATR_resv_owner].at_val.at_str, owner);
-	host = get_hostPart(presv->ri_wattr[(int)RESV_ATR_resv_owner].at_val.at_str);
+	get_jobowner(get_rattr_str(presv, RESV_ATR_resv_owner), owner);
+	host = get_hostPart(get_rattr_str(presv, RESV_ATR_resv_owner));
 	pu = site_map_user(owner, host);
 
 	return (strcmp(rmtuser, pu));

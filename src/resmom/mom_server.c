@@ -321,7 +321,6 @@ registermom(int stream, int combine_msg)
 		*   long    - run version (count)
 		*   int     - Node Id  (0 if Mother Superior)
 		*   string  - exec_vnode string
-		*   string  - pset value if set, otherwise null string
 	*/
 
 	if ((ret = diswui(stream, count)) != DIS_SUCCESS)
@@ -349,10 +348,7 @@ registermom(int stream, int combine_msg)
 			goto err;
 		if ((ret = diswst(stream, get_jattr_str(pjob, JOB_ATR_exec_vnode))) != DIS_SUCCESS)
 			goto err;
-		if (is_jattr_set(pjob, JOB_ATR_pset))
-			ret = diswst(stream, get_jattr_str(pjob, JOB_ATR_pset));
-		else
-			ret = diswst(stream, ""); /* send null string */
+
 		if (ret != DIS_SUCCESS)
 			goto err;
 	}

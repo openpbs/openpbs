@@ -186,7 +186,6 @@ extern "C" {
 #define ATTR_run_version	"run_version"
 #define ATTR_stime	"stime"
 #define ATTR_endtime	"endtime"
-#define ATTR_pset	"pset"
 #define ATTR_executable		"executable"
 #define ATTR_Arglist		"argument_list"
 #define	ATTR_version	"pbs_version"
@@ -465,6 +464,7 @@ enum mgr_obj {
 #ifndef MAXNAMLEN
 #define MAXNAMLEN		255
 #endif
+#define MSVR_JID_NCHARS_SVR	2	/* No. of chars reserved for svr instance in job ids for multi-server */
 #define PBS_MAXSCHEDNAME 	15
 #define PBS_MAXUSER		256		/* max user name length */
 #define PBS_MAXPWLEN		256		/* max password length */
@@ -476,7 +476,7 @@ enum mgr_obj {
 #define PBS_MAXSEQNUM		12		/* max sequence number length */
 #define PBS_DFLT_MAX_JOB_SEQUENCE_ID 9999999	/* default value of max_job_sequence_id server attribute */
 #define PBS_MAXPORTNUM	5		/* udp/tcp port numbers max=16 bits */
-#define PBS_MAXSVRJOBID	(PBS_MAXSEQNUM - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2) /* server job id size, -1 to keep same length when made SEQ 7 */
+#define PBS_MAXSVRJOBID	(PBS_MAXSEQNUM + MSVR_JID_NCHARS_SVR - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2) /* server job id size, -1 to keep same length when made SEQ 7 */
 #define PBS_MAXSVRRESVID	(PBS_MAXSVRJOBID + 1)
 #define PBS_MAXQRESVNAME	(PBS_MAXQUEUENAME)
 #define PBS_MAXCLTJOBID		(PBS_MAXSVRJOBID + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2) /* client job id size */

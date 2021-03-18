@@ -40,6 +40,8 @@
 #ifndef	_FIFO_H
 #define	_FIFO_H
 
+#include <string>
+
 #include  <limits.h>
 #include "data_types.h"
 #include "sched_cmds.h"
@@ -112,11 +114,6 @@ int init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo);
  */
 
 resource_resv *next_job(status *policy, server_info *sinfo, int flag);
-
-/*
- *      update_last_running - update the last_running job array
- */
-int update_last_running(server_info *sinfo);
 
 /*
  *      find_runnable_job_ind - find the index of the next runnable job in a job array
@@ -254,9 +251,7 @@ int set_validate_sched_attrs(int);
 
 int validate_running_user(char *exename);
 
-void clear_last_running();
-
-int send_run_job(int virtual_sd, int has_runjob_hook, char *jobid, char *execvnode,
+int send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char *execvnode,
 		 char *svr_id_node, char *svr_id_job);
 
 #endif	/* _FIFO_H */

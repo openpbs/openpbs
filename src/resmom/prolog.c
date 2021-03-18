@@ -97,12 +97,11 @@ resc_to_string(job *pjob, int attr_idx, char *buf, int buflen)
 	int       need;
 	svrattrl *patlist;
 	pbs_list_head svlist;
-	attribute *pattr = &pjob->ji_wattr[attr_idx];
 
 	CLEAR_HEAD(svlist);
 	*buf = '\0';
 
-	if (encode_resc(pattr, &svlist, "x", NULL, ATR_ENCODE_CLIENT, NULL) <=0)
+	if (encode_resc(get_jattr(pjob, attr_idx), &svlist, "x", NULL, ATR_ENCODE_CLIENT, NULL) <=0)
 		return (buf);
 
 	patlist = (svrattrl *)GET_NEXT(svlist);

@@ -1098,6 +1098,14 @@ class PBSService(PBSObject):
             infomsg += ' - with existence'
         else:
             infomsg += ' - with non-existence'
+        if starttime:
+            starttimestr = time.strftime(
+                "%Y/%m/%d %H:%M:%S", time.localtime(starttime))
+            infomsg += " - from %s" % starttimestr
+        if endtime:
+            endtimestr = time.strftime(
+                "%Y/%m/%d %H:%M:%S", time.localtime(endtime))
+            infomsg += " - to %s" % endtimestr
         attemptmsg = ' - No match'
         while attempt <= max_attempts:
             if attempt > 1:

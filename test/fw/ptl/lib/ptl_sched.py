@@ -802,6 +802,17 @@ class Scheduler(PBSService):
                          str(filename))
         self.dedicated_time_file = filename
 
+    def revert_fairshare(self):
+        """
+        Helper method to revert scheduler's fairshare tree.
+        """
+        cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
+        if self.sc_name is not 'default':
+            cmd += ['-I', self.sc_name]
+        self.du.run_cmd(cmd=cmd, runas=self.user)
+        self.fairshare_tree = None
+        self.resource_group = None
+
     def revert_to_defaults(self):
         """
         Revert scheduler configuration to defaults.
@@ -840,17 +851,12 @@ class Scheduler(PBSService):
                              uid=self.user)
 
         self.signal('-HUP')
-        # Revert fairshare usage
-        cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
-        if self.sc_name is not 'default':
-            cmd += ['-I', self.sc_name]
-        self.du.run_cmd(cmd=cmd, runas=self.user)
-        self.parse_sched_config()
         if self.platform == 'cray' or self.platform == 'craysim':
             self.add_resource('vntype')
             self.add_resource('hbmem')
-        self.fairshare_tree = None
-        self.resource_group = None
+        # Revert fairshare usage
+        self.revert_fairshare()
+        self.parse_sched_config()
         return self.isUp()
 
     def create_scheduler(self, sched_home=None):

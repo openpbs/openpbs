@@ -76,7 +76,6 @@ libpbs_la_SOURCES = \
 	../Libattr/attr_func.c \
 	../Libattr/attr_resc_func.c \
 	../Libattr/Long_.c \
-	../Libattr/LTostr.c \
 	../Libattr/resc_map.c \
 	../Libattr/uLTostr.c \
 	../Libattr/strToL.c \

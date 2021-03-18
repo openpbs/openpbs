@@ -250,6 +250,7 @@ typedef struct pbs_db_query_options pbs_db_query_options_t;
 #define PBS_DB_NOMEM		4
 #define PBS_DB_STILL_STARTING	5
 #define PBS_DB_ERR		6
+#define PBS_DB_OOM_ERR		7
 
 /* Database connection states */
 #define PBS_DB_CONNECT_STATE_NOT_CONNECTED	1

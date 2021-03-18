@@ -51,31 +51,23 @@
 #include "dis.h"
 #include "pbs_ecl.h"
 
-
 /**
- * @brief
- *      This function does the LocateJob request.
+ * @brief	Helper function for __pbs_locjob, sends the locjob request using a real sd
  *
  * @param[in] c - connection handler
  * @param[in] jobid - job identifier
  * @param[in] extend - string to encode req
  *
- * @return      string
- * @retval      destination name	success
- * @retval      NULL      		error
- *
+ * @return	string
+ * @retval	destination name	success
+ * @retval	NULL	error
  */
 char *
-__pbs_locjob(int c, char *jobid, char *extend)
+pbs_locjob2(int c, char *jobid, char *extend)
 {
-	int	rc;
+	int rc;
 	struct batch_reply *reply;
-	char       *ploc = NULL;
-
-	if ((jobid == NULL) || (*jobid == '\0')) {
-		pbs_errno = PBSE_IVALREQ;
-		return (ploc);
-	}
+	char *ploc = NULL;
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -133,4 +125,48 @@ __pbs_locjob(int c, char *jobid, char *extend)
 		return NULL;
 
 	return ploc;
+}
+
+/**
+ * @brief
+ *      This function does the LocateJob request.
+ *
+ * @param[in] c - connection handler
+ * @param[in] jobid - job identifier
+ * @param[in] extend - string to encode req
+ *
+ * @return	string
+ * @retval	destination name	success
+ * @retval	NULL	error
+ */
+char *
+__pbs_locjob(int c, char *jobid, char *extend)
+{
+	if ((jobid == NULL) || (*jobid == '\0')) {
+		pbs_errno = PBSE_IVALREQ;
+		return NULL;
+	}
+
+	if (multi_svr_op(c)) {
+		svr_conn_t **svr_conns = get_conn_svr_instances(c);
+		int start = 0;
+		int ct;
+		int nsvrs = get_num_servers();
+		char *ret = NULL;
+		int i;
+
+		if ((start = get_obj_location_hint(jobid, MGR_OBJ_JOB)) == -1)
+		    start = 0;
+
+		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
+				continue;
+			ret = pbs_locjob2(svr_conns[i]->sd, jobid, extend);
+			if (ret)
+				break;
+		}
+		return ret;
+	} else
+		return pbs_locjob2(c, jobid, extend);
+
 }

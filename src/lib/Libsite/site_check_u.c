@@ -107,7 +107,7 @@ site_check_user_map(void *pobj, int objtype, char *luser)
 		event_type = PBSEVENT_JOB;
 		event_class = PBS_EVENTCLASS_JOB;
 	} else {
-		p1 = ((resc_resv *)pobj)->ri_wattr[RESV_ATR_resv_owner].at_val.at_str;
+		p1 = get_rattr_str(pobj, RESV_ATR_resv_owner);
 		objid = ((resc_resv *)pobj)->ri_qs.ri_resvID;
 		event_type = PBSEVENT_JOB;
 		event_class = PBS_EVENTCLASS_JOB;

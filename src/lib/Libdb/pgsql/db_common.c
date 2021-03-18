@@ -157,7 +157,7 @@ pg_db_fn_t db_fn_arr[PBS_DB_NUM_TYPES] = {
  *	Initialize a query state variable, before being used in a cursor
  *
  * @param[in]	conn - Database connection handle
- * @param[in]	query_cb - Object handler query back function 
+ * @param[in]	query_cb - Object handler query back function
  *
  * @return	void *
  * @retval	NULL - Failure to allocate memory
@@ -445,7 +445,10 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 	}
 
 	if (!(strcmp(cmd, PBS_DB_CONTROL_START))) {
-		/* Protect self from Linux OOM killer */
+		/*
+		 * try protect self from Linux OOM killer
+		 * but don't fail if can't update OOM score
+		 */
 		if (access(oom_score_adj, F_OK) != -1) {
 			strcpy(oom_file, oom_score_adj);
 			oom_val = strdup("-1000");
@@ -454,20 +457,13 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 			oom_val = strdup("-17");
 		}
 		if (oom_val != NULL) {
-			if ((fd = open(oom_file, O_TRUNC | O_WRONLY, 0600)) == -1) {
-				if (errmsg_cache)
-					free(errmsg_cache);
-				errmsg_cache = strdup("OOM protect: file open failed");
-				return -1;
-			}
-			if (write(fd, oom_val, strlen(oom_val)) == -1) {
-				if (errmsg_cache)
-					free(errmsg_cache);
-				errmsg_cache = strdup("OOM protect: file write failed");
-				return -1;
-			}
+			if ((fd = open(oom_file, O_TRUNC | O_WRONLY, 0600)) != -1) {
+				if (write(fd, oom_val, strlen(oom_val)) == -1)
+					ret = PBS_DB_OOM_ERR;
+				close(fd);
+			} else
+				ret = PBS_DB_OOM_ERR;
 			free(oom_val);
-			close(fd);
 		}
 		sprintf(errfile, "%s/spool/pbs_ds_monitor_errfile", pbs_conf.pbs_home_path);
 		/* launch monitoring program which will fork to background */
@@ -840,7 +836,7 @@ db_cnerr:
 	if (failcode != PBS_DB_SUCCESS) {
 		free(conn_data);
 		free(conn_trx);
-		*db_conn = NULL;		
+		*db_conn = NULL;
 	}
 	return failcode;
 }
@@ -1355,6 +1351,10 @@ pbs_db_get_errmsg(int err_code, char **err_msg)
 
 	case PBS_DB_CONNFAILED:
 		*err_msg = strdup("Failed to connect to PBS dataservice");
+		break;
+
+	case PBS_DB_OOM_ERR:
+		*err_msg = strdup("Failed to protect PBS from Linux OOM killer. No access to OOM score file.");
 		break;
 
 	case PBS_DB_ERR:

@@ -188,6 +188,7 @@ compare_short_hostname(char *shost, char *lhost)
  *
  * @param[in] svr_addr - net address of the server
  * @param[in] hostname - hostname whose internet addr needs to be compared
+ * @param[out] addr - one of the address associated with hostname is returned in this argument
  *
  * @return	int
  * @retval	0 address found
@@ -196,7 +197,7 @@ compare_short_hostname(char *shost, char *lhost)
  *
  */
 int
-comp_svraddr(pbs_net_t svr_addr, char *hostname)
+comp_svraddr(pbs_net_t svr_addr, char *hostname, pbs_net_t *addr)
 {
 	struct addrinfo *aip, *pai;
 	struct addrinfo hints;
@@ -206,6 +207,8 @@ comp_svraddr(pbs_net_t svr_addr, char *hostname)
 	if ((hostname == NULL) || (*hostname == '\0')) {
 		return (2);
 	}
+	if (addr)
+		*addr = 0;
 
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = AF_UNSPEC;
@@ -219,6 +222,8 @@ comp_svraddr(pbs_net_t svr_addr, char *hostname)
 		if (aip->ai_family == AF_INET) {
 			inp = (struct sockaddr_in *) aip->ai_addr;
 			res = ntohl(inp->sin_addr.s_addr);
+			if (addr && *addr == 0)
+				*addr = res;
 			if (res == svr_addr) {
 				freeaddrinfo(pai);
 				return 0;

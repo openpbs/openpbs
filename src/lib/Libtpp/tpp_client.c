@@ -107,6 +107,9 @@
  */
 int		tpp_fd = -1;
 
+ /* whether a forked child called tpp_terminate or not? initialized to false */
+int tpp_terminated_in_child = 0;
+
 /*
  * app_mbox is the "monitoring mechanism" for the application
  * send notifications to the application about incoming data
