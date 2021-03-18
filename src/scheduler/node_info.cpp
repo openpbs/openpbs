@@ -4293,7 +4293,7 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 	char *excvndup;
 	char *node_name;
 	int num_el;
-	struct key_value_pair *kv;
+	struct key_value_pair *kv = NULL;
 
 	nspec **nspec_arr;
 	node_info *ninfo;
