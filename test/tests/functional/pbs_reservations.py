@@ -1424,7 +1424,8 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q'}, id=subjid2[0])
         # Wait for job array j2 to finish and verify all sub-job
         # from j3 start running
-        self.server.expect(JOB, {'job_state': 'B'}, jid3, offset=30, interval=5)
+        self.server.expect(JOB, {'job_state': 'B'}, jid3, offset=30,
+                           interval=5, max_attempts=30)
         self.server.expect(JOB, {'job_state=R': 4}, count=True,
                            id=jid3, extend='t')
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
