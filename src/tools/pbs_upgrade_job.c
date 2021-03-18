@@ -298,7 +298,7 @@ convert_pre18_to_19(jobfix_PRE19 old_jobfix_pre19)
 
 	/* Copy the data to the new jobfix structure */
 	memset(&jobfix_19_20, 0, sizeof(jobfix_19_20));
-	memcpy(&jobfix_19_20, &old_jobfix_pre19, sizeof(old_jobfix_pre19));
+	memcpy(&jobfix_19_20, &old_jobfix_pre19, sizeof(jobfix_19_20));
 	snprintf(jobfix_19_20.ji_jobid, sizeof(jobfix_19_20.ji_jobid),
 			"%s", old_jobfix_pre19.ji_jobid);
 	snprintf(jobfix_19_20.ji_fileprefix, sizeof(jobfix_19_20.ji_fileprefix),
@@ -326,7 +326,7 @@ convert_19_to_21(jobfix_19_20 jobfix_19_20)
 {
 	struct jobfix jf;
 
-	jf.ji_jsversion = jobfix_19_20.ji_jsversion;
+	jf.ji_jsversion = JSVERSION;
 	jf.ji_svrflags = jobfix_19_20.ji_svrflags;
 	jf.ji_stime = jobfix_19_20.ji_stime;
 	snprintf(jf.ji_jobid, sizeof(jf.ji_jobid), "%s", jobfix_19_20.ji_jobid);
