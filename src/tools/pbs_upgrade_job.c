@@ -755,7 +755,6 @@ main(int argc, char *argv[])
 	if (!dir) {
 		fprintf(stderr, "Failed to open the task directory [%s]\n",
 				errno ? strerror(errno) : "No error");
-		closedir(dir);
 		return 1;
 	}
 	errno = 0;
