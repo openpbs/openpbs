@@ -136,6 +136,30 @@ typedef struct jobfix_19_20 {
 	} ji_un;
 } jobfix_19_20;
 
+union jobextend_19_20 {
+	char fill[256]; /* fill to keep same size */
+	struct {
+#if defined(__sgi)
+		jid_t ji_jid;
+		ash_t ji_ash;
+#else
+		char ji_4jid[8];
+		char ji_4ash[8];
+#endif /* sgi */
+		int ji_credtype;
+#ifdef PBS_MOM
+		tm_host_id ji_nodeidx; /* my node id */
+		tm_task_id ji_taskidx; /* generate task id's for job */
+#if MOM_ALPS
+		long ji_reservation;
+		/* ALPS reservation identifier */
+		unsigned long long ji_pagg;
+		/* ALPS process aggregate ID */
+#endif /* MOM_ALPS */
+#endif /* PBS_MOM */
+	} ji_ext;
+};
+
 /*
  * Replicate the jobfix and taskfix structures as they were defined in 13.x to pre 19.x versions.
  * Use the macros defined above for convenience.
@@ -326,6 +350,7 @@ convert_19_to_21(jobfix_19_20 jobfix_19_20)
 {
 	struct jobfix jf;
 
+	memset(&jf, 0, sizeof(jf));
 	jf.ji_jsversion = JSVERSION;
 	jf.ji_svrflags = jobfix_19_20.ji_svrflags;
 	jf.ji_stime = jobfix_19_20.ji_stime;
@@ -339,6 +364,26 @@ convert_19_to_21(jobfix_19_20 jobfix_19_20)
 	return jf;
 }
 
+union jobextend
+convert_19ext_to_21(union jobextend_19_20 old_extend)
+{
+	union jobextend je;
+
+	memset(&je, 0, sizeof(je));
+	snprintf(je.fill, sizeof(je.fill), old_extend.fill);
+	snprintf(je.ji_ext.ji_jid, sizeof(je.ji_ext.ji_jid), old_extend.ji_ext.ji_4jid);
+	je.ji_ext.ji_credtype = old_extend.ji_ext.ji_credtype;
+#ifdef PBS_MOM
+	je.ji_ext.ji_nodeidx = old_extend.ji_ext.ji_nodeidx;
+	je.ji_ext.ji_taskidx = old_extend.ji_ext.ji_taskidx;
+#if MOM_ALPS
+	je.ji_ext.ji_reservation = old_extend.ji_ext.ji_reservation;
+	je.ji_ext.ji_pagg = old_extend.ji_ext.ji_pagg;
+#endif
+#endif
+
+	return je;
+}
 
 /**
  * @brief
@@ -358,6 +403,7 @@ upgrade_job_file(int fd, int ver)
 	int tmpfd = -1;
 	jobfix_19_20 qs_19_20;
 	jobfix_PRE19 old_jobfix_pre19;
+	union jobextend_19_20 old_ji_extended;
 	int ret;
 	off_t pos;
 	job new_job;
@@ -398,6 +444,19 @@ upgrade_job_file(int fd, int ver)
 	memset(&new_job, 0, sizeof(new_job));
 	new_job.ji_qs = convert_19_to_21(qs_19_20);
 
+	/* Convert old extended data to new */
+	memset(&old_ji_extended, 0, sizeof(old_ji_extended));
+	len = read(fd, (char *)&old_ji_extended, sizeof(union jobextend_19_20));
+	if (len < 0) {
+		fprintf(stderr, "Failed to read input file [%s]\n", errno ? strerror(errno) : "No error");
+		return 1;
+	}
+	if (len != sizeof(union jobextend_19_20)) {
+		fprintf(stderr, "Format not recognized, not enough extended data.\n");
+		return 1;
+	}
+	new_job.ji_extended = convert_19ext_to_21(old_ji_extended);
+
 	/* Open a temporary file to stage data */
 	tmp = tmpfile();
 	if (!tmp) {
@@ -416,6 +475,14 @@ upgrade_job_file(int fd, int ver)
 	len = write(tmpfd, &new_job.ji_qs, sizeof(new_job.ji_qs));
 	if (len != sizeof(new_job.ji_qs)) {
 		fprintf(stderr, "Failed to write jobfix to output file [%s]\n",
+				errno ? strerror(errno) : "No error");
+		return 1;
+	}
+
+	/* Write the new extend structure to the output file */
+	len = write(tmpfd, &new_job.ji_extended, sizeof(new_job.ji_extended));
+	if (len != sizeof(new_job.ji_extended)) {
+		fprintf(stderr, "Failed to write job extend data to output file [%s]\n",
 				errno ? strerror(errno) : "No error");
 		return 1;
 	}
