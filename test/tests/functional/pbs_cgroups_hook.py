@@ -4552,7 +4552,7 @@ sleep 300
 
     def test_cgroup_cgswap(self, vnode_per_numa_node=False):
         """
-        Test to verify (with vnode_per_numa_node enabled):
+        Test to verify (with vnode_per_numa_node disabled by default):
         - whether queuejob/modifyjob set cgswap to vmem-mem in jobs
         - whether nodes get resources_available.cgswap filled in
         - whether a collection of jobs submitted that do not exceed available
@@ -4888,7 +4888,7 @@ sleep 300
         enforce neither mem nor memsw by enabling flags to ignore
         enforcement for exclhost jobs and submitting an exclhost job:
         job should be able to consume all physical memory
-        fand memsw set as limit for all jobs
+        and memsw set as limit for all jobs
         """
         # enforce flags should both be overrided by exclhost
         self.test_cgroup_enforce_default(enforce_flags=('true', 'true'),
