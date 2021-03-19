@@ -2014,7 +2014,7 @@ if %s e.job.in_ms_mom():
         # Allow some time to pass for values to be updated
         # sleep 2s: make sure no old log lines will match 'begin' time
         time.sleep(2)
-        begin = time.time()
+        begin = int(time.time())
         # sleep 2s to allow for small time differences and rounding errors
         time.sleep(2)
 
