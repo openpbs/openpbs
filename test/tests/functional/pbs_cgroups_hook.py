@@ -1276,7 +1276,8 @@ sleep 300
             "exclude_vntypes"    : [],
             "mem_fences"         : true,
             "mem_hardwall"       : false,
-            "memory_spread_page" : false
+            "memory_spread_page" : false,
+            "allow_zero_cpus"    : true
         },
         "devices" : {
             "enabled"            : true,
@@ -4489,6 +4490,13 @@ sleep 300
         self.assertFalse(self.is_dir(ehjd1, ehost1), "job cpuset dir found")
 
     def test_cgroup_cgswap(self, vnode_per_numa_node=False):
+        """
+        Test to verify (with vnode_per_numa_node enabled):
+        - whether queuejob/modifyjob set cgswap to vmem-mem in jobs
+        - whether nodes get resources_available.cgswap filled in
+        - whether a collection of jobs submitted that do not exceed available
+          vmem but would deplete cgswap are indeed not all run simultaneously
+        """
         if not self.mem:
             self.skipTest('Test requires memory subystem mounted')
         if not self.swapctl:
@@ -4539,18 +4547,20 @@ sleep 300
             self.logger.info('First Mom has no swap, test will just '
                              'check if job cgswap is added')
             a = {'Resource_List.select':
-                 '1:ncpus=1:mem=100mb:vmem=1100mb:vnode=%s'
+                 '1:ncpus=0:mem=100mb:vmem=1100mb:vnode=%s'
                  % vnode_name}
 
             j = Job(TEST_USER, attrs=a)
             j.create_script(self.sleep30_job)
             jid = self.server.submit(j)
-            # give the scheduler time to schedule, but job should not run
-            a = {'job_state': 'Q'}
-            self.server.expect(JOB, a, jid, offset=5)
+
+            # scheduler sets comment when the job cannot run,
+            # server sets comment when the job runs
+            # in both cases the comment gets set
+            self.server.expect(JOB, 'comment', op=SET)
+            job_status = self.server.status(JOB, id=jid)
 
             cgswap = None
-            job_status = self.server.status(JOB, id=jid)
             select_resource = job_status[0]['Resource_List.select']
             chunkspecs = select_resource.split(':')
             for c in chunkspecs:
@@ -4564,6 +4574,16 @@ sleep 300
                             % str(cgswap))
             self.logger.info('job cgswap detected to be correct, roughly %s'
                              % str(cgswap))
+
+            # check that indeed you cannot run the job since it requests
+            # swap usage and there is none
+            job_comment = job_status[0]['comment']
+            self.assertTrue('Insufficient amount of resource: cgswap'
+                            in job_comment,
+                            'Job comment should indicate insufficient cgswap '
+                            'but is: %s' % job_comment)
+            self.logger.info('job comment as expected: %s' % job_comment)
+
         else:
             self.logger.info('First MoM has swap, confirming cgswap '
                              'correctly throttles jobs accepted')
@@ -4577,7 +4597,7 @@ sleep 300
             self.logger.info('will submit jobs with 100mb mem and %s vmem'
                              % vmemreq)
             a = {'Resource_List.select':
-                 '1:ncpus=1:mem=100mb:vmem=%s:vnode=%s'
+                 '1:ncpus=0:mem=100mb:vmem=%s:vnode=%s'
                  % (vmemreq, vnode_name)}
 
             j = Job(TEST_USER, attrs=a)
@@ -4606,16 +4626,41 @@ sleep 300
             jid = self.server.submit(j)
 
             # Second job should not run - not enough cgswap
-            # offset large enough to give scheduler a chance
-            bs2 = {'job_state': 'Q'}
-            self.server.expect(JOB, bs2, jid, offset=20, max_attempts=1)
+            # scheduler sets comment when the job cannot run,
+            # server sets comment when the job runs
+            # in both cases the comment gets set
+            self.server.expect(JOB, 'comment', op=SET)
+            job_status = self.server.status(JOB, id=jid)
+
+            # check that indeed you cannot run the job since it requests
+            # too much swap usage while the first job runs
+            job_comment = job_status[0]['comment']
+            self.assertTrue('Insufficient amount of resource: cgswap'
+                            in job_comment,
+                            'Job comment should indicate insufficient cgswap '
+                            'but is: %s' % job_comment)
+            self.logger.info('job comment as expected: %s' % job_comment)
 
     def test_cgroup_cgswap_numa(self):
+        """
+        Test to verify (with vnode_per_numa_node enabled):
+        - whether queuejob/modifyjob set cgswap to vmem-mem in jobs
+        - whether nodes get resources_available.cgswap filled in
+        - whether a collection of jobs submitted that do not exceed available
+          vmem but would deplete cgswap are indeed not all run simultaneously
+        """
         self.test_cgroup_cgswap(vnode_per_numa_node=True)
 
     def test_cgroup_enforce_default(self,
                                     enforce_flags=('true', 'true'),
                                     exclhost=False):
+        """
+        Test to verify if the flags to enforce default mem are working
+        and to ensure mem and memsw limits are set as expected;
+        default is to enforce both mem and memsw defaults:
+        job should get small mem limit and larger memsw limit
+        if there is swap.
+        """
         if not self.mem:
             self.skipTest('Test requires memory subystem mounted')
         if not self.swapctl:
@@ -4756,12 +4801,34 @@ sleep 300
                 self.logger.info("no swap: job memsw limit is job mem limit")
 
     def test_cgroup_enforce_default_tf(self):
+        """
+        Test to verify if the flags to enforce default mem are working
+        and to ensure mem and memsw limits are set as expected;
+        enforce mem but not memsw:
+        job should get small mem limit memsw should be unlimited
+        (i.e. able to consume memsw set as limit for all jobs)
+        """
         self.test_cgroup_enforce_default(enforce_flags=('true', 'false'))
 
     def test_cgroup_enforce_default_ft(self):
+        """
+        Test to verify if the flags to enforce default mem are working
+        and to ensure mem and memsw limits are set as expected;
+        enforce memsw but not mem:
+        job should be able to consume all physical memory
+        set as limit for all jobs but only a small amount of additional swap
+        """
         self.test_cgroup_enforce_default(enforce_flags=('false', 'true'))
 
     def test_cgroup_enforce_default_exclhost(self):
+        """
+        Test to verify if the flags to enforce default mem are working
+        and to ensure mem and memsw limits are set as expected;
+        enforce neither mem nor memsw by enabling flags to ignore
+        enforcement for exclhost jobs and submitting an exclhost job:
+        job should be able to consume all physical memory
+        fand memsw set as limit for all jobs
+        """
         # enforce flags should both be overrided by exclhost
         self.test_cgroup_enforce_default(enforce_flags=('true', 'true'),
                                          exclhost=True)
