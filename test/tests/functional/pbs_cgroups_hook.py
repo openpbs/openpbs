@@ -3536,7 +3536,7 @@ event.accept()
             "handling exechost_periodic event: TypeError"
         self.moms_list[0].log_match(err_msg, max_attempts=3,
                                     interval=1, n='ALL',
-                                    starrtime=presubmit,
+                                    starttime=presubmit,
                                     existence=False)
         self.server.log_match(jid2 + ';Exit_status=0', n='ALL',
                               starttime=presubmit)
