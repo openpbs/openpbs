@@ -1668,7 +1668,8 @@ if %s e.job.in_ms_mom():
             self.moms_list[0].log_match('pbs_cgroups.CF;'
                                         'copy hook-related '
                                         'file request received',
-                                        starttime=just_before_import)
+                                        starttime=just_before_import,
+                                        n='ALL')
         pbs_home = self.server.pbs_conf['PBS_HOME']
         svr_conf = os.path.join(
             os.sep, pbs_home, 'server_priv', 'hooks', 'pbs_cgroups.CF')
@@ -1691,7 +1692,8 @@ if %s e.job.in_ms_mom():
                     self.moms_list[0].log_match('pbs_cgroups.CF;'
                                                 'copy hook-related '
                                                 'file request received',
-                                                starttime=just_before_import)
+                                                starttime=just_before_import,
+                                                n='ALL')
                 else:
                     self.logger.info('server & mom pbs_cgroups.CF match')
                     break
@@ -1724,7 +1726,7 @@ if %s e.job.in_ms_mom():
             return
         self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
                                     'file request received',
-                                    starttime=now)
+                                    starttime=now, n='ALL')
 
     def set_vntype(self, host, typestring='myvntype'):
         """
@@ -1844,6 +1846,9 @@ if %s e.job.in_ms_mom():
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        stime=int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -1858,7 +1863,7 @@ if %s e.job.in_ms_mom():
             "%s is in the excluded vnode type list: ['%s']"
             % (self.vntypename[0],
                self.vntypename[0]),
-            starttime=self.server.ctime)
+            starttime=stime, n='ALL')
         self.logger.info('vntypes on both hosts are: %s and %s'
                          % (self.vntypename[0], self.vntypename[1]))
         if self.vntypename[1] == self.vntypename[0]:
@@ -1894,6 +1899,9 @@ if %s e.job.in_ms_mom():
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        stime=int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -1904,7 +1912,8 @@ if %s e.job.in_ms_mom():
         self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))
         host = self.get_hostname(self.hosts_list[0])
         self.moms_list[0].log_match('%s is in the excluded host list: [%s]' %
-                                    (host, log), starttime=self.server.ctime)
+                                    (host, log), starttime=stime,
+                                    n='ALL')
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1939,6 +1948,9 @@ if %s e.job.in_ms_mom():
              % self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        stime=int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -1947,7 +1959,7 @@ if %s e.job.in_ms_mom():
         self.tempfile.append(o)
         self.moms_list[0].log_match('cgroup excluded for subsystem memory '
                                     'on vnode type %s' % self.vntypename[0],
-                                    starttime=self.server.ctime)
+                                    starttime=stime, n='ALL')
         self.logger.info('vntype values for each hosts are: %s and %s'
                          % (self.vntypename[0], self.vntypename[1]))
         if self.vntypename[0] == self.vntypename[1]:
@@ -1984,6 +1996,9 @@ if %s e.job.in_ms_mom():
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job3)
+        time.sleep(2)
+        stime=int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2009,7 +2024,8 @@ if %s e.job.in_ms_mom():
         err_msg = "Unexpected error in pbs_cgroups " + \
             "handling exechost_periodic event: TypeError"
         self.moms_list[0].log_match(err_msg, max_attempts=3,
-                                    interval=1, n=100, existence=False)
+                                    interval=1, n='ALL', 
+                                    starttime=stime, existence=False)
 
         # Allow some time to pass for values to be updated
         # sleep 2s: make sure no old log lines will match 'begin' time
@@ -2030,7 +2046,7 @@ if %s e.job.in_ms_mom():
             if self.paths[self.hosts_list[0]]['cpuacct'] and cput_usage <= 1.0:
                 lines = self.moms_list[0].log_match(
                     '%s;update_job_usage: CPU usage:' %
-                    jid, allmatch=True, starttime=begin)
+                    jid, allmatch=True, starttime=begin, n='ALL')
                 for line in lines:
                     match = re.search(r'CPU usage: ([0-9.]+) secs', line[1])
                     if not match:
@@ -2042,7 +2058,7 @@ if %s e.job.in_ms_mom():
                     mem_usage <= 400000):
                 lines = self.moms_list[0].log_match(
                     '%s;update_job_usage: Memory usage: mem=' % jid,
-                    allmatch=True, starttime=begin)
+                    allmatch=True, starttime=begin, n='ALL')
                 for line in lines:
                     match = re.search(r'mem=(\d+)kb', line[1])
                     if not match:
@@ -2053,7 +2069,7 @@ if %s e.job.in_ms_mom():
                 if self.swapctl == 'true' and vmem_usage <= 400000:
                     lines = self.moms_list[0].log_match(
                         '%s;update_job_usage: Memory usage: vmem=' % jid,
-                        allmatch=True, starttime=begin)
+                        allmatch=True, starttime=begin, n='ALL')
                     for line in lines:
                         match = re.search(r'vmem=(\d+)kb', line[1])
                         if not match:
@@ -2236,7 +2252,7 @@ if %s e.job.in_ms_mom():
         self.moms_list[0].log_match('Hook handler returned success'
                                     ' for exechost_startup',
                                     starttime=begin, existence=True,
-                                    interval=1, tail=False)
+                                    interval=1, n='ALL')
 
         # These will throw an exception if the routines that should not
         # have been called were called.
@@ -2244,10 +2260,10 @@ if %s e.job.in_ms_mom():
         # that 50 lines will not suffice
         self.moms_list[0].log_match('_discover_devices', starttime=begin,
                                     existence=True, max_attempts=2,
-                                    interval=1, tail=False, n='ALL')
+                                    interval=1, n='ALL')
         self.moms_list[0].log_match('NVIDIA SMI', starttime=begin,
                                     existence=True, max_attempts=2,
-                                    interval=1, tail=False, n='ALL')
+                                    interval=1, n='ALL')
         self.logger.info('devices_and_gpu_discovery check passed')
 
     def test_suppress_devices_discovery(self):
@@ -2272,7 +2288,7 @@ if %s e.job.in_ms_mom():
         self.moms_list[0].log_match('Hook handler returned success'
                                     ' for exechost_startup',
                                     starttime=begin, existence=True,
-                                    interval=1, tail=False)
+                                    interval=1, n='ALL')
 
         # These will throw an exception if the routines that should not
         # have been called were called.
@@ -2280,10 +2296,10 @@ if %s e.job.in_ms_mom():
         # that 50 lines will not suffice
         self.moms_list[0].log_match('_discover_devices', starttime=begin,
                                     existence=False, max_attempts=2,
-                                    interval=1, tail=False, n='ALL')
+                                    interval=1, n='ALL')
         self.moms_list[0].log_match('_discover_gpus', starttime=begin,
                                     existence=False, max_attempts=2,
-                                    interval=1, tail=False, n='ALL')
+                                    interval=1, n='ALL')
         self.logger.info('suppress_devices_discovery check passed')
 
     def test_suppress_gpu_discovery(self):
@@ -2309,7 +2325,7 @@ if %s e.job.in_ms_mom():
         self.moms_list[0].log_match('Hook handler returned success'
                                     ' for exechost_startup',
                                     starttime=begin, existence=True,
-                                    interval=1, tail=False)
+                                    interval=1, n='ALL')
 
         # These will throw an exception if the routines that should not
         # have been called were called.
@@ -2317,10 +2333,10 @@ if %s e.job.in_ms_mom():
         # that 50 lines will not suffice
         self.moms_list[0].log_match('_discover_devices', starttime=begin,
                                     existence=True, max_attempts=2,
-                                    interval=1, tail=False, n='ALL')
+                                    interval=1, n='ALL')
         self.moms_list[0].log_match('NVIDIA SMI', starttime=begin,
                                     existence=False, max_attempts=2,
-                                    interval=1, tail=False, n='ALL')
+                                    interval=1, n='ALL')
         self.logger.info('suppress_gpu_discovery check passed')
 
     def test_cgroup_cpuset(self):
@@ -2481,6 +2497,9 @@ if %s e.job.in_ms_mom():
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job1)
+        time.sleep(2)
+        stime=int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2489,7 +2508,7 @@ if %s e.job.in_ms_mom():
         self.tempfile.append(o)
         # mem and vmem limit will both be set, and either could be detected
         self.mom.log_match('%s;Cgroup mem(ory|sw) limit exceeded' % jid,
-                           regexp=True)
+                           regexp=True, n='ALL', starttime=stime)
 
     def test_cgroup_enforce_memsw(self):
         """
@@ -2683,6 +2702,9 @@ if %s e.job.in_ms_mom():
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        stime=int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2692,7 +2714,7 @@ if %s e.job.in_ms_mom():
         hostn = self.get_hostname(self.hosts_list[0])
         self.moms_list[0].log_match('cgroup excluded for subsystem cpuset '
                                     'on host %s' % hostn,
-                                    starttime=self.server.ctime)
+                                    starttime=stime, n='ALL')
         cpath = self.get_cgroup_job_dir('cpuset', jid, self.hosts_list[0])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))
         # Now try a job on momB
@@ -2721,17 +2743,19 @@ if %s e.job.in_ms_mom():
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        stime=int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
-        time.sleep(1)
         hostn = self.get_hostname(self.hosts_list[1])
         self.moms_list[1].log_match(
             'set enabled to False based on run_only_on_hosts',
-            starttime=self.server.ctime)
+            starttime=stime, n='ALL')
         cpath = self.get_cgroup_job_dir('memory', jid, self.hosts_list[1])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[1]))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -3374,7 +3398,7 @@ if %s e.job.in_ms_mom():
         # Wait for exechost_startup hook to run
         self.moms_list[0].log_match("Hook handler returned success for"
                                     " exechost_startup event",
-                                    starttime=now)
+                                    starttime=now, n='ALL')
         # check where cpath is once more
         # since we loaded a new cgroup config file
         cpath = None
@@ -3408,6 +3432,9 @@ if %s e.job.in_ms_mom():
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep5_job)
+        time.sleep(2)
+        stime=int(time.time())
+        time.sleep(2)
         jid1 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid1)
@@ -3417,9 +3444,11 @@ if %s e.job.in_ms_mom():
         err_msg = "Unexpected error in pbs_cgroups " + \
             "handling exechost_periodic event: TypeError"
         self.moms_list[0].log_match(err_msg, max_attempts=3,
-                                    interval=1, n=100,
+                                    interval=1, n='ALL',
+                                    starttime=stime,
                                     existence=False)
-        self.server.log_match(jid1 + ';Exit_status=0')
+        self.server.log_match(jid1 + ';Exit_status=0', n='ALL',
+                              starttime=stime)
         # Create a periodic hook that runs more frequently than the
         # cgroup hook to prepend jid1 to mom_priv/hooks/hook_data/cgroup_jobs
         hookname = 'prependjob'
@@ -3490,13 +3519,13 @@ event.accept()
         # Submit a second job and verify that the following message
         # does NOT appear in the mom log:
         # _exechost_periodic_handler: Failed to update jid1
-        time.sleep(2)
-        presubmit = int(time.time())
-        time.sleep(2)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        presubmit = int(time.time())
+        time.sleep(2)
         jid2 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -3506,9 +3535,11 @@ event.accept()
         err_msg = "Unexpected error in pbs_cgroups " + \
             "handling exechost_periodic event: TypeError"
         self.moms_list[0].log_match(err_msg, max_attempts=3,
-                                    interval=1, n=100,
+                                    interval=1, n='ALL',
+                                    starrtime=presubmit,
                                     existence=False)
-        self.server.log_match(jid2 + ';Exit_status=0')
+        self.server.log_match(jid2 + ';Exit_status=0', n='ALL',
+                              starttime=presubmit)
         self.server.manager(MGR_CMD_DELETE, HOOK, None, hookname)
         command = ['rm', '-rf',
                    os.path.join(self.moms_list[0].pbs_conf['PBS_HOME'],
@@ -3517,7 +3548,7 @@ event.accept()
         self.du.run_cmd(cmd=command, hosts=self.hosts_list[0], sudo=True)
         logmsg = '_exechost_periodic_handler: Failed to update %s' % jid1
         self.moms_list[0].log_match(msg=logmsg, starttime=presubmit,
-                                    max_attempts=1, existence=False)
+                                    n='ALL', max_attempts=1, existence=False)
 
     @requirements(num_moms=3)
     def test_cgroup_release_nodes(self):
@@ -3616,7 +3647,7 @@ event.accept()
         # Check the exec_resize hook reject message in sister mom logs
         self.moms_list[0].log_match(
             "Job;%s;Cannot resize the job" % (jid),
-            starttime=stime, interval=2)
+            starttime=stime, interval=2, n='ALL')
         # Check the exec_vnode after job is in substate 42
         self.server.expect(JOB, {ATTR_substate: '42'}, id=jid)
         # Check for the pruned exec_vnode due to release_nodes() in launch hook
@@ -3629,18 +3660,19 @@ event.accept()
         self.assertEqual(len(pruned_vnodes) + 1, len(initial_vnodes))
         # Check that the exec_vnode got pruned
         self.moms_list[1].log_match("Job;%s;pruned from exec_vnode=%s" % (
-            jid, execvnode1), starttime=stime)
+            jid, execvnode1), starttime=stime, n='ALL')
         self.moms_list[1].log_match("Job;%s;pruned to exec_vnode=%s" % (
-            jid, execvnode2), starttime=stime)
+            jid, execvnode2), starttime=stime, n='ALL')
         # Check that MS saw that the sister mom failed to update the job
         # This message is on MS mom[1] but mentions sismom mom[0]
         self.moms_list[1].log_match(
             "Job;%s;sister node %s.* failed to update job"
             % (jid, self.hosts_list[0]),
-            starttime=stime, interval=2, regexp=True)
+            starttime=stime, interval=2, regexp=True, n='ALL')
         # Because of resize hook reject Mom failed to update the job.
         # Check that job got requeued.
-        self.server.log_match("Job;%s;Job requeued" % (jid), starttime=stime)
+        self.server.log_match("Job;%s;Job requeued" % (jid),
+                              starttime=stime, n='ALL')
 
     @requirements(num_moms=3)
     def test_cgroup_msmom_resize_fail(self):
@@ -3686,7 +3718,7 @@ event.accept()
         # Check the exec_resize hook reject message in MS log
         self.moms_list[1].log_match(
             "Job;%s;Cannot resize the job" % (jid),
-            starttime=stime, interval=2)
+            starttime=stime, interval=2, n='ALL')
         # Check the exec_vnode after job is in substate 42
         self.server.expect(JOB, {ATTR_substate: '42'}, id=jid)
         self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
@@ -3698,9 +3730,9 @@ event.accept()
         self.assertEqual(len(pruned_vnodes) + 1, len(initial_vnodes))
         # Check that the exec_vnode got pruned
         self.moms_list[1].log_match("Job;%s;pruned from exec_vnode=%s" % (
-            jid, execvnode1), starttime=stime)
+            jid, execvnode1), starttime=stime, n='ALL')
         self.moms_list[1].log_match("Job;%s;pruned to exec_vnode=%s" % (
-            jid, execvnode2), starttime=stime)
+            jid, execvnode2), starttime=stime, n='ALL')
         # Because of resize hook reject Mom failed to update the job.
         # Check that job got requeued
         self.server.log_match("Job;%s;Job requeued" % (jid), starttime=stime)
@@ -3757,9 +3789,9 @@ event.accept()
         self.assertEqual(len(pruned_vnodes) + 1, len(initial_vnodes))
         # Check that the exec_vnode got pruned
         self.moms_list[0].log_match("Job;%s;pruned from exec_vnode=%s" % (
-            jid, execvnode1), starttime=stime)
+            jid, execvnode1), starttime=stime, n='ALL')
         self.moms_list[0].log_match("Job;%s;pruned to exec_vnode=%s" % (
-            jid, execvnode2), starttime=stime)
+            jid, execvnode2), starttime=stime, n='ALL')
         # Find out the released vnode
         if initial_vnodes[0] == execvnode2:
             execvnodeB = initial_vnodes[1]
@@ -3811,15 +3843,16 @@ event.accept()
         cpath = self.get_cgroup_job_dir('memory', jid, self.hosts_list[2])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[2]))
 
-        self.moms_list[0].log_match("job_start_error", starttime=now)
+        self.moms_list[0].log_match("job_start_error",
+                                    starttime=now, n='ALL')
         self.moms_list[0].log_match("Event type is execjob_abort",
-                                    starttime=now)
+                                    starttime=now, n='ALL')
         self.moms_list[0].log_match("Event type is execjob_epilogue",
-                                    starttime=now)
+                                    starttime=now, n='ALL')
         self.moms_list[0].log_match("Event type is execjob_end",
-                                    starttime=now)
+                                    starttime=now, n='ALL')
         self.moms_list[2].log_match("Event type is execjob_abort",
-                                    starttime=now)
+                                    starttime=now, n='ALL')
 
         self.moms_list[1].restart()
 
@@ -3961,12 +3994,15 @@ exit 0
         # Submit an express queue job requesting needing also 2 nodes
         a[ATTR_q] = 'express'
         j2 = Job(TEST_USER, attrs=a)
+        time.sleep(2)
+        stime=int(time.time())
+        time.sleep(2)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
         err_msg = "%s;.*Failed to assign resources.*" % (jid2,)
         for m in self.moms.values():
-            m.log_match(err_msg, max_attempts=3, interval=1, n=100,
-                        regexp=True, existence=False)
+            m.log_match(err_msg, max_attempts=3, interval=1, n='ALL',
+                        regexp=True, existence=False, n='ALL')
 
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
 
@@ -4498,11 +4534,14 @@ sleep 300
         a = {'Resource_List.select': 'ncpus=1:mem=100mb'}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        stime=int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
         err_msg = "write_value: Permission denied.*%s.*memsw" % (jid)
-        self.mom.log_match(err_msg, max_attempts=3, interval=1, n=100,
-                           regexp=True, existence=False)
+        self.mom.log_match(err_msg, max_attempts=3, interval=1, n='ALL',
+                           starttime=stime, regexp=True, existence=False)
         self.server.status(JOB, ['exec_host'], jid)
         ehost = j.attributes['exec_host']
         ehost1 = ehost.split('/')[0]
@@ -4549,7 +4588,7 @@ sleep 300
         self.mom.log_match('Hook handler returned success'
                            ' for exechost_startup',
                            starttime=begin, existence=True,
-                           interval=1, tail=False)
+                           interval=1, n='ALL')
         self.server.expect(NODE, {'state': 'free'},
                            id=self.mom.shortname, interval=2, offset=1)
 
@@ -4703,7 +4742,7 @@ sleep 300
         self.mom.log_match('Hook handler returned success'
                            ' for exechost_startup',
                            starttime=begin, existence=True,
-                           interval=1, tail=False)
+                           interval=1, n='ALL')
         self.server.expect(NODE, {'state': 'free'},
                            id=self.mom.shortname, interval=2, offset=1)
 
