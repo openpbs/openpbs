@@ -1660,8 +1660,9 @@ if %s e.job.in_ms_mom():
         # copies from setup, node creations, MoM restarts etc.
         # are all finished, so that we don't match a CF copy
         # message in the logs from someone else!
-        time.sleep(5)
-        just_before_import = time.time() - 1
+        time.sleep(2)
+        just_before_import = int(time.time())
+        time.sleep(2)
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
         if mom_checks:
             self.moms_list[0].log_match('pbs_cgroups.CF;'
@@ -1682,7 +1683,9 @@ if %s e.job.in_ms_mom():
                 r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
                 if r1['out'] != r2['out']:
                     self.logger.info('server & mom pbs_cgroups.CF differ')
-                    just_before_import = time.time() - 1
+                    time.sleep(2)
+                    just_before_import = int(time.time())
+                    time.sleep(2)
                     self.server.manager(MGR_CMD_IMPORT, HOOK, a,
                                         self.hook_name)
                     self.moms_list[0].log_match('pbs_cgroups.CF;'
@@ -1710,8 +1713,9 @@ if %s e.job.in_ms_mom():
                                         'altair',
                                         'pbs_hooks',
                                         'pbs_cgroups.CF')
-
-        now = time.time()
+        time.sleep(2)
+        now = int(time.time())
+        time.sleep(2)
         a = {'content-type': 'application/x-config',
              'content-encoding': 'default',
              'input-file': self.config_file}
@@ -2008,11 +2012,11 @@ if %s e.job.in_ms_mom():
                                     interval=1, n=100, existence=False)
 
         # Allow some time to pass for values to be updated
-        # sleep one second: make sure no old log lines will match 'begin' time
-        time.sleep(1)
+        # sleep 2s: make sure no old log lines will match 'begin' time
+        time.sleep(2)
         begin = time.time()
-        # sleep 1s to allow for small time differences and rounding errors
-        time.sleep(1)
+        # sleep 2s to allow for small time differences and rounding errors
+        time.sleep(2)
 
         self.logger.info('Waiting for periodic hook to update usage data.')
         # loop to check if cput, mem, vmem are expected values
@@ -2220,11 +2224,11 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP3'
         self.load_config(self.cfg14 % ('true', 'true'))
 
-        # sleep one second: make sure no old log lines will match 'begin' time
-        time.sleep(1)
-        begin = time.time()
-        # sleep 1s to allow for small time differences and rounding errors
-        time.sleep(1)
+        # sleep 2s: make sure no old log lines will match 'begin' time
+        time.sleep(2)
+        begin = int(time.time())
+        # sleep 2s to allow for small time differences and rounding errors
+        time.sleep(2)
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
 
@@ -2256,11 +2260,11 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP3'
         self.load_config(self.cfg14 % ('true', 'false'))
 
-        # sleep one second: make sure no old log lines will match 'begin' time
-        time.sleep(1)
-        begin = time.time()
-        # sleep 1s to allow for small time differences and rounding errors
-        time.sleep(1)
+        # sleep 2s: make sure no old log lines will match 'begin' time
+        time.sleep(2)
+        begin = int(time.time())
+        # sleep 2s to allow for small time differences and rounding errors
+        time.sleep(2)
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
 
@@ -2294,10 +2298,10 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg14 % ('false', 'true'))
 
         # sleep one second: make sure no old log lines will match 'begin' time
-        time.sleep(1)
-        begin = time.time()
-        # sleep 1s to allow for small time differences and rounding errors
-        time.sleep(1)
+        time.sleep(2)
+        begin = int(time.time())
+        # sleep 2s to allow for small time differences and rounding errors
+        time.sleep(2)
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
 
@@ -3343,7 +3347,15 @@ if %s e.job.in_ms_mom():
         Test that memory.use_hierarchy is enabled by default
         when PBS cgroups hook is instantiated
         """
-        now = time.time()
+        # sleep 2s to avoid matching old log lines
+        # 1s not always enough due to small time jitter between
+        # PTL and daemons
+        time.sleep(2)
+        now = int(time.time())
+        # sleep 2s to be sure that if daemons respond rapidly you
+        # don't skip the lines
+        time.sleep(2)
+
         # Remove PBS directories from memory subsystem
         cpath = None
         if ('memory' in self.paths[self.hosts_list[0]] and
@@ -3478,7 +3490,9 @@ event.accept()
         # Submit a second job and verify that the following message
         # does NOT appear in the mom log:
         # _exechost_periodic_handler: Failed to update jid1
-        presubmit = time.time()
+        time.sleep(2)
+        presubmit = int(time.time())
+        time.sleep(2)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
@@ -3588,7 +3602,9 @@ event.accept()
         j = Job(TEST_USER)
         # Note mother superior is mom[1] not mom[0]
         j.create_script(self.job_scr2 % (self.hosts_list[1]))
-        stime = time.time()
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         # Check the exec_vnode while in substate 41
         self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
@@ -3656,7 +3672,9 @@ event.accept()
         # Submit a job that requires 2 nodes
         j = Job(TEST_USER)
         j.create_script(self.job_scr2 % (self.hosts_list[1]))
-        stime = time.time()
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         # Check the exec_vnode while in substate 41
         self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
@@ -3717,7 +3735,9 @@ event.accept()
         # Submit a job that requires two vnodes
         j = Job(TEST_USER)
         j.create_script(self.job_scr3)
-        stime = time.time()
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         # Check the exec_vnode while in substate 41
         self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
@@ -3774,7 +3794,9 @@ event.accept()
         self.server.expect(JOB, a, jid)
 
         self.logger.info("Killing mom on host %s" % self.hosts_list[1])
-        now = time.time()
+        time.sleep(2)
+        now = int(time.time())
+        time.sleep(2)
         self.moms_list[1].signal('-9')
 
         self.server.expect(NODE, {'state': "down"}, id=self.hosts_list[1])
@@ -4516,10 +4538,10 @@ sleep 300
                          % ('true' if vnode_per_numa_node else 'false'))
 
         # sleep one second: make sure no old log lines will match 'begin' time
-        time.sleep(1)
-        begin = time.time()
-        # sleep 1s to allow for small time differences and rounding errors
-        time.sleep(1)
+        time.sleep(2)
+        begin = int(time.time())
+        # sleep 2s to allow for small time differences and rounding errors
+        time.sleep(2)
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
 
@@ -4669,11 +4691,11 @@ sleep 300
         self.load_config(self.cfg16
                          % enforce_flags)
 
-        # sleep one second: make sure no old log lines will match 'begin' time
-        time.sleep(1)
-        begin = time.time()
-        # sleep 1s to allow for small time differences and rounding errors
-        time.sleep(1)
+        # sleep 2s: make sure no old log lines will match 'begin' time
+        time.sleep(2)
+        begin = int(time.time())
+        # sleep 2s to allow for small time differences and rounding errors
+        time.sleep(2)
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
 
