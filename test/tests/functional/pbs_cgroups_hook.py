@@ -1660,7 +1660,7 @@ if %s e.job.in_ms_mom():
         # copies from setup, node creations, MoM restarts etc.
         # are all finished, so that we don't match a CF copy
         # message in the logs from someone else!
-        time.sleep(2)
+        time.sleep(5)
         just_before_import = int(time.time())
         time.sleep(2)
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
