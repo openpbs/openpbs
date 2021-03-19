@@ -4001,7 +4001,7 @@ exit 0
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
         err_msg = "%s;.*Failed to assign resources.*" % (jid2,)
         for m in self.moms.values():
-            m.log_match(err_msg, max_attempts=3, interval=1, n='ALL',
+            m.log_match(err_msg, max_attempts=3, interval=1, starttime=stime,
                         regexp=True, existence=False, n='ALL')
 
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
