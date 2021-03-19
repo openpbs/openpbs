@@ -175,8 +175,8 @@ parse_config(const char *fname)
 	const char *obsolete[2];		/* used to log messages for obsolete params */
 	int num = -1;			/* used to convert string -> integer */
 	char *endp;			/* used for strtol() */
-	char error = 0;		/* boolean: is there an error? */
-	enum prime_time prime;	/* used to convert string -> prime value */
+	bool error = false;		/* boolean: is there an error? */
+	enum prime_time prime;		/* used to convert string -> prime value */
 	int linenum = 0;		/* the current line number in the file */
 	int i;
 
@@ -206,7 +206,7 @@ parse_config(const char *fname)
 	while (pbs_fgets_extend(&buf, &buf_size, fp) != NULL) {
 		errbuf[0] = '\0';
 		linenum++;
-		error = 0;
+		error = false;
 		obsolete[0] = obsolete[1] = NULL;
 		prime = PT_ALL;
 		num = -1;
@@ -238,8 +238,10 @@ parse_config(const char *fname)
 						prime = PT_ALL;
 					else if (!strcmp(prime_value, "none") || !strcmp(prime_value, "NONE"))
 						prime = PT_NONE;
-					else
-						error = 1;
+					else {
+						snprintf(errbuf, sizeof(errbuf), "Invalid prime keyword: %s", prime_value);
+						error = true;
+					}
 				}
 
 				if (!strcmp(config_name, PARSE_ROUND_ROBIN)) {
@@ -325,22 +327,28 @@ parse_config(const char *fname)
 					if (prime == NON_PRIME || prime == PT_ALL)
 						tmpconf.nonprime_spill = res_to_num(config_value, &type);
 
-					if (!type.is_time)
-						error = 1;
+					if (!type.is_time) {
+						snprintf(errbuf, sizeof(errbuf), "Invalid time %s", config_value);
+						error = true;
+					}
 				}
 				else if (!strcmp(config_name, PARSE_MAX_STARVE)) {
-					tmpconf.max_starve = res_to_num(config_value, &type);
-					if (!type.is_time)
-						error = 1;
+					conf.max_starve = res_to_num(config_value, &type);
+					if (!type.is_time) {
+						snprintf(errbuf, sizeof(errbuf), "Invalid time %s", config_value);
+						error = true;
+					}
 				}
 				else if (!strcmp(config_name, PARSE_HALF_LIFE) || !strcmp(config_name, PARSE_FAIRSHARE_DECAY_TIME)) {
 					if(!strcmp(config_name, PARSE_HALF_LIFE)) {
 						obsolete[0] = PARSE_HALF_LIFE;
 						obsolete[1] = PARSE_FAIRSHARE_DECAY_TIME " and " PARSE_FAIRSHARE_DECAY_FACTOR " instead";
 					}
-					tmpconf.decay_time = res_to_num(config_value, &type);
-					if (!type.is_time)
-						error = 1;
+					conf.decay_time = res_to_num(config_value, &type);
+					if (!type.is_time) {
+						snprintf(errbuf, sizeof(errbuf), "Invalid time %s", config_value);
+						error = true;
+					}
 				}
 				else if (!strcmp(config_name, PARSE_UNKNOWN_SHARES))
 					tmpconf.unknown_shares = num;
@@ -348,14 +356,15 @@ parse_config(const char *fname)
 					float fnum;
 					fnum = strtod(config_value, &endp);
 					if(*endp == '\0')  {
-						if( fnum <= 0 || fnum >= 1) {
+						if (fnum <= 0 || fnum >= 1) {
 							sprintf(errbuf, "%s: Invalid value: %.*f.  Valid values are between 0 and 1.", PARSE_FAIRSHARE_DECAY_FACTOR, float_digits(fnum, 2), fnum);
-							error = 1;
-						}
-						else
-							tmpconf.fairshare_decay_factor = fnum;
-					} else
-						error = 1;
+							error = true;
+						} else
+							conf.fairshare_decay_factor = fnum;
+					} else {
+						pbs_strncpy(errbuf, "Invalid " PARSE_FAIRSHARE_DECAY_FACTOR, sizeof(errbuf));
+						error = true;
+					}
 				}
 				else if (!strcmp(config_name, PARSE_FAIRSHARE_RES)) {
 					tmpconf.fairshare_res = config_value;
@@ -366,7 +375,7 @@ parse_config(const char *fname)
 						strcmp(config_value, ATTR_A) &&
 						strcmp(config_value, "queue") &&
 						strcmp(config_value, "egroup:euser")) {
-						error = 1;
+						error = true;
 						sprintf(errbuf, "%s %s is erroneous (or deprecated).",
 							PARSE_FAIRSHARE_ENT, config_value);
 					}
@@ -400,7 +409,7 @@ parse_config(const char *fname)
 					else if (!strcmp(config_value, "none"))
 						tmpconf.resv_conf_ignore = 0;
 					else {
-						error = 1;
+						error = true;
 						sprintf(errbuf, "%s valid values: dedicated_time or none",
 							PARSE_RESV_CONFIRM_IGNORE);
 					}
@@ -469,10 +478,10 @@ parse_config(const char *fname)
 								si.order = ASC;
 							}
 							else
-								error = 1;
+								error = true;
 						}
 						else
-							error = 1;
+							error = true;
 
 						if (!error) {
 							if (si.res_name == SORT_PRIORITY) {
@@ -485,7 +494,8 @@ parse_config(const char *fname)
 
 							if (prime == NON_PRIME || prime == PT_ALL)
 								tmpconf.non_prime_sort.push_back(si);
-						}
+						} else
+							pbs_strncpy(errbuf, "Invalid job_sort_key", sizeof(errbuf));
 					}
 				} else if (!strcmp(config_name, PARSE_NODE_SORT_KEY)) {
 					sort_info si;
@@ -504,10 +514,10 @@ parse_config(const char *fname)
 								si.order = ASC;
 							}
 							else
-								error = 1;
+								error = true;
 						}
 						else
-							error = 1;
+							error = true;
 
 						if (!error) {
 							tok = strtok(NULL, DELIM);
@@ -521,7 +531,7 @@ parse_config(const char *fname)
 								else if (!strcmp(tok, "unused"))
 									si.res_type = RF_UNUSED;
 								else
-									error = 1;
+									error = true;
 							}
 						}
 
@@ -537,7 +547,8 @@ parse_config(const char *fname)
 								if (si.res_type == RF_UNUSED || si.res_type == RF_ASSN)
 									tmpconf.node_sort_unused = 1;
 							}
-						}
+						} else
+							pbs_strncpy(errbuf, "Invalid node_sort_key", sizeof(errbuf));
 					}
 				} else if (!strcmp(config_name, PARSE_SERVER_DYN_RES)) {
 					char *res;
@@ -557,27 +568,32 @@ parse_config(const char *fname)
 							tok++;
 							command_line = tok;
 							filename = get_script_name(tok);
-							if (filename == NULL)
-								error = 1;
-							else {
+							if (filename == NULL) {
+								snprintf(errbuf, sizeof(errbuf), "server_dyn_res script %s does not exist", tok);
+								error = true;
+							} else {
 								#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
 									int err;
 									err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
 									if (err != 0) {
 										snprintf(errbuf, sizeof(errbuf),
 											"error: %s file has a non-secure file access, errno: %d", filename, err);
-										error = 1;
+										error = true;
 									}
 								#endif
 								tmpconf.dynamic_res.emplace_back(res, command_line, filename);
 								free(filename);
 							}
 						}
-						else
-							error = 1;
+						else {
+							pbs_strncpy(errbuf, "Invalid server_dyn_res", sizeof(errbuf));
+							error = true;
+						}
 					}
-					else
-						error = 1;
+					else {
+						pbs_strncpy(errbuf, "Invalid server_dyn_res", sizeof(errbuf));
+						error = true;
+					}
 				} else if (!strcmp(config_name, PARSE_SORT_NODES)) {
 					obsolete[0] = config_name;
 					obsolete[1] = PARSE_NODE_SORT_KEY;
@@ -606,9 +622,9 @@ parse_config(const char *fname)
 								tmpconf.peer_queues.emplace_back(lqueue, rqueue, rserver);
 
 						} else
-							error = 1;
+							error = true;
 					} else
-						error = 1;
+						error = true;
 
 					if (error)
 						sprintf(errbuf, "Invalid peer queue");
@@ -621,19 +637,15 @@ parse_config(const char *fname)
 					else
 						tmpconf.max_jobs_to_check = num;
 				} else if (!strcmp(config_name, PARSE_SELECT_PROVISION)) {
-					if (config_value != NULL) {
-						if (!strcmp(config_value, PROVPOLICY_AVOID))
-							tmpconf.provision_policy = AVOID_PROVISION;
-					}
-					else
-						error = 1;
+					if (!strcmp(config_value, PROVPOLICY_AVOID))
+						tmpconf.provision_policy = AVOID_PROVISION;
 				}
 #ifdef NAS
 				/* localmod 034 */
 				else if (!strcmp(config_name, PARSE_MAX_BORROW)) {
 					tmpconf.max_borrow = res_to_num(config_value, &type);
 					if (!type.is_time)
-						error = 1;
+						error = true;
 				} else if (!strcmp(config_name, PARSE_SHARES_TRACK_ONLY)) {
 					if (prime == PRIME || prime == PT_ALL)
 						tmpconf.prime_sto = num ? 1 : 0;
@@ -654,10 +666,14 @@ parse_config(const char *fname)
 					tmpconf.max_intrptd_cycles = num;
 				}
 #endif
-				else
-					error = 1;
-			} else
-				error = 1;
+				else {
+					pbs_strncpy(errbuf, "Unknown config parameter", sizeof(errbuf));
+					error = true;
+				}
+			} else {
+				pbs_strncpy(errbuf, "Config line invalid", sizeof(errbuf));
+				error = true;
+			}
 		}
 
 		if (error)
