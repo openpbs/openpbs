@@ -205,6 +205,12 @@ int conns_array_size = 0;                    /* the size of physical connection 
 pthread_rwlock_t cons_array_lock;            /* rwlock used to synchronize array ops */
 pthread_mutex_t thrd_array_lock;             /* mutex used to synchronize thrd assignment */
 
+/*
+ * mutex to prevent child process from inheriting getaddrinfo mutex using
+ * pthread_atfork handlers
+ */
+pthread_mutex_t tpp_nslookup_mutex;
+
 /* function forward declarations */
 static void *work(void *v);
 static int assign_to_worker(int tfd, int delay, thrd_data_t *td);

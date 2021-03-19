@@ -512,7 +512,7 @@ int tpp_mod_fd(int, int, int);
  * from getaddrinfo(nslookup) during fork for periodic hook
  * set handlers using pthread_atfork.
  */
-pthread_mutex_t tpp_nslookup_mutex;
+extern pthread_mutex_t tpp_nslookup_mutex;
 void tpp_nslookup_atfork_prepare();
 void tpp_nslookup_atfork_parent();
 void tpp_nslookup_atfork_child();
