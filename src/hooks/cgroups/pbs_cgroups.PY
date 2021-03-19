@@ -3510,12 +3510,15 @@ class CgroupUtils(object):
         """
         Return a dictionary of currently assigned cgroup resources per job
         """
+        # if jobs have a limit *exactly* equal to the total limit available
+        # for all jobs, then they have no explicit memory req and the
+        # limit is the result of an 'unlimited' default;
+        # in that case, the scheduler assigned 0, so be consistent with it
+
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         assigned = {}
 
-        # if jobs have a limit *exactly* equal to the total available limit
-        # then they have no explicit memory req and the limit was set to the
-        # available total -- get totals to compare
+        # Get totals available for all jobs to compare with later        
         mem_avail = None
         filename = self._cgroup_path('memory', 'limit_in_bytes')
         if filename and os.path.isfile(filename):
@@ -3568,6 +3571,7 @@ class CgroupUtils(object):
                         assigned[jobid][key]['limit_in_bytes'] = \
                             int(desc.readline())
                     if assigned[jobid][key]['limit_in_bytes'] == mem_avail:
+                        # not explicitly assigned, 'unlimited' raised default
                         assigned[jobid][key]['limit_in_bytes'] = 0
                     with open(self._cgroup_path(key, 'soft_limit_in_bytes',
                                                 jobid)) as desc:
@@ -3575,6 +3579,7 @@ class CgroupUtils(object):
                             int(desc.readline())
                     if (assigned[jobid][key]['soft_limit_in_bytes']
                             == mem_avail):
+                        # not explicitly assigned, 'unlimited' raised default
                         assigned[jobid][key]['soft_limit_in_bytes'] = 0
                 elif key == 'memsw':
                     filename = self._cgroup_path('memsw', 'limit_in_bytes',
@@ -3584,6 +3589,7 @@ class CgroupUtils(object):
                             assigned[jobid]['memsw']['limit_in_bytes'] = \
                                 int(desc.readline())
                     if assigned[jobid][key]['limit_in_bytes'] == vmem_avail:
+                        # not explicitly assigned, 'unlimited' raised default
                         assigned[jobid][key]['limit_in_bytes'] = 0
                     else:
                         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: No such file: %s' %
@@ -3594,6 +3600,7 @@ class CgroupUtils(object):
                         assigned[jobid][key]['limit_in_bytes'] = \
                             int(desc.readline())
                     if assigned[jobid][key]['limit_in_bytes'] == hpmem_avail:
+                        # not explicitly assigned, 'unlimited' raised default
                         assigned[jobid][key]['limit_in_bytes'] = 0
                 elif key == 'devices':
                     path = self._cgroup_path(key, 'list', jobid)
