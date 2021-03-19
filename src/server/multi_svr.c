@@ -292,11 +292,11 @@ log_msvr_stat()
 
 	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 		   "Average msvr statistical info for last 24 hours\n"
-		   "CACHE_MISS = %ld\n"
-		   "CACHE_REFR_TM = %ld\n"
-		   "NUM_RESC_UPDATE = %ld\n"
-		   "NUM_MOVE_RUN = %ld\n"
-		   "NUM_SCHED_MISS = %ld\n",
+		   "{\n\"CACHE_MISS\" : %ld,\n"
+		   "\"CACHE_REFRESH_TM\" : %ld,\n"
+		   "\"NUM_RESC_UPDATE\" : %ld,\n"
+		   "\"NUM_MOVE_RUN\" : %ld,\n"
+		   "\"NUM_SCHED_MISS\" : %ld\n}",
 		   get_day_avg(CACHE_MISS),
 		   get_day_avg(CACHE_REFR_TM),
 		   get_day_avg(NUM_RESC_UPDATE),
