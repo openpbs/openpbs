@@ -1847,7 +1847,7 @@ if %s e.job.in_ms_mom():
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
         time.sleep(2)
-        stime=int(time.time())
+        stime = int(time.time())
         time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
@@ -1900,7 +1900,7 @@ if %s e.job.in_ms_mom():
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
         time.sleep(2)
-        stime=int(time.time())
+        stime = int(time.time())
         time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
@@ -1949,7 +1949,7 @@ if %s e.job.in_ms_mom():
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
         time.sleep(2)
-        stime=int(time.time())
+        stime = int(time.time())
         time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
@@ -1997,7 +1997,7 @@ if %s e.job.in_ms_mom():
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job3)
         time.sleep(2)
-        stime=int(time.time())
+        stime = int(time.time())
         time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
@@ -2024,7 +2024,7 @@ if %s e.job.in_ms_mom():
         err_msg = "Unexpected error in pbs_cgroups " + \
             "handling exechost_periodic event: TypeError"
         self.moms_list[0].log_match(err_msg, max_attempts=3,
-                                    interval=1, n='ALL', 
+                                    interval=1, n='ALL',
                                     starttime=stime, existence=False)
 
         # Allow some time to pass for values to be updated
@@ -2498,7 +2498,7 @@ if %s e.job.in_ms_mom():
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job1)
         time.sleep(2)
-        stime=int(time.time())
+        stime = int(time.time())
         time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
@@ -2703,7 +2703,7 @@ if %s e.job.in_ms_mom():
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
         time.sleep(2)
-        stime=int(time.time())
+        stime = int(time.time())
         time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
@@ -2744,7 +2744,7 @@ if %s e.job.in_ms_mom():
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
         time.sleep(2)
-        stime=int(time.time())
+        stime = int(time.time())
         time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
@@ -3433,7 +3433,7 @@ if %s e.job.in_ms_mom():
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep5_job)
         time.sleep(2)
-        stime=int(time.time())
+        stime = int(time.time())
         time.sleep(2)
         jid1 = self.server.submit(j)
         a = {'job_state': 'R'}
@@ -3995,7 +3995,7 @@ exit 0
         a[ATTR_q] = 'express'
         j2 = Job(TEST_USER, attrs=a)
         time.sleep(2)
-        stime=int(time.time())
+        stime = int(time.time())
         time.sleep(2)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
@@ -4535,7 +4535,7 @@ sleep 300
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
         time.sleep(2)
-        stime=int(time.time())
+        stime = int(time.time())
         time.sleep(2)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
