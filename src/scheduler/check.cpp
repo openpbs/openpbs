@@ -67,6 +67,7 @@
  *	zero_res()
  *
  */
+
 #include <pbs_config.h>
 
 #include <stdio.h>
@@ -165,22 +166,18 @@ is_ok_to_run_queue(status *policy, queue_info *qinfo)
 sch_resource_t
 time_to_ded_boundary(status *policy, resource_resv *njob)
 {
-	sch_resource_t 		time_left = UNSPECIFIED;
 	sch_resource_t 		min_time_left = UNSPECIFIED;
-	int			ded;	/* is it currently ded time? */
-	struct timegap 		ded_time;
 	sch_resource_t 		start = UNSPECIFIED;
 	sch_resource_t 		end = UNSPECIFIED;
-	sch_resource_t 		duration = UNSPECIFIED;
 	sch_resource_t 		min_end = UNSPECIFIED;
 
 	if (njob == NULL || policy == NULL)
 		return -3;/* error */
 
-	duration = njob->duration;
-	ded_time = find_next_dedtime(njob->server->server_time);
-	ded = is_ded_time(njob->server->server_time);
-	time_left = calc_time_left_STF(njob, &min_time_left);
+	sch_resource_t duration = njob->duration;
+	timegap ded_time = find_next_dedtime(njob->server->server_time);
+	bool ded = is_ded_time(njob->server->server_time);
+	sch_resource_t time_left = calc_time_left_STF(njob, &min_time_left);
 
 	if (!ded) {
 		if (njob->start == UNSPECIFIED && njob->end ==UNSPECIFIED) {
@@ -1077,6 +1074,147 @@ is_ok_to_run(status *policy, server_info *sinfo,
 }
 
 /**
+ * @brief find the resources associated with the resource_req's def
+ * @param[in] reslist - schd_resource list to search in
+ * @param[in] resreq - requested resource
+ * @param[in] flags to modify behavior (@see check_avail_resources())
+ * @return schd_resource
+ * @retval found resource
+ * @retval fres/zres/ustr if not found
+ * @retval if indirect, point to the real resource
+ * @retval NULL if resource is to be ignored
+ */
+schd_resource *
+find_check_resource(schd_resource *reslist, resource_req *resreq, unsigned int flags)
+{
+	schd_resource *res;
+	schd_resource *fres = false_res();
+	schd_resource *zres = zero_res();
+	schd_resource *ustr = unset_str_res();
+
+	res = find_resource(reslist, resreq->def);
+
+	if (res == NULL || res->orig_str_avail == NULL) {
+		/* if resources_assigned.res is unset and resources is in
+		 * resource_unset_infinite, ignore the check and assume a match
+		 */
+		if (conf.ignore_res.find(resreq->name) != conf.ignore_res.end())
+			return NULL;
+	}
+
+	if (res == NULL) {
+		/* If the requested resource is boolean and the resource isn't set in
+		 * reslist, then this means the boolean is false
+		 */
+		if (resreq->type.is_boolean)
+			res = fres;
+		else if (resreq->type.is_num && (flags & UNSET_RES_ZERO))
+			res = zres;
+		else if (resreq->type.is_string && (flags & UNSET_RES_ZERO))
+			res = ustr;
+		else /* ignore check: effect is resource is infinite */
+			return NULL;
+
+		res->name = resreq->name;
+		res->def = resreq->def;
+	}
+
+	if (res->indirect_res != NULL) {
+		res = res->indirect_res;
+	}
+	return res;
+}
+
+/**
+ * @brief do resource matching between a resource_req and a schd_resource
+ * @param[in] res - schd_resource to match
+ * @param[in] resreq - resource_req to match
+ * @param[in] flags to modify behavior (@see check_avail_resources())
+ * @param[in] fail_code - fail code to use in schd_error if resources don't match
+ * @param[out] err - if resources don't match, reason not matched
+ * @return int
+ * @retval number of chunks matched if matched and consumable
+ * @retval SCHD_INFINITY if matched and non-consumable
+ * @retval 0 of resources failed to match
+ */
+
+int
+match_resource(schd_resource *res, resource_req *resreq, unsigned int flags, enum sched_error_code fail_code, schd_error *err)
+{
+	sch_resource_t avail; /* amount of available resource */
+	long long num_chunk = SCHD_INFINITY;
+	long long cur_chunk = 0;
+
+	char resbuf1[MAX_LOG_SIZE];
+	char resbuf2[MAX_LOG_SIZE];
+	char resbuf3[MAX_LOG_SIZE];
+	/*
+	 * buf must be large enough to hold the three resbuf buffers plus a
+	 * small amount of text... (R: resbuf1 A: resbuf2 T: resbuf3)
+	 */
+	char buf[(MAX_LOG_SIZE * 3) + 16];
+
+	if (res->type.is_non_consumable && !(flags & ONLY_COMP_CONS)) {
+		if (!compare_non_consumable(res, resreq)) {
+			num_chunk = 0;
+			if (err != NULL) {
+				const char *requested;
+				set_schd_error_codes(err, NOT_RUN, fail_code);
+				err->rdef = res->def;
+				requested = res_to_str_r(resreq, RF_REQUEST, resbuf1, sizeof(resbuf1));
+				snprintf(buf, sizeof(buf), "(%s != %s)",
+					 requested,
+					 res_to_str_r(res, RF_AVAIL, resbuf2, sizeof(resbuf2)));
+				set_schd_error_arg(err, ARG1, buf);
+				/* Set arg2 for vnode/host resource. In case of preemption, arg2 is used to cull
+				 * the list of running jobs
+				 */
+				if ((res->def == getallres(RES_HOST)) || (res->def == getallres(RES_VNODE)))
+					set_schd_error_arg(err, ARG2, requested);
+			}
+		}
+	} else if (res->type.is_consumable && !(flags & ONLY_COMP_NONCONS)) {
+		if (flags & COMPARE_TOTAL)
+			avail = res->avail;
+		else
+			avail = dynamic_avail(res);
+
+		if (avail == SCHD_INFINITY_RES && (flags & UNSET_RES_ZERO))
+			avail = 0;
+
+		/*
+		 * if there is an infinite amount available or we are requesting
+		 * 0 amount of the resource, we do not need to check if any is
+		 * available
+		 */
+		if (avail != SCHD_INFINITY_RES && resreq->amount != 0) {
+			if (avail < resreq->amount) {
+				num_chunk = 0;
+				if (err != NULL) {
+					set_schd_error_codes(err, NOT_RUN, fail_code);
+					err->rdef = res->def;
+
+					res_to_str_r(resreq, RF_REQUEST, resbuf1, sizeof(resbuf1));
+					res_to_str_c(avail, res->def, RF_AVAIL, resbuf2, sizeof(resbuf2));
+					if ((flags & UNSET_RES_ZERO) && res->avail == SCHD_INFINITY_RES)
+						res_to_str_c(0, res->def, RF_AVAIL, resbuf3, sizeof(resbuf3));
+					else
+						res_to_str_r(res, RF_AVAIL, resbuf3, sizeof(resbuf3));
+					snprintf(buf, sizeof(buf), "(R: %s A: %s T: %s)", resbuf1, resbuf2, resbuf3);
+					set_schd_error_arg(err, ARG1, buf);
+				}
+			} else {
+				cur_chunk = avail / resreq->amount;
+				if (cur_chunk < num_chunk || num_chunk == SCHD_INFINITY)
+					num_chunk = cur_chunk;
+			}
+		}
+	}
+
+	return num_chunk;
+}
+
+/**
  *
  * @brief
  * 		This function will calculate the number of
@@ -1091,15 +1229,14 @@ is_ok_to_run(status *policy, server_info *sinfo,
  *							UNSET_RES_ZERO - a resource which is unset defaults to 0
  *							COMPARE_TOTAL - do comparisons against resource total rather
  *							than what is currently available
- *	        				ONLY_COMP_NONCONS - only compare non-consumable resources
+ *							ONLY_COMP_NONCONS - only compare non-consumable resources
  *							ONLY_COMP_CONS - only compare consumable resources
- * @param[in]	checklist	-	array of resources to check
- *                         		If NULL, all resources are checked.
+ * @param[in]	checklist	-	set of resources to check
  * @param[in]	fail_code	-	error code if resource request is rejected
  *	@param[out]	perr	-	if not NULL the the reason request is not
- *			  				satisfiable (i.e. the resource there is not
- *			   				enough of).  If err is NULL, no error reason is
- *			  				 returned.
+ *							satisfiable (i.e. the resource there is not
+ *							enough of).  If err is NULL, no error reason is
+ *							returned.
  *
  * @return	int
  * @retval	number of chunks which can be allocated
@@ -1108,33 +1245,14 @@ is_ok_to_run(status *policy, server_info *sinfo,
  */
 long long
 check_avail_resources(schd_resource *reslist, resource_req *reqlist,
-	unsigned int flags, resdef **checklist,
+	unsigned int flags, std::unordered_set<resdef *>& checklist,
 	enum sched_error_code fail_code, schd_error *perr)
 {
-	/* The resource needs to be found on the server and the requested resource
-	 * needs to be found from the job, these pointers are used to store the
-	 * results
-	 */
-	resource_req *resreq;
-	schd_resource *res;
 	long long num_chunk = SCHD_INFINITY;
-	long long cur_chunk = 0;
-	int fail = 0;
+
 	int any_fail = 0;
 	schd_error *prev_err = NULL;
 	schd_error *err;
-	sch_resource_t avail;			/* amount of available resource */
-	schd_resource *fres = false_res();
-	schd_resource *zres = zero_res();
-	schd_resource *ustr = unset_str_res();
-	char resbuf1[MAX_LOG_SIZE];
-	char resbuf2[MAX_LOG_SIZE];
-	char resbuf3[MAX_LOG_SIZE];
-	/*
-	 * buf must be large enough to hold the three resbuf buffers plus a
-	 * small amount of text... (R: resbuf1 A: resbuf2 T: resbuf3)
-	 */
-	char buf[(MAX_LOG_SIZE * 3) + 16];
 
 	if (reslist == NULL || reqlist == NULL) {
 		if (perr != NULL)
@@ -1143,127 +1261,33 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 		return -1;
 	}
 
-	if (fres == NULL || zres == NULL || ustr == NULL)
-		return -1;
-
 	err = perr;
 
-	/*
-	 * When we are checking for a property type resource (boolean or string)
-	 * we only check for failure cases.  A successful check will be one when
-	 * we fall out of the bottom of the if/else if block and move onto the
-	 * next.
-	 */
-	for (resreq = reqlist; resreq != NULL && !fail; resreq = resreq->next) {
+	for (resource_req *resreq = reqlist; resreq != NULL; resreq = resreq->next) {
 		if (((flags & CHECK_ALL_BOOLS) && resreq->type.is_boolean) ||
-			(checklist == NULL || resdef_exists_in_array(checklist, resreq->def))) {
-			res = find_resource(reslist, resreq->def);
+			(checklist.find(resreq->def) != checklist.end())) {
 
-			if (res == NULL || res->orig_str_avail == NULL) {
-				/* if resources_assigned.res is unset and resources is in
-				 * resource_unset_infinite, ignore the check and assume a match
-				 */
-				if (match_string_to_array(resreq->name, conf.ignore_res) != SA_NO_MATCH) {
-					continue;
-				}
-			}
+			schd_resource *res = find_check_resource(reslist, resreq, flags);
+			if (res == NULL)
+				continue;
 
-			if (res == NULL) {
-				/* If the requested resource is boolean and the resource isn't set in
-				 * reslist, then this means the boolean is false
-				 */
-				if (resreq->type.is_boolean)
-					res = fres;
-				else if (resreq->type.is_num && (flags & UNSET_RES_ZERO))
-					res = zres;
-				else if (resreq->type.is_string && (flags & UNSET_RES_ZERO))
-					res = ustr;
-				else /* ignore check: effect is resource is infinite */
-					continue;
+			num_chunk = match_resource(res, resreq, flags, fail_code, err);
 
-				res->name = resreq->name;
-				res->def = resreq->def;
-			}
-
-			if (res->indirect_res != NULL) {
-				res = res->indirect_res;
-			}
-
-			if (res->type.is_non_consumable && !(flags & ONLY_COMP_CONS)) {
-				if (!compare_non_consumable(res, resreq)) {
-					fail = 1;
-					if (err != NULL) {
-						const char *requested;
-						set_schd_error_codes(err, NOT_RUN, fail_code);
-						err->rdef = res->def;
-						requested = res_to_str_r(resreq, RF_REQUEST, resbuf1, sizeof(resbuf1));
-						snprintf(buf, sizeof(buf), "(%s != %s)",
-							requested,
-							res_to_str_r(res, RF_AVAIL, resbuf2, sizeof(resbuf2)));
-						set_schd_error_arg(err, ARG1, buf);
-						/* Set arg2 for vnode/host resource. In case of preemption, arg2 is used to cull
-						 * the list of running jobs
-						 */
-						if ((res->def == getallres(RES_HOST)) || (res->def == getallres(RES_VNODE)))
-							set_schd_error_arg(err, ARG2, requested);
-					}
-				}
-			}
-			else if (res->type.is_consumable && !(flags & ONLY_COMP_NONCONS)) {
-				if (flags & COMPARE_TOTAL)
-					avail = res->avail;
-				else
-					avail = dynamic_avail(res);
-
-				if (avail == SCHD_INFINITY_RES && (flags & UNSET_RES_ZERO))
-					avail = 0;
-
-				/*
-				 * if there is an infinite amount available or we are requesting
-				 * 0 amount of the resource, we do not need to check if any is
-				 * available
-				 */
-				if (avail != SCHD_INFINITY_RES && resreq->amount != 0) {
-					if (avail < resreq->amount) {
-						fail = 1;
-						if (err != NULL) {
-							set_schd_error_codes(err, NOT_RUN, fail_code);
-							err->rdef = res->def;
-
-							res_to_str_r(resreq, RF_REQUEST, resbuf1, sizeof(resbuf1));
-							res_to_str_c(avail, res->def, RF_AVAIL, resbuf2, sizeof(resbuf2));
-							if ((flags & UNSET_RES_ZERO) && res->avail == SCHD_INFINITY_RES)
-								res_to_str_c(0, res->def, RF_AVAIL, resbuf3, sizeof(resbuf3));
-							else
-								res_to_str_r(res, RF_AVAIL, resbuf3, sizeof(resbuf3));
-							snprintf(buf, sizeof(buf), "(R: %s A: %s T: %s)", resbuf1, resbuf2, resbuf3);
-							set_schd_error_arg(err, ARG1, buf);
-
-						}
-					}
-					else {
-						cur_chunk = avail / resreq->amount;
-						if (cur_chunk < num_chunk || num_chunk == SCHD_INFINITY)
-							num_chunk = cur_chunk;
-					}
-				}
-			}
-			if(fail && (flags & RETURN_ALL_ERR)) {
-				fail = 0;
+			if (num_chunk == 0) {
 				any_fail = 1;
-				if (err != NULL) {
-					err->next = new_schd_error();
-					if (err->next == NULL)
-						return 0;
-					prev_err = err;
-					err = err->next;
-				}
+				if (flags & RETURN_ALL_ERR) {
+					if (err != NULL) {
+						err->next = new_schd_error();
+						if (err->next == NULL)
+							return 0;
+						prev_err = err;
+						err = err->next;
+					}
+				} else
+					break;
 			}
 		}
 	}
-
-	if(fail)
-		any_fail = 1;
 
 	if (any_fail)
 		num_chunk = 0;
@@ -1278,7 +1302,62 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 	return num_chunk;
 }
 
+/** @brief overloaded version of check_avail_resources() which matches all resources.  
+ * @see other function for argument description
+*/
+long long
+check_avail_resources(schd_resource *reslist, resource_req *reqlist,
+		      unsigned int flags, enum sched_error_code fail_code, schd_error *perr)
+{
+	long long num_chunk = SCHD_INFINITY;
 
+	int any_fail = 0;
+	schd_error *prev_err = NULL;
+	schd_error *err;
+
+	if (reslist == NULL || reqlist == NULL) {
+		if (perr != NULL)
+			set_schd_error_codes(perr, NOT_RUN, SCHD_ERROR);
+
+		return -1;
+	}
+
+	err = perr;
+
+	for (resource_req *resreq = reqlist; resreq != NULL; resreq = resreq->next) {
+		schd_resource *res = find_check_resource(reslist, resreq, flags);
+		if (res == NULL)
+			continue;
+
+		num_chunk = match_resource(res, resreq, flags, fail_code, err);
+
+		if (num_chunk == 0) {
+			any_fail = 1;
+			if (flags & RETURN_ALL_ERR) {
+				if (err != NULL) {
+					err->next = new_schd_error();
+					if (err->next == NULL)
+						return 0;
+					prev_err = err;
+					err = err->next;
+				}
+			} else
+				break;
+		}
+	}
+
+	if (any_fail)
+		num_chunk = 0;
+
+	if (prev_err != NULL && (flags & RETURN_ALL_ERR)) {
+		if (prev_err != NULL) {
+			free_schd_error(err);
+			prev_err->next = NULL;
+		}
+	}
+
+	return num_chunk;
+}
 
 /**
  * @brief
@@ -1358,12 +1437,11 @@ check_ded_time_boundary(resource_resv *resresv)
 	sch_resource_t time_left;
 	sch_resource_t finish_time;	/* the finish time of the job */
 	int ded;			/* is it currently ded time ? */
-	struct timegap ded_time;
 
 	if (resresv == NULL)
 		return SE_NONE;
 
-	ded_time = find_next_dedtime(resresv->server->server_time);
+	timegap ded_time = find_next_dedtime(resresv->server->server_time);
 
 	/* we have no dedicated time */
 	if (ded_time.from == 0 && ded_time.to == 0)
@@ -1403,7 +1481,6 @@ dedtime_conflict(resource_resv *resresv)
 	time_t start;
 	time_t end;
 	time_t duration;
-	struct timegap ded_time;
 
 	if (resresv == NULL)
 		return -1;
@@ -1421,7 +1498,7 @@ dedtime_conflict(resource_resv *resresv)
 		end = resresv->end;
 	}
 
-	ded_time = find_next_dedtime(start);
+	timegap ded_time = find_next_dedtime(start);
 
 	/* no ded time */
 	if (ded_time.from == 0 && ded_time.to == 0)

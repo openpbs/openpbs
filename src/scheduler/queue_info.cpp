@@ -47,13 +47,10 @@
  * Functions included are:
  * 	query_queues()
  * 	query_queue_info()
- * 	new_queue_info()
  * 	free_queues()
  * 	update_queue_on_run()
  * 	update_queue_on_end()
- * 	free_queue_info()
  * 	dup_queues()
- * 	dup_queue_info()
  * 	find_queue_info()
  * 	node_queue_cmp()
  *
@@ -189,23 +186,23 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 		if (queue_in_partition(qinfo, sc_attrs.partition)) {
 			/* check if the queue is a dedicated time queue */
 			if (conf.ded_prefix[0] != '\0')
-				if (!strncmp(qinfo->name, conf.ded_prefix, strlen(conf.ded_prefix))) {
-					qinfo->is_ded_queue = 1;
-					sinfo->has_ded_queue = 1;
+				if (qinfo->name.compare(0, conf.ded_prefix.length(), conf.ded_prefix) == 0) {
+					qinfo->is_ded_queue = true;
+					sinfo->has_ded_queue = true;
 				}
 
 			/* check if the queue is a prime time queue */
 			if (conf.pt_prefix[0] != '\0')
-				if (!strncmp(qinfo->name, conf.pt_prefix, strlen(conf.pt_prefix))) {
-					qinfo->is_prime_queue = 1;
-					sinfo->has_prime_queue = 1;
+				if (qinfo->name.compare(0, conf.pt_prefix.length(), conf.pt_prefix) == 0) {
+					qinfo->is_prime_queue = true;
+					sinfo->has_prime_queue = true;
 				}
 
 			/* check if the queue is a nonprimetime queue */
 			if (conf.npt_prefix[0] != '\0')
-				if (!strncmp(qinfo->name, conf.npt_prefix, strlen(conf.npt_prefix))) {
-					qinfo->is_nonprime_queue = 1;
-					sinfo->has_nonprime_queue = 1;
+				if (qinfo->name.compare(0, conf.npt_prefix.length(), conf.npt_prefix) == 0) {
+					qinfo->is_nonprime_queue = true;
+					sinfo->has_nonprime_queue = true;
 				}
 
 			/* check if it is OK for jobs to run in the queue */
@@ -217,7 +214,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 			if (qinfo->has_nodes) {
 				qinfo->nodes = node_filter(sinfo->nodes, sinfo->num_nodes,
-					node_queue_cmp, (void *) qinfo->name, 0);
+					node_queue_cmp, (void *) qinfo->name.c_str(), 0);
 
 				qinfo->num_nodes = count_array(qinfo->nodes);
 
@@ -227,28 +224,28 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 				/* get all the jobs which reside in the queue */
 				qinfo->jobs = query_jobs(policy, pbs_sd, qinfo, NULL, qinfo->name);
 
-				for (j = 0; j < NUM_PEERS && conf.peer_queues[j].local_queue != NULL; j++) {
+				for (auto& pq : conf.peer_queues) {
 					int peer_on = 1;
 
-					if (!strcmp(conf.peer_queues[j].local_queue, qinfo->name)) {
+					if (qinfo->name == pq.local_queue) {
 						/* Locally-peered queues reuse the scheduler's connection */
-						if (conf.peer_queues[j].remote_server == NULL) {
+						if (pq.remote_server.empty()) {
 							peer_sd = pbs_sd;
 						}
-						else if ((peer_sd = pbs_connect_noblk(conf.peer_queues[j].remote_server, 2)) < 0) {
+						else if ((peer_sd = pbs_connect_noblk(const_cast<char *>(pq.remote_server.c_str()), 2)) < 0) {
 							/* Message was PBSEVENT_SCHED - moved to PBSEVENT_DEBUG2 for
 							 * failover reasons (see bz3002)
 							 */
 							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_INFO, qinfo->name,
-								"Can not connect to peer %s", conf.peer_queues[j].remote_server);
-							conf.peer_queues[j].peer_sd = -1;
+								"Can not connect to peer %s", pq.remote_server.c_str());
+							pq.peer_sd = -1;
 							peer_on = 0; /* do not proceed */
 						}
 						if (peer_on) {
-								conf.peer_queues[j].peer_sd = peer_sd;
+								pq.peer_sd = peer_sd;
 								qinfo->is_peer_queue = 1;
 								/* get peered jobs */
-								qinfo->jobs = query_jobs(policy, peer_sd, qinfo, qinfo->jobs, conf.peer_queues[j].remote_queue);
+								qinfo->jobs = query_jobs(policy, peer_sd, qinfo, qinfo->jobs, pq.remote_queue);
 						}
 					}
 				}
@@ -312,7 +309,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 			qinfo_arr[qidx] = NULL;
 
 		} else
-			free_queue_info(qinfo);
+			delete qinfo;
 
 		cur_queue = cur_queue->next;
 	}
@@ -354,16 +351,11 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 	char *endp;			/* used with strtol() */
 	sch_resource_t count;		/* used to convert string -> num */
 
-	if ((qinfo = new_queue_info(1)) == NULL)
+	if ((qinfo = new queue_info(queue->name)) == NULL)
 		return NULL;
 
 	if (qinfo->liminfo == NULL)
 		return NULL;
-
-	if ((qinfo->name = string_dup(queue->name)) == NULL) {
-		free_queue_info(qinfo);
-		return NULL;
-	}
 
 	attrp = queue->attribs;
 	qinfo->server = sinfo;
@@ -392,7 +384,7 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 				qinfo->partition = string_dup(attrp->value);
 				if (qinfo->partition == NULL) {
 					log_err(errno, __func__, MEM_ERR_MSG);
-					free_queue_info(qinfo);
+					delete qinfo;
 					return NULL;
 				}
 			}
@@ -473,7 +465,7 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 					qinfo->qres = resp;
 
 				if (set_resource(resp, attrp->value, RF_AVAIL) == 0) {
-					free_queue_info(qinfo);
+					delete qinfo;
 					return NULL;
 				}
 				qinfo->has_resav_limit = 1;
@@ -484,7 +476,7 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 				qinfo->qres = resp;
 			if (resp != NULL) {
 				if (set_resource(resp, attrp->value, RF_ASSN) == 0) {
-					free_queue_info(qinfo);
+					delete qinfo;
 					return NULL;
 				}
 			}
@@ -515,81 +507,60 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 	return qinfo;
 }
 
-/**
- * @brief
- *		new_queue_info - allocate and initalize a new queue_info struct
- *
- * @param[in]	limallocflag	-	limit allocation flag.
- *
- * @return	the newly allocated struct
- * @retval	NULL	: on error
- *
- */
-
-queue_info *
-new_queue_info(int limallocflag)
+// queue_info constructor
+queue_info::queue_info(char *qname): name(qname)
 {
-	queue_info *qinfo;
-
-	if ((qinfo = static_cast<queue_info *>(malloc(sizeof(queue_info)))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-
-	qinfo->is_started	 = 0;
-	qinfo->is_exec	 = 0;
-	qinfo->is_route	 = 0;
-	qinfo->is_ded_queue = 0;
-	qinfo->is_prime_queue = 0;
-	qinfo->is_nonprime_queue = 0;
-	qinfo->is_ok_to_run	 = 0;
-	qinfo->has_nodes = 0;
-	qinfo->priority	 = 0;
-	qinfo->has_soft_limit = 0;
-	qinfo->has_hard_limit = 0;
-	qinfo->is_peer_queue = 0;
-	qinfo->has_resav_limit = 0;
-	qinfo->has_user_limit = 0;
-	qinfo->has_grp_limit = 0;
-	qinfo->has_proj_limit = 0;
-	qinfo->has_all_limit = 0;
-	init_state_count(&(qinfo->sc));
-	if ((limallocflag != 0))
-		qinfo->liminfo = lim_alloc_liminfo();
-	qinfo->num_nodes	 = 0;
-	qinfo->name		 = NULL;
-	qinfo->qres		 = NULL;
-	qinfo->jobs		 = NULL;
-	qinfo->running_jobs	 = NULL;
-	qinfo->server	 = NULL;
-	qinfo->resv		 = NULL;
-	qinfo->nodes	 = NULL;
-	qinfo->alljobcounts	 = NULL;
-	qinfo->group_counts  = NULL;
-	qinfo->project_counts  = NULL;
-	qinfo->user_counts   = NULL;
-	qinfo->total_alljobcounts	 = NULL;
-	qinfo->total_group_counts  = NULL;
-	qinfo->total_project_counts  = NULL;
-	qinfo->total_user_counts   = NULL;
-	qinfo->nodepart	 = NULL;
-	qinfo->node_group_key= NULL;
-	qinfo->allpart       = NULL;
-	qinfo->num_parts = 0;
-	qinfo->num_topjobs = 0;
-	qinfo->backfill_depth = UNSPECIFIED;
+	is_started = 0;
+	is_exec = 0;
+	is_route = 0;
+	is_ded_queue = 0;
+	is_prime_queue = 0;
+	is_nonprime_queue = 0;
+	is_ok_to_run = 0;
+	has_nodes = 0;
+	priority = 0;
+	has_soft_limit = 0;
+	has_hard_limit = 0;
+	is_peer_queue = 0;
+	has_resav_limit = 0;
+	has_user_limit = 0;
+	has_grp_limit = 0;
+	has_proj_limit = 0;
+	has_all_limit = 0;
+	init_state_count(&sc);
+	liminfo = lim_alloc_liminfo();
+	num_nodes = 0;
+	qres = NULL;
+	jobs = NULL;
+	running_jobs = NULL;
+	server = NULL;
+	resv = NULL;
+	nodes = NULL;
+	alljobcounts = NULL;
+	group_counts = NULL;
+	project_counts = NULL;
+	user_counts = NULL;
+	total_alljobcounts = NULL;
+	total_group_counts = NULL;
+	total_project_counts = NULL;
+	total_user_counts = NULL;
+	nodepart = NULL;
+	node_group_key = NULL;
+	allpart = NULL;
+	num_parts = 0;
+	num_topjobs = 0;
+	backfill_depth = UNSPECIFIED;
 #ifdef NAS
 	/* localmod 046 */
-	qinfo->max_starve	 = 0;
+	max_starve	 = 0;
 	/* localmod 034 */
-	qinfo->max_borrow	 = UNSPECIFIED;
+	max_borrow	 = UNSPECIFIED;
 	/* localmod 038 */
-	qinfo->is_topjob_set_aside	 = 0;
+	is_topjob_set_aside	 = 0;
 	/* localmod 040 */
-	qinfo->ignore_nodect_sort	 = 0;
+	ignore_nodect_sort	 = 0;
 #endif
-	qinfo->partition = NULL;
-	return qinfo;
+	partition = NULL;
 }
 
 /**
@@ -611,7 +582,7 @@ free_queues(queue_info **qarr)
 
 	for (i = 0; qarr[i] != NULL; i++) {
 		free_resource_resv_array(qarr[i]->jobs);
-		free_queue_info(qarr[i]);
+		delete qarr[i];
 	}
 
 	free(qarr);
@@ -657,8 +628,7 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 		qinfo->sc.queued--;
 	}
 
-	if (cstat.node_sort[0].res_name != NULL &&
-		conf.node_sort_unused && qinfo->nodes != NULL)
+	if (!cstat.node_sort->empty() && conf.node_sort_unused && qinfo->nodes != NULL)
 		qsort(qinfo->nodes, qinfo->num_nodes, sizeof(node_info *),
 			multi_node_sort);
 
@@ -803,57 +773,25 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 	}
 }
 
-/**
- * @brief
- *		free_queue_info - free space used by a queue info struct
- *
- * @param[in,out]	qinfo	-	queue to free
- *
- * @return	nothing
- *
- */
-void
-free_queue_info(queue_info *qinfo)
+// queue_info destructor
+queue_info::~queue_info()
 {
-	if (qinfo->name != NULL)
-		free(qinfo->name);
-	if (qinfo->qres != NULL)
-		free_resource_list(qinfo->qres);
-	if (qinfo->running_jobs != NULL)
-		free(qinfo->running_jobs);
-	if (qinfo->nodes != NULL)
-		free(qinfo->nodes);
-	if (qinfo->alljobcounts != NULL)
-		free_counts_list(qinfo->alljobcounts);
-	if (qinfo->group_counts != NULL)
-		free_counts_list(qinfo->group_counts);
-	if (qinfo->project_counts != NULL)
-		free_counts_list(qinfo->project_counts);
-	if (qinfo->user_counts != NULL)
-		free_counts_list(qinfo->user_counts);
-	if (qinfo->total_alljobcounts != NULL)
-		free_counts_list(qinfo->total_alljobcounts);
-	if (qinfo->total_group_counts != NULL)
-		free_counts_list(qinfo->total_group_counts);
-	if (qinfo->total_project_counts != NULL)
-		free_counts_list(qinfo->total_project_counts);
-	if (qinfo->total_user_counts != NULL)
-		free_counts_list(qinfo->total_user_counts);
-	if (qinfo->nodepart != NULL)
-		free_node_partition_array(qinfo->nodepart);
-	if (qinfo->allpart != NULL)
-		free_node_partition(qinfo->allpart);
-	if (qinfo->node_group_key != NULL)
-		free_string_array(qinfo->node_group_key);
-
-	if (qinfo->liminfo != NULL) {
-		lim_free_liminfo(qinfo->liminfo);
-		qinfo->liminfo = NULL;
-	}
-	if (qinfo->partition != NULL)
-		free(qinfo->partition);
-
-	free(qinfo);
+	free_resource_list(qres);
+	free(running_jobs);
+	free(nodes);
+	free_counts_list(alljobcounts);
+	free_counts_list(group_counts);
+	free_counts_list(project_counts);
+	free_counts_list(user_counts);
+	free_counts_list(total_alljobcounts);
+	free_counts_list(total_group_counts);
+	free_counts_list(total_project_counts);
+	free_counts_list(total_user_counts);
+	free_node_partition_array(nodepart);
+	free_node_partition(allpart);
+	free_string_array(node_group_key);
+	lim_free_liminfo(liminfo);
+	free(partition);
 }
 
 /**
@@ -882,7 +820,7 @@ dup_queues(queue_info **oqueues, server_info *nsinfo)
 	}
 
 	for (i = 0; oqueues[i] != NULL; i++) {
-		if ((new_queues[i] = dup_queue_info(oqueues[i], nsinfo)) == NULL) {
+		if ((new_queues[i] = new queue_info(*oqueues[i], nsinfo)) == NULL) {
 			free_queues(new_queues);
 			return NULL;
 		}
@@ -894,107 +832,90 @@ dup_queues(queue_info **oqueues, server_info *nsinfo)
 }
 
 /**
- * @brief
- *		dup_queue_info - duplicate a queue_info structure
+ * @brief 	queue_info copy constructor
  *
- * @param[in]	oqinfo	-	the queue_info to copy
  * @param[in]	nsinfo	-	the server which owns the duplicated queue
  *
- * @return	duplicated queue_info struct
- * @retval	NULL	: on error
- *
  */
-queue_info *
-dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
+queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.name)
 {
-	queue_info *nqinfo;
+	server = nsinfo;
 
-	if ((nqinfo = new_queue_info(0)) == NULL)
-		return NULL;
+	is_started = oqinfo.is_started;
+	is_exec = oqinfo.is_exec;
+	is_route = oqinfo.is_route;
+	is_ok_to_run = oqinfo.is_ok_to_run;
+	is_ded_queue = oqinfo.is_ded_queue;
+	is_prime_queue = oqinfo.is_prime_queue;
+	is_nonprime_queue = oqinfo.is_nonprime_queue;
+	has_nodes = oqinfo.has_nodes;
+	has_soft_limit = oqinfo.has_soft_limit;
+	has_hard_limit = oqinfo.has_hard_limit;
+	is_peer_queue = oqinfo.is_peer_queue;
+	has_resav_limit = oqinfo.has_resav_limit;
+	has_user_limit = oqinfo.has_user_limit;
+	has_grp_limit = oqinfo.has_grp_limit;
+	has_proj_limit = oqinfo.has_proj_limit;
+	has_all_limit = oqinfo.has_all_limit;
+	sc = oqinfo.sc;
+	liminfo = lim_dup_liminfo(oqinfo.liminfo);
+	priority = oqinfo.priority;
+	num_parts = oqinfo.num_parts;
+	num_topjobs = oqinfo.num_topjobs;
+	backfill_depth = oqinfo.backfill_depth;
+	num_nodes = oqinfo.num_nodes;
 
-	nqinfo->name = string_dup(oqinfo->name);
-	nqinfo->server = nsinfo;
-
-	nqinfo->is_started = oqinfo->is_started;
-	nqinfo->is_exec = oqinfo->is_exec;
-	nqinfo->is_route = oqinfo->is_route;
-	nqinfo->is_ok_to_run = oqinfo->is_ok_to_run;
-	nqinfo->is_ded_queue = oqinfo->is_ded_queue;
-	nqinfo->is_prime_queue = oqinfo->is_prime_queue;
-	nqinfo->is_nonprime_queue = oqinfo->is_nonprime_queue;
-	nqinfo->has_nodes = oqinfo->has_nodes;
-	nqinfo->has_soft_limit = oqinfo->has_soft_limit;
-	nqinfo->has_hard_limit = oqinfo->has_hard_limit;
-	nqinfo->is_peer_queue = oqinfo->is_peer_queue;
-	nqinfo->has_resav_limit = oqinfo->has_resav_limit;
-	nqinfo->has_user_limit = oqinfo->has_user_limit;
-	nqinfo->has_grp_limit = oqinfo->has_grp_limit;
-	nqinfo->has_proj_limit = oqinfo->has_proj_limit;
-	nqinfo->has_all_limit = oqinfo->has_all_limit;
-	nqinfo->sc = oqinfo->sc;
-	nqinfo->liminfo = lim_dup_liminfo(oqinfo->liminfo);
-	nqinfo->priority = oqinfo->priority;
-	nqinfo->num_parts = oqinfo->num_parts;
-	nqinfo->num_topjobs = oqinfo->num_topjobs;
-	nqinfo->backfill_depth = oqinfo->backfill_depth;
 #ifdef	NAS
 	/* localmod 046 */
-	nqinfo->max_starve = oqinfo->max_starve;
+	max_starve = oqinfo.max_starve;
 	/* localmod 034 */
-	nqinfo->max_borrow = oqinfo->max_borrow;
+	max_borrow = oqinfo.max_borrow;
 	/* localmod 038 */
-	nqinfo->is_topjob_set_aside = oqinfo->is_topjob_set_aside;
+	is_topjob_set_aside = oqinfo.is_topjob_set_aside;
 	/* localmod 040 */
-	nqinfo->ignore_nodect_sort = oqinfo->ignore_nodect_sort;
+	ignore_nodect_sort = oqinfo.ignore_nodect_sort;
 #endif
 
-	nqinfo->qres = dup_resource_list(oqinfo->qres);
-	nqinfo->alljobcounts = dup_counts_list(oqinfo->alljobcounts);
-	nqinfo->group_counts = dup_counts_list(oqinfo->group_counts);
-	nqinfo->project_counts = dup_counts_list(oqinfo->project_counts);
-	nqinfo->user_counts = dup_counts_list(oqinfo->user_counts);
-	nqinfo->total_alljobcounts = dup_counts_list(oqinfo->total_alljobcounts);
-	nqinfo->total_group_counts = dup_counts_list(oqinfo->total_group_counts);
-	nqinfo->total_project_counts = dup_counts_list(oqinfo->total_project_counts);
-	nqinfo->total_user_counts = dup_counts_list(oqinfo->total_user_counts);
-	nqinfo->nodepart = dup_node_partition_array(oqinfo->nodepart, nsinfo);
-	nqinfo->allpart = dup_node_partition(oqinfo->allpart, nsinfo);
-	nqinfo->node_group_key = dup_string_arr(oqinfo->node_group_key);
+	qres = dup_resource_list(oqinfo.qres);
+	alljobcounts = dup_counts_list(oqinfo.alljobcounts);
+	group_counts = dup_counts_list(oqinfo.group_counts);
+	project_counts = dup_counts_list(oqinfo.project_counts);
+	user_counts = dup_counts_list(oqinfo.user_counts);
+	total_alljobcounts = dup_counts_list(oqinfo.total_alljobcounts);
+	total_group_counts = dup_counts_list(oqinfo.total_group_counts);
+	total_project_counts = dup_counts_list(oqinfo.total_project_counts);
+	total_user_counts = dup_counts_list(oqinfo.total_user_counts);
+	nodepart = dup_node_partition_array(oqinfo.nodepart, nsinfo);
+	allpart = dup_node_partition(oqinfo.allpart, nsinfo);
+	node_group_key = dup_string_arr(oqinfo.node_group_key);
 
-	if (oqinfo->resv != NULL) {
-		nqinfo->resv = find_resource_resv_by_indrank(nsinfo->resvs, oqinfo->resv->resresv_ind, oqinfo->resv->rank);
-		if (!nqinfo->resv->resv->is_standing) {
+	if (oqinfo.resv != NULL) {
+		resv = find_resource_resv_by_indrank(nsinfo->resvs, oqinfo.resv->resresv_ind, oqinfo.resv->rank);
+		if (!resv->resv->is_standing) {
 			/* just incase we we didn't set the reservation cross pointer */
-			nqinfo->resv->resv->resv_queue = nqinfo;
+			resv->resv->resv_queue = this;
 		} else {
 			/* For standing reservations, we need to restore the resv_queue pointers for all occurrences */
 			int i;
-			for(i = 0; nqinfo->server->resvs[i] != NULL; i++) {
-				if (nqinfo->server->resvs[i]->name == nqinfo->resv->name)
-					nqinfo->server->resvs[i]->resv->resv_queue = nqinfo;
+			for(i = 0; server->resvs[i] != NULL; i++) {
+				if (server->resvs[i]->name == resv->name)
+					server->resvs[i]->resv->resv_queue = this;
 			}
 		}
-	}
-	nqinfo->jobs = dup_resource_resv_array(oqinfo->jobs,
-		nqinfo->server, nqinfo);
+	} else
+		resv = NULL;
+	
+	jobs = dup_resource_resv_array(oqinfo.jobs, server, this);
 
-	if (nqinfo->jobs != NULL)
-		nqinfo->running_jobs = resource_resv_filter(nqinfo->jobs,
-			nqinfo->sc.total, check_run_job, NULL, 0);
+	running_jobs = resource_resv_filter(jobs, sc.total, check_run_job, NULL, 0);
 
-	if (oqinfo->nodes != NULL)
-		nqinfo->nodes = node_filter(nsinfo->nodes, nsinfo->num_nodes,
-			node_queue_cmp, (void *) nqinfo->name, 0);
+	if (oqinfo.has_nodes)
+		nodes = copy_node_ptr_array(oqinfo.nodes, nsinfo->nodes);
+	else
+		nodes = NULL;
 
-	if (oqinfo->partition != NULL) {
-		nqinfo->partition = string_dup(oqinfo->partition);
-		if (nqinfo->partition == NULL) {
-			free_queue_info(nqinfo);
-			return NULL;
-		}
-	}
+	partition = string_dup(oqinfo.partition);
 
-	return nqinfo;
 }
 
 /**
@@ -1009,14 +930,14 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
  *
  */
 queue_info *
-find_queue_info(queue_info **qinfo_arr, char *name)
+find_queue_info(queue_info **qinfo_arr, const std::string& name)
 {
 	int i;
 
 	if (qinfo_arr == NULL)
 		return NULL;
 
-	for (i = 0; qinfo_arr[i] != NULL && strcmp(name, qinfo_arr[i]->name); i++)
+	for (i = 0; qinfo_arr[i] != NULL && qinfo_arr[i]->name != name; i++)
 		;
 
 	/* either we have found our queue or the NULL sentinal value */
@@ -1039,9 +960,8 @@ find_queue_info(queue_info **qinfo_arr, char *name)
 int
 node_queue_cmp(node_info *ninfo, void *arg)
 {
-	if (ninfo->queue_name != NULL)
-		if (!strcmp(ninfo->queue_name,  (char *) arg))
-			return 1;
+	if (ninfo->queue_name == (char *) arg)
+		return 1;
 
 	return 0;
 }

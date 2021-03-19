@@ -57,7 +57,6 @@
  * 	copy_resdef_array()
  * 	free_resdef_array()
  * 	find_resdef()
- * 	resdef_exists_in_array()
  * 	reset_global_resource_ptrs()
  * 	is_res_avail_set()
  * 	add_resource_sig()
@@ -66,12 +65,10 @@
  * 	resstr_to_resdef()
  * 	getallres()
  * 	collect_resources_from_requests()
- * 	no_hostvnode()
- * 	def_rassn()
- * 	def_rassn_select()
  * 	update_sorting_defs()
  *
  */
+
 #include <pbs_config.h>
 
 #include <stdio.h>
@@ -532,28 +529,12 @@ find_resdef(resdef **deflist, const char *name)
 	return deflist[i];
 }
 
-/**
- * @brief
- * 		does resdef exist in a resdef array?
- *
- * @param[in]	deflist	-	array of resdef to search
- * @param[in]	def	-	def of resource to search for
- *
- * @return	int
- * @retval	1	: if found
- * @retval	0	: if not found
- */
-int
-resdef_exists_in_array(resdef **deflist, resdef *def)
+resdef *
+find_resdef(resdef **deflist, const std::string& name)
 {
-	int i;
-	if (deflist == NULL || def == NULL)
-		return 0;
-
-	for (i = 0; deflist[i] != NULL && deflist[i] != def; i++)
-		;
-	return (deflist[i] != NULL);
+	return find_resdef(deflist, name.c_str());
 }
+
 /**
  * @brief
  * 		free and clear global resource definition pointers
@@ -564,10 +545,7 @@ void
 reset_global_resource_ptrs(void)
 {
 	/* references into allres, only need to free() */
-	if (conf.resdef_to_check != NULL) {
-		free(conf.resdef_to_check);
-		conf.resdef_to_check = NULL;
-	}
+	conf.resdef_to_check.clear();
 	if (consres != NULL) {
 		free(consres);
 		consres = NULL;
@@ -661,14 +639,14 @@ add_resource_sig(char **sig, int *sig_size, schd_resource *res)
  * @par	it is the responsibility of the caller to free string returned
  */
 char *
-create_resource_signature(schd_resource *reslist, resdef **resources, unsigned int flags)
+create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& resources, unsigned int flags)
 {
 	char *sig = NULL;
 	int sig_size = 0;
 	int i;
 	schd_resource *res;
 
-	if (reslist == NULL || resources == NULL)
+	if (reslist == NULL)
 		return NULL;
 
 	if ((sig = static_cast<char *>(malloc(1024))) == NULL) {
@@ -678,8 +656,8 @@ create_resource_signature(schd_resource *reslist, resdef **resources, unsigned i
 	sig_size = 1024;
 	sig[0] = '\0';
 
-	for (i = 0; resources[i] != NULL; i++) {
-		res = find_resource(reslist, resources[i]);
+	for (const auto& r : resources) {
+		res = find_resource(reslist, r);
 		if (res != NULL) {
 			if (res->indirect_res != NULL) {
 				res = res->indirect_res;
@@ -696,7 +674,7 @@ create_resource_signature(schd_resource *reslist, resdef **resources, unsigned i
 
 	if ((flags & ADD_ALL_BOOL)) {
 		for (i = 0; boolres[i] != NULL; i++) {
-			if (!resdef_exists_in_array(resources, boolres[i])) {
+			if (resources.find(boolres[i]) == resources.end()) {
 				res = find_resource(reslist, boolres[i]);
 				if (res != NULL) {
 					add_resource_sig(&sig, &sig_size, res);
@@ -752,10 +730,9 @@ update_resource_defs(int pbs_sd)
 				error = 1;
 		}
 
-
-		if (conf.res_to_check != NULL) {
+		if (!conf.res_to_check.empty()) {
 			conf.resdef_to_check = resstr_to_resdef(conf.res_to_check);
-			if (conf.resdef_to_check == NULL)
+			if (conf.resdef_to_check.empty())
 				error = 1;
 		}
 		update_sorting_defs(SD_UPDATE);
@@ -773,10 +750,8 @@ update_resource_defs(int pbs_sd)
 			boolres = NULL;
 		}
 
-		if (conf.resdef_to_check != NULL) {
-			free(conf.resdef_to_check);
-			conf.resdef_to_check = NULL;
-		}
+			conf.resdef_to_check.clear();
+
 		if (allres != NULL) {
 			free_resdef_array(allres);
 			allres = NULL;
@@ -797,37 +772,40 @@ update_resource_defs(int pbs_sd)
  * @return	resdef array
  * @retval	NULL	: on error
  */
-resdef **
-resstr_to_resdef(char **resstr)
+std::unordered_set<resdef *>
+resstr_to_resdef(const std::unordered_set<std::string>& resstr)
 {
-	int cnt;
-	int i;
-	int j;
-	resdef **tmparr;
+	std::unordered_set<resdef *> defs;
 	resdef *def;
 
-	if (resstr == NULL)
-		return NULL;
-
-	cnt = count_array(resstr);
-	if ((tmparr = static_cast<resdef **>(malloc((cnt + 1) * sizeof(resdef *)))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
+	for (const auto& str : resstr) {
+		def = find_resdef(allres, str);
+		if (def != NULL)
+			defs.insert(def);
+		else {
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, str, "Unknown Resource");
+		}
 	}
 
-	for (i = 0, j = 0; resstr[i] != NULL; i++) {
+	return defs;
+}
+
+std::unordered_set<resdef *>
+resstr_to_resdef(const char * const*resstr)
+{
+	std::unordered_set<resdef *> defs;
+	resdef *def;
+
+	for (int i = 0; resstr[i] != NULL; i++) {
 		def = find_resdef(allres, resstr[i]);
-		if (def != NULL) {
-			tmparr[j] = def;
-			j++;
-		}
+		if (def != NULL)
+			defs.insert(def);
 		else {
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, resstr[i], "Unknown Resource");
 		}
 	}
-	tmparr[j] = NULL;
 
-	return tmparr;
+	return defs;
 }
 
 /**
@@ -854,22 +832,20 @@ getallres(enum resource_index ind)
  *
  * @return	array of resource definitions
  */
-resdef **
+std::unordered_set<resdef *>
 collect_resources_from_requests(resource_resv **resresv_arr)
 {
-	int i, j;
+	int i;
 	resource_req *req;
-	resdef **defarr = NULL;
+	std::unordered_set<resdef *> defset;
 
 	for (i = 0; resresv_arr[i] != NULL; i++) {
 		resource_resv *r = resresv_arr[i];
 
 		/* schedselect: node resources - resources to be satisfied on the nodes */
-		if (r->select != NULL && r->select->defs != NULL) {
-			for (j = 0; r->select->defs[j] != NULL; j++) {
-				if (!resdef_exists_in_array(defarr, r->select->defs[j]))
-					add_resdef_to_array(&defarr, r->select->defs[j]);
-			}
+		if (r->select != NULL) {
+			for (const auto &sdef : r->select->defs)
+				defset.insert(sdef);
 		}
 		/*
 		 * execselect: select created from the exec_vnode.  This is likely to
@@ -878,90 +854,21 @@ collect_resources_from_requests(resource_resv **resresv_arr)
 		 * the schedselect.  The exec_vnode is taken directly from the -H argument
 		 * The qrun -H case is why we need to do this check.
 		 */
-		if (r->execselect != NULL && r->execselect->defs != NULL) {
+		if (r->execselect != NULL) {
 			if ((r->job != NULL && in_runnable_state(r)) ||
-				(r->resv != NULL && (r->resv->resv_state == RESV_BEING_ALTERED || r->resv->resv_substate == RESV_DEGRADED))) {
-				for (j = 0; r->execselect->defs[j] != NULL;j++) {
-					if (!resdef_exists_in_array(defarr, r->execselect->defs[j]))
-						add_resdef_to_array(&defarr, r->execselect->defs[j]);
-				}
+			    (r->resv != NULL && (r->resv->resv_state == RESV_BEING_ALTERED || r->resv->resv_substate == RESV_DEGRADED))) {
+				for (const auto &esd : r->execselect->defs)
+					defset.insert(esd);
 			}
 		}
 		/* Resource_List: job wide resources: resources submitted with
 		 * qsub -l and resources with the ATTR_DFLAG_RASSN which the server
 		 * sums all the requested amounts in the select and sets job wide
 		 */
-		for (req = r->resreq; req != NULL; req = req->next) {
-			if (conf.resdef_to_check == NULL ||
-				resdef_exists_in_array(conf.resdef_to_check, req->def)) {
-				if (!resdef_exists_in_array(defarr, req->def))
-					add_resdef_to_array(&defarr, req->def);
-			}
-		}
+		for (req = r->resreq; req != NULL; req = req->next)
+			defset.insert(req->def);
 	}
-	return defarr;
-}
-
-/**
- * @brief
- * 		filter function for filter_array().  Used to filter out host and vnode
- *
- * @param[in]	v	-	pointer to resource definition structure.
- * @param[in]	arg	-	argument (not used)
- *
- * @return	int
- * @retval	1	: no host vnode.
- * @retval	0	: host vnode available.
- */
-int
-no_hostvnode(void *v, void *arg)
-{
-	resdef *r = (resdef *)v;
-	if (r == getallres(RES_HOST) || r == getallres(RES_VNODE))
-		return 0;
-	return 1;
-}
-
-/**
- * @brief
- * 		filter function for filter_array().  Used to filter for resources
- * 		that are server/queue level and get summed at the job level
- *
- * @param[in]	v	-	pointer to resource definition structure.
- * @param[in]	arg	-	argument (not used)
- *
- * @return	int
- * @retval	1	: reassigned vnode.
- * @retval	0	: not reassigned.
- */
-int
-def_rassn(void *v, void *arg)
-{
-	resdef *r = (resdef *)v;
-	if (r->flags & ATR_DFLAG_RASSN)
-		return 1;
-	return 0;
-}
-
-/**
- * @brief
- * 		filter function for filter_array().  Used to filter for resources
- * 		that are host based and get summed at the job level
- *
- * @param[in]	v	-	pointer to resource definition structure.
- * @param[in]	arg	-	argument (not used)
- *
- * @return	int
- * @retval	1	: reassigned vnode.
- * @retval	0	: not reassigned.
- */
-int
-def_rassn_select(void *v, void *arg)
-{
-	resdef *r = (resdef *)v;
-	if ((r->flags & ATR_DFLAG_RASSN) && (r->flags & ATR_DFLAG_CVTSLT))
-		return 1;
-	return 0;
+	return defset;
 }
 
 /**
@@ -977,60 +884,40 @@ filter_noncons(void *v, void *arg)
 }
 
 /**
+ * @brief update the resource def for a single sort_info vector
+ * @param[in] op - operation to do (e.h. update or clear)
+ * @param[in, out] siv - sort_info vector to update
+ * @param[in] obj - object type (node or job)
+ * @param[in] prefix - string prefix for logging
+ * 
+ * @return nothing
+ */
+void update_single_sort_def(int op, std::vector<sort_info>& siv, int obj, const char *prefix)
+{
+	for (auto &si : siv) {
+		if (op == SD_UPDATE) {
+			si.def = find_resdef(allres, si.res_name);
+			if (si.def == NULL && !is_speccase_sort(si.res_name, obj))
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, CONFIG_FILE,
+					"%s sorting resource %s is not a valid resource", prefix, si.res_name.c_str());
+		} else
+			si.def = NULL;
+	}
+}
+
+/**
  * @brief update the resource definition pointers in the sort_info structures
  *
  * @par	We parse our config file when we start.  We do not have the resource
  *      definitions at that time.  They also can change over time if the server
  *      sends us a SCH_CONFIGURE command.
  *
- * @param[in]	op	-	update(non-zero) or free definitions(0)
+ * @param[in]	op	-	update(non-zero) or clear definitions(0)
  */
 void update_sorting_defs(int op)
 {
-	int i, j;
-	const char *prefix = NULL;
-
-	/* Job sorts */
-	for (i = 0; i < 4; i++) {
-		struct sort_info *si;
-		int obj;
-		switch(i)
-		{
-			case 0:
-				si = conf.prime_node_sort;
-				obj = SOBJ_NODE;
-				prefix = "Prime node";
-				break;
-			case 1:
-				si = conf.non_prime_node_sort;
-				obj = SOBJ_NODE;
-				prefix = "Non-prime node";
-				break;
-			case 2:
-				si = conf.prime_sort;
-				obj = SOBJ_JOB;
-				prefix = "Prime job";
-				break;
-			case 3:
-				si = conf.non_prime_sort;
-				obj = SOBJ_JOB;
-				prefix = "Non-prime job";
-				break;
-			default:
-				si = NULL;
-				obj = SOBJ_JOB;
-		}
-		if (si != NULL) {
-			for (j = 0; si[j].res_name != NULL; j++) {
-				if (op == SD_UPDATE) {
-					si[j].def = find_resdef(allres, si[j].res_name);
-					if (si[j].def == NULL && !is_speccase_sort(si[j].res_name, obj))
-						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, CONFIG_FILE,
-							"%s sorting resource %s is not a valid resource", prefix, si[j].res_name);
-				} else
-					si[j].def = NULL;
-
-			}
-		}
-	}
+	update_single_sort_def(op, conf.prime_node_sort, SOBJ_NODE, "prime node");
+	update_single_sort_def(op, conf.non_prime_node_sort, SOBJ_NODE, "Non-prime node");
+	update_single_sort_def(op, conf.prime_sort, SOBJ_JOB, "prime job");
+	update_single_sort_def(op, conf.non_prime_sort, SOBJ_JOB, "Non-prime job");
 }
