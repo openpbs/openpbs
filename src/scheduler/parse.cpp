@@ -193,13 +193,13 @@ parse_config(const char *fname)
 
 #ifdef NAS
 	/* localmod 034 */
-	conf.max_borrow = UNSPECIFIED;
-	conf.per_share_topjobs = 0;
+	tmpconf.max_borrow = UNSPECIFIED;
+	tmpconf.per_share_topjobs = 0;
 	/* localmod 038 */
-	conf.per_queues_topjobs = 0;
+	tmpconf.per_queues_topjobs = 0;
 	/* localmod 030 */
-	conf.min_intrptd_cycle_length = 30;
-	conf.max_intrptd_cycles = 1;
+	tmpconf.min_intrptd_cycle_length = 30;
+	tmpconf.max_intrptd_cycles = 1;
 #endif
 
 	/* auto-set any internally needed config values before reading the file */
@@ -333,7 +333,7 @@ parse_config(const char *fname)
 					}
 				}
 				else if (!strcmp(config_name, PARSE_MAX_STARVE)) {
-					conf.max_starve = res_to_num(config_value, &type);
+					tmpconf.max_starve = res_to_num(config_value, &type);
 					if (!type.is_time) {
 						snprintf(errbuf, sizeof(errbuf), "Invalid time %s", config_value);
 						error = true;
@@ -344,7 +344,7 @@ parse_config(const char *fname)
 						obsolete[0] = PARSE_HALF_LIFE;
 						obsolete[1] = PARSE_FAIRSHARE_DECAY_TIME " and " PARSE_FAIRSHARE_DECAY_FACTOR " instead";
 					}
-					conf.decay_time = res_to_num(config_value, &type);
+					tmpconf.decay_time = res_to_num(config_value, &type);
 					if (!type.is_time) {
 						snprintf(errbuf, sizeof(errbuf), "Invalid time %s", config_value);
 						error = true;
@@ -360,7 +360,7 @@ parse_config(const char *fname)
 							sprintf(errbuf, "%s: Invalid value: %.*f.  Valid values are between 0 and 1.", PARSE_FAIRSHARE_DECAY_FACTOR, float_digits(fnum, 2), fnum);
 							error = true;
 						} else
-							conf.fairshare_decay_factor = fnum;
+							tmpconf.fairshare_decay_factor = fnum;
 					} else {
 						pbs_strncpy(errbuf, "Invalid " PARSE_FAIRSHARE_DECAY_FACTOR, sizeof(errbuf));
 						error = true;
