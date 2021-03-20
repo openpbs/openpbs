@@ -2152,8 +2152,20 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP2'
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
+
+        time.sleep(2)
+        begin = int(time.time())
+        # sleep 2s to allow for small time differences and rounding errors
+        time.sleep(2)
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
+
+        # Make sure the MoM is restarted
+        self.moms_list[0].log_match('Hook handler returned success'
+                                    ' for exechost_startup',
+                                    starttime=begin, existence=True,
+                                    interval=1, n='ALL')
+
         a = {'Resource_List.select': '1:ncpus=1:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
