@@ -717,7 +717,7 @@ tpp_sock_resolve_host(char *host, int *count)
 	 */
 	tpp_lock(&tpp_nslookup_mutex);
 #endif
-	rc = getaddrinfo(host, NULL, &hints, &pai)
+	rc = getaddrinfo(host, NULL, &hints, &pai);
 	/* unlock nslookup mutex */
 #ifndef WIN32
 		tpp_unlock(&tpp_nslookup_mutex);
