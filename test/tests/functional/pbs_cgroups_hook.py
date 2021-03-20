@@ -2128,7 +2128,7 @@ if %s e.job.in_ms_mom():
         self.logger.info('CpuIDs check passed')
         self.assertTrue('MemorySocket=0' in memscr_out)
         self.logger.info('MemorySocket check passed')
-        if self.swapctl == 'true':
+        if self.mem == 'true':
             self.assertTrue('MemoryLimit=314572800' in memscr_out)
             self.logger.info('MemoryLimit check passed')
 
@@ -2139,6 +2139,7 @@ if %s e.job.in_ms_mom():
         Check to see that cpuset.cpus=0, cpuset.mems=0 and that
         memory.limit_in_bytes = 100663296
         memory.memsw.limit_in_bytes = 201326592
+        If there is too little swap, the latter could be smaller
         """
         if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
@@ -2165,10 +2166,32 @@ if %s e.job.in_ms_mom():
         self.logger.info('CpuIDs check passed')
         self.assertTrue('MemorySocket=0' in scr_out)
         self.logger.info('MemorySocket check passed')
-        if self.swapctl == 'true':
+        if self.mem == 'true':
             self.assertTrue('MemoryLimit=100663296' in scr_out)
-            self.assertTrue('MemswLimit=201326592' in scr_out)
             self.logger.info('MemoryLimit check passed')
+        if self.swapctl == 'true':
+            # Get total phys+swap memory available
+            mem_base = os.path.join(self.paths[self.hosts_list[0]]
+                                    ['memory'], 'pbs_jobs.service',
+                                    'jobid')
+            vmem_avail = os.path.join(mem_base,
+                                      'memory.memsw.limit_in_bytes')
+            result = self.du.cat(hostname=self.mom.hostname,
+                                 filename=vmem_avail, sudo=True)
+            vmem_avail_in_bytes = None
+            try:
+                vmem_avail_in_bytes = int(result['out'][0])
+            except Exception:
+                # None will be seen as a failure, nothing to do
+                pass
+            self.logger.info("total available memsw: %d"
+                             % vmem_avail_in_bytes)
+            self.assertTrue(vmem_avail_in_bytes is not None,
+                            "Unable to read total memsw available")
+            MemswLimitExpected = min(201326592, vmem_avail_in_bytes)
+            self.assertTrue(('MemswLimit=%d' % MemswLimitExpected)
+                            in scr_out)
+            self.logger.info('MemswLimit check passed')
 
     def test_cgroup_prefix_and_devices(self):
         """
