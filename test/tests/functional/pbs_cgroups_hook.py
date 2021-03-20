@@ -3302,6 +3302,7 @@ if %s e.job.in_ms_mom():
         stime = int(time.time())
         time.sleep(2)
         self.moms_list[0].signal('-HUP')
+        self.server.expect(NODE, {'state': 'free'}, id=self.nodes_list[0])
         self.moms_list[0].log_match('Hook handler returned success'
                                     ' for exechost_startup',
                                     starttime=stime, existence=True,
@@ -3326,12 +3327,15 @@ if %s e.job.in_ms_mom():
                 last_gpu_was_physical = False
                 gpus += 1
         if gpus < 1:
-            self.skipTest('Skipping test since no gpus found')
-        self.server.expect(NODE, {'state': 'free'}, id=self.nodes_list[0])
-        ngpus = self.server.status(NODE, id=self.nodes_list[0])[0]
+            self.skipTest('Skipping test since no gpus found on %s'
+                          % (self.nodes_list[0]))
+        ngpus_stat = self.server.status(NODE, id=self.nodes_list[0])[0]
         self.logger.info("pbsnodes for %s reported: %s"
-                         % (self.nodes_list[0], ngpus))
-        ngpus = int(ngpus['resources_available.ngpus'])
+                         % (self.nodes_list[0], ngpus_stat))
+        self.assertTrue('resources_available.ngpus' in ngpus_stat,
+                        "No resources_available.ngpus found on node %s"
+                        % (self.nodes_list[0]))
+        ngpus = int(ngpus_stat['resources_available.ngpus'])
         self.assertEqual(gpus, ngpus, 'ngpus is incorrect')
         a = {'Resource_List.select': '1:ngpus=1', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
