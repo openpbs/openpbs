@@ -2039,10 +2039,11 @@ if %s e.job.in_ms_mom():
         cput_usage = 0.0
         mem_usage = 0
         vmem_usage = 0
+        time.sleep(8)
         for count in range(10):
+            time.sleep(2)
             # Faster systems might have expected usage after 8 seconds
             # TH3 can take up to a minute
-            time.sleep(8)
             if self.paths[self.hosts_list[0]]['cpuacct'] and cput_usage <= 1.0:
                 lines = self.moms_list[0].log_match(
                     '%s;update_job_usage: CPU usage:' %
@@ -2083,6 +2084,11 @@ if %s e.job.in_ms_mom():
                         break
                 else:
                     break
+            # try to make next loop match the _next_ updates
+            # note: we might still be unlucky and just match an old update,
+            # but not next time: the loop's sleep will make 'begin' advance
+            begin=int(time.time())
+
         self.assertGreater(cput_usage, 1.0)
         self.assertGreater(mem_usage, 400000)
         if self.swapctl == 'true':
