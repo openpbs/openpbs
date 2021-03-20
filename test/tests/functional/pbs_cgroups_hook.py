@@ -3296,9 +3296,20 @@ if %s e.job.in_ms_mom():
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
         self.load_config(self.cfg2)
+
+        # now HUP the MoM and make sure exechost_startup ran
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
+        self.moms_list[0].signal('-HUP')
+        self.moms_list[0].log_match('Hook handler returned success'
+                                    ' for exechost_startup',
+                                    starttime=stime, existence=True,
+                                    interval=1, n='ALL')
+
         cmd = ['nvidia-smi', '-L']
         try:
-            rv = self.du.run_cmd(cmd=cmd)
+            rv = self.du.run_cmd(hosts=self.moms_list[0].hostname, cmd=cmd)
         except OSError:
             rv = {'err': True}
         if rv['err'] or 'GPU' not in rv['out'][0]:
@@ -3317,8 +3328,9 @@ if %s e.job.in_ms_mom():
         if gpus < 1:
             self.skipTest('Skipping test since no gpus found')
         self.server.expect(NODE, {'state': 'free'}, id=self.nodes_list[0])
-        ngpus = self.server.status(NODE, 'resources_available.ngpus',
-                                   id=self.nodes_list[0])[0]
+        ngpus = self.server.status(NODE, id=self.nodes_list[0])[0]
+        self.logger.info("pbsnodes for %s reported: %s"
+                         % (self.nodes_list[0], ngpus))
         ngpus = int(ngpus['resources_available.ngpus'])
         self.assertEqual(gpus, ngpus, 'ngpus is incorrect')
         a = {'Resource_List.select': '1:ngpus=1', ATTR_N: name}
