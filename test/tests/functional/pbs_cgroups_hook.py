@@ -2188,7 +2188,25 @@ if %s e.job.in_ms_mom():
                              % vmem_avail_in_bytes)
             self.assertTrue(vmem_avail_in_bytes is not None,
                             "Unable to read total memsw available")
-            MemswLimitExpected = min(201326592, vmem_avail_in_bytes)
+
+            mem_avail = os.path.join(mem_base,
+                                     'memory.limit_in_bytes')
+            result = self.du.cat(hostname=self.mom.hostname,
+                                 filename=mem_avail, sudo=True)
+            mem_avail_in_bytes = None
+            try:
+                mem_avail_in_bytes = int(result['out'][0])
+            except Exception:
+                # None will be seen as a failure, nothing to do
+                pass
+            self.logger.info("total available mem: %d"
+                             % mem_avail_in_bytes)
+            self.assertTrue(mem_avail_in_bytes is not None,
+                            "Unable to read total mem available")
+
+            swap_avail_in_bytes = vmem_avail_in_bytes - mem_avail_in_bytes
+            MemswLimitExpected = (100663296
+                                  + min(100663296, swap_avail_in_bytes))
             self.assertTrue(('MemswLimit=%d' % MemswLimitExpected)
                             in scr_out)
             self.logger.info('MemswLimit check passed')
