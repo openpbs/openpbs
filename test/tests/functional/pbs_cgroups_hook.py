@@ -2138,7 +2138,7 @@ if %s e.job.in_ms_mom():
         using the default memory and vmem
         Check to see that cpuset.cpus=0, cpuset.mems=0 and that
         memory.limit_in_bytes = 100663296
-        memory.memsw.limit_in_bytes = 100663296
+        memory.memsw.limit_in_bytes = 201326592
         """
         if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
@@ -2167,7 +2167,7 @@ if %s e.job.in_ms_mom():
         self.logger.info('MemorySocket check passed')
         if self.swapctl == 'true':
             self.assertTrue('MemoryLimit=100663296' in scr_out)
-            self.assertTrue('MemswLimit=100663296' in scr_out)
+            self.assertTrue('MemswLimit=201326592' in scr_out)
             self.logger.info('MemoryLimit check passed')
 
     def test_cgroup_prefix_and_devices(self):
