@@ -81,6 +81,10 @@
  *	Global Variables
  */
 
+#ifndef WIN32
+pthread_mutex_t tpp_nslookup_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
 /* TLS data for each TPP thread */
 static pthread_key_t tpp_key_tls;
 static pthread_once_t tpp_once_ctrl = PTHREAD_ONCE_INIT; /* once ctrl to initialize tls key */
