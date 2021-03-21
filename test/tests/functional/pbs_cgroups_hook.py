@@ -233,17 +233,17 @@ class TestCgroupsHook(TestFunctional):
 
             # Restart MoM
             time.sleep(2)
-            time_before_restart=int(time.time())
+            time_before_restart = int(time.time())
             time.sleep(2)
             mom.restart()
-            
+
             # Make sure that MoM has restarted far enough before reconfiguring
             # as that sends a HUP and may otherwise interfere with the restart
             # We send either a HELLO or a restart to server -- wait for that
             mom.log_match("sent to server",
                           starttime=time_before_restart,
                           n='ALL')
-           
+
             self.logger.info("increase log level for mom and \
                              set polling intervals")
             c = {'$logevent': '0xffffffff', '$clienthost': self.server.name,
