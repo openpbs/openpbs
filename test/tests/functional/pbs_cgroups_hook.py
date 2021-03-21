@@ -1708,8 +1708,9 @@ if %s e.job.in_ms_mom():
             time.sleep(2)
             for mom in self.moms_list:
                 mom.signal('-HUP')
-                mom.log_match('Hook handler returned success'
-                              ' for exechost_startup',
+                mom.log_match('hook_perf_stat;label=hook_exechost_startup_'
+                              'pbs_cgroups_.* profile_stop',
+                              regexp=True,
                               starttime=stime, existence=True,
                               interval=1, n='ALL')
 
@@ -2290,6 +2291,9 @@ if %s e.job.in_ms_mom():
         if not self.paths[self.hosts_list[0]]['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
+        sleep(2)
+        begin=int(time.time())
+        sleep(2)
         self.load_config(self.cfg14 % ('true', 'true'))
 
         # These will throw an exception if the routines that should not
@@ -2312,6 +2316,9 @@ if %s e.job.in_ms_mom():
         if not self.paths[self.hosts_list[0]]['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
+        sleep(2)
+        begin=int(time.time())
+        sleep(2)
         self.load_config(self.cfg14 % ('true', 'false'))
 
         # These will throw an exception if the routines that should not
@@ -2335,6 +2342,9 @@ if %s e.job.in_ms_mom():
         if not self.paths[self.hosts_list[0]]['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
+        sleep(2)
+        begin=int(time.time())
+        sleep(2)
         self.load_config(self.cfg14 % ('false', 'true'))
 
         # These will throw an exception if the routines that should not
