@@ -230,8 +230,20 @@ class TestCgroupsHook(TestFunctional):
             self.logger.info("vntype value is %s" % vntype)
             self.logger.info("Deleting the existing vnodes on %s" % host)
             mom.delete_vnode_defs()
+
+            # Restart MoM
+            time.sleep(2)
+            time_before_restart=int(time.time())
+            time.sleep(2)
             mom.restart()
-            # Configure the mom
+            
+            # Make sure that MoM has restarted far enough before reconfiguring
+            # as that sends a HUP and may otherwise interfere with the restart
+            # We send either a HELLO or a restart to server -- wait for that
+            mom.log_match("sent to server",
+                          starttime=time_before_restart,
+                          n='ALL')
+           
             self.logger.info("increase log level for mom and \
                              set polling intervals")
             c = {'$logevent': '0xffffffff', '$clienthost': self.server.name,
@@ -1432,11 +1444,15 @@ sleep 300
         # actually tinkers with the hooks once more,
         # MoMs will already have gone through their initial setup
         # and copied the hooks after the new hello from the server
+
+        # perhaps we could replace this by matching a HELLO from
+        # the server
         time.sleep(10)
 
         # HUP mom so exechost_startup hook is run for each mom...
         for mom in self.moms_list:
             mom.signal('-HUP')
+
         # ...then wait for exechost_startup updates to propagate to server
         time.sleep(6)
 
