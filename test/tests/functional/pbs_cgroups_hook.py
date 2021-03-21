@@ -2291,9 +2291,9 @@ if %s e.job.in_ms_mom():
         if not self.paths[self.hosts_list[0]]['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
-        sleep(2)
+        time.sleep(2)
         begin = int(time.time())
-        sleep(2)
+        time.sleep(2)
         self.load_config(self.cfg14 % ('true', 'true'))
 
         # These will throw an exception if the routines that should not
@@ -2316,9 +2316,9 @@ if %s e.job.in_ms_mom():
         if not self.paths[self.hosts_list[0]]['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
-        sleep(2)
+        time.sleep(2)
         begin = int(time.time())
-        sleep(2)
+        time.sleep(2)
         self.load_config(self.cfg14 % ('true', 'false'))
 
         # These will throw an exception if the routines that should not
@@ -2342,9 +2342,9 @@ if %s e.job.in_ms_mom():
         if not self.paths[self.hosts_list[0]]['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
-        sleep(2)
+        time.sleep(2)
         begin = int(time.time())
-        sleep(2)
+        time.sleep(2)
         self.load_config(self.cfg14 % ('false', 'true'))
 
         # These will throw an exception if the routines that should not
