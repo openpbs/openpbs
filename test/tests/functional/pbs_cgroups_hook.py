@@ -2048,7 +2048,7 @@ if %s e.job.in_ms_mom():
         mem_usage = 0
         vmem_usage = 0
         time.sleep(8)
-        for count in range(10):
+        for count in range(30):
             time.sleep(2)
             # Faster systems might have expected usage after 8 seconds
             # TH3 can take up to a minute
