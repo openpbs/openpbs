@@ -1702,8 +1702,16 @@ if %s e.job.in_ms_mom():
             self.assertGreater(count, 0, "pbs_cgroups.CF failed to load")
             # A HUP of each mom ensures update to hook config file is
             # seen by the exechost_startup hook.
+
+            time.sleep(2)
+            stime = int(time.time())
+            time.sleep(2)
             for mom in self.moms_list:
                 mom.signal('-HUP')
+                mom.log_match('Hook handler returned success'
+                              ' for exechost_startup',
+                              starttime=stime, existence=True,
+                              interval=1, n='ALL')
 
     def load_default_config(self, mom_checks=True):
         """
@@ -1990,8 +1998,7 @@ if %s e.job.in_ms_mom():
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
+
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -2087,7 +2094,7 @@ if %s e.job.in_ms_mom():
             # try to make next loop match the _next_ updates
             # note: we might still be unlucky and just match an old update,
             # but not next time: the loop's sleep will make 'begin' advance
-            begin=int(time.time())
+            begin = int(time.time())
 
         self.assertGreater(cput_usage, 1.0)
         self.assertGreater(mem_usage, 400000)
@@ -2152,20 +2159,6 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP2'
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
-
-        time.sleep(2)
-        begin = int(time.time())
-        # sleep 2s to allow for small time differences and rounding errors
-        time.sleep(2)
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
-
-        # Make sure the MoM is restarted
-        self.moms_list[0].log_match('Hook handler returned success'
-                                    ' for exechost_startup',
-                                    starttime=begin, existence=True,
-                                    interval=1, n='ALL')
-
         a = {'Resource_List.select': '1:ncpus=1:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -2299,20 +2292,6 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP3'
         self.load_config(self.cfg14 % ('true', 'true'))
 
-        # sleep 2s: make sure no old log lines will match 'begin' time
-        time.sleep(2)
-        begin = int(time.time())
-        # sleep 2s to allow for small time differences and rounding errors
-        time.sleep(2)
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
-
-        # Make sure the MoM is restarted
-        self.moms_list[0].log_match('Hook handler returned success'
-                                    ' for exechost_startup',
-                                    starttime=begin, existence=True,
-                                    interval=1, n='ALL')
-
         # These will throw an exception if the routines that should not
         # have been called were called.
         # n='ALL' is needed because the cgroup hook is so verbose
@@ -2334,20 +2313,6 @@ if %s e.job.in_ms_mom():
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
         self.load_config(self.cfg14 % ('true', 'false'))
-
-        # sleep 2s: make sure no old log lines will match 'begin' time
-        time.sleep(2)
-        begin = int(time.time())
-        # sleep 2s to allow for small time differences and rounding errors
-        time.sleep(2)
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
-
-        # Make sure the MoM is restarted
-        self.moms_list[0].log_match('Hook handler returned success'
-                                    ' for exechost_startup',
-                                    starttime=begin, existence=True,
-                                    interval=1, n='ALL')
 
         # These will throw an exception if the routines that should not
         # have been called were called.
@@ -2371,20 +2336,6 @@ if %s e.job.in_ms_mom():
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
         self.load_config(self.cfg14 % ('false', 'true'))
-
-        # sleep one second: make sure no old log lines will match 'begin' time
-        time.sleep(2)
-        begin = int(time.time())
-        # sleep 2s to allow for small time differences and rounding errors
-        time.sleep(2)
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
-
-        # Make sure the MoM is restarted
-        self.moms_list[0].log_match('Hook handler returned success'
-                                    ' for exechost_startup',
-                                    starttime=begin, existence=True,
-                                    interval=1, n='ALL')
 
         # These will throw an exception if the routines that should not
         # have been called were called.
@@ -2417,8 +2368,6 @@ if %s e.job.in_ms_mom():
         # occasional trouble seen on TH2
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         # Submit two jobs
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
@@ -2550,8 +2499,6 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP5'
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -2587,8 +2534,6 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP6'
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         # Make sure output file is gone, otherwise wait and read
         # may pick up stale copy of earlier test
         self.du.rm(runas=TEST_USER, path='~/' + name + '.*', as_script=True)
@@ -2626,8 +2571,6 @@ if %s e.job.in_ms_mom():
         # Configure the hook
         self.load_config(self.cfg3 % ('', vnpernuma, '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], 'Resource_List.walltime': 3, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -2893,8 +2836,6 @@ if %s e.job.in_ms_mom():
             self.skipTest('Test requires memory subystem mounted')
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=3, offset=10)
         if self.swapctl == 'true':
@@ -2908,8 +2849,6 @@ if %s e.job.in_ms_mom():
         mem1 = PbsTypeSize(mem[0]['resources_available.mem'])
         self.logger.info('Mem-1: %s' % mem1.value)
         self.load_config(self.cfg4 % (self.mem, self.swapctl))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=3, offset=10)
         if self.swapctl == 'true':
@@ -2989,8 +2928,6 @@ if %s e.job.in_ms_mom():
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP17'
         self.load_config(self.cfg1 % ('', '', '', '', self.mem, self.swapctl))
-        # Restart mom for cgroups hook changes to take effect
-        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name, ATTR_J: '1-4',
              'Resource_List.place': 'pack:excl'}
@@ -3154,8 +3091,6 @@ if %s e.job.in_ms_mom():
         # Fetch the unmodified value of resources_available.ncpus
         self.load_config(self.cfg5 % ('false', '', 'false', 'false',
                                       'false', self.mem, self.swapctl))
-        # Restart mom for cgroups hook changes to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -3168,8 +3103,6 @@ if %s e.job.in_ms_mom():
         # Now exclude CPU zero
         self.load_config(self.cfg5 % ('false', '0', 'false', 'false',
                                       'false', self.mem, self.swapctl))
-        # Restart mom for cgroups hook changes to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -3182,8 +3115,6 @@ if %s e.job.in_ms_mom():
         vnode = '%s[0]' % self.nodes_list[0]
         self.load_config(self.cfg5 % ('true', '', 'false', 'false',
                                       'false', self.mem, self.swapctl))
-        # Restart mom for cgroups hook changes to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=vnode, interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -3194,8 +3125,6 @@ if %s e.job.in_ms_mom():
         # Exclude CPU zero again
         self.load_config(self.cfg5 % ('true', '0', 'false', 'false',
                                       'false', self.mem, self.swapctl))
-        # Restart mom for cgroups hook changes to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=vnode, interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -3219,8 +3148,6 @@ if %s e.job.in_ms_mom():
         # First try with mem_fences set to true (the default)
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'false', self.mem, self.swapctl))
-        # Restart mom for cgroups hook changes to take effect
-        self.mom.restart()
         # Do not use node_list -- vnode_per_numa_node is NOW off
         # so use the natural node. Otherwise might 'expect' stale vnode
         self.server.expect(NODE, {'state': 'free'},
@@ -3333,17 +3260,6 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP3'
         self.load_config(self.cfg2)
 
-        # now HUP the MoM and make sure exechost_startup ran
-        time.sleep(2)
-        stime = int(time.time())
-        time.sleep(2)
-        self.moms_list[0].signal('-HUP')
-        self.server.expect(NODE, {'state': 'free'}, id=self.nodes_list[0])
-        self.moms_list[0].log_match('Hook handler returned success'
-                                    ' for exechost_startup',
-                                    starttime=stime, existence=True,
-                                    interval=1, n='ALL')
-
         cmd = ['nvidia-smi', '-L']
         try:
             rv = self.du.run_cmd(hosts=self.moms_list[0].hostname, cmd=cmd)
@@ -3446,15 +3362,6 @@ if %s e.job.in_ms_mom():
         Test that memory.use_hierarchy is enabled by default
         when PBS cgroups hook is instantiated
         """
-        # sleep 2s to avoid matching old log lines
-        # 1s not always enough due to small time jitter between
-        # PTL and daemons
-        time.sleep(2)
-        now = int(time.time())
-        # sleep 2s to be sure that if daemons respond rapidly you
-        # don't skip the lines
-        time.sleep(2)
-
         # Remove PBS directories from memory subsystem
         cpath = None
         if ('memory' in self.paths[self.hosts_list[0]] and
@@ -3469,11 +3376,6 @@ if %s e.job.in_ms_mom():
         self.logger.info("Removing %s" % cpath)
         self.du.run_cmd(cmd=cmd, sudo=True)
         self.load_config(self.cfg6 % (self.mem, self.swapctl))
-        self.moms_list[0].restart()
-        # Wait for exechost_startup hook to run
-        self.moms_list[0].log_match("Hook handler returned success for"
-                                    " exechost_startup event",
-                                    starttime=now, n='ALL')
         # check where cpath is once more
         # since we loaded a new cgroup config file
         cpath = None
@@ -3952,8 +3854,6 @@ event.accept()
         """
         name = 'CGROUP_BIG'
         self.load_config(self.cfg9 % (self.mem, self.mem))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
 
         vnodes_count = 10
         try:
@@ -4313,8 +4213,6 @@ sleep 300
         cfs_quota_fudge_factor = 1.05
         self.load_config(self.cfg11 % (self.mem, self.mem,
                                        cfs_period_us, cfs_quota_fudge_factor))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -4505,8 +4403,6 @@ sleep 300
                                        cfs_quota_fudge_factor,
                                        zero_cpus_shares_fraction,
                                        zero_cpus_quota_fraction))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         a = {'Resource_List.select': 'ncpus=0',
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
@@ -4570,8 +4466,6 @@ sleep 300
         # set vnode_per_numa=true with use_hyperthreads=true
         self.load_config(self.cfg3 % ('', 'true', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom so vnodes created by cgroups would show
-        self.mom.restart()
         # Submit M*N*P jobs, where M is the number of physical processors,
         # N is the number of 'cpu cores' per M. and P being the
         # number of hyperthreads per core.
@@ -4650,23 +4544,6 @@ sleep 300
 
         self.load_config(self.cfg15
                          % ('true' if vnode_per_numa_node else 'false'))
-
-        # sleep one second: make sure no old log lines will match 'begin' time
-        time.sleep(2)
-        begin = int(time.time())
-        # sleep 2s to allow for small time differences and rounding errors
-        time.sleep(2)
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
-
-        # Make sure the MoM is restarted
-        self.mom.log_match('Hook handler returned success'
-                           ' for exechost_startup',
-                           starttime=begin, existence=True,
-                           interval=1, n='ALL')
-        self.server.expect(NODE, {'state': 'free'},
-                           id=self.mom.shortname, interval=2, offset=1)
-
         vnode_name = self.mom.shortname
         if vnode_per_numa_node:
             vnode_name += "[0]"
@@ -4804,23 +4681,6 @@ sleep 300
 
         self.load_config(self.cfg16
                          % enforce_flags)
-
-        # sleep 2s: make sure no old log lines will match 'begin' time
-        time.sleep(2)
-        begin = int(time.time())
-        # sleep 2s to allow for small time differences and rounding errors
-        time.sleep(2)
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
-
-        # Make sure the MoM is restarted
-        self.mom.log_match('Hook handler returned success'
-                           ' for exechost_startup',
-                           starttime=begin, existence=True,
-                           interval=1, n='ALL')
-        self.server.expect(NODE, {'state': 'free'},
-                           id=self.mom.shortname, interval=2, offset=1)
-
         a = {'Resource_List.select':
              '1:ncpus=1:vnode=%s'
              % self.mom.shortname}
