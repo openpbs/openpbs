@@ -368,7 +368,7 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
         self.eatmem_job1 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
-            'sync\n' \
+            'timeout -s KILL 60 sync\n' \
             'sleep 10\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
@@ -389,7 +389,7 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
         self.eatmem_job2 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
-            'sync\n' \
+            'timeout -s KILL 60 sync\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
             'python2_path=`which python2 2>/dev/null`\n' \
@@ -415,7 +415,7 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
         self.eatmem_job3 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
-            'sync\n' \
+            'timeout -s KILL 60 sync\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
             'python2_path=`which python2 2>/dev/null`\n' \
@@ -2069,39 +2069,31 @@ if %s e.job.in_ms_mom():
             # Faster systems might have expected usage after 8 seconds
             # TH3 can take up to a minute
             if self.paths[self.hosts_list[0]]['cpuacct'] and cput_usage <= 1.0:
-                lines = self.moms_list[0].log_match(
-                    '%s;update_job_usage: CPU usage:' %
-                    jid, allmatch=True, starttime=begin, n='ALL')
-                for line in lines:
-                    match = re.search(r'CPU usage: ([0-9.]+) secs', line[1])
-                    if not match:
-                        continue
-                    cput_usage = float(match.groups()[0])
-                    if cput_usage > 1.0:
-                        break
+                # Match last line from the bottom
+                line = self.moms_list[0].log_match(
+                    '%s;update_job_usage: CPU usage:' % jid,
+                    starttime=begin, n='ALL')
+                match = re.search(r'CPU usage: ([0-9.]+) secs', line[1])
+                cput_usage = float(match.groups()[0])
+                self.logger.info("Found cput_usage: %ss" % str(cput_usage))
             if (self.paths[self.hosts_list[0]]['memory'] and
                     mem_usage <= 400000):
-                lines = self.moms_list[0].log_match(
+                # Match last line from the bottom
+                line = self.moms_list[0].log_match(
                     '%s;update_job_usage: Memory usage: mem=' % jid,
-                    allmatch=True, starttime=begin, n='ALL')
-                for line in lines:
-                    match = re.search(r'mem=(\d+)kb', line[1])
-                    if not match:
-                        continue
-                    mem_usage = int(match.groups()[0])
-                    if mem_usage > 400000:
-                        break
+                    starttime=begin, n='ALL')
+                match = re.search(r'mem=(\d+)kb', line[1])
+                mem_usage = int(match.groups()[0])
+                self.logger.info("Found mem_usage: %skb" % str(mem_usage))
                 if self.swapctl == 'true' and vmem_usage <= 400000:
-                    lines = self.moms_list[0].log_match(
+                    # Match last line from the bottom
+                    line = self.moms_list[0].log_match(
                         '%s;update_job_usage: Memory usage: vmem=' % jid,
-                        allmatch=True, starttime=begin, n='ALL')
-                    for line in lines:
-                        match = re.search(r'vmem=(\d+)kb', line[1])
-                        if not match:
-                            continue
-                        vmem_usage = int(match.groups()[0])
-                        if vmem_usage > 400000:
-                            break
+                        starttime=begin, n='ALL')
+                    match = re.search(r'vmem=(\d+)kb', line[1])
+                    vmem_usage = int(match.groups()[0])
+                    self.logger.info("Found vmem_usage: %skb"
+                                     % str(vmem_usage))
             if cput_usage > 1.0 and mem_usage > 400000:
                 if self.swapctl == 'true':
                     if vmem_usage > 400000:
