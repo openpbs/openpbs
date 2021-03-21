@@ -2292,7 +2292,7 @@ if %s e.job.in_ms_mom():
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
         sleep(2)
-        begin=int(time.time())
+        begin = int(time.time())
         sleep(2)
         self.load_config(self.cfg14 % ('true', 'true'))
 
@@ -2317,7 +2317,7 @@ if %s e.job.in_ms_mom():
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
         sleep(2)
-        begin=int(time.time())
+        begin = int(time.time())
         sleep(2)
         self.load_config(self.cfg14 % ('true', 'false'))
 
@@ -2343,7 +2343,7 @@ if %s e.job.in_ms_mom():
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
         sleep(2)
-        begin=int(time.time())
+        begin = int(time.time())
         sleep(2)
         self.load_config(self.cfg14 % ('false', 'true'))
 
