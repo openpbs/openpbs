@@ -36,7 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-.TH pbs_sched_attributes 7B "6 May 2020" Local "PBS Professional"
+.TH pbs_sched_attributes 7B "4 March 2020" Local "PBS Professional"
 .SH NAME
 .B pbs_sched_attributes
 \- attributes of default PBS scheduler and multischeds
@@ -426,6 +426,9 @@ Format:
 .br
 Default: 
 .I $PBS_HOME/sched_logs_<scheduler name>
+
+.IP sched_port 8
+.B Removed. 
 
 .IP sched_preempt_enforce_resumption 8
 Controls whether the scheduler treats preempted jobs as top jobs.  

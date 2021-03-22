@@ -36,7 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-.TH pbs_mom 8B "23 June 2020" Local "PBS Professional"
+.TH pbs_mom 8B "1 March 2021" Local "PBS Professional"
 .SH NAME
 .B pbs_mom 
 - run the PBS job monitoring and execution daemon
@@ -852,8 +852,27 @@ does not exist when MoM tries to run a job, MoM will kill the job.
 Path must be owned by root, and permissions must be 1777.  On Windows,
 this directory should have Full Control Permission for the local
 Administrators group.
+.br
+When you set 
+.I $jobdir_root
+to a shared (e.g. NFS) directory, tell MoM it is shared by setting the
+.I shared
+directive after the directory name:
+.br
+.I $jobdir_root <directory name> shared
+.br
+Otherwise sister MoMs can prematurely delete files and directories
+when nodes are released.  This is because when a job�s sandbox
+attribute is set to PRIVATE and $jobdir_root is set to a shared
+directory, PBS can use a shared location for job files.  When sister
+nodes are released, those sister MoMs would normally clean up their
+own files upon release.  So if $jobdir_root is set to a shared
+directory, you need to tell the sister MoMs not to do the cleanup, and
+let the primary execution host MoM clean up when the job is finished.
 .RS
-.IP "Example:" 5
+.IP "Example of a shared directory:" 5
+$jobdir_root /r/shared shared
+.IP "Example of a non-shared directory:" 5
 $jobdir_root /scratch/foo
 .RE
 
