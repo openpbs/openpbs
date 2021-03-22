@@ -450,7 +450,7 @@ stop_pbs() {
 					echo "pbs_server evaluating ${PBS_HOME}/server_priv/qmgr_shutdown"
 					${PBS_EXEC}/bin/qmgr <"${PBS_HOME}/server_priv/qmgr_shutdown"
 				fi
-				env -u PBS_SERVER_INSTANCES ${PBS_EXEC}/bin/qterm -t quick
+				PBS_SERVER_INSTANCES="" ${PBS_EXEC}/bin/qterm -t quick
 				echo "PBS server - was pid: ${pbs_server_pid}"
 			elif [ ${is_secondary} -eq 1 ]; then
 				echo "This is secondary server, killing process."

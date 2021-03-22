@@ -696,6 +696,9 @@ avl_create_index(AVL_IX_DESC *pix, int flags, int keylength)
 void
 avl_destroy_index(AVL_IX_DESC *pix)
 {
+	if (!pix)
+		return;
+
 	ix_keylength = pix->keylength;
 	avltree_clear((node **) &(pix->root));
 	pix->root = NULL;

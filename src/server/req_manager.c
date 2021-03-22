@@ -2125,7 +2125,7 @@ mgr_node_set(struct batch_request *preq)
 					int imom;
 					for (imom = 0; imom < pnode->nd_nummoms; ++imom) {
 						unsigned long mstate;
-						mstate = ((mom_svrinfo_t *)(pnode->nd_moms[imom]->mi_data))->msr_state;
+						mstate = pnode->nd_moms[imom]->mi_dmn_info->dmn_state;
 						if ((mstate & (INUSE_DOWN | INUSE_OFFLINE)) == 0)  {
 							/* If another mom is up (i.e. not down or offline)
 							 * then do not set the vnode state of the children
@@ -2939,10 +2939,12 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 				 * Since we are going ahead nevertheless, we need to allocate
 				 * an "empty" pul list
 				 */
+				free(pul);
 				pul = malloc(sizeof(u_long) * (1));
 				pul[0] = 0;
 				ret = PBSE_UNKNODE; /* set return of function to this, so that error is logged */
 			} else {
+				free(pul);
 				effective_node_delete(pnode);
 				return (rc); /* return the error code from make_host_addresses_list */
 			}
@@ -2955,7 +2957,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 
 		nport = get_nattr_long(pnode, ND_ATR_Port);
 
-		if ((pmom = create_svrmom_entry(phost, nport, pul, 0)) == NULL) {
+		if ((pmom = create_svrmom_entry(phost, nport, pul)) == NULL) {
 			free(pul);
 			effective_node_delete(pnode);
 			return (PBSE_SYSTEM);
@@ -2968,8 +2970,8 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 			}
 		}
 		smp = (mom_svrinfo_t *)(pmom->mi_data);
-		for (j = 0; smp->msr_addrs[j]; j++) {
-			u_long ipaddr = smp->msr_addrs[j];
+		for (j = 0; pmom->mi_dmn_info->dmn_addrs[j]; j++) {
+			u_long ipaddr = pmom->mi_dmn_info->dmn_addrs[j];
 			if (insert_iplist_element(pbs_iplist, ipaddr)) {
 				delete_pbs_iplist(pbs_iplist);
 				return (PBSE_SYSTEM); /* No Memory */

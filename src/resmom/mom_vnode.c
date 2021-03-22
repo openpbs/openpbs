@@ -834,8 +834,6 @@ new_vnid(const char *vnid, void *ctx)
 	mip->mi_port = pbs_mom_port;
 	mip->mi_rmport = pbs_rm_port;
 	mip->mi_data = mvp;
-	mip->mi_action = NULL;
-	mip->mi_num_action = 0;
 	mvp->mvi_id = newid;
 	mvp->mvi_ncpus = mvp->mvi_acpus = 0;
 	mvp->mvi_cpulist = NULL;

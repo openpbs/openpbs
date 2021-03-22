@@ -543,8 +543,6 @@ status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 	return rc;
 }
 
-
-
 /**
  * @brief
  * 		req_stat_node - service the Status Node Request
@@ -601,7 +599,7 @@ req_stat_node(struct batch_request *preq)
 		rc = status_node(pnode, preq, &preply->brp_un.brp_status);
 
 	} else {			/* get status of all nodes */
-
+	
 		for (i = 0; i < svr_totnodes; i++) {
 			pnode = pbsndlist[i];
 
@@ -625,8 +623,6 @@ req_stat_node(struct batch_request *preq)
 		}
 	}
 }
-
-
 
 /**
  * @brief
@@ -700,7 +696,6 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 	if (get_nattr_long(pnode, ND_ATR_state) & INUSE_PROV)
 		set_nattr_l_slim(pnode, ND_ATR_state, old_nd_state, SET);
 
-
 	return (rc);
 }
 
@@ -734,8 +729,6 @@ update_isrunhook(attribute *pattr)
 		post_attr_set(pattr);
 	}
 }
-
-extern int num_pending_peersvr_rply;
 
 /**
  * @brief
@@ -804,6 +797,12 @@ req_stat_svr(struct batch_request *preq)
 /**
  * @brief
  * 		service the Server Ready request
+ * Replies back only if the server is in a consistent state.
+ * Otherwise, it will leave a work task with the request in it
+ * which will be converted to immediate when all acks are received.
+ * 
+ * Scheduler can proceed only when all the servers answers to this which
+ * means the multi-svr cluster is in a consistent state.
  *
  * @param[in]	ptask	-	work task which contains the request
  * 
@@ -815,6 +814,7 @@ req_stat_svr_ready(struct work_task *ptask)
 	struct batch_request *preq;
 	struct batch_reply *preply;
 	conn_t *conn;
+	server_t *psvr;
 
 	/* allocate a reply structure and a status sub-structure */
 
@@ -830,15 +830,21 @@ req_stat_svr_ready(struct work_task *ptask)
 
 	if (conn->cn_origin == CONN_SCHED_PRIMARY) {
 
-		if (num_pending_peersvr_rply > 0) {
+		poke_peersvr();
+
+		/* If pending acks are not down to 0, scheduler will be blocked */
+		if ((psvr = pending_ack_svr())) {
 
 			if (set_task(WORK_Deferred_Reply, preq->rq_conn, req_stat_svr_ready, (void *) preq) == NULL) {
 				log_err(errno, __func__, "could not set_task");
 				return;
 			}
 
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				  "Server is not ready to serve scheduler stat request, Deferring reply.");
+			update_msvr_stat(1, NUM_SCHED_MISS);
+			log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				  "Server is not ready to serve scheduler stat request due to "
+				  "pending replies from peer server %s, Deferring reply.",
+				  psvr->mi_host);
 			return;
 		}
 	}
