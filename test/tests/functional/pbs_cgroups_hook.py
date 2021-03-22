@@ -2574,7 +2574,7 @@ if %s e.job.in_ms_mom():
         self.assertTrue('MemoryError' in tmp_out,
                         'MemoryError not present in output')
 
-    def cgroup_offline_node(self, name, vnpernuma):
+    def cgroup_offline_node(self, name, vnpernuma=False):
         """
         Per vnode_per_numa_node config setting, return True if able to
         verify that the node is offlined when it can't clean up the cgroup
@@ -2590,9 +2590,9 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg3 % ('', vnpernuma, '', self.mem, '',
                                       self.swapctl, ''))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
-             self.hosts_list[0], 'Resource_List.walltime': 3, ATTR_N: name}
+             self.hosts_list[0], 'Resource_List.walltime': 100, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2648,15 +2648,30 @@ if %s e.job.in_ms_mom():
         if ret['rc'] != 0:
             self.skipTest('pbs_cgroups_hook: Failed to copy '
                           'freezer state FROZEN')
+
+        # Make sure the kernel knows about the freeze on MoM
+        time.sleep(1)
+
         # Catch any exception so we can thaw the cgroup or the jobs
         # will remain frozen and impact subsequent tests
         passed = True
+
+        # Now delete the job
+        try:
+            self.server.delete(id=jid)
+        except Exception as exc:
+            passed = False
+            self.logger.info('Job could not be deleted')
+
+        # The cgroup hook should fail to clean up the cgroups
+        # because of the freeze, and offline node
         try:
             self.server.expect(NODE, {'state': (MATCH_RE, 'offline')},
                                id=self.nodes_list[0], offset=10, interval=3)
         except Exception as exc:
             passed = False
             self.logger.info('Node never went offline')
+
         # Thaw the cgroup
         state = 'THAWED'
         fn = self.du.create_temp_file(hostname=self.hosts_list[0], body=state)
