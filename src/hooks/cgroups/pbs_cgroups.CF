@@ -20,7 +20,7 @@
             "exclude_cpus"       : [],
             "exclude_hosts"      : [],
             "exclude_vntypes"    : [],
-            "mem_fences"         : true,
+            "mem_fences"         : false,
             "mem_hardwall"       : false,
             "memory_spread_page" : false
         },
@@ -33,30 +33,37 @@
                 "c *:* rwm"
             ]
         },
-        "hugetlb" : {
-            "enabled"            : false,
-            "exclude_hosts"      : [],
-            "exclude_vntypes"    : [],
-            "default"            : "0MB",
-            "reserve_percent"    : 0,
-            "reserve_amount"     : "0MB"
-        },
         "memory" : {
             "enabled"            : true,
             "exclude_hosts"      : [],
             "exclude_vntypes"    : [],
             "soft_limit"         : false,
+            "enforce_default"    : true,
+            "exclhost_ignore_default" : false,
             "default"            : "256MB",
             "reserve_percent"    : 0,
-            "reserve_amount"     : "64MB"
+            "reserve_amount"     : "1GB"
         },
         "memsw" : {
             "enabled"            : false,
             "exclude_hosts"      : [],
             "exclude_vntypes"    : [],
-            "default"            : "256MB",
+            "enforce_default"    : true,
+            "exclhost_ignore_default" : false,
+            "default"            : "0B",
             "reserve_percent"    : 0,
-            "reserve_amount"     : "64MB"
+            "reserve_amount"     : "64MB",
+            "manage_cgswap"      : false
+        },
+        "hugetlb" : {
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "enforce_default"    : true,
+            "exclhost_ignore_default" : false,
+            "default"            : "0B",
+            "reserve_percent"    : 0,
+            "reserve_amount"     : "0B"
         }
     }
 }
