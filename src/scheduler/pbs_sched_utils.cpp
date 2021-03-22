@@ -195,15 +195,13 @@ sigfunc_pipe(int sig)
 static void
 schedexit(void)
 {
-	int i;
-
 	/* close any open connections to peers */
 	for (auto& pq : conf.peer_queues) {
 		if (pq.peer_sd >= 0) {
 			/* When peering "local", do not disconnect server */
 			if (!pq.remote_server.empty())
-				pbs_disconnect(conf.peer_queues[i].peer_sd);
-			conf.peer_queues[i].peer_sd = -1;
+				pbs_disconnect(pq.peer_sd);
+			pq.peer_sd = -1;
 		}
 	}
 
