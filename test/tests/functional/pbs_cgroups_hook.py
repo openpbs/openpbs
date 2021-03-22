@@ -2063,11 +2063,11 @@ if %s e.job.in_ms_mom():
         cput_usage = 0.0
         mem_usage = 0
         vmem_usage = 0
+        # Faster systems might expect to see the usage you finally expect
+        # recorder after 8-10 seconds; on TH it can take up to a minute
         time.sleep(8)
         for count in range(30):
             time.sleep(2)
-            # Faster systems might have expected usage after 8 seconds
-            # TH3 can take up to a minute
             if self.paths[self.hosts_list[0]]['cpuacct'] and cput_usage <= 1.0:
                 # Match last line from the bottom
                 line = self.moms_list[0].log_match(
