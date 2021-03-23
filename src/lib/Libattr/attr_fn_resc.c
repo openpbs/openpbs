@@ -430,12 +430,14 @@ comp_resc(attribute *attr, attribute *with)
  * @return	Void
  *
  */
-
 void
 free_resc(attribute *pattr)
 {
 	resource *next;
 	resource *pr;
+
+	if (!pattr)
+		return;
 
 	pr = (resource *)GET_NEXT(pattr->at_val.at_list);
 	while (pr != NULL) {
@@ -445,7 +447,7 @@ free_resc(attribute *pattr)
 			free_str(&pr->rs_value);
 		else
 			pr->rs_defin->rs_free(&pr->rs_value);
-		(void)free(pr);
+		free(pr);
 		pr = next;
 	}
 	free_null(pattr);

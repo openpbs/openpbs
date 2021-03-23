@@ -168,7 +168,7 @@ int set_resource_req(resource_req *req, const char *val);
  */
 resource_req *dup_resource_req_list(resource_req *oreq);
 
-resource_req *dup_selective_resource_req_list(resource_req *oreq, resdef **deflist);
+resource_req *dup_selective_resource_req_list(resource_req *oreq, std::unordered_set<resdef *>& deflist);
 
 
 /*
@@ -277,7 +277,7 @@ int compare_res_to_str(schd_resource *res, char *str, enum resval_cmpflag);
 int compare_non_consumable(schd_resource *res, resource_req *req);
 
 /* compare two resource req lists for equality.  Only compare resources in comparr */
-int compare_resource_req_list(resource_req *req1, resource_req *req2, resdef **comparr);
+int compare_resource_req_list(resource_req *req1, resource_req *req2, std::unordered_set<resdef *>& comparr);
 
 /* compare two resource_reqs for equality*/
 int compare_resource_req(resource_req *req1, resource_req *req2);
@@ -314,24 +314,6 @@ void free_chunk_array(chunk **chunk_arr);
 void free_chunk(chunk *ch);
 
 /*
- *	new_selspec - constructor for selspec
- */
-#ifdef NAS /* localmod 005 */
-selspec *new_selspec(void);
-#else
-selspec *new_selspec();
-#endif /* localmod 005 */
-
-/*
- *	dup_selspec - copy constructor for selspec
- */
-selspec *dup_selspec(selspec *oldspec);
-
-/*
- *	free_selspec - destructor for selspec
- */
-void free_selspec(selspec *spec);
-/*
  *
  * find a resource resv by calling a caller provided comparison function
  *
@@ -366,7 +348,7 @@ resource_req *create_resource_req(const char *name, const char *value);
  *
  * return converted select string
  */
-char *create_select_from_nspec(nspec **nspec_array);
+std::string create_select_from_nspec(nspec **nspec_array);
 
 /* function returns true if job/resv is in a state which it can be run */
 int in_runnable_state(resource_resv *resresv);

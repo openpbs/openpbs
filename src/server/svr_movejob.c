@@ -87,8 +87,6 @@
 
 #define	RETRY	3	/* number of times to retry network move */
 
-int num_pending_peersvr_rply = 0;
-
 /* External functions called */
 
 extern void	stat_mom_job(job *);
@@ -393,6 +391,7 @@ post_movejob(struct work_task *pwt)
 	int move_type = -1;
 	int force_ack = 0;
 	int replied = 0;
+	struct rq_move *rq_move; 
 
 	req = (struct batch_request *) pwt->wt_parm1;
 	pbs_errno = PBSE_NONE;
@@ -402,21 +401,15 @@ post_movejob(struct work_task *pwt)
 		return;
 	}
 
-	jobp = find_job(req->rq_ind.rq_move.rq_jid);
+	rq_move = &req->rq_ind.rq_move;
+	jobp = find_job(rq_move->rq_jid);
 
-	if (req && req->rq_type == PBS_BATCH_MoveJob && req->rq_ind.rq_move.run_exec_vnode) {
+	if (req && req->rq_type == PBS_BATCH_MoveJob && rq_move->run_exec_vnode) {
 		move_type = MOVE_TYPE_Move_Run;
 
-		if (!jobp || req->rq_ind.rq_move.orig_rq_type == PBS_BATCH_AsyrunJob)
+		if (!jobp || req->rq_ind.rq_move.orig_rq_type == PBS_BATCH_AsyrunJob) {
 			force_ack = 1;
-
-		if (force_ack && --num_pending_peersvr_rply == 0) {
-			ptask = find_work_task(WORK_Deferred_Reply, NULL, req_stat_svr_ready);
-			if (ptask) {
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-					  "All peer server acks received. Processing pbs_server_ready");
-				convert_work_task(ptask, WORK_Immed);
-			}
+			req_peer_svr_ack(rq_move->peersvr_stream);
 		}
 	}
 
@@ -444,10 +437,8 @@ post_movejob(struct work_task *pwt)
 	}
 
 	if (move_type != MOVE_TYPE_Move_Run) {
-		if ((jobp == NULL) || (jobp != (job *) pwt->wt_parm2)) {
-			log_errf(-1, __func__, "job %s not found",
-				 req->rq_ind.rq_move.rq_jid);
-		}
+		if ((jobp == NULL) || (jobp != (job *) pwt->wt_parm2))
+			log_errf(-1, __func__, "job %s not found", rq_move->rq_jid);
 	}
 
 	switch (r) {
@@ -457,7 +448,7 @@ post_movejob(struct work_task *pwt)
 		strcpy(log_buffer, msg_movejob);
 		sprintf(log_buffer + strlen(log_buffer),
 			msg_manager,
-			req->rq_ind.rq_move.rq_destin,
+			rq_move->rq_destin,
 			req->rq_user, req->rq_host);
 		/*
 		* If server is configured to keep job history info and
@@ -483,7 +474,7 @@ post_movejob(struct work_task *pwt)
 		sprintf(log_buffer, msg_badexit, stat);
 		strcat(log_buffer, __func__);
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_NOTICE,
-			  req->rq_ind.rq_move.rq_jid, log_buffer);
+			  rq_move->rq_jid, log_buffer);
 	/* Fall into the default case */
 
 	default:
@@ -499,12 +490,12 @@ post_movejob(struct work_task *pwt)
 	}
 
 	/* If already replied, delete any pending tasks associated with this request */
-	ptask = req->rq_ind.rq_move.ptask_runjob;
+	ptask = rq_move->ptask_runjob;
 	if (replied && ptask && ptask != pwt) {
 		free(ptask->wt_event2);
 		delete_link(&ptask->wt_linkobj2);
 		delete_task(ptask);
-		req->rq_ind.rq_move.ptask_runjob = NULL;
+		rq_move->ptask_runjob = NULL;
 	}
 
 	return;
@@ -551,9 +542,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 	void (*post_func)(struct work_task *) = post_sendmom;
 	char *extend_commit = NULL;
 	struct rq_move *rq_move = NULL;
-
-	if (move_type == MOVE_TYPE_Move_Run)
-		post_func = post_movejob;
+		
 
 	/* saving resc_access_perm global variable as backup */
 	save_resc_access_perm = resc_access_perm;
@@ -567,7 +556,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 	}
 
 	pmom = tfind2(hostaddr, port, &ipaddrs);
-	if (!pmom || (((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN)) {
+	if (!pmom || (pmom->mi_dmn_info->dmn_state & INUSE_DOWN)) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", "Mom is down");
 		pbs_errno = PBSE_NORELYMOM;
 		goto send_err;
@@ -576,8 +565,10 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 	CLEAR_HEAD(attrl);
 
 	if (move_type == MOVE_TYPE_Move_Run) {
-		num_pending_peersvr_rply++;
+		post_func = post_movejob;
+		((svrinfo_t *)(pmom->mi_data))->ps_pending_replies++;
 		rq_move = &request->rq_ind.rq_move;
+		rq_move->peersvr_stream = stream;
 
 		resc_access_perm = ATR_DFLAG_USWR | ATR_DFLAG_OPWR |
 				   ATR_DFLAG_MGWR | ATR_DFLAG_SvRD;
@@ -673,7 +664,6 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 			goto send_err;
 	}
 
-
 	if (PBSD_commit(stream, job_id, PROT_TPP, &dup_msgid, extend_commit) != 0)
 		goto send_err;
 
@@ -693,8 +683,8 @@ done:
 	return 2;
 
 send_err:
-	if (move_type == MOVE_TYPE_Move_Run)
-		num_pending_peersvr_rply--;
+	if (move_type == MOVE_TYPE_Move_Run && pmom)
+		((svrinfo_t *)(pmom->mi_data))->ps_pending_replies--;
 
 	free(dup_msgid);
 

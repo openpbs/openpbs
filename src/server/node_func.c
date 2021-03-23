@@ -157,12 +157,12 @@ struct pbsnode *
 find_nodebyaddr(pbs_net_t addr)
 {
 	int i, j;
-	mom_svrinfo_t *psvrmom;
+	dmn_info_t *pdmninfo;
 
-	for (i=0; i<svr_totnodes; i++) {
-		psvrmom = (mom_svrinfo_t *)pbsndlist[i]->nd_moms[0]->mi_data;
-		for (j = 0; psvrmom->msr_addrs[j]; j++) {
-			if (addr == psvrmom->msr_addrs[j]) {
+	for (i = 0; i < svr_totnodes; i++) {
+		pdmninfo = pbsndlist[i]->nd_moms[0]->mi_dmn_info;
+		for (j = 0; pdmninfo->dmn_addrs[j]; j++) {
+			if (addr == pdmninfo->dmn_addrs[j]) {
 				return (pbsndlist[i]);
 			}
 		}
@@ -304,7 +304,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_ntype   = ntype;
 	pnode->nd_nsn     = 0;
 	pnode->nd_nsnfree = 0;
-	pnode->nd_written = 0;
+	pnode->nd_svrflags = 0;
 	pnode->nd_ncpus	  = 1;
 	pnode->nd_psn     = NULL;
 	pnode->nd_hostname= NULL;
@@ -312,13 +312,13 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_resvp   = NULL;
 	pnode->nd_pque	  = NULL;
 	pnode->nd_nummoms = 0;
-	pnode->newobj = 1;
+	pnode->nd_svrflags |= NODE_NEWOBJ;
 	pnode->nd_lic_info = NULL;
-	pnode->nd_added_to_unlicensed_list = 0;
-	pnode->nd_moms    = (struct mominfo **)calloc(1, sizeof(struct mominfo *));
+	pnode->nd_moms    = (mominfo_t **)calloc(1, sizeof(mominfo_t *));
 	if (pnode->nd_moms == NULL)
 		return (PBSE_SYSTEM);
 	pnode->nd_nummslots = 1;
+	CLEAR_LINK(pnode->nd_link);
 
 	/* first, clear the attributes */
 
@@ -412,6 +412,7 @@ subnode_delete(struct pbssubn *psubn)
 
 	for (jip = psubn->jobs; jip; jip = jipt) {
 		jipt = jip->next;
+		free(jip->jobid);
 		free(jip);
 	}
 	psubn->jobs  = NULL;
@@ -528,7 +529,8 @@ free_pnode(struct pbsnode *pnode)
 	free(pnode->nd_moms);
 	/* free attributes */
 	for (i = 0; i < ND_ATR_LAST; i++) {
-		node_attr_def[i].at_free(&pnode->nd_attr[i]);
+		if (is_attr_set(&pnode->nd_attr[i]))
+			node_attr_def[i].at_free(&pnode->nd_attr[i]);
 	}
 	free(pnode); /* delete the pnode from memory */
 }
@@ -550,6 +552,7 @@ effective_node_delete(struct pbsnode *pnode)
 	struct pbssubn  *psubn;
 	struct pbssubn  *pnxt;
 	mom_svrinfo_t	*psvrmom;
+	dmn_info_t	*pdmninfo;
 	int		 iht;
 	int		 lic_released = 0;
 
@@ -568,6 +571,7 @@ effective_node_delete(struct pbsnode *pnode)
 		remove_vnode_from_moms(pnode);
 	} else if (pnode->nd_nummoms == 1) {
 		psvrmom = (mom_svrinfo_t *)(pnode->nd_moms[0]->mi_data);
+		pdmninfo = pnode->nd_moms[0]->mi_dmn_info;
 		if (psvrmom->msr_children[0] == pnode) {
 			/*
 			 * This is the "natural" vnode for a Mom
@@ -580,8 +584,8 @@ effective_node_delete(struct pbsnode *pnode)
 			remove_mom_from_vnodes(pnode->nd_moms[0]);
 
 			/* then delete the Mom */
-			for (i = 0; psvrmom->msr_addrs[i]; i++) {
-				u_long ipaddr = psvrmom->msr_addrs[i];
+			for (i = 0; pdmninfo->dmn_addrs[i]; i++) {
+				u_long ipaddr = pdmninfo->dmn_addrs[i];
 				if (ipaddr)
 					delete_iplist_element(pbs_iplist, ipaddr);
 			}
@@ -644,14 +648,14 @@ setup_notification()
 		set_vnode_state(pbsndlist[i], INUSE_DOWN, Nd_State_Or);
 		post_attr_set(get_nattr(pbsndlist[i], ND_ATR_state));
 		for (nmom = 0; nmom < pbsndlist[i]->nd_nummoms; ++nmom) {
-			((mom_svrinfo_t *)(pbsndlist[i]->nd_moms[nmom]->mi_data))->msr_state |= INUSE_NEED_ADDRS;
+			((pbsndlist[i]->nd_moms[nmom]->mi_dmn_info))->dmn_state |= INUSE_NEED_ADDRS;
 		}
 	}
 
 	/* send IS_CLUSTERADDR2 to happen in next 2 seconds */
 	if (addr_send_tm <= time_now) {
 		addr_send_tm = time_now + MCAST_WAIT_TM;
-		struct work_task *ptask = set_task(WORK_Timed, addr_send_tm, mcast_moms, NULL);
+		struct work_task *ptask = set_task(WORK_Timed, addr_send_tm, mcast_msg, NULL);
 		ptask->wt_aux = IS_CLUSTER_ADDRS;
 	}
 }
@@ -1005,9 +1009,6 @@ setup_nodes()
 	char *conn_db_err = NULL;
 
 	DBPRT(("%s: entered\n", __func__))
-
-	tfree2(&streams);
-	tfree2(&ipaddrs);
 
 	svr_totnodes = 0;
 
@@ -1646,7 +1647,7 @@ node_queue_action(attribute *pattr, void *pobj, int actmode)
 int
 set_node_host_name(attribute *pattr, void *pobj, int actmode)
 {
-	if (actmode == 1)
+	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_RECOV)
 		return 0;
 	else
 		return PBSE_ATTRRO;
@@ -1658,7 +1659,7 @@ set_node_host_name(attribute *pattr, void *pobj, int actmode)
 int
 set_node_mom_port(attribute *pattr, void *pobj, int actmode)
 {
-	if (actmode == 1)
+	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_RECOV)
 		return 0;
 	else
 		return PBSE_ATTRRO;
@@ -2139,8 +2140,8 @@ node_state(attribute *new, void *pnode, int actmode)
 	}
 	/* Now that we are setting the node state, same state should also reflect on the mom */
 	if (np->nd_nummoms == 1) {
-		mom_svrinfo_t *pmom_svr = (mom_svrinfo_t *)np->nd_moms[0]->mi_data;
-		pmom_svr->msr_state = (pmom_svr->msr_state & keep) | new->at_val.at_long;
+		dmn_info_t *pdmn_info = np->nd_moms[0]->mi_dmn_info;
+		pdmn_info->dmn_state = (pdmn_info->dmn_state & keep) | new->at_val.at_long;
 	}
 	return rc;
 }

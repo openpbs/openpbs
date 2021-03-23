@@ -103,20 +103,6 @@ def have_swap():
     return tt
 
 
-def is_memsw_enabled(mem_path):
-    """
-    Check if system has swapcontrol enabled, then return true
-    else return false
-    """
-    if not mem_path:
-        return 'false'
-    # List all files and check if memsw files exists
-    for files in os.listdir(mem_path):
-        if 'memory.memsw' in files:
-            return 'true'
-    return 'false'
-
-
 def systemd_escape(buf):
     """
     Escape strings for usage in system unit names
@@ -175,6 +161,21 @@ class TestCgroupsHook(TestFunctional):
     This test suite targets Linux Cgroups hook functionality.
     """
 
+    def is_memsw_enabled(self, host, mem_path):
+        """
+        Check if system has swapcontrol enabled, then return true
+        else return false
+        """
+        if not mem_path:
+            return 'false'
+        # List all files and check if memsw files exists
+        if self.du.isfile(hostname=host,
+                          path=mem_path + os.path.sep
+                          + "memory.memsw.usage_in_bytes"):
+            self.logger.info("memsw is enabled on this host")
+            return 'true'
+        return 'false'
+
     def setUp(self):
 
         self.hook_name = 'pbs_cgroups'
@@ -229,8 +230,20 @@ class TestCgroupsHook(TestFunctional):
             self.logger.info("vntype value is %s" % vntype)
             self.logger.info("Deleting the existing vnodes on %s" % host)
             mom.delete_vnode_defs()
+
+            # Restart MoM
+            time.sleep(2)
+            time_before_restart = int(time.time())
+            time.sleep(2)
             mom.restart()
-            # Configure the mom
+
+            # Make sure that MoM has restarted far enough before reconfiguring
+            # as that sends a HUP and may otherwise interfere with the restart
+            # We send either a HELLO or a restart to server -- wait for that
+            mom.log_match("sent to server",
+                          starttime=time_before_restart,
+                          n='ALL')
+
             self.logger.info("increase log level for mom and \
                              set polling intervals")
             c = {'$logevent': '0xffffffff', '$clienthost': self.server.name,
@@ -245,6 +258,7 @@ class TestCgroupsHook(TestFunctional):
         # Setting self.mom defaults to primary mom as some of
         # library methods assume that
         self.mom = self.moms_list[0]
+        host = self.moms_list[0].shortname
 
         # Delete ALL vnodes
         # Re-creation moved to the end *after* we correctly set up the hook
@@ -254,7 +268,7 @@ class TestCgroupsHook(TestFunctional):
         self.mem = 'true'
         if not self.paths[host]['memory']:
             self.mem = 'false'
-        self.swapctl = is_memsw_enabled(self.paths[host]['memsw'])
+        self.swapctl = self.is_memsw_enabled(host, self.paths[host]['memsw'])
         self.server.set_op_mode(PTL_CLI)
         self.server.cleanup_jobs()
         if not self.iscray:
@@ -354,7 +368,7 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
         self.eatmem_job1 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
-            'sync\n' \
+            'timeout -s KILL 60 sync\n' \
             'sleep 10\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
@@ -375,7 +389,7 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
         self.eatmem_job2 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
-            'sync\n' \
+            'timeout -s KILL 60 sync\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
             'python2_path=`which python2 2>/dev/null`\n' \
@@ -401,7 +415,7 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
         self.eatmem_job3 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
-            'sync\n' \
+            'timeout -s KILL 60 sync\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
             'python2_path=`which python2 2>/dev/null`\n' \
@@ -546,6 +560,10 @@ sleep 15
         self.sleep30_job = """#!/bin/bash
 #PBS -joe
 sleep 30
+"""
+        self.sleep100_job = """#!/bin/bash
+#PBS -joe
+sleep 100
 """
         self.sleep5_job = """#!/bin/bash
 #PBS -joe
@@ -1247,6 +1265,143 @@ sleep 300
     }
 }
 """
+        self.cfg15 = """{
+    "cgroup_prefix"         : "pbs_jobs",
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : ["no_cgroups"],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : %s,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : false,
+    "ncpus_are_cores"       : false,
+    "cgroup" : {
+        "cpuacct" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : []
+        },
+        "cpuset" : {
+            "enabled"            : true,
+            "exclude_cpus"       : [],
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "mem_fences"         : true,
+            "mem_hardwall"       : false,
+            "memory_spread_page" : false,
+            "allow_zero_cpus"    : true
+        },
+        "devices" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "allow"              : [
+                "b *:* rwm",
+                "c *:* rwm"
+            ]
+        },
+        "hugetlb" : {
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "0MB",
+            "reserve_percent"    : 0,
+            "reserve_amount"     : "0MB"
+        },
+        "memory" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "soft_limit"         : false,
+            "default"            : "256MB",
+            "reserve_percent"    : 0,
+            "swappiness"         : 0,
+            "reserve_amount"     : "2GB",
+            "enforce_default"    : true,
+            "exclhost_ignore_default" : true
+        },
+        "memsw" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "256MB",
+            "reserve_percent"    : 0,
+            "reserve_amount"     : "10GB",
+            "manage_cgswap"      : true,
+            "enforce_default"    : true,
+            "exclhost_ignore_default" : true
+        }
+    }
+}
+"""
+        self.cfg16 = """{
+    "cgroup_prefix"         : "pbs_jobs",
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : ["no_cgroups"],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : false,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : false,
+    "ncpus_are_cores"       : false,
+    "cgroup" : {
+        "cpuacct" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : []
+        },
+        "cpuset" : {
+            "enabled"            : true,
+            "exclude_cpus"       : [],
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "mem_fences"         : true,
+            "mem_hardwall"       : false,
+            "memory_spread_page" : false
+        },
+        "devices" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "allow"              : [
+                "b *:* rwm",
+                "c *:* rwm"
+            ]
+        },
+        "hugetlb" : {
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "0MB",
+            "reserve_percent"    : 0,
+            "reserve_amount"     : "0MB"
+        },
+        "memory" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "soft_limit"         : false,
+            "default"            : "100MB",
+            "reserve_percent"    : 0,
+            "swappiness"         : 0,
+            "reserve_amount"     : "2GB",
+            "enforce_default"    : %s,
+            "exclhost_ignore_default" : true
+        },
+        "memsw" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "100MB",
+            "reserve_percent"    : 0,
+            "reserve_amount"     : "10GB",
+            "manage_cgswap"      : true,
+            "enforce_default"    : %s,
+            "exclhost_ignore_default" : true
+        }
+    }
+}
+"""
 
         Job.dflt_attributes[ATTR_k] = 'oe'
         # Increase the server log level
@@ -1287,15 +1442,19 @@ sleep 300
 
         # Make sure that by the time we send a HUP and the test
         # actually tinkers with the hooks once more,
-        # MoM will already have gone through its initial setup
-        # after the new hello from the server
-        time.sleep(4)
+        # MoMs will already have gone through their initial setup
+        # and copied the hooks after the new hello from the server
+
+        # perhaps we could replace this by matching a HELLO from
+        # the server
+        time.sleep(10)
 
         # HUP mom so exechost_startup hook is run for each mom...
         for mom in self.moms_list:
             mom.signal('-HUP')
+
         # ...then wait for exechost_startup updates to propagate to server
-        time.sleep(4)
+        time.sleep(6)
 
         # queuejob hook
         self.qjob_hook_body = """
@@ -1518,13 +1677,15 @@ if %s e.job.in_ms_mom():
         # are all finished, so that we don't match a CF copy
         # message in the logs from someone else!
         time.sleep(5)
-        just_before_import = time.time() - 1
+        just_before_import = int(time.time())
+        time.sleep(2)
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
         if mom_checks:
             self.moms_list[0].log_match('pbs_cgroups.CF;'
                                         'copy hook-related '
                                         'file request received',
-                                        starttime=just_before_import)
+                                        starttime=just_before_import,
+                                        n='ALL')
         pbs_home = self.server.pbs_conf['PBS_HOME']
         svr_conf = os.path.join(
             os.sep, pbs_home, 'server_priv', 'hooks', 'pbs_cgroups.CF')
@@ -1539,13 +1700,16 @@ if %s e.job.in_ms_mom():
                 r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
                 if r1['out'] != r2['out']:
                     self.logger.info('server & mom pbs_cgroups.CF differ')
-                    just_before_import = time.time() - 1
+                    time.sleep(2)
+                    just_before_import = int(time.time())
+                    time.sleep(2)
                     self.server.manager(MGR_CMD_IMPORT, HOOK, a,
                                         self.hook_name)
                     self.moms_list[0].log_match('pbs_cgroups.CF;'
                                                 'copy hook-related '
                                                 'file request received',
-                                                starttime=just_before_import)
+                                                starttime=just_before_import,
+                                                n='ALL')
                 else:
                     self.logger.info('server & mom pbs_cgroups.CF match')
                     break
@@ -1554,8 +1718,17 @@ if %s e.job.in_ms_mom():
             self.assertGreater(count, 0, "pbs_cgroups.CF failed to load")
             # A HUP of each mom ensures update to hook config file is
             # seen by the exechost_startup hook.
+
+            time.sleep(2)
+            stime = int(time.time())
+            time.sleep(2)
             for mom in self.moms_list:
                 mom.signal('-HUP')
+                mom.log_match('hook_perf_stat;label=hook_exechost_startup_'
+                              'pbs_cgroups_.* profile_stop',
+                              regexp=True,
+                              starttime=stime, existence=True,
+                              interval=1, n='ALL')
 
     def load_default_config(self, mom_checks=True):
         """
@@ -1567,8 +1740,9 @@ if %s e.job.in_ms_mom():
                                         'altair',
                                         'pbs_hooks',
                                         'pbs_cgroups.CF')
-
-        now = time.time()
+        time.sleep(2)
+        now = int(time.time())
+        time.sleep(2)
         a = {'content-type': 'application/x-config',
              'content-encoding': 'default',
              'input-file': self.config_file}
@@ -1577,7 +1751,7 @@ if %s e.job.in_ms_mom():
             return
         self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
                                     'file request received',
-                                    starttime=now)
+                                    starttime=now, n='ALL')
 
     def set_vntype(self, host, typestring='myvntype'):
         """
@@ -1697,6 +1871,9 @@ if %s e.job.in_ms_mom():
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -1711,7 +1888,7 @@ if %s e.job.in_ms_mom():
             "%s is in the excluded vnode type list: ['%s']"
             % (self.vntypename[0],
                self.vntypename[0]),
-            starttime=self.server.ctime)
+            starttime=stime, n='ALL')
         self.logger.info('vntypes on both hosts are: %s and %s'
                          % (self.vntypename[0], self.vntypename[1]))
         if self.vntypename[1] == self.vntypename[0]:
@@ -1747,6 +1924,9 @@ if %s e.job.in_ms_mom():
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -1757,7 +1937,8 @@ if %s e.job.in_ms_mom():
         self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))
         host = self.get_hostname(self.hosts_list[0])
         self.moms_list[0].log_match('%s is in the excluded host list: [%s]' %
-                                    (host, log), starttime=self.server.ctime)
+                                    (host, log), starttime=stime,
+                                    n='ALL')
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1792,6 +1973,9 @@ if %s e.job.in_ms_mom():
              % self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -1800,7 +1984,7 @@ if %s e.job.in_ms_mom():
         self.tempfile.append(o)
         self.moms_list[0].log_match('cgroup excluded for subsystem memory '
                                     'on vnode type %s' % self.vntypename[0],
-                                    starttime=self.server.ctime)
+                                    starttime=stime, n='ALL')
         self.logger.info('vntype values for each hosts are: %s and %s'
                          % (self.vntypename[0], self.vntypename[1]))
         if self.vntypename[0] == self.vntypename[1]:
@@ -1831,12 +2015,14 @@ if %s e.job.in_ms_mom():
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
+
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job3)
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -1862,58 +2048,63 @@ if %s e.job.in_ms_mom():
         err_msg = "Unexpected error in pbs_cgroups " + \
             "handling exechost_periodic event: TypeError"
         self.moms_list[0].log_match(err_msg, max_attempts=3,
-                                    interval=1, n=100, existence=False)
+                                    interval=1, n='ALL',
+                                    starttime=stime, existence=False)
+
         # Allow some time to pass for values to be updated
-        begin = time.time()
+        # sleep 2s: make sure no old log lines will match 'begin' time
+        time.sleep(2)
+        begin = int(time.time())
+        # sleep 2s to allow for small time differences and rounding errors
+        time.sleep(2)
+
         self.logger.info('Waiting for periodic hook to update usage data.')
         # loop to check if cput, mem, vmem are expected values
         cput_usage = 0.0
         mem_usage = 0
         vmem_usage = 0
-        for count in range(10):
-            # Faster systems might have expected usage after 8 seconds
-            # TH3 can take up to a minute
-            time.sleep(8)
+        # Faster systems might expect to see the usage you finally expect
+        # recorder after 8-10 seconds; on TH it can take up to a minute
+        time.sleep(8)
+        for count in range(30):
+            time.sleep(2)
             if self.paths[self.hosts_list[0]]['cpuacct'] and cput_usage <= 1.0:
-                lines = self.moms_list[0].log_match(
-                    '%s;update_job_usage: CPU usage:' %
-                    jid, allmatch=True, starttime=begin)
-                for line in lines:
-                    match = re.search(r'CPU usage: ([0-9.]+) secs', line[1])
-                    if not match:
-                        continue
-                    cput_usage = float(match.groups()[0])
-                    if cput_usage > 1.0:
-                        break
+                # Match last line from the bottom
+                line = self.moms_list[0].log_match(
+                    '%s;update_job_usage: CPU usage:' % jid,
+                    starttime=begin, n='ALL')
+                match = re.search(r'CPU usage: ([0-9.]+) secs', line[1])
+                cput_usage = float(match.groups()[0])
+                self.logger.info("Found cput_usage: %ss" % str(cput_usage))
             if (self.paths[self.hosts_list[0]]['memory'] and
                     mem_usage <= 400000):
-                lines = self.moms_list[0].log_match(
+                # Match last line from the bottom
+                line = self.moms_list[0].log_match(
                     '%s;update_job_usage: Memory usage: mem=' % jid,
-                    allmatch=True, starttime=begin)
-                for line in lines:
-                    match = re.search(r'mem=(\d+)kb', line[1])
-                    if not match:
-                        continue
-                    mem_usage = int(match.groups()[0])
-                    if mem_usage > 400000:
-                        break
+                    starttime=begin, n='ALL')
+                match = re.search(r'mem=(\d+)kb', line[1])
+                mem_usage = int(match.groups()[0])
+                self.logger.info("Found mem_usage: %skb" % str(mem_usage))
                 if self.swapctl == 'true' and vmem_usage <= 400000:
-                    lines = self.moms_list[0].log_match(
+                    # Match last line from the bottom
+                    line = self.moms_list[0].log_match(
                         '%s;update_job_usage: Memory usage: vmem=' % jid,
-                        allmatch=True, starttime=begin)
-                    for line in lines:
-                        match = re.search(r'vmem=(\d+)kb', line[1])
-                        if not match:
-                            continue
-                        vmem_usage = int(match.groups()[0])
-                        if vmem_usage > 400000:
-                            break
+                        starttime=begin, n='ALL')
+                    match = re.search(r'vmem=(\d+)kb', line[1])
+                    vmem_usage = int(match.groups()[0])
+                    self.logger.info("Found vmem_usage: %skb"
+                                     % str(vmem_usage))
             if cput_usage > 1.0 and mem_usage > 400000:
                 if self.swapctl == 'true':
                     if vmem_usage > 400000:
                         break
                 else:
                     break
+            # try to make next loop match the _next_ updates
+            # note: we might still be unlucky and just match an old update,
+            # but not next time: the loop's sleep will make 'begin' advance
+            begin = int(time.time())
+
         self.assertGreater(cput_usage, 1.0)
         self.assertGreater(mem_usage, 400000)
         if self.swapctl == 'true':
@@ -1959,7 +2150,7 @@ if %s e.job.in_ms_mom():
         self.logger.info('CpuIDs check passed')
         self.assertTrue('MemorySocket=0' in memscr_out)
         self.logger.info('MemorySocket check passed')
-        if self.swapctl == 'true':
+        if self.mem == 'true':
             self.assertTrue('MemoryLimit=314572800' in memscr_out)
             self.logger.info('MemoryLimit check passed')
 
@@ -1969,15 +2160,14 @@ if %s e.job.in_ms_mom():
         using the default memory and vmem
         Check to see that cpuset.cpus=0, cpuset.mems=0 and that
         memory.limit_in_bytes = 100663296
-        memory.memsw.limit_in_bytes = 100663296
+        memory.memsw.limit_in_bytes = 201326592
+        If there is too little swap, the latter could be smaller
         """
         if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP2'
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1996,10 +2186,50 @@ if %s e.job.in_ms_mom():
         self.logger.info('CpuIDs check passed')
         self.assertTrue('MemorySocket=0' in scr_out)
         self.logger.info('MemorySocket check passed')
-        if self.swapctl == 'true':
+        if self.mem == 'true':
             self.assertTrue('MemoryLimit=100663296' in scr_out)
-            self.assertTrue('MemswLimit=100663296' in scr_out)
             self.logger.info('MemoryLimit check passed')
+        if self.swapctl == 'true':
+            # Get total phys+swap memory available
+            mem_base = os.path.join(self.paths[self.hosts_list[0]]
+                                    ['memory'], 'pbs_jobs.service',
+                                    'jobid')
+            vmem_avail = os.path.join(mem_base,
+                                      'memory.memsw.limit_in_bytes')
+            result = self.du.cat(hostname=self.mom.hostname,
+                                 filename=vmem_avail, sudo=True)
+            vmem_avail_in_bytes = None
+            try:
+                vmem_avail_in_bytes = int(result['out'][0])
+            except Exception:
+                # None will be seen as a failure, nothing to do
+                pass
+            self.logger.info("total available memsw: %d"
+                             % vmem_avail_in_bytes)
+            self.assertTrue(vmem_avail_in_bytes is not None,
+                            "Unable to read total memsw available")
+
+            mem_avail = os.path.join(mem_base,
+                                     'memory.limit_in_bytes')
+            result = self.du.cat(hostname=self.mom.hostname,
+                                 filename=mem_avail, sudo=True)
+            mem_avail_in_bytes = None
+            try:
+                mem_avail_in_bytes = int(result['out'][0])
+            except Exception:
+                # None will be seen as a failure, nothing to do
+                pass
+            self.logger.info("total available mem: %d"
+                             % mem_avail_in_bytes)
+            self.assertTrue(mem_avail_in_bytes is not None,
+                            "Unable to read total mem available")
+
+            swap_avail_in_bytes = vmem_avail_in_bytes - mem_avail_in_bytes
+            MemswLimitExpected = (100663296
+                                  + min(100663296, swap_avail_in_bytes))
+            self.assertTrue(('MemswLimit=%d' % MemswLimitExpected)
+                            in scr_out)
+            self.logger.info('MemswLimit check passed')
 
     def test_cgroup_prefix_and_devices(self):
         """
@@ -2069,19 +2299,10 @@ if %s e.job.in_ms_mom():
         if not self.paths[self.hosts_list[0]]['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
+        time.sleep(2)
+        begin = int(time.time())
+        time.sleep(2)
         self.load_config(self.cfg14 % ('true', 'true'))
-
-        # Restart mom for changes made by cgroups hook to take effect
-        begin = time.time()
-        # sleep 5s to ensure log matching will not catch older log lines
-        time.sleep(5)
-        self.mom.restart()
-
-        # Make sure the MoM is restarted
-        self.moms_list[0].log_match('Hook handler returned success'
-                                    ' for exechost_startup',
-                                    starttime=begin, existence=True,
-                                    interval=1, tail=False)
 
         # These will throw an exception if the routines that should not
         # have been called were called.
@@ -2089,10 +2310,10 @@ if %s e.job.in_ms_mom():
         # that 50 lines will not suffice
         self.moms_list[0].log_match('_discover_devices', starttime=begin,
                                     existence=True, max_attempts=2,
-                                    interval=1, tail=False, n='ALL')
+                                    interval=1, n='ALL')
         self.moms_list[0].log_match('NVIDIA SMI', starttime=begin,
                                     existence=True, max_attempts=2,
-                                    interval=1, tail=False, n='ALL')
+                                    interval=1, n='ALL')
         self.logger.info('devices_and_gpu_discovery check passed')
 
     def test_suppress_devices_discovery(self):
@@ -2103,19 +2324,10 @@ if %s e.job.in_ms_mom():
         if not self.paths[self.hosts_list[0]]['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
+        time.sleep(2)
+        begin = int(time.time())
+        time.sleep(2)
         self.load_config(self.cfg14 % ('true', 'false'))
-
-        # Restart mom for changes made by cgroups hook to take effect
-        begin = time.time()
-        # sleep 5s to ensure log matching will not catch older log lines
-        time.sleep(5)
-        self.mom.restart()
-
-        # Make sure the MoM is restarted
-        self.moms_list[0].log_match('Hook handler returned success'
-                                    ' for exechost_startup',
-                                    starttime=begin, existence=True,
-                                    interval=1, tail=False)
 
         # These will throw an exception if the routines that should not
         # have been called were called.
@@ -2123,10 +2335,10 @@ if %s e.job.in_ms_mom():
         # that 50 lines will not suffice
         self.moms_list[0].log_match('_discover_devices', starttime=begin,
                                     existence=False, max_attempts=2,
-                                    interval=1, tail=False, n='ALL')
+                                    interval=1, n='ALL')
         self.moms_list[0].log_match('_discover_gpus', starttime=begin,
                                     existence=False, max_attempts=2,
-                                    interval=1, tail=False, n='ALL')
+                                    interval=1, n='ALL')
         self.logger.info('suppress_devices_discovery check passed')
 
     def test_suppress_gpu_discovery(self):
@@ -2138,19 +2350,10 @@ if %s e.job.in_ms_mom():
         if not self.paths[self.hosts_list[0]]['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
+        time.sleep(2)
+        begin = int(time.time())
+        time.sleep(2)
         self.load_config(self.cfg14 % ('false', 'true'))
-
-        # Restart mom for changes made by cgroups hook to take effect
-        begin = time.time()
-        # sleep 5s to ensure log matching will not catch older log lines
-        time.sleep(5)
-        self.mom.restart()
-
-        # Make sure the MoM is restarted
-        self.moms_list[0].log_match('Hook handler returned success'
-                                    ' for exechost_startup',
-                                    starttime=begin, existence=True,
-                                    interval=1, tail=False)
 
         # These will throw an exception if the routines that should not
         # have been called were called.
@@ -2158,10 +2361,10 @@ if %s e.job.in_ms_mom():
         # that 50 lines will not suffice
         self.moms_list[0].log_match('_discover_devices', starttime=begin,
                                     existence=True, max_attempts=2,
-                                    interval=1, tail=False, n='ALL')
+                                    interval=1, n='ALL')
         self.moms_list[0].log_match('NVIDIA SMI', starttime=begin,
                                     existence=False, max_attempts=2,
-                                    interval=1, tail=False, n='ALL')
+                                    interval=1, n='ALL')
         self.logger.info('suppress_gpu_discovery check passed')
 
     def test_cgroup_cpuset(self):
@@ -2183,8 +2386,6 @@ if %s e.job.in_ms_mom():
         # occasional trouble seen on TH2
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         # Submit two jobs
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
@@ -2316,12 +2517,13 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP5'
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job1)
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2330,7 +2532,7 @@ if %s e.job.in_ms_mom():
         self.tempfile.append(o)
         # mem and vmem limit will both be set, and either could be detected
         self.mom.log_match('%s;Cgroup mem(ory|sw) limit exceeded' % jid,
-                           regexp=True)
+                           regexp=True, n='ALL', starttime=stime)
 
     def test_cgroup_enforce_memsw(self):
         """
@@ -2350,8 +2552,6 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP6'
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         # Make sure output file is gone, otherwise wait and read
         # may pick up stale copy of earlier test
         self.du.rm(runas=TEST_USER, path='~/' + name + '.*', as_script=True)
@@ -2374,7 +2574,7 @@ if %s e.job.in_ms_mom():
         self.assertTrue('MemoryError' in tmp_out,
                         'MemoryError not present in output')
 
-    def cgroup_offline_node(self, name, vnpernuma):
+    def cgroup_offline_node(self, name, vnpernuma=False):
         """
         Per vnode_per_numa_node config setting, return True if able to
         verify that the node is offlined when it can't clean up the cgroup
@@ -2389,12 +2589,10 @@ if %s e.job.in_ms_mom():
         # Configure the hook
         self.load_config(self.cfg3 % ('', vnpernuma, '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
-             self.hosts_list[0], 'Resource_List.walltime': 3, ATTR_N: name}
+             self.hosts_list[0], 'Resource_List.walltime': 100, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2450,15 +2648,30 @@ if %s e.job.in_ms_mom():
         if ret['rc'] != 0:
             self.skipTest('pbs_cgroups_hook: Failed to copy '
                           'freezer state FROZEN')
+
+        # Make sure the kernel knows about the freeze on MoM
+        time.sleep(1)
+
         # Catch any exception so we can thaw the cgroup or the jobs
         # will remain frozen and impact subsequent tests
         passed = True
+
+        # Now delete the job
+        try:
+            self.server.delete(id=jid)
+        except Exception as exc:
+            passed = False
+            self.logger.info('Job could not be deleted')
+
+        # The cgroup hook should fail to clean up the cgroups
+        # because of the freeze, and offline node
         try:
             self.server.expect(NODE, {'state': (MATCH_RE, 'offline')},
                                id=self.nodes_list[0], offset=10, interval=3)
         except Exception as exc:
             passed = False
             self.logger.info('Node never went offline')
+
         # Thaw the cgroup
         state = 'THAWED'
         fn = self.du.create_temp_file(hostname=self.hosts_list[0], body=state)
@@ -2524,6 +2737,9 @@ if %s e.job.in_ms_mom():
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2533,7 +2749,7 @@ if %s e.job.in_ms_mom():
         hostn = self.get_hostname(self.hosts_list[0])
         self.moms_list[0].log_match('cgroup excluded for subsystem cpuset '
                                     'on host %s' % hostn,
-                                    starttime=self.server.ctime)
+                                    starttime=stime, n='ALL')
         cpath = self.get_cgroup_job_dir('cpuset', jid, self.hosts_list[0])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))
         # Now try a job on momB
@@ -2562,17 +2778,19 @@ if %s e.job.in_ms_mom():
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
-        time.sleep(1)
         hostn = self.get_hostname(self.hosts_list[1])
         self.moms_list[1].log_match(
             'set enabled to False based on run_only_on_hosts',
-            starttime=self.server.ctime)
+            starttime=stime, n='ALL')
         cpath = self.get_cgroup_job_dir('memory', jid, self.hosts_list[1])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[1]))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -2651,8 +2869,6 @@ if %s e.job.in_ms_mom():
             self.skipTest('Test requires memory subystem mounted')
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=3, offset=10)
         if self.swapctl == 'true':
@@ -2666,8 +2882,6 @@ if %s e.job.in_ms_mom():
         mem1 = PbsTypeSize(mem[0]['resources_available.mem'])
         self.logger.info('Mem-1: %s' % mem1.value)
         self.load_config(self.cfg4 % (self.mem, self.swapctl))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=3, offset=10)
         if self.swapctl == 'true':
@@ -2747,8 +2961,6 @@ if %s e.job.in_ms_mom():
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP17'
         self.load_config(self.cfg1 % ('', '', '', '', self.mem, self.swapctl))
-        # Restart mom for cgroups hook changes to take effect
-        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name, ATTR_J: '1-4',
              'Resource_List.place': 'pack:excl'}
@@ -2912,8 +3124,6 @@ if %s e.job.in_ms_mom():
         # Fetch the unmodified value of resources_available.ncpus
         self.load_config(self.cfg5 % ('false', '', 'false', 'false',
                                       'false', self.mem, self.swapctl))
-        # Restart mom for cgroups hook changes to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -2926,8 +3136,6 @@ if %s e.job.in_ms_mom():
         # Now exclude CPU zero
         self.load_config(self.cfg5 % ('false', '0', 'false', 'false',
                                       'false', self.mem, self.swapctl))
-        # Restart mom for cgroups hook changes to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -2940,8 +3148,6 @@ if %s e.job.in_ms_mom():
         vnode = '%s[0]' % self.nodes_list[0]
         self.load_config(self.cfg5 % ('true', '', 'false', 'false',
                                       'false', self.mem, self.swapctl))
-        # Restart mom for cgroups hook changes to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=vnode, interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -2952,8 +3158,6 @@ if %s e.job.in_ms_mom():
         # Exclude CPU zero again
         self.load_config(self.cfg5 % ('true', '0', 'false', 'false',
                                       'false', self.mem, self.swapctl))
-        # Restart mom for cgroups hook changes to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=vnode, interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -2977,8 +3181,6 @@ if %s e.job.in_ms_mom():
         # First try with mem_fences set to true (the default)
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'false', self.mem, self.swapctl))
-        # Restart mom for cgroups hook changes to take effect
-        self.mom.restart()
         # Do not use node_list -- vnode_per_numa_node is NOW off
         # so use the natural node. Otherwise might 'expect' stale vnode
         self.server.expect(NODE, {'state': 'free'},
@@ -3090,9 +3292,10 @@ if %s e.job.in_ms_mom():
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
         self.load_config(self.cfg2)
+
         cmd = ['nvidia-smi', '-L']
         try:
-            rv = self.du.run_cmd(cmd=cmd)
+            rv = self.du.run_cmd(hosts=self.moms_list[0].hostname, cmd=cmd)
         except OSError:
             rv = {'err': True}
         if rv['err'] or 'GPU' not in rv['out'][0]:
@@ -3109,11 +3312,15 @@ if %s e.job.in_ms_mom():
                 last_gpu_was_physical = False
                 gpus += 1
         if gpus < 1:
-            self.skipTest('Skipping test since no gpus found')
-        self.server.expect(NODE, {'state': 'free'}, id=self.nodes_list[0])
-        ngpus = self.server.status(NODE, 'resources_available.ngpus',
-                                   id=self.nodes_list[0])[0]
-        ngpus = int(ngpus['resources_available.ngpus'])
+            self.skipTest('Skipping test since no gpus found on %s'
+                          % (self.nodes_list[0]))
+        ngpus_stat = self.server.status(NODE, id=self.nodes_list[0])[0]
+        self.logger.info("pbsnodes for %s reported: %s"
+                         % (self.nodes_list[0], ngpus_stat))
+        self.assertTrue('resources_available.ngpus' in ngpus_stat,
+                        "No resources_available.ngpus found on node %s"
+                        % (self.nodes_list[0]))
+        ngpus = int(ngpus_stat['resources_available.ngpus'])
         self.assertEqual(gpus, ngpus, 'ngpus is incorrect')
         a = {'Resource_List.select': '1:ngpus=1', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -3188,7 +3395,6 @@ if %s e.job.in_ms_mom():
         Test that memory.use_hierarchy is enabled by default
         when PBS cgroups hook is instantiated
         """
-        now = time.time()
         # Remove PBS directories from memory subsystem
         cpath = None
         if ('memory' in self.paths[self.hosts_list[0]] and
@@ -3203,11 +3409,6 @@ if %s e.job.in_ms_mom():
         self.logger.info("Removing %s" % cpath)
         self.du.run_cmd(cmd=cmd, sudo=True)
         self.load_config(self.cfg6 % (self.mem, self.swapctl))
-        self.moms_list[0].restart()
-        # Wait for exechost_startup hook to run
-        self.moms_list[0].log_match("Hook handler returned success for"
-                                    " exechost_startup event",
-                                    starttime=now)
         # check where cpath is once more
         # since we loaded a new cgroup config file
         cpath = None
@@ -3241,6 +3442,9 @@ if %s e.job.in_ms_mom():
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep5_job)
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid1 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid1)
@@ -3250,9 +3454,11 @@ if %s e.job.in_ms_mom():
         err_msg = "Unexpected error in pbs_cgroups " + \
             "handling exechost_periodic event: TypeError"
         self.moms_list[0].log_match(err_msg, max_attempts=3,
-                                    interval=1, n=100,
+                                    interval=1, n='ALL',
+                                    starttime=stime,
                                     existence=False)
-        self.server.log_match(jid1 + ';Exit_status=0')
+        self.server.log_match(jid1 + ';Exit_status=0', n='ALL',
+                              starttime=stime)
         # Create a periodic hook that runs more frequently than the
         # cgroup hook to prepend jid1 to mom_priv/hooks/hook_data/cgroup_jobs
         hookname = 'prependjob'
@@ -3323,11 +3529,13 @@ event.accept()
         # Submit a second job and verify that the following message
         # does NOT appear in the mom log:
         # _exechost_periodic_handler: Failed to update jid1
-        presubmit = time.time()
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        presubmit = int(time.time())
+        time.sleep(2)
         jid2 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -3337,9 +3545,11 @@ event.accept()
         err_msg = "Unexpected error in pbs_cgroups " + \
             "handling exechost_periodic event: TypeError"
         self.moms_list[0].log_match(err_msg, max_attempts=3,
-                                    interval=1, n=100,
+                                    interval=1, n='ALL',
+                                    starttime=presubmit,
                                     existence=False)
-        self.server.log_match(jid2 + ';Exit_status=0')
+        self.server.log_match(jid2 + ';Exit_status=0', n='ALL',
+                              starttime=presubmit)
         self.server.manager(MGR_CMD_DELETE, HOOK, None, hookname)
         command = ['rm', '-rf',
                    os.path.join(self.moms_list[0].pbs_conf['PBS_HOME'],
@@ -3348,7 +3558,7 @@ event.accept()
         self.du.run_cmd(cmd=command, hosts=self.hosts_list[0], sudo=True)
         logmsg = '_exechost_periodic_handler: Failed to update %s' % jid1
         self.moms_list[0].log_match(msg=logmsg, starttime=presubmit,
-                                    max_attempts=1, existence=False)
+                                    n='ALL', max_attempts=1, existence=False)
 
     @requirements(num_moms=3)
     def test_cgroup_release_nodes(self):
@@ -3433,7 +3643,9 @@ event.accept()
         j = Job(TEST_USER)
         # Note mother superior is mom[1] not mom[0]
         j.create_script(self.job_scr2 % (self.hosts_list[1]))
-        stime = time.time()
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         # Check the exec_vnode while in substate 41
         self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
@@ -3445,7 +3657,7 @@ event.accept()
         # Check the exec_resize hook reject message in sister mom logs
         self.moms_list[0].log_match(
             "Job;%s;Cannot resize the job" % (jid),
-            starttime=stime, interval=2)
+            starttime=stime, interval=2, n='ALL')
         # Check the exec_vnode after job is in substate 42
         self.server.expect(JOB, {ATTR_substate: '42'}, id=jid)
         # Check for the pruned exec_vnode due to release_nodes() in launch hook
@@ -3458,18 +3670,19 @@ event.accept()
         self.assertEqual(len(pruned_vnodes) + 1, len(initial_vnodes))
         # Check that the exec_vnode got pruned
         self.moms_list[1].log_match("Job;%s;pruned from exec_vnode=%s" % (
-            jid, execvnode1), starttime=stime)
+            jid, execvnode1), starttime=stime, n='ALL')
         self.moms_list[1].log_match("Job;%s;pruned to exec_vnode=%s" % (
-            jid, execvnode2), starttime=stime)
+            jid, execvnode2), starttime=stime, n='ALL')
         # Check that MS saw that the sister mom failed to update the job
         # This message is on MS mom[1] but mentions sismom mom[0]
         self.moms_list[1].log_match(
             "Job;%s;sister node %s.* failed to update job"
             % (jid, self.hosts_list[0]),
-            starttime=stime, interval=2, regexp=True)
+            starttime=stime, interval=2, regexp=True, n='ALL')
         # Because of resize hook reject Mom failed to update the job.
         # Check that job got requeued.
-        self.server.log_match("Job;%s;Job requeued" % (jid), starttime=stime)
+        self.server.log_match("Job;%s;Job requeued" % (jid),
+                              starttime=stime, n='ALL')
 
     @requirements(num_moms=3)
     def test_cgroup_msmom_resize_fail(self):
@@ -3501,7 +3714,9 @@ event.accept()
         # Submit a job that requires 2 nodes
         j = Job(TEST_USER)
         j.create_script(self.job_scr2 % (self.hosts_list[1]))
-        stime = time.time()
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         # Check the exec_vnode while in substate 41
         self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
@@ -3513,7 +3728,7 @@ event.accept()
         # Check the exec_resize hook reject message in MS log
         self.moms_list[1].log_match(
             "Job;%s;Cannot resize the job" % (jid),
-            starttime=stime, interval=2)
+            starttime=stime, interval=2, n='ALL')
         # Check the exec_vnode after job is in substate 42
         self.server.expect(JOB, {ATTR_substate: '42'}, id=jid)
         self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
@@ -3525,9 +3740,9 @@ event.accept()
         self.assertEqual(len(pruned_vnodes) + 1, len(initial_vnodes))
         # Check that the exec_vnode got pruned
         self.moms_list[1].log_match("Job;%s;pruned from exec_vnode=%s" % (
-            jid, execvnode1), starttime=stime)
+            jid, execvnode1), starttime=stime, n='ALL')
         self.moms_list[1].log_match("Job;%s;pruned to exec_vnode=%s" % (
-            jid, execvnode2), starttime=stime)
+            jid, execvnode2), starttime=stime, n='ALL')
         # Because of resize hook reject Mom failed to update the job.
         # Check that job got requeued
         self.server.log_match("Job;%s;Job requeued" % (jid), starttime=stime)
@@ -3562,7 +3777,9 @@ event.accept()
         # Submit a job that requires two vnodes
         j = Job(TEST_USER)
         j.create_script(self.job_scr3)
-        stime = time.time()
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         # Check the exec_vnode while in substate 41
         self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
@@ -3582,9 +3799,9 @@ event.accept()
         self.assertEqual(len(pruned_vnodes) + 1, len(initial_vnodes))
         # Check that the exec_vnode got pruned
         self.moms_list[0].log_match("Job;%s;pruned from exec_vnode=%s" % (
-            jid, execvnode1), starttime=stime)
+            jid, execvnode1), starttime=stime, n='ALL')
         self.moms_list[0].log_match("Job;%s;pruned to exec_vnode=%s" % (
-            jid, execvnode2), starttime=stime)
+            jid, execvnode2), starttime=stime, n='ALL')
         # Find out the released vnode
         if initial_vnodes[0] == execvnode2:
             execvnodeB = initial_vnodes[1]
@@ -3619,7 +3836,9 @@ event.accept()
         self.server.expect(JOB, a, jid)
 
         self.logger.info("Killing mom on host %s" % self.hosts_list[1])
-        now = time.time()
+        time.sleep(2)
+        now = int(time.time())
+        time.sleep(2)
         self.moms_list[1].signal('-9')
 
         self.server.expect(NODE, {'state': "down"}, id=self.hosts_list[1])
@@ -3634,15 +3853,16 @@ event.accept()
         cpath = self.get_cgroup_job_dir('memory', jid, self.hosts_list[2])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[2]))
 
-        self.moms_list[0].log_match("job_start_error", starttime=now)
+        self.moms_list[0].log_match("job_start_error",
+                                    starttime=now, n='ALL')
         self.moms_list[0].log_match("Event type is execjob_abort",
-                                    starttime=now)
+                                    starttime=now, n='ALL')
         self.moms_list[0].log_match("Event type is execjob_epilogue",
-                                    starttime=now)
+                                    starttime=now, n='ALL')
         self.moms_list[0].log_match("Event type is execjob_end",
-                                    starttime=now)
+                                    starttime=now, n='ALL')
         self.moms_list[2].log_match("Event type is execjob_abort",
-                                    starttime=now)
+                                    starttime=now, n='ALL')
 
         self.moms_list[1].pi.restart()
 
@@ -3667,8 +3887,6 @@ event.accept()
         """
         name = 'CGROUP_BIG'
         self.load_config(self.cfg9 % (self.mem, self.mem))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
 
         vnodes_count = 10
         try:
@@ -3784,12 +4002,15 @@ exit 0
         # Submit an express queue job requesting needing also 2 nodes
         a[ATTR_q] = 'express'
         j2 = Job(TEST_USER, attrs=a)
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
         err_msg = "%s;.*Failed to assign resources.*" % (jid2,)
         for m in self.moms.values():
-            m.log_match(err_msg, max_attempts=3, interval=1, n=100,
-                        regexp=True, existence=False)
+            m.log_match(err_msg, max_attempts=3, interval=1, starttime=stime,
+                        regexp=True, existence=False, n='ALL')
 
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
 
@@ -4025,8 +4246,6 @@ sleep 300
         cfs_quota_fudge_factor = 1.05
         self.load_config(self.cfg11 % (self.mem, self.mem,
                                        cfs_period_us, cfs_quota_fudge_factor))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -4217,8 +4436,6 @@ sleep 300
                                        cfs_quota_fudge_factor,
                                        zero_cpus_shares_fraction,
                                        zero_cpus_quota_fraction))
-        # Restart mom for changes made by cgroups hook to take effect
-        self.mom.restart()
         a = {'Resource_List.select': 'ncpus=0',
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
@@ -4282,8 +4499,6 @@ sleep 300
         # set vnode_per_numa=true with use_hyperthreads=true
         self.load_config(self.cfg3 % ('', 'true', '', self.mem, '',
                                       self.swapctl, ''))
-        # Restart mom so vnodes created by cgroups would show
-        self.mom.restart()
         # Submit M*N*P jobs, where M is the number of physical processors,
         # N is the number of 'cpu cores' per M. and P being the
         # number of hyperthreads per core.
@@ -4321,11 +4536,14 @@ sleep 300
         a = {'Resource_List.select': 'ncpus=1:mem=100mb'}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
+        time.sleep(2)
+        stime = int(time.time())
+        time.sleep(2)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
         err_msg = "write_value: Permission denied.*%s.*memsw" % (jid)
-        self.mom.log_match(err_msg, max_attempts=3, interval=1, n=100,
-                           regexp=True, existence=False)
+        self.mom.log_match(err_msg, max_attempts=3, interval=1, n='ALL',
+                           starttime=stime, regexp=True, existence=False)
         self.server.status(JOB, ['exec_host'], jid)
         ehost = j.attributes['exec_host']
         ehost1 = ehost.split('/')[0]
@@ -4333,6 +4551,316 @@ sleep 300
         self.assertTrue(self.is_dir(ehjd1, ehost1), "job cpuset dir not found")
         self.server.delete(id=jid, wait=True)
         self.assertFalse(self.is_dir(ehjd1, ehost1), "job cpuset dir found")
+
+    def test_cgroup_cgswap(self, vnode_per_numa_node=False):
+        """
+        Test to verify (with vnode_per_numa_node disabled by default):
+        - whether queuejob/modifyjob set cgswap to vmem-mem in jobs
+        - whether nodes get resources_available.cgswap filled in
+        - whether a collection of jobs submitted that do not exceed available
+          vmem but would deplete cgswap are indeed not all run simultaneously
+        """
+        if not self.mem:
+            self.skipTest('Test requires memory subystem mounted')
+        if not self.swapctl:
+            self.skipTest('Test requires memsw accounting enabled')
+        self.server.remove_resource('cgswap')
+        self.server.add_resource('cgswap', 'size', 'nh')
+        self.scheduler.add_resource('cgswap')
+        events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
+                  'execjob_epilogue', 'execjob_end', 'exechost_startup',
+                  'exechost_periodic', 'execjob_resize', 'execjob_abort',
+                  'queuejob', 'modifyjob']
+        # Enable the cgroups hook new events
+        conf = {'enabled': 'True', 'freq': 10, 'event': events}
+        self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
+
+        self.load_config(self.cfg15
+                         % ('true' if vnode_per_numa_node else 'false'))
+        vnode_name = self.mom.shortname
+        if vnode_per_numa_node:
+            vnode_name += "[0]"
+        cgswapstat = self.server.status(NODE, 'resources_available.cgswap',
+                                        id=vnode_name)
+        self.assertTrue(cgswapstat
+                        and 'resources_available.cgswap' in cgswapstat[0],
+                        'cgswap resource not found on node')
+
+        cgswap = PbsTypeSize(cgswapstat[0]['resources_available.cgswap'])
+        self.logger.info('Test node appears to have %s cgswap'
+                         % cgswap.encode())
+        if cgswap == PbsTypeSize("0kb"):
+            self.logger.info('First Mom has no swap, test will just '
+                             'check if job cgswap is added')
+            a = {'Resource_List.select':
+                 '1:ncpus=0:mem=100mb:vmem=1100mb:vnode=%s'
+                 % vnode_name}
+
+            j = Job(TEST_USER, attrs=a)
+            j.create_script(self.sleep30_job)
+            jid = self.server.submit(j)
+
+            # scheduler sets comment when the job cannot run,
+            # server sets comment when the job runs
+            # in both cases the comment gets set
+            self.server.expect(JOB, 'comment', op=SET)
+            job_status = self.server.status(JOB, id=jid)
+
+            cgswap = None
+            select_resource = job_status[0]['Resource_List.select']
+            chunkspecs = select_resource.split(':')
+            for c in chunkspecs:
+                if '=' in c:
+                    name, value = c.split('=')
+                    if name == 'cgswap':
+                        cgswap = PbsTypeSize(value)
+            self.assertTrue(cgswap is not None, 'job cgswap was not added')
+            self.assertTrue(cgswap == PbsTypeSize('1000mb'),
+                            'job cgswap is %s instead of expected 1000mb'
+                            % str(cgswap))
+            self.logger.info('job cgswap detected to be correct, roughly %s'
+                             % str(cgswap))
+
+            # check that indeed you cannot run the job since it requests
+            # swap usage and there is none
+            job_comment = job_status[0]['comment']
+            self.assertTrue('Insufficient amount of resource: cgswap'
+                            in job_comment,
+                            'Job comment should indicate insufficient cgswap '
+                            'but is: %s' % job_comment)
+            self.logger.info('job comment as expected: %s' % job_comment)
+
+        else:
+            self.logger.info('First MoM has swap, confirming cgswap '
+                             'correctly throttles jobs accepted')
+            # PbsTypeSize value is stored in kb units
+            cgreqval = int(float(cgswap.value)
+                           / 1024.0 / 3.0 * 2.0)
+            cgreqsuffix = 'mb'
+            cgreq = PbsTypeSize(str(cgreqval) + cgreqsuffix)
+            vmemreqsize = PbsTypeSize("100mb") + cgreq
+            vmemreq = str(int(vmemreqsize.value / 1024))+'mb'
+            self.logger.info('will submit jobs with 100mb mem and %s vmem'
+                             % vmemreq)
+            a = {'Resource_List.select':
+                 '1:ncpus=0:mem=100mb:vmem=%s:vnode=%s'
+                 % (vmemreq, vnode_name)}
+
+            j = Job(TEST_USER, attrs=a)
+            j.create_script(self.sleep100_job)
+            jid = self.server.submit(j)
+            bs = {'job_state': 'R'}
+            self.server.expect(JOB, bs, jid, offset=1)
+
+            cgswap = None
+            job_status = self.server.status(JOB, id=jid)
+            select_resource = job_status[0]['Resource_List.select']
+            chunkspecs = select_resource.split(':')
+            for c in chunkspecs:
+                if '=' in c:
+                    name, value = c.split('=')
+                    if name == 'cgswap':
+                        cgswap = PbsTypeSize(value)
+            self.assertTrue(cgswap is not None, 'job cgswap was not added')
+            self.assertTrue(cgswap == cgreq,
+                            'job cgswap is %s instead of expected %s'
+                            % (str(cgswap), str(cgreq)))
+            self.logger.info('job cgswap detected to be correct, roughly %s'
+                             % str(cgswap))
+            j = Job(TEST_USER, attrs=a)
+            j.create_script(self.sleep100_job)
+            jid = self.server.submit(j)
+
+            # Second job should not run - not enough cgswap
+            # scheduler sets comment when the job cannot run,
+            # server sets comment when the job runs
+            # in both cases the comment gets set
+            self.server.expect(JOB, 'comment', op=SET)
+            job_status = self.server.status(JOB, id=jid)
+
+            # check that indeed you cannot run the job since it requests
+            # too much swap usage while the first job runs
+            job_comment = job_status[0]['comment']
+            self.assertTrue('Insufficient amount of resource: cgswap'
+                            in job_comment,
+                            'Job comment should indicate insufficient cgswap '
+                            'but is: %s' % job_comment)
+            self.logger.info('job comment as expected: %s' % job_comment)
+
+    def test_cgroup_cgswap_numa(self):
+        """
+        Test to verify (with vnode_per_numa_node enabled):
+        - whether queuejob/modifyjob set cgswap to vmem-mem in jobs
+        - whether nodes get resources_available.cgswap filled in
+        - whether a collection of jobs submitted that do not exceed available
+          vmem but would deplete cgswap are indeed not all run simultaneously
+        """
+        self.test_cgroup_cgswap(vnode_per_numa_node=True)
+
+    def test_cgroup_enforce_default(self,
+                                    enforce_flags=('true', 'true'),
+                                    exclhost=False):
+        """
+        Test to verify if the flags to enforce default mem are working
+        and to ensure mem and memsw limits are set as expected;
+        default is to enforce both mem and memsw defaults:
+        job should get small mem limit and larger memsw limit
+        if there is swap.
+        """
+        if not self.mem:
+            self.skipTest('Test requires memory subystem mounted')
+        if not self.swapctl:
+            self.skipTest('Test requires memsw accounting enabled')
+
+        self.load_config(self.cfg16
+                         % enforce_flags)
+        a = {'Resource_List.select':
+             '1:ncpus=1:vnode=%s'
+             % self.mom.shortname}
+        if exclhost:
+            a['Resource_List.place'] = 'exclhost'
+
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep100_job)
+        jid = self.server.submit(j)
+        bs = {'job_state': 'R'}
+        self.server.expect(JOB, bs, jid, offset=1)
+
+        mem_base = os.path.join(self.paths[self.hosts_list[0]]['memory'],
+                                'pbs_jobs.service', 'jobid')
+
+        # Get total physical memory available
+        mem_avail = os.path.join(mem_base,
+                                 'memory.limit_in_bytes')
+        result = self.du.cat(hostname=self.mom.hostname, filename=mem_avail,
+                             sudo=True)
+        mem_avail_in_bytes = None
+        try:
+            mem_avail_in_bytes = int(result['out'][0])
+        except Exception:
+            # None will be seen as a failure, nothing to do
+            pass
+        self.logger.info("total available mem: %d"
+                         % mem_avail_in_bytes)
+        self.assertTrue(mem_avail_in_bytes is not None,
+                        "Unable to read total memory available")
+
+        # Get total phys+swap memory available
+        vmem_avail = os.path.join(mem_base,
+                                  'memory.memsw.limit_in_bytes')
+        result = self.du.cat(hostname=self.mom.hostname, filename=vmem_avail,
+                             sudo=True)
+        vmem_avail_in_bytes = None
+        try:
+            vmem_avail_in_bytes = int(result['out'][0])
+        except Exception:
+            # None will be seen as a failure, nothing to do
+            pass
+        self.logger.info("total available memsw: %d"
+                         % vmem_avail_in_bytes)
+        self.assertTrue(vmem_avail_in_bytes is not None,
+                        "Unable to read total memsw available")
+
+        # Get job physical mem limit
+        mem_limit = os.path.join(mem_base, str(jid),
+                                 'memory.limit_in_bytes')
+        result = self.du.cat(hostname=self.mom.hostname, filename=mem_limit,
+                             sudo=True)
+        mem_limit_in_bytes = None
+        try:
+            mem_limit_in_bytes = int(result['out'][0])
+        except Exception:
+            # None will be seen as a failure, nothing to do
+            pass
+        self.logger.info("job mem limit: %d"
+                         % mem_limit_in_bytes)
+        self.assertTrue(mem_limit_in_bytes is not None,
+                        "Unable to read job mem limit")
+
+        # Get job phys+swap mem limit
+        vmem_limit = os.path.join(mem_base, str(jid),
+                                  'memory.memsw.limit_in_bytes')
+        result = self.du.cat(hostname=self.mom.hostname, filename=vmem_limit,
+                             sudo=True)
+        vmem_limit_in_bytes = None
+        try:
+            vmem_limit_in_bytes = int(result['out'][0])
+        except Exception:
+            # None will be seen as a failure, nothing to do
+            pass
+        self.logger.info("job memsw limit: %d"
+                         % vmem_limit_in_bytes)
+        self.assertTrue(vmem_limit_in_bytes is not None,
+                        "Unable to read job memsw limit")
+
+        # Check results correspond to enforcement flags and job placement
+        swap_avail = vmem_avail_in_bytes - mem_avail_in_bytes
+        if enforce_flags[0] == 'true' and not exclhost:
+            self.assertTrue(mem_limit_in_bytes == 100 * 1024 * 1024,
+                            "Job mem limit is %d expected %d"
+                            % (mem_limit_in_bytes, 100 * 1024 * 1024))
+        else:
+            self.assertTrue(mem_avail_in_bytes == mem_limit_in_bytes,
+                            "job mem limit (%d) should be identical to "
+                            "total mem available (%d)"
+                            % (mem_limit_in_bytes, mem_avail_in_bytes))
+            self.logger.info("job mem limit is total mem available (%d)"
+                             % mem_avail_in_bytes)
+        if enforce_flags[1] == 'true' and not exclhost:
+            expected_vmem = (mem_limit_in_bytes
+                             + min(100 * 1024 * 1024, swap_avail))
+            self.assertTrue(vmem_limit_in_bytes == expected_vmem,
+                            "memsw limit: expected %d, got %d"
+                            % (expected_vmem, vmem_limit_in_bytes))
+            self.logger.info("job memsw limit is expected %d"
+                             % vmem_limit_in_bytes)
+        else:
+            if swap_avail:
+                self.assertTrue(vmem_avail_in_bytes == vmem_limit_in_bytes,
+                                "job memsw limit (%d) should be identical to "
+                                "total memsw available (%d)"
+                                % (vmem_limit_in_bytes, vmem_avail_in_bytes))
+                self.logger.info("job memsw limit is total memsw available "
+                                 " (%d)" % vmem_avail_in_bytes)
+            else:
+                self.assertTrue(mem_limit_in_bytes == vmem_limit_in_bytes,
+                                "no swap, mem (%d) and vmem (%d) limits "
+                                "should be identical but are not"
+                                % (mem_limit_in_bytes, vmem_limit_in_bytes))
+                self.logger.info("no swap: job memsw limit is job mem limit")
+
+    def test_cgroup_enforce_default_tf(self):
+        """
+        Test to verify if the flags to enforce default mem are working
+        and to ensure mem and memsw limits are set as expected;
+        enforce mem but not memsw:
+        job should get small mem limit memsw should be unlimited
+        (i.e. able to consume memsw set as limit for all jobs)
+        """
+        self.test_cgroup_enforce_default(enforce_flags=('true', 'false'))
+
+    def test_cgroup_enforce_default_ft(self):
+        """
+        Test to verify if the flags to enforce default mem are working
+        and to ensure mem and memsw limits are set as expected;
+        enforce memsw but not mem:
+        job should be able to consume all physical memory
+        set as limit for all jobs but only a small amount of additional swap
+        """
+        self.test_cgroup_enforce_default(enforce_flags=('false', 'true'))
+
+    def test_cgroup_enforce_default_exclhost(self):
+        """
+        Test to verify if the flags to enforce default mem are working
+        and to ensure mem and memsw limits are set as expected;
+        enforce neither mem nor memsw by enabling flags to ignore
+        enforcement for exclhost jobs and submitting an exclhost job:
+        job should be able to consume all physical memory
+        and memsw set as limit for all jobs
+        """
+        # enforce flags should both be overrided by exclhost
+        self.test_cgroup_enforce_default(enforce_flags=('true', 'true'),
+                                         exclhost=True)
 
     def tearDown(self):
         TestFunctional.tearDown(self)

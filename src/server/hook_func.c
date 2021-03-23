@@ -373,6 +373,7 @@ hook_track_save(void *minfo, int k)
 	int		minfo_array_size;
 	mominfo_t	*minfo_array_tmp[1];
 	char		msg[HOOK_MSG_SIZE+1];
+	mom_hook_action_t *hook_act;
 
 	if ((minfo != NULL) && (k == -1))
 		return;
@@ -405,24 +406,26 @@ hook_track_save(void *minfo, int k)
 		return;	/* failed to lock */
 	}
 
-	for (i=0; i < minfo_array_size; i++) {
+	for (i = 0; i < minfo_array_size; i++) {
 
 		if (minfo_array[i] == NULL)
 			continue;
 
-		for (j=0; j < minfo_array[i]->mi_num_action; j++) {
+		for (j = 0; j < ((mom_svrinfo_t *) minfo_array[i]->mi_data)->msr_num_action; j++) {
 
-			if (((minfo == NULL) || (k == j)) &&
-				(minfo_array[i]->mi_action[j] != NULL)) {
-				fprintf(fp, "%s:%d %s %d %lld\n", minfo_array[i]->mi_host,
-					minfo_array[i]->mi_port,
-					minfo_array[i]->mi_action[j]->hookname,
-					minfo_array[i]->mi_action[j]->action,
-					minfo_array[i]->mi_action[j]->tid);
+			if ((minfo == NULL) || (k == j)) {
+				hook_act = ((mom_svrinfo_t *) minfo_array[i]->mi_data)->msr_action[j];
+				if (hook_act) {
+					fprintf(fp, "%s:%d %s %d %lld\n", minfo_array[i]->mi_host,
+						minfo_array[i]->mi_port,
+						hook_act->hookname,
+						hook_act->action,
+						hook_act->tid);
+				}
 			}
 		}
 	}
-	(void)fflush(fp);
+	fflush(fp);
 
 	if (lock_file(fileno(fp), F_UNLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
 		msg, sizeof(msg)) != 0)
@@ -578,10 +581,10 @@ hook_track_recov(void)
 	for (i=0; i < mominfo_array_size; i++) {
 		if (mominfo_array[i] == NULL)
 			continue;
-		for (j=0; j < mominfo_array[i]->mi_num_action; j++) {
-			if (mominfo_array[i]->mi_action[j] != NULL) {
-				free(mominfo_array[i]->mi_action[j]);
-				mominfo_array[i]->mi_action[j] = NULL;
+		for (j = 0; j < ((mom_svrinfo_t *) mominfo_array[i]->mi_data)->msr_num_action; j++) {
+			if (((mom_svrinfo_t *) mominfo_array[i]->mi_data)->msr_action[j] != NULL) {
+				free(((mom_svrinfo_t *) mominfo_array[i]->mi_data)->msr_action[j]);
+				((mom_svrinfo_t *) mominfo_array[i]->mi_data)->msr_action[j] = NULL;
 			}
 		}
 	}
@@ -715,11 +718,10 @@ hook_track_recov(void)
 			minfo=find_mom_entry(mom_name, port_num);
 		}
 		if (minfo != NULL) {
-			(void)add_mom_hook_action(&minfo->mi_action,
-				&minfo->mi_num_action, hook_name, action, 1,
-				hook_tid);
+			add_mom_hook_action(&((mom_svrinfo_t *) minfo->mi_data)->msr_action,
+					    &((mom_svrinfo_t *) minfo->mi_data)->msr_num_action,
+					    hook_name, action, 1, hook_tid);
 		}
-
 	}
 
 	hook_action_tid_set(max_tid_recov);
@@ -5056,13 +5058,13 @@ add_pending_mom_hook_action(void *minfo, char *hookname, unsigned int action)
 		if (minfo_array[i] == NULL)
 			continue;
 
-		if ( !minfo_array[i]->mi_data ||
-				(((mom_svrinfo_t *) (minfo_array[i]->mi_data))->msr_state & (INUSE_UNKNOWN | INUSE_NEEDS_HELLOSVR))) {
+		if (!minfo_array[i]->mi_data ||
+		    (minfo_array[i]->mi_dmn_info->dmn_state & (INUSE_UNKNOWN | INUSE_NEEDS_HELLOSVR))) {
 			continue;
 		}
 
-		j=add_mom_hook_action(&minfo_array[i]->mi_action,
-			&minfo_array[i]->mi_num_action, hookname,
+		j = add_mom_hook_action(&((mom_svrinfo_t *)minfo_array[i]->mi_data)->msr_action,
+			&((mom_svrinfo_t *)minfo_array[i]->mi_data)->msr_num_action, hookname,
 			action, 0, hook_action_tid);
 
 		hook_track_save((mominfo_t *)minfo_array[i], j);
@@ -5110,19 +5112,16 @@ delete_pending_mom_hook_action(void *minfo, char *hookname,
 
 	}
 
-	for (i=0; i < minfo_array_size; i++) {
+	for (i = 0; i < minfo_array_size; i++) {
 
 		if (minfo_array[i] == NULL)
 			break;
 
-		k=delete_mom_hook_action(minfo_array[i]->mi_action,
-			minfo_array[i]->mi_num_action,
-			hookname,
-			action);
+		k = delete_mom_hook_action(((mom_svrinfo_t *) minfo_array[i]->mi_data)->msr_action,
+					   ((mom_svrinfo_t *) minfo_array[i]->mi_data)->msr_num_action, hookname, action);
 
-		hook_track_save((mominfo_t *)minfo_array[i], k);
+		hook_track_save((mominfo_t *) minfo_array[i], k);
 	}
-
 }
 
 /**
@@ -5150,9 +5149,8 @@ has_pending_mom_action_delete(char *hookname)
 		if (mominfo_array[i] == NULL)
 			continue;
 
-		pact = find_mom_hook_action(mominfo_array[i]->mi_action,
-			mominfo_array[i]->mi_num_action,
-			hookname);
+		pact = find_mom_hook_action(((mom_svrinfo_t *)mominfo_array[i]->mi_data)->msr_action,
+			((mom_svrinfo_t *)mominfo_array[i]->mi_data)->msr_num_action, hookname);
 
 		if (pact && (pact->action & MOM_HOOK_ACTION_DELETE))
 			return 1;
@@ -5204,8 +5202,8 @@ sync_mom_hookfiles_count(void *minfo)
 		if (minfo_array[i] == NULL)
 			continue;
 
-		for (j=0; j < minfo_array[i]->mi_num_action; j++) {
-			pact = minfo_array[i]->mi_action[j];
+		for (j=0; j < ((mom_svrinfo_t *) minfo_array[i]->mi_data)->msr_num_action; j++) {
+			pact = ((mom_svrinfo_t *)minfo_array[i]->mi_data)->msr_action[j];
 
 			if ((pact == NULL) ||
 				(pact->action == MOM_HOOK_ACTION_NONE))
@@ -5314,7 +5312,7 @@ mk_deferred_hook_info(int index, int event, long long int tid)
  *
  * @param[in] minfo - pointer to mom info
  * @param[in] pact - pointer to current hook action
- * @param[in] j - index of pact in minfo->mi_action[]
+ * @param[in] j - index of pact in minfo->mi_data->msr_action[]
  * @param[in] event - action event to consider
  *
  * @return int
@@ -5329,8 +5327,8 @@ check_for_latest_action(mominfo_t *minfo, mom_hook_action_t *pact, int j, int ev
 	 */
 	int i;
 	mom_hook_action_t *pact2;
-	for (i = 0; i < minfo->mi_num_action; i++) {
-		pact2 = minfo->mi_action[i];
+	for (i = 0; i < ((mom_svrinfo_t *)minfo->mi_data)->msr_num_action; i++) {
+		pact2 = ((mom_svrinfo_t *)minfo->mi_data)->msr_action[i];
 		if (pact2 && (i != j) && (pact2->tid > pact->tid) && (pact2->action & event) &&
 				pact2->hookname && (strcmp(pact2->hookname, pact->hookname) == 0)) {
 			return 1;
@@ -5392,7 +5390,7 @@ post_sendhookTPP(struct work_task *pwt)
 		return;	/* return now as info->index no longer valid */
 	}
 
-	pact = minfo->mi_action[j];
+	pact = ((mom_svrinfo_t *)minfo->mi_data)->msr_action[j];
 
 	if (event == MOM_HOOK_ACTION_DELETE_RESCDEF) {
 		snprintf(hookfile, sizeof(hookfile), "%.*s%.*s",
@@ -5632,7 +5630,7 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
 			return NULL;
 		}
 
-		if (tpp_mcast_add_strm(g_hook_mcast_array[i].mconn, conn) != 0) {
+		if (tpp_mcast_add_strm(g_hook_mcast_array[i].mconn, conn, FALSE) != 0) {
 			free(info);
 			free(dup_msgid);
 			return NULL;
@@ -5672,7 +5670,7 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
 		return NULL;
 	}
 
-	if (tpp_mcast_add_strm(g_hook_mcast_array[i].mconn, conn) != 0) {
+	if (tpp_mcast_add_strm(g_hook_mcast_array[i].mconn, conn, FALSE) != 0) {
 		free(info);
 		return NULL;
 	}
@@ -5684,8 +5682,7 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
 	g_hook_mcast_array_len++;
 
 SUCCESS_RET:
-
-	minfo->mi_action[act_index]->reply_expected |= action;
+	((mom_svrinfo_t *) minfo->mi_data)->msr_action[act_index]->reply_expected |= action;
 
 	g_hook_replies_expected++;
 
@@ -5727,8 +5724,7 @@ del_deferred_hook_cmds(int index)
 			return;
 
 		/* get the task list */
-		ptask = (struct work_task *) GET_NEXT((((mom_svrinfo_t *)
-					(pmom->mi_data))->msr_deferred_cmds));
+		ptask = (struct work_task *) GET_NEXT(pmom->mi_dmn_info->dmn_deferred_cmds);
 
 		while (ptask) {
 			/* no need to compare wt_event with handle, since the
@@ -5752,7 +5748,7 @@ del_deferred_hook_cmds(int index)
 				event = info->event;
 				free(info);
 
-				pact = minfo->mi_action[j];
+				pact = ((mom_svrinfo_t *)minfo->mi_data)->msr_action[j];
 
 				pact->action &= ~(event);
 				pact->reply_expected &= ~(event);
@@ -5819,13 +5815,13 @@ sync_mom_hookfilesTPP(void *minfo)
 		if (minfo_array[i] == NULL)
 			continue;
 
-		conn = ((mom_svrinfo_t *) minfo_array[i]->mi_data)->msr_stream;
+		conn = minfo_array[i]->mi_dmn_info->dmn_stream;
 		if (conn == -1) {
 			skipped++;
 			continue;
 		}
 
-		if (((mom_svrinfo_t *) (minfo_array[i]->mi_data))->msr_state & INUSE_DOWN) {
+		if (minfo_array[i]->mi_dmn_info->dmn_state & INUSE_DOWN) {
 			skipped++;
 			continue;
 		}
@@ -5833,9 +5829,9 @@ sync_mom_hookfilesTPP(void *minfo)
 		tpp_add_close_func(conn, process_DreplyTPP); /* register a close handler */
 
 		pbs_errno = 0;
-		for (j = 0; j < minfo_array[i]->mi_num_action; j++) {
+		for (j = 0; j < ((mom_svrinfo_t *) minfo_array[i]->mi_data)->msr_num_action; j++) {
 			hook *phook;
-			pact = minfo_array[i]->mi_action[j];
+			pact = ((mom_svrinfo_t *)minfo_array[i]->mi_data)->msr_action[j];
 
 			if ((pact == NULL) || (pact->action == MOM_HOOK_ACTION_NONE))
 				continue;
@@ -6080,17 +6076,16 @@ clear_timed_out_reply_expected(long long int tid)
 		if ((pmom = mominfo_array[i]) == NULL)
 			continue;
 
-		if (pmom->mi_num_action && pmom->mi_action) {
+		if (((mom_svrinfo_t *)pmom->mi_data)->msr_num_action && ((mom_svrinfo_t *)pmom->mi_data)->msr_action) {
 
-			for (j = 0; j < pmom->mi_num_action; j++) {
-				pact = pmom->mi_action[j];
+			for (j = 0; j < ((mom_svrinfo_t *)pmom->mi_data)->msr_num_action; j++) {
+				pact = ((mom_svrinfo_t *)pmom->mi_data)->msr_action[j];
 				if (pact && pact->reply_expected && (pact->tid == tid)) {
 					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
 						LOG_INFO, __func__, "timedout, clearing reply_expected for %d event[%lld] of %s hook for %s",
 						pact->reply_expected, tid, pact->hookname, pmom->mi_host);
 					/* get the task list */
-					ptask = (struct work_task *) GET_NEXT((((mom_svrinfo_t *)
-								(pmom->mi_data))->msr_deferred_cmds));
+					ptask = (struct work_task *) GET_NEXT(pmom->mi_dmn_info->dmn_deferred_cmds);
 
 					while (ptask) {
 						/* no need to compare wt_event with handle, since the
@@ -6269,13 +6264,13 @@ uc_delete_mom_hooks(void *minfo)
 				(phook->event & MOM_EVENTS)) {
 			msgid = NULL;
 			snprintf(hookfile, sizeof(hookfile), "%s%s", phook->hook_name, HOOK_FILE_SUFFIX);
-			PBSD_delhookfile(((mom_svrinfo_t *) mom_info->mi_data)->msr_stream, hookfile, PROT_TPP, &msgid);
+			PBSD_delhookfile(mom_info->mi_dmn_info->dmn_stream, hookfile, PROT_TPP, &msgid);
 			free(msgid);
 			msgid = NULL;
 		}
 		phook = (hook *)GET_NEXT(phook->hi_allhooks);
 	}
-	PBSD_delhookfile(((mom_svrinfo_t *) mom_info->mi_data)->msr_stream, PBS_RESCDEF, PROT_TPP, &msgid);
+	PBSD_delhookfile(mom_info->mi_dmn_info->dmn_stream, PBS_RESCDEF, PROT_TPP, &msgid);
 	free(msgid);
 	return;
 }

@@ -174,11 +174,9 @@ append_link(pbs_list_head *head, pbs_list_head *newp, void *pobj)
  * @return	Void
  *
  */
-
 void
 delete_link(struct pbs_list_link *oldp)
 {
-
 	if ((oldp->ll_prior != NULL) &&
 		(oldp->ll_prior != oldp) && (oldp->ll_prior->ll_next == oldp))
 		(oldp->ll_prior)->ll_next = oldp->ll_next;
@@ -189,6 +187,18 @@ delete_link(struct pbs_list_link *oldp)
 
 	oldp->ll_next  = oldp;
 	oldp->ll_prior = oldp;
+}
+
+/**
+ * @brief delete an entry from the list and clear the struct
+ *
+ * @param[in] oldp       ptr to link to delete
+ */
+void
+delete_clear_link(struct pbs_list_link *oldp)
+{
+	delete_link(oldp);
+	oldp->ll_struct = NULL;
 }
 
 /**

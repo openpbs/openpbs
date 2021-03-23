@@ -52,8 +52,10 @@
 #ifndef	_DATA_TYPES_H
 #define	_DATA_TYPES_H
 
-#include <vector>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include <time.h>
 #include <pbs_ifl.h>
@@ -66,9 +68,6 @@
 #ifdef NAS
 #include "site_queue.h"
 #endif
-
-#include <unordered_map>
-#include <string>
 
 struct server_info;
 struct job_info;
@@ -87,7 +86,7 @@ struct place;
 struct schd_error;
 struct np_cache;
 struct chunk;
-struct selspec;
+class selspec;
 struct resdef;
 struct event_list;
 struct status;
@@ -99,13 +98,15 @@ struct bucket_bitpool;
 struct chunk_map;
 struct node_bucket_count;
 struct preempt_job_st;
+struct config;
+struct sort_info;
 class resource_resv;
 class node_info;
+class queue_info;
 
 
 typedef struct state_count state_count;
 typedef struct server_info server_info;
-typedef struct queue_info queue_info;
 typedef struct job_info job_info;
 typedef struct schd_resource schd_resource;
 typedef struct resource_req resource_req;
@@ -120,11 +121,9 @@ typedef struct place place;
 typedef struct schd_error schd_error;
 typedef struct np_cache np_cache;
 typedef struct chunk chunk;
-typedef struct selspec selspec;
 typedef struct resdef resdef;
 typedef struct timed_event timed_event;
 typedef struct event_list event_list;
-typedef struct status status;
 typedef struct fairshare_head fairshare_head;
 typedef struct node_scratch node_scratch;
 typedef struct resresv_set resresv_set;
@@ -298,12 +297,16 @@ struct chunk
 	resource_req *req;		/* the resources in resource_req form */
 };
 
-struct selspec
+class selspec
 {
+	public:
 	int total_chunks;
 	int total_cpus;			/* # of cpus requested in this select spec */
-	resdef **defs;			/* the resources requested by this select spec*/
+	std::unordered_set<resdef *> defs;			/* the resources requested by this select spec*/
 	chunk **chunks;
+	selspec();
+	selspec(selspec&);
+	~selspec();
 };
 
 /* for description of these bits, check the PBS admin guide or scheduler IDS */
@@ -325,26 +328,25 @@ struct status
 
 	bool is_prime:1;
 	bool is_ded_time:1;
-	bool sync_fairshare_files:1;	/* sync fairshare files to disk */
 
-	struct sort_info *sort_by;		/* job sorting */
-	struct sort_info *node_sort;		/* node sorting */
+	std::vector<sort_info> *sort_by;		/* job sorting */
+	std::vector<sort_info> *node_sort;		/* node sorting */
 	enum smp_cluster_dist smp_dist;
 
 	unsigned prime_spill;			/* the amount of time a job can spill into the next prime state */
 	unsigned int backfill_depth;		/* number of top jobs to backfill around */
 
-	resdef **resdef_to_check;		/* resources to match as definitions */
-	resdef **resdef_to_check_no_hostvnode;	/* resdef_to_check without host/vnode*/
-	resdef **resdef_to_check_rassn;		/* resdef_to_check intersects res_rassn */
-	resdef **resdef_to_check_rassn_select;	/* resdef_to_check intersects res_rassn and host level resource */
-	resdef **resdef_to_check_noncons;	/* non-consumable resources to match */
-	resdef **equiv_class_resdef;		/* resources to consider for job equiv classes */
+	std::unordered_set<resdef *> resdef_to_check;		/* resources to match as definitions */
+	std::unordered_set<resdef *> resdef_to_check_no_hostvnode;	/* resdef_to_check without host/vnode*/
+	std::unordered_set<resdef *> resdef_to_check_rassn;		/* resdef_to_check intersects res_rassn */
+	std::unordered_set<resdef *> resdef_to_check_rassn_select;	/* resdef_to_check intersects res_rassn and host level resource */
+	std::unordered_set<resdef *> resdef_to_check_noncons;	/* non-consumable resources to match */
+	std::unordered_set<resdef *> equiv_class_resdef;		/* resources to consider for job equiv classes */
 
 
 	time_t prime_status_end;		/* the end of prime or nonprime */
 
-	resdef **rel_on_susp;	    /* resources to release on suspend */
+	std::unordered_set<resdef *> rel_on_susp;	    /* resources to release on suspend */
 
 	/* not really policy... but kinda just left over here */
 	time_t current_time;			/* current time in the cycle */
@@ -352,8 +354,6 @@ struct status
 
 	unsigned int order;			/* used to assign a ordering to objs */
 	int preempt_attempts;			/* number of jobs attempted to preempt */
-
-	unsigned long long iteration;		/* scheduler iteration count */
 };
 
 /*
@@ -469,7 +469,7 @@ struct server_info
 	 * the policy struct.  The policy struct will be passed around separately
 	 */
 	status *policy;
-	fairshare_head *fairshare;	/* root of fairshare tree */
+	fairshare_head *fstree;	/* root of fairshare tree */
 	resresv_set **equiv_classes;
 	node_bucket **buckets;		/* node bucket array */
 	node_info **unordered_nodes;
@@ -480,8 +480,9 @@ struct server_info
 #endif
 };
 
-struct queue_info
+class queue_info
 {
+	public:
 	bool is_started:1;		/* is queue started */
 	bool is_exec:1;		/* is the queue an execution queue */
 	bool is_route:1;		/* is the queue a routing queue */
@@ -499,7 +500,7 @@ struct queue_info
 	bool has_proj_limit:1;	/* queue has project hard or soft limit */
 	bool has_all_limit:1;	/* queue has PBS_ALL limits set on it */
 	struct server_info *server;	/* server where queue resides */
-	char *name;			/* queue name */
+	const std::string name;		/* queue name */
 	state_count sc;			/* number of jobs in different states */
 	void *liminfo;			/* limit storage information */
 	int priority;			/* priority of queue */
@@ -539,10 +540,13 @@ struct queue_info
 	int num_topjobs;		/* current number of top jobs in this queue */
 	int backfill_depth;		/* total allowable topjobs in this queue*/
 	char *partition;		/* partition to which queue belongs to */
+
+	queue_info(char *);
+	queue_info(queue_info&, server_info *);
+	~queue_info();
 };
 
-struct 
-job_info
+struct job_info
 {
 	bool is_queued:1;		/* state booleans */
 	bool is_running:1;
@@ -682,7 +686,7 @@ struct node_info
 	 * nodes do.  This means ninfo is not part of ninfo -> server -> nodes.
 	 */
 	server_info *server;
-	char *queue_name;		/* the queue the node is associated with */
+	std::string queue_name;		/* the queue the node is associated with */
 
 	int num_jobs;			/* number of jobs running on the node */
 	int num_run_resv;		/* number of running advanced reservations */
@@ -1039,10 +1043,10 @@ struct t
 
 struct sort_info
 {
-	char *res_name;			/* Name of sorting resource */
+	std::string res_name;		/* Name of sorting resource */
 	resdef *def;			/* Definition of sorting resource */
 	enum sort_order order;		/* Ascending or Descending sort */
-	enum resource_fields res_type;  /* resources_available, resources_assigned, etc */
+	enum resource_fields res_type;	/* resources_available, resources_assigned, etc */
 };
 
 struct sort_conv
@@ -1063,21 +1067,24 @@ struct timegap
 {
 	time_t from;
 	time_t to;
+	timegap(time_t tfrom, time_t tto): from(tfrom), to(tto) {}
 };
 
 struct dyn_res
 {
-	char *res;
-	char *command_line;
-	char *script_name;
+	std::string res;
+	std::string command_line;
+	std::string script_name;
+	dyn_res(const char *resource, const char *cmdline, const char *fname): res(resource), command_line(cmdline), script_name(fname) {}
 };
 
 struct peer_queue
 {
-	char *local_queue;
-	char *remote_queue;
-	char *remote_server;
+	const std::string local_queue;
+	const std::string remote_queue;
+	const std::string remote_server;
 	int peer_sd;
+	peer_queue(const char *lqueue, const char *rqueue, const char *rserver): local_queue(lqueue), remote_queue(rqueue), remote_server(rserver) {}
 };
 
 struct nspec
@@ -1126,21 +1133,20 @@ struct config
 	bool non_prime_pre:1;
 	bool update_comments:1;	/* should we update comments or not */
 	bool prime_exempt_anytime_queues:1; /* backfill affects anytime queues */
-	bool assign_ssinodes:1;	/* assign the ssinodes resource */
 	bool preempt_starving:1;	/* once jobs become starving, it can preempt */
 	bool preempt_fairshare:1; /* normal jobs can preempt over usage jobs */
 	bool dont_preempt_starving:1; /* don't preempt staving jobs */
 	bool enforce_no_shares:1;	/* jobs with 0 shares don't run */
 	bool node_sort_unused:1;	/* node sorting by unused/assigned is used */
-	bool resv_conf_ignore:1;  /* if we want to ignore dedicated time when confirming reservations.  Move to enum if ever expanded */
-	bool allow_aoe_calendar:1;        /* allow jobs requesting aoe in calendar*/
+	bool resv_conf_ignore:1;	/* if we want to ignore dedicated time when confirming reservations.  Move to enum if ever expanded */
+	bool allow_aoe_calendar:1;	/* allow jobs requesting aoe in calendar*/
 #ifdef NAS /* localmod 034 */
-	bool prime_sto	:1;	/* shares_track_only--no enforce shares */
+	bool prime_sto:1;	/* shares_track_only--no enforce shares */
 	bool non_prime_sto:1;
 #endif /* localmod 034 */
 
-	struct sort_info *prime_sort;		/* prime time sort */
-	struct sort_info *non_prime_sort;	/* non-prime time sort */
+	std::vector<sort_info> prime_sort;	/* prime time sort */
+	std::vector<sort_info> non_prime_sort;	/* non-prime time sort */
 
 	enum smp_cluster_dist prime_smp_dist;	/* how to dist jobs during prime*/
 	enum smp_cluster_dist non_prime_smp_dist;/* how do dist jobs during nonprime*/
@@ -1148,32 +1154,29 @@ struct config
 						 * spill into primetime
 						 */
 	time_t nonprime_spill;			/* vice versa for prime_spill */
-	fairshare_head *fairshare;		/* fairshare tree */
 	time_t decay_time;			/*  time in seconds for the decay period*/
-	struct t prime[HIGH_DAY][2];	/* prime time start and prime time end*/
-	int holidays[MAX_HOLIDAY_SIZE];		/* holidays in Julian date */
+	struct t prime[HIGH_DAY][2];		/* prime time start and prime time end*/
+	std::vector<int> holidays;		/* holidays in Julian date */
 	int holiday_year;			/* the year the holidays are for */
-	int num_holidays;			/* number of actual holidays */
-	struct timegap ded_time[MAX_DEDTIME_SIZE];/* dedicated times */
+	std::vector<struct timegap> ded_time;	/* dedicated times */
 	int unknown_shares;			/* unknown group shares */
 	int max_preempt_attempts;		/* max num of preempt attempts per cyc*/
 	int max_jobs_to_check;			/* max number of jobs to check in cyc*/
-	char ded_prefix[PBS_MAXQUEUENAME +1];	/* prefix to dedicated queues */
-	char pt_prefix[PBS_MAXQUEUENAME +1];	/* prefix to primetime queues */
-	char npt_prefix[PBS_MAXQUEUENAME +1];	/* prefix to non primetime queues */
-	char *fairshare_res;			/* resource to calc fairshare usage */
+	std::string ded_prefix;			/* prefix to dedicated queues */
+	std::string pt_prefix;			/* prefix to primetime queues */
+	std::string npt_prefix;			/* prefix to non primetime queues */
+	std::string fairshare_res;		/* resource to calc fairshare usage */
 	float fairshare_decay_factor;		/* decay factor used when decaying fairshare tree */
-	char *fairshare_ent;			/* job attribute to use as fs entity */
-	char **res_to_check;			/* the resources schedule on */
-	resdef **resdef_to_check;		/* the res to schedule on in def form */
-	char **ignore_res;			/* resources - unset implies infinite */
-	int num_res_to_check;			/* the size of res_to_check */
+	std::string fairshare_ent;			/* job attribute to use as fs entity */
+	std::unordered_set<std::string> res_to_check;		/* the resources schedule on */
+	std::unordered_set<resdef *> resdef_to_check;		/* the res to schedule on in def form */
+	std::unordered_set<std::string> ignore_res;		/* resources - unset implies infinite */
 	time_t max_starve;			/* starving threshold */
 	/* order to preempt jobs */
-	struct sort_info *prime_node_sort;	/* node sorting primetime */
-	struct sort_info *non_prime_node_sort;	/* node sorting non primetime */
-	struct dyn_res dynamic_res[MAX_SERVER_DYN_RES]; /* for server_dyn_res */
-	struct peer_queue peer_queues[NUM_PEERS];/* peer local -> remote queue map */
+	std::vector<sort_info> prime_node_sort;	/* node sorting primetime */
+	std::vector<sort_info> non_prime_node_sort;	/* node sorting non primetime */
+	std::vector<dyn_res> dynamic_res; /* for server_dyn_res */
+	std::vector<peer_queue> peer_queues;/* peer local -> remote queue map */
 #ifdef NAS
 	/* localmod 034 */
 	time_t max_borrow;			/* job share borrowing limit */
@@ -1187,6 +1190,7 @@ struct config
 
 	/* selection criteria of nodes for provisioning */
 	enum provision_policy_types provision_policy;
+	config();
 };
 
 struct rescheck

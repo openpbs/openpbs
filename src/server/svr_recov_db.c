@@ -152,7 +152,7 @@ svr_to_db(struct server *ps, pbs_db_svr_info_t *pdbsvr)
 int
 db_to_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr)
 {
-	if ((decode_attr_db(ps, &pdbsvr->db_attr_list, svr_attr_idx, svr_attr_def, ps->sv_attr, SVR_ATR_LAST, 0)) != 0)
+	if ((decode_attr_db(ps, &pdbsvr->db_attr_list.attrs, svr_attr_idx, svr_attr_def, ps->sv_attr, SVR_ATR_LAST, 0)) != 0)
 		return -1;
 
 	ps->newobj = 0;
@@ -200,7 +200,7 @@ db_to_sched(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
 {
 	strcpy(ps->sc_name, pdbsched->sched_name);
 
-	if ((decode_attr_db(ps, &pdbsched->db_attr_list, sched_attr_idx, sched_attr_def, ps->sch_attr, SCHED_ATR_LAST, 0)) != 0)
+	if ((decode_attr_db(ps, &pdbsched->db_attr_list.attrs, sched_attr_idx, sched_attr_def, ps->sch_attr, SCHED_ATR_LAST, 0)) != 0)
 		return -1;
 
 	ps->newobj = 0;

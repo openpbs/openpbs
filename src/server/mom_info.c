@@ -180,9 +180,9 @@ create_mom_entry(char *hostname, unsigned int port)
 		pmom->mi_port = port;
 		pmom->mi_rmport = port + 1;
 		pmom->mi_modtime = (time_t)0;
+		pmom->mi_dmn_info = NULL;
 		pmom->mi_data    = NULL;
-		pmom->mi_action = NULL;
-		pmom->mi_num_action = 0;
+		CLEAR_LINK(pmom->mi_link);
 #ifndef PBS_MOM
 		if (mom_hooks_seen_count() > 0) {
 			struct stat sbuf;
@@ -245,25 +245,12 @@ delete_mom_entry(mominfo_t *pmom)
 		}
 	}
 
-	if (pmom->mi_action != NULL) {
-
-#ifndef PBS_MOM
-		for (i=0; i < pmom->mi_num_action; ++i) {
-			if (pmom->mi_action[i] != NULL) {
-				free(pmom->mi_action[i]);
-				pmom->mi_action[i] = NULL;
-			}
-		}
-#endif
-		free(pmom->mi_action);
-	}
-
 	/* free the mi_data after all hook work is done, since the hook actions
 	 * use the mi_data.
 	 */
-	if (pmom->mi_data)
-		free(pmom->mi_data);
+	free(pmom->mi_data);
 
+	delete_link(&pmom->mi_link);
 	memset(pmom, 0, sizeof(mominfo_t));
 	free(pmom);
 	--svr_num_moms;
@@ -329,7 +316,6 @@ find_mom_entry(char *hostname, unsigned int port)
  * @param[in]	port     - port number to which Mom will be listening
  * @param[in]	pul      - list of IP addresses of host; will be freed on error
  *			   				or saved in structure; caller must not free pul
- * @param[in]	is_peer_svr	- Peer server or mom
  *
  * @return	mominfo_t *
  * @retval	pointer to the created mominfo entry	- success
@@ -342,44 +328,38 @@ find_mom_entry(char *hostname, unsigned int port)
  */
 
 mominfo_t *
-create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int is_peer_svr)
+create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 {
 	mominfo_t     *pmom;
 	mom_svrinfo_t *psvrmom;
-	extern struct tree  *ipaddrs;
 
-	if (is_peer_svr)
-		pmom = create_svr_entry(hostname, port);
-	else
-		pmom = create_mom_entry(hostname, port);
+	pmom = create_mom_entry(hostname, port);
 
 	if (pmom == NULL) {
+		free(pul);
 		return pmom;
 	}
 
 	if (pmom->mi_data != NULL) {
+		free(pul);
 		return pmom;	/* already there */
 	}
 
 	psvrmom = (mom_svrinfo_t *)malloc(sizeof(mom_svrinfo_t));
 	if (!psvrmom) {
-		log_err(errno, "create_svrmom_entry", merr);
+		log_err(PBSE_SYSTEM, __func__, merr);
 		delete_mom_entry(pmom);
 		return NULL;
 	}
 
-	psvrmom->msr_state =INUSE_UNKNOWN | INUSE_DOWN | INUSE_NEEDS_HELLOSVR;
 	psvrmom->msr_pcpus = 0;
 	psvrmom->msr_acpus = 0;
 	psvrmom->msr_pmem  = 0;
 	psvrmom->msr_numjobs = 0;
 	psvrmom->msr_arch  = NULL;
 	psvrmom->msr_pbs_ver  = NULL;
-	psvrmom->msr_stream  = -1;
-	CLEAR_HEAD(psvrmom->msr_deferred_cmds);
 	psvrmom->msr_timedown = (time_t)0;
 	psvrmom->msr_wktask  = 0;
-	psvrmom->msr_addrs   = pul;
 	psvrmom->msr_jbinxsz = 0;
 	psvrmom->msr_jobindx = NULL;
 	psvrmom->msr_numvnds = 0;
@@ -390,15 +370,26 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int i
 		(struct pbsnode **)calloc((size_t)(psvrmom->msr_numvslots),
 		sizeof(struct pbsnode *));
 	if (psvrmom->msr_children == NULL) {
-		log_err(errno, "create_svrmom_entry", merr);
+		log_err(errno, __func__, merr);
 		free(psvrmom);
 		delete_mom_entry(pmom);
 		return NULL;
 	}
+	psvrmom->msr_action = NULL;
+	psvrmom->msr_num_action = 0;
+
 	pmom->mi_data = psvrmom;	/* must be done before call tinsert2 */
-	while (*pul) {
-		tinsert2(*pul, port, pmom, &ipaddrs);
-		pul++;
+
+	if (pmom->mi_dmn_info) {
+		free(pul);
+		return pmom;	/* already there */
+	}
+
+	pmom->mi_dmn_info = init_daemon_info(pul, port, pmom);
+	if (!pmom->mi_dmn_info) {
+		log_err(PBSE_SYSTEM, __func__, merr);
+		delete_svrmom_entry(pmom);
+		return NULL;
 	}
 
 	return pmom;
@@ -406,7 +397,7 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int i
 
 /**
  * @brief
- * 		open_tppstream - do an tpp_open if it is safe to do so.
+ * 		open_conn_stream - do an tpp_open if it is safe to do so.
  *
  * @param[in]	pmom	- pointer to mominfo structure
  *
@@ -415,30 +406,32 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int i
  * @retval	>=0: success
  */
 int
-open_tppstream(mominfo_t *pmom)
+open_conn_stream(mominfo_t *pmom)
 {
 	int stream = -1;
-	mom_svrinfo_t *psvrmom;
+	dmn_info_t *pdmninfo;
 
-	psvrmom = (mom_svrinfo_t *)pmom->mi_data;
-	if (psvrmom->msr_stream >= 0 || !(psvrmom->msr_state & INUSE_NEEDS_HELLOSVR))
+	pdmninfo = pmom->mi_dmn_info;
+	if (pdmninfo->dmn_stream >= 0)
+		return pdmninfo->dmn_stream;
+
+	if ((stream = tpp_open(pmom->mi_host, pmom->mi_rmport)) < 0) {
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
+			   msg_daemonname, "Failed to open connection stream for %s", pmom->mi_host);
 		return -1;
-
-	if ((stream = tpp_open(pmom->mi_host, pmom->mi_rmport)) >= 0) {
-		psvrmom->msr_stream = stream;
-		psvrmom->msr_state &= ~(INUSE_UNKNOWN | INUSE_DOWN);
-		tinsert2((u_long)stream, 0, pmom, &streams);
 	}
+
+	pdmninfo->dmn_stream = stream;
+	pdmninfo->dmn_state &= ~(INUSE_UNKNOWN | INUSE_DOWN);
+	tinsert2((u_long)stream, 0, pmom, &streams);
 
 	return stream;
 }
 
-
 /**
  * @brief
  * 		delete_svrmom_entry - destroy a mom_svrinfo_t element and the parent
- *		mominfo_t element.  This special function is required because of
- *		the msr_addrs array hung off of the mom_svrinfo_t
+ *		mominfo_t element.
  *
  * @see
  * 		effective_node_delete
@@ -452,8 +445,7 @@ void
 delete_svrmom_entry(mominfo_t *pmom)
 {
 	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)pmom->mi_data;
-	unsigned long *up;
-	extern struct tree  *ipaddrs;
+	int i;
 
 	if (psvrmom) {
 
@@ -462,7 +454,7 @@ delete_svrmom_entry(mominfo_t *pmom)
 		/* we'll just send this delete request only once */
 		/* if a hook fails to delete, then that mom host when it */
 		/* come back will still have the hook. */
-		if (!(psvrmom->msr_state & INUSE_UNKNOWN) && (mom_hooks_seen_count() > 0)) {
+		if (pmom->mi_dmn_info && !(pmom->mi_dmn_info->dmn_state & INUSE_UNKNOWN) && (mom_hooks_seen_count() > 0)) {
 			uc_delete_mom_hooks(pmom);
 		}
 #endif
@@ -473,14 +465,6 @@ delete_svrmom_entry(mominfo_t *pmom)
 		if (psvrmom->msr_pbs_ver)
 			free(psvrmom->msr_pbs_ver);
 
-		if (psvrmom->msr_addrs) {
-			for (up = psvrmom->msr_addrs; *up; up++) {
-				/* del Mom's IP addresses from tree  */
-				tdelete2(*up, pmom->mi_port,  &ipaddrs);
-			}
-			free(psvrmom->msr_addrs);
-			psvrmom->msr_addrs = NULL;
-		}
 		if (psvrmom->msr_children)
 			free(psvrmom->msr_children);
 
@@ -490,18 +474,27 @@ delete_svrmom_entry(mominfo_t *pmom)
 			psvrmom->msr_jobindx = NULL;
 		}
 
-		/* take stream out of tree */
-		(void)tpp_close(psvrmom->msr_stream);
-		tdelete2((unsigned long)psvrmom->msr_stream , 0, &streams);
-
 		if (remove_mom_ipaddresses_list(pmom) != 0) {
 			snprintf(log_buffer, sizeof(log_buffer), "Could not remove IP address for mom %s:%d from cache",
 					pmom->mi_host, pmom->mi_port);
 			log_err(errno, __func__, log_buffer);
 		}
 	}
+
+	delete_daemon_info(pmom);
+
+#ifndef PBS_MOM
+	for (i = 0; i < psvrmom->msr_num_action; ++i) {
+		if (psvrmom->msr_action[i] != NULL) {
+			free(psvrmom->msr_action[i]);
+			psvrmom->msr_action[i] = NULL;
+		}
+	}
+	free(psvrmom->msr_action);
+#endif
+
 	memset((void *)psvrmom, 0, sizeof(mom_svrinfo_t));
-	psvrmom->msr_stream = -1; /* always set to -1 when deleted */
+
 	delete_mom_entry(pmom);
 }
 
@@ -569,7 +562,7 @@ reset_pool_inventory_mom(mominfo_t *pmom)
 			for (i = 0; i < ppool->vnpm_nummoms; ++i) {
 				pxmom = ppool->vnpm_moms[i];
 				pxsvrmom = (mom_svrinfo_t *)pxmom->mi_data;
-				if ((pxsvrmom->msr_state & INUSE_DOWN) == 0) {
+				if ((pxmom->mi_dmn_info->dmn_state & INUSE_DOWN) == 0) {
 					ppool->vnpm_inventory_mom = pxmom;
 					pxsvrmom->msr_has_inventory = 1;
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
@@ -832,7 +825,7 @@ find_vmap_entry(const char *vname)
 }
 
 
-struct mominfo *find_mom_by_vnodename(const char *vname)
+mominfo_t *find_mom_by_vnodename(const char *vname)
 {
 	momvmap_t	*pmap;
 

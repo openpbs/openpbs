@@ -849,6 +849,7 @@ __pbs_disconnect(int connect)
 {
 	svr_conn_t **svr_conns = NULL;
 	int i;
+	int rc = 0;
 
 	if (connect <= 0)
 		return -1;
@@ -858,20 +859,20 @@ __pbs_disconnect(int connect)
 	if (svr_conns) {
 		for (i = 0; svr_conns[i]; i++) {
 			if (disconnect_from_server(svr_conns[i]->sd) != 0)
-				return -1;
+				rc = -1;
 
 			svr_conns[i]->sd = -1;
 			svr_conns[i]->state = SVR_CONN_STATE_DOWN;
 		}
 	} else {
 		/* fd doesn't belong to a multi-server setup */
-		disconnect_from_server(connect);
+		rc = disconnect_from_server(connect);
 	}
 
 	/* Destroy the connection cache associated with this set of connections */
 	dealloc_conn_entry(connect);
 
-	return 0;
+	return rc;
 }
 
 /**
@@ -1164,8 +1165,8 @@ err:
  *
  * param[in]	sched_id - sched identifier which is known to server
  * @return int
- * @retval 0  - failure
- * @return 1  - success
+ * @retval !0  - failure
+ * @return 0  - success
  */
 static int
 send_register_sched(int sock, const char *sched_id)
@@ -1174,7 +1175,7 @@ send_register_sched(int sock, const char *sched_id)
 	struct batch_reply *reply = NULL;
 
 	if (sched_id == NULL)
-		return 0;
+		return -1;
 
 	rc = encode_DIS_ReqHdr(sock, PBS_BATCH_RegisterSched, pbs_current_user);
 	if (rc != DIS_SUCCESS)
@@ -1197,12 +1198,12 @@ send_register_sched(int sock, const char *sched_id)
 		goto rerr;
 
 	PBSD_FreeReply(reply);
-	return 1;
+	return 0;
 
 rerr:
 	pbs_disconnect(sock);
 	PBSD_FreeReply(reply);
-	return 0;
+	return -1;
 }
 
 /**
@@ -1213,8 +1214,8 @@ rerr:
  * param[in]	secondary_conn_id - secondary connection handle which represents all servers returned by pbs_connect
  *
  * @return int
- * @retval 0  - failure
- * @return 1  - success
+ * @retval !0  - failure
+ * @return 0  - success
  */
 int
 pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id)
@@ -1224,26 +1225,26 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
 	svr_conn_t **svr_conns_secondary = NULL;
 
 	if (sched_id == NULL || primary_conn_id < 0 || secondary_conn_id < 0)
-		return 0;
+		return -1;
 
 	svr_conns_primary =  get_conn_svr_instances(primary_conn_id);
 	if (svr_conns_primary == NULL)
-		return 0;
+		return -1;
 
 	svr_conns_secondary =  get_conn_svr_instances(secondary_conn_id);
 	if (svr_conns_secondary == NULL)
-		return 0;
+		return -1;
 
 	for (i = 0; i < get_num_servers(); i++) {
 		if (svr_conns_primary[i]->sd < 0 ||
-			send_register_sched(svr_conns_primary[i]->sd, sched_id) == 0)
-			return 0;
+		    send_register_sched(svr_conns_primary[i]->sd, sched_id) != 0)
+			return -1;
 		if (svr_conns_secondary[i]->sd < 0 ||
-			send_register_sched(svr_conns_secondary[i]->sd, sched_id) == 0)
-			return 0;
+		    send_register_sched(svr_conns_secondary[i]->sd, sched_id) != 0)
+			return -1;
 	}
 
-	return 1;
+	return 0;
 }
 
 /**

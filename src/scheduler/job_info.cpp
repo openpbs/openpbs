@@ -85,6 +85,7 @@
  * 	geteoename()
  *
  */
+
 #include <pbs_config.h>
 
 #ifdef PYTHON
@@ -558,7 +559,7 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		;
 
 	for (i = sidx, jidx = 0; i <= eidx && cur_job != NULL; cur_job = cur_job->next, i++) {
-		char *selectspec = NULL;
+		std::string selectspec;
 		resource_resv *resresv;
 		resource_req *req;
 		resource_req *walltime_req = NULL;
@@ -660,10 +661,8 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		else if (resresv->nspec_arr != NULL)
 			selectspec = create_select_from_nspec(resresv->nspec_arr);
 
-		if (resresv->nspec_arr != NULL) {
+		if (resresv->nspec_arr != NULL)
 			resresv->execselect = parse_selspec(selectspec);
-			free(selectspec);
-		}
 
 		/* Find out if it is a shrink-to-fit job.
 		 * If yes, set the duration to max walltime.
@@ -755,10 +754,10 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		/* if the fairshare entity was not set by query_job(), then check
 		 * if it's 'queue' and if so, set the group info to the queue name
 		 */
-		if (!strcmp(conf.fairshare_ent, "queue")) {
-			if (resresv->server->fairshare !=NULL) {
+		if (conf.fairshare_ent == "queue") {
+			if (resresv->server->fstree != NULL) {
 				resresv->job->ginfo =
-					find_alloc_ginfo(qinfo->name, resresv->server->fairshare->root);
+					find_alloc_ginfo(qinfo->name.c_str(), resresv->server->fstree->root);
 			}
 			else
 				resresv->job->ginfo = NULL;
@@ -775,8 +774,8 @@ query_jobs_chunk(th_data_query_jinfo *data)
 #else
 			sprintf(fairshare_name, "%s:%s", resresv->group, resresv->user);
 #endif /* localmod 058 */
-			if (resresv->server->fairshare !=NULL) {
-				resresv->job->ginfo = find_alloc_ginfo(fairshare_name, resresv->server->fairshare->root);
+			if (resresv->server->fstree != NULL) {
+				resresv->job->ginfo = find_alloc_ginfo(fairshare_name, resresv->server->fstree->root);
 			}
 			else
 				resresv->job->ginfo = NULL;
@@ -903,7 +902,7 @@ alloc_tdata_jquery(status *policy, int pbs_sd, struct batch_status *jobs, queue_
  * @par MT-safe: No
  */
 resource_resv **
-query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs, char *queue_name)
+query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs, const std::string& queue_name)
 {
 	/* pbs_selstat() takes a linked list of attropl structs which tell it
 	 * what information about what jobs to return.  We want all jobs which are
@@ -984,10 +983,10 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			NULL
 	};
 
-	if (policy == NULL || qinfo == NULL || queue_name == NULL)
+	if (policy == NULL || qinfo == NULL || queue_name.empty())
 		return pjobs;
 
-	opl.value = queue_name;
+	opl.value = const_cast<char *>(queue_name.c_str());
 
 	if (qinfo->is_peer_queue)
 		opl.next = &opl2[0];
@@ -1114,6 +1113,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 		if (th_err) {
 			pbs_statfree(jobs);
 			free_resource_resv_array(resresv_arr);
+			free(jinfo_arrs_tasks);
 			return NULL;
 		}
 		/* Assemble job info objects from various threads into the resresv_arr */
@@ -1179,8 +1179,8 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 
 	while (attrp != NULL && !resresv->is_invalid) {
 		clear_schd_error(err);
-		if (!strcmp(attrp->name, conf.fairshare_ent)) {
-			if (sinfo->fairshare != NULL) {
+		if (conf.fairshare_ent == attrp->name) {
+			if (sinfo->fstree != NULL) {
 #ifdef NAS /* localmod 059 */
 				/* This is a hack to allow -A specification for testing, but
 				 * ignore most incorrect user -A values
@@ -1188,15 +1188,13 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				if (strchr(attrp->value, ':') != NULL) {
 					/* moved to query_jobs() in order to include the queue name
 					 resresv->job->ginfo = find_alloc_ginfo( attrp->value,
-					 sinfo->fairshare->root );
+					 sinfo->fstree->root );
 					 */
 					/* localmod 034 */
-					resresv->job->sh_info = site_find_alloc_share(sinfo,
-						attrp->value);
+					resresv->job->sh_info = site_find_alloc_share(sinfo, attrp->value);
 				}
 #else
-				resresv->job->ginfo = find_alloc_ginfo(attrp->value,
-					sinfo->fairshare->root);
+				resresv->job->ginfo = find_alloc_ginfo(attrp->value, sinfo->fstree->root);
 #endif /* localmod 059 */
 			}
 			else
@@ -2240,7 +2238,7 @@ free_resresv_set(resresv_set *rset) {
 	free(rset->user);
 	free(rset->group);
 	free(rset->project);
-	free_selspec(rset->select_spec);
+	delete rset->select_spec;
 	free_place(rset->place_spec);
 	free_resource_req_list(rset->req);
 	free(rset);
@@ -2299,7 +2297,7 @@ dup_resresv_set(resresv_set *oset, server_info *nsinfo)
 		free_resresv_set(rset);
 		return NULL;
 	}
-	rset->select_spec = dup_selspec(oset->select_spec);
+	rset->select_spec = new selspec(*oset->select_spec);
 	if (rset->select_spec == NULL) {
 		free_resresv_set(rset);
 		return NULL;
@@ -2474,43 +2472,26 @@ resresv_set_which_selspec(resource_resv *resresv)
  * @retval array of resdefs for creating resresv_set's resources.
  * @retval NULL on error
  */
-resdef **
-create_resresv_sets_resdef(status *policy, server_info *sinfo) {
-	resdef **defs;
-	int def_ct;
-	int limres_ct = 0;
-	int i;
+std::unordered_set<resdef *>
+create_resresv_sets_resdef(status *policy) {
+	std::unordered_set<resdef *> defs;
 	schd_resource *limres;
-	schd_resource *cur_res;
 
-	if (policy == NULL || sinfo == NULL)
-		return NULL;
+	if (policy == NULL)
+		return {};
 
 	limres = query_limres();
-	for (cur_res = limres; cur_res != NULL; cur_res = cur_res->next)
-		limres_ct++;
 
-	def_ct = count_array(policy->resdef_to_check);
-	/* 6 for ctime, walltime, max_walltime, min_walltime, preempt_targets (maybe), and NULL*/
-	defs = static_cast<resdef **>(malloc((def_ct + limres_ct + 6) * sizeof(resdef *)));
-
-	for (i = 0; i < def_ct; i++)
-		defs[i] = policy->resdef_to_check[i];
-	defs[i++] = getallres(RES_CPUT);
-	defs[i++] = getallres(RES_WALLTIME);
-	defs[i++] = getallres(RES_MAX_WALLTIME);
-	defs[i++] = getallres(RES_MIN_WALLTIME);
+	defs = policy->resdef_to_check;
+	defs.insert(getallres(RES_CPUT));
+	defs.insert(getallres(RES_WALLTIME));
+	defs.insert(getallres(RES_MAX_WALLTIME));
+	defs.insert(getallres(RES_MIN_WALLTIME));
 	if(sc_attrs.preempt_targets_enable)
-		defs[i++] = getallres(RES_PREEMPT_TARGETS);
-	defs[i] = NULL;
+		defs.insert(getallres(RES_PREEMPT_TARGETS));
 
-	for (cur_res = limres; cur_res != NULL; cur_res = cur_res->next) {
-		/* There may be overlap between resdef_to_check and limres */
-		if (!resdef_exists_in_array(defs, cur_res->def)) {
-			defs[i++] = cur_res->def;
-			defs[i] = NULL;
-		}
-	}
+	for (auto cur_res = limres; cur_res != NULL; cur_res = cur_res->next)
+			defs.insert(cur_res->def);
 
 	return defs;
 }
@@ -2549,7 +2530,7 @@ create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv 
 	if (resresv_set_use_proj(sinfo, rset->qinfo))
 		rset->project = string_dup(resresv->project);
 
-	rset->select_spec = dup_selspec(resresv_set_which_selspec(resresv));
+	rset->select_spec = new selspec(*resresv_set_which_selspec(resresv));
 	if (rset->select_spec == NULL) {
 		free_resresv_set(rset);
 		return NULL;
@@ -2593,7 +2574,7 @@ find_resresv_set(status *policy, resresv_set **rsets, char *user, char *group, c
 	for (i = 0; rsets[i] != NULL; i++) {
 		if ((qinfo != NULL && rsets[i]->qinfo == NULL) || (qinfo == NULL && rsets[i]->qinfo != NULL))
 			continue;
-		if ((qinfo != NULL && rsets[i]->qinfo != NULL) && cstrcmp(qinfo->name, rsets[i]->qinfo->name) != 0)
+		if ((qinfo != NULL && rsets[i]->qinfo != NULL) && qinfo->name != rsets[i]->qinfo->name)
 
 			continue;
 		if ((user != NULL && rsets[i]->user == NULL) || (user == NULL && rsets[i]->user != NULL))
@@ -2798,9 +2779,9 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->resreleased = dup_nspecs(ojinfo->resreleased, nsinfo->nodes, NULL);
 	njinfo->resreq_rel = dup_resource_req_list(ojinfo->resreq_rel);
 
-	if (nqinfo->server->fairshare !=NULL) {
+	if (nqinfo->server->fstree !=NULL) {
 		njinfo->ginfo = find_group_info(ojinfo->ginfo->name,
-			nqinfo->server->fairshare->root);
+			nqinfo->server->fstree->root);
 	}
 	else
 		njinfo->ginfo = NULL;
@@ -2866,7 +2847,7 @@ preempt_job_set_filter(resource_resv *job, const void *arg)
 		if (p != NULL) {
 			/* two valid attributes: queue and Resource_List.<res> */
 			if (!strncasecmp(arglist[i], ATTR_queue, p - arglist[i])) {
-				if (!strcmp(job->job->queue->name, p+1))
+				if (job->job->queue->name == p + 1)
 					return 1;
 			}
 			else if (!strncasecmp(arglist[i], ATTR_l, p - arglist[i])) {
@@ -3062,7 +3043,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 				int update_accrue_type = 1;
 				preempted_list[preempted_count++] = job->rank;
 				if (preempt_jobs_reply[i].order[0] == 'S') {
-					if (policy->rel_on_susp != NULL) {
+					if (!policy->rel_on_susp.empty()) {
 						/* Set resources_released and execselect on the job */
 						create_res_released(policy, job);
 					}
@@ -3413,7 +3394,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 		po = schd_get_preempt_order(pjob);
 		if (po != NULL) {
-			if (policy->rel_on_susp != NULL && po->order[0] == PREEMPT_METHOD_SUSPEND && pjob->job->can_suspend) {
+			if (!policy->rel_on_susp.empty() && po->order[0] == PREEMPT_METHOD_SUSPEND && pjob->job->can_suspend) {
 				pjob->job->resreleased = create_res_released_array(npolicy, pjob);
 				pjob->job->resreq_rel = create_resreq_rel_list(npolicy, pjob);
 			}
@@ -3739,44 +3720,39 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 				return NO_JOB_FOUND;
 
 			for (j = 0; rjobs[i]->ninfo_arr[j] != NULL && !node_good; j++) {
-				resdef **rdtc_here = NULL; /* at first assume all resources (including consumables) need to be checked */
 				node_info *node = rjobs[i]->ninfo_arr[j];
+				bool only_check_noncons = false;
+
 				if (node->is_multivnoded) {
 					/* unsafe to consider vnodes from multivnoded hosts "no good" when "not enough" of some consumable
 					 * resource can be found in the vnode, since rest may be provided by other vnodes on the same host
 					 * restrict check on these vnodes to check only against non consumable resources
 					 */
-					if (rdtc_non_consumable == NULL) {
-						long max_resdefs = 0;
-						if (policy != NULL)
-							max_resdefs = count_array(policy->resdef_to_check);
-
-						if (max_resdefs > 0)    {
-							rdtc_non_consumable = static_cast<resdef **>(calloc(sizeof(resdef *),(size_t) max_resdefs + 1));
-							if (rdtc_non_consumable != NULL) {
-								long resdef_index = 0;
-								long rdtc_nc_index = 0;
-								for (; policy->resdef_to_check[resdef_index] != NULL; resdef_index++) {
-									if (policy->resdef_to_check[resdef_index]->type.is_non_consumable) {
-										rdtc_non_consumable[rdtc_nc_index] = policy->resdef_to_check[resdef_index];
-										rdtc_nc_index++;
-									}
-									rdtc_non_consumable[rdtc_nc_index] = NULL;
-								}
-							}
+					if (policy->resdef_to_check_noncons.empty()) {
+						for (const auto& rtc : policy->resdef_to_check) {
+							if (rtc->type.is_non_consumable)
+								policy->resdef_to_check_noncons.insert(rtc);
 						}
 					}
-					rdtc_here = rdtc_non_consumable;
+					only_check_noncons = true;
 				}
 				for (k = 0; hjob->select->chunks[k] != NULL; k++) {
 					long num_chunks_returned = 0;
+					unsigned int flags = COMPARE_TOTAL | CHECK_ALL_BOOLS | UNSET_RES_ZERO;
 					/* if only non consumables are checked, infinite number of chunks can be satisfied,
 					 * and SCHD_INFINITY is negative, so don't be tempted to check on positive value
 					 */
 					clear_schd_error(err);
-					num_chunks_returned = check_avail_resources(node->res, hjob->select->chunks[k]->req,
-								COMPARE_TOTAL | CHECK_ALL_BOOLS | UNSET_RES_ZERO,
-								rdtc_here, INSUFFICIENT_RESOURCE, err);
+					if (only_check_noncons) {
+						if (!policy->resdef_to_check_noncons.empty())
+							num_chunks_returned = check_avail_resources(node->res, hjob->select->chunks[k]->req,
+											flags, policy->resdef_to_check_noncons, INSUFFICIENT_RESOURCE, err);
+						else
+							num_chunks_returned = SCHD_INFINITY;
+					} else
+						num_chunks_returned = check_avail_resources(node->res, hjob->select->chunks[k]->req,
+								flags, INSUFFICIENT_RESOURCE, err);
+
 					if ( (num_chunks_returned > 0) || (num_chunks_returned == SCHD_INFINITY) ) {
 						node_good = 1;
 						break;
@@ -4229,7 +4205,7 @@ queue_subjob(resource_resv *array, server_info *sinfo,
 
 #ifdef PYTHON
 sch_resource_t
-formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq)
+formula_evaluate(const char *formula, resource_resv *resresv, resource_req *resreq)
 {
 	char buf[1024];
 	char *globals;
@@ -4983,7 +4959,7 @@ preemption_similarity(resource_resv *hjob, resource_resv *pjob, schd_error *full
  */
 void create_res_released(status *policy, resource_resv *pjob)
 {
-	char *selectspec = NULL;
+	std::string selectspec ;
 	if (pjob->job->resreleased == NULL) {
 		pjob->job->resreleased = create_res_released_array(policy, pjob);
 		if (pjob->job->resreleased == NULL) {
@@ -4992,9 +4968,8 @@ void create_res_released(status *policy, resource_resv *pjob)
 		pjob->job->resreq_rel = create_resreq_rel_list(policy, pjob);
 	}
 	selectspec = create_select_from_nspec(pjob->job->resreleased);
-	free_selspec(pjob->execselect);
+	delete pjob->execselect;
 	pjob->execselect = parse_selspec(selectspec);
-	free(selectspec);
 	return;
 }
 
@@ -5023,10 +4998,11 @@ nspec **create_res_released_array(status *policy, resource_resv *resresv)
 	nspec_arr = dup_nspecs(resresv->nspec_arr, resresv->ninfo_arr, NULL);
 	if (nspec_arr == NULL)
 		return NULL;
-	if (policy->rel_on_susp != NULL) {
+	if (!policy->rel_on_susp.empty()) {
 		for (i = 0; nspec_arr[i] != NULL; i++) {
 			for (req = nspec_arr[i]->resreq; req != NULL; req = req->next) {
-				if (req->type.is_consumable == 1 && resdef_exists_in_array(policy->rel_on_susp, req->def) == 0)
+				auto ros = policy->rel_on_susp;
+				if (req->type.is_consumable == 1 && ros.find(req->def) == ros.end())
 					req->amount = 0;
 			}
 		}
@@ -5055,8 +5031,10 @@ resource_req *create_resreq_rel_list(status *policy, resource_resv *pjob)
 		return NULL;
 
 	for (req = pjob->resreq; req != NULL; req = req->next) {
-		if (resdef_exists_in_array(policy->resdef_to_check_rassn, req->def)) {
-			if ((policy->rel_on_susp != NULL) && resdef_exists_in_array(policy->rel_on_susp, req->def) == 0)
+		auto rdc = policy->resdef_to_check_rassn;
+		if (rdc.find(req->def) != rdc.end()) {
+			auto ros = policy->rel_on_susp;
+			if (!policy->rel_on_susp.empty() && ros.find(req->def) == ros.end())
 				continue;
 			rel = find_alloc_resource_req(resreq_rel, req->def);
 			if (rel != NULL) {

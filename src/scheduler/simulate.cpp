@@ -1724,7 +1724,6 @@ dedtime_change(status *policy, void  *arg)
 int
 add_dedtime_events(event_list *elist, status *policy)
 {
-	int i;
 	timed_event *te_start;
 	timed_event *te_end;
 
@@ -1732,12 +1731,12 @@ add_dedtime_events(event_list *elist, status *policy)
 		return 0;
 
 
-	for (i = 0; i < MAX_DEDTIME_SIZE && conf.ded_time[i].from != 0; i++) {
-		te_start = create_event(TIMED_DED_START_EVENT, conf.ded_time[i].from, policy, (event_func_t) dedtime_change, (void *) DEDTIME_START);
+	for (const auto& dt : conf.ded_time) {
+		te_start = create_event(TIMED_DED_START_EVENT, dt.from, policy, (event_func_t) dedtime_change, (void *) DEDTIME_START);
 		if (te_start == NULL)
 			return 0;
 
-		te_end = create_event(TIMED_DED_END_EVENT, conf.ded_time[i].to, policy, (event_func_t) dedtime_change, (void *) DEDTIME_END);
+		te_end = create_event(TIMED_DED_END_EVENT, dt.to, policy, (event_func_t) dedtime_change, (void *) DEDTIME_END);
 		if (te_end == NULL) {
 			free_timed_event(te_start);
 			return 0;

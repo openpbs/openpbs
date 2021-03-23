@@ -332,6 +332,7 @@ extern void attr_atomic_kill(attribute *temp, attribute_def *pdef, int);
 extern void attr_atomic_copy(attribute *old, attribute *nattr, attribute_def *pdef, int limit);
 
 extern int copy_svrattrl_list(pbs_list_head *from_phead, pbs_list_head *to_head);
+extern int convert_attrl_to_svrattrl(struct attrl *from_list, pbs_list_head *to_head);
 extern int  compare_svrattrl_list(pbs_list_head *list1, pbs_list_head *list2);
 extern svrattrl *find_svrattrl_list_entry(pbs_list_head *phead, char *name,
 	char *resc);
@@ -597,7 +598,7 @@ extern int action_resc_resv(attribute *pattr, void *pobject, int actmode);
 /* Functions used to save and recover the attributes from the database */
 extern int encode_single_attr_db(attribute_def *padef, attribute *pattr, pbs_db_attr_list_t *db_attr_list);
 extern int encode_attr_db(attribute_def *padef, attribute *pattr, int numattr,  pbs_db_attr_list_t *db_attr_list, int all);
-extern int decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list,
+extern int decode_attr_db(void *parent, pbs_list_head *attr_list,
 	void *padef_idx, attribute_def *padef, attribute *pattr, int limit, int unknown);
 
 extern int is_attr(int, char *, int);

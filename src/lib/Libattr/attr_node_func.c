@@ -527,7 +527,7 @@ encode_jobs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname,
 			jobcnt++;
 			/* add 3 to length of node name for slash, comma, and space */
 			/* plus one for the cpu index				   */
-			strsize += strlen(jip->job->ji_qs.ji_jobid) + 4;
+			strsize += strlen(jip->jobid) + 4;
 			i = psubn->index;
 			/* now add additional space needed for the cpu index */
 			while ((i = i/10) != 0)
@@ -554,8 +554,8 @@ encode_jobs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname,
 				i++;
 
 			sprintf(job_str + offset, "%s/%ld",
-				jip->job->ji_qs.ji_jobid, psubn->index);
-			offset += strlen(jip->job->ji_qs.ji_jobid) + 1;
+				jip->jobid, psubn->index);
+			offset += strlen(jip->jobid) + 1;
 			j = psubn->index;
 			while ((j = j/10) != 0)
 				offset++;

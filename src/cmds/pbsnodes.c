@@ -881,6 +881,7 @@ marknode(int con, char *name,
 	}
 	return (rc);
 }
+
 /**
  * @brief
  *	The main function in C - entry point

@@ -288,6 +288,7 @@ do_tpp(int stream)
 {
 	int			ret, proto, version;
 	void			is_request(int, int);
+	void			ps_request(int, int);
 	void			stream_eof(int, int, char *);
 
 	DIS_tpp_funcs();
@@ -309,6 +310,11 @@ do_tpp(int stream)
 		case	IS_PROTOCOL:
 			DBPRT(("%s: got an inter-server request\n", __func__))
 			is_request(stream, version);
+			break;
+
+		case	PS_PROTOCOL:
+			DBPRT(("%s: got a peer-server request\n", __func__))
+			ps_request(stream, version);
 			break;
 
 		default:
@@ -1077,16 +1083,6 @@ main(int argc, char **argv)
 	/* Python world, which are made  complete after call to pbsd_init()! */
 	pbs_python_ext_quick_start_interpreter();
 
-	tfree2(&ipaddrs);
-	init_msi();
-
-	if (pbsd_init(server_init_type) != 0) {
-		log_err(-1, msg_daemonname, "pbsd_init failed");
-		pbs_python_ext_quick_shutdown_interpreter();
-		stop_db();
-		return (3);
-	}
-
 	/* The real pbs_python_ext_start_interpreter() will be called later  */
 	/* for the permanent interpreter start.				     */
 	pbs_python_ext_quick_shutdown_interpreter();
@@ -1214,6 +1210,16 @@ main(int argc, char **argv)
 	}
 
 	(void)add_conn(tppfd, TppComm, (pbs_net_t)0, 0, NULL, tpp_request);
+
+	tfree2(&ipaddrs);
+	tfree2(&streams);
+
+	if (pbsd_init(server_init_type) != 0) {
+		log_err(-1, msg_daemonname, "pbsd_init failed");
+		pbs_python_ext_quick_shutdown_interpreter();
+		stop_db();
+		return (3);
+	}
 
 	/* record the fact that the Secondary is up and active (running) */
 

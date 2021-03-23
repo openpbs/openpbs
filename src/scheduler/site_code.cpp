@@ -780,13 +780,9 @@ site_is_share_king(status *policy)
 	 * Examine the sort keys to see if shares are primary key
 	 */
 	is_king = 0;
-	if (policy->sort_by) {
-		char *res_name;
-		if ((res_name = policy->sort_by[0].res_name) != NULL &&
-		    strcmp(res_name, SORT_ALLOC) == 0) {
-			is_king = 1;
-		}
-	}
+	if (!policy->sort_by.empty() && policy->sort_by[0].res_name == SORT_ALLOC)
+		is_king = 1;
+	
 	return is_king;
 }
 
