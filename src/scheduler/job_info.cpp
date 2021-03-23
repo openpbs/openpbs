@@ -667,12 +667,12 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		/* Find out if it is a shrink-to-fit job.
 		 * If yes, set the duration to max walltime.
 		 */
-		req = find_resource_req(resresv->resreq, getallres(RES_MIN_WALLTIME));
+		req = find_resource_req(resresv->resreq, allres["min_walltime"]);
 		if (req != NULL) {
 			resresv->is_shrink_to_fit = 1;
 			/* Set the min duration */
 			resresv->min_duration = (time_t) req->amount;
-			req = find_resource_req(resresv->resreq, getallres(RES_MAX_WALLTIME));
+			req = find_resource_req(resresv->resreq, allres["max_walltime"]);
 
 #ifdef NAS /* localmod 026 */
 			/* if no max_walltime is set then we want to look at what walltime
@@ -680,19 +680,19 @@ query_jobs_chunk(th_data_query_jinfo *data)
 			 * queue max, or server max.
 			 */
 			if (req == NULL) {
-				req = find_resource_req(resresv->resreq, getallres(RES_WALLTIME));
+				req = find_resource_req(resresv->resreq, allres["walltime"]);
 
 				/* if walltime is set, use it if it's greater than min_walltime */
 				if (req != NULL && resresv->min_duration > req->amount) {
-					req = find_resource_req(resresv->resreq, getallres(RES_MIN_WALLTIME));
+					req = find_resource_req(resresv->resreq, allres["min_walltime"]);
 				}
 			}
 #endif /* localmod 026 */
 		}
 
 		if ((req == NULL) || (resresv->job->is_running == 1)) {
-			soft_walltime_req = find_resource_req(resresv->resreq, getallres(RES_SOFT_WALLTIME));
-			walltime_req = find_resource_req(resresv->resreq, getallres(RES_WALLTIME));
+			soft_walltime_req = find_resource_req(resresv->resreq, allres["soft_walltime"]);
+			walltime_req = find_resource_req(resresv->resreq, allres["walltime"]);
 			if (soft_walltime_req != NULL)
 				req = soft_walltime_req;
 			else
@@ -2094,9 +2094,9 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case QUEUE_PROJECT_RES_LIMIT_REACHED:
 		case QUEUE_USER_RES_LIMIT_REACHED:
 			if (comment_msg != NULL && err->rdef != NULL)
-				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code), arg1, err->rdef->name);
+				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code), arg1, err->rdef->name.c_str());
 			if (log_msg != NULL && err->rdef != NULL)
-				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code), arg1, err->rdef->name);
+				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code), arg1, err->rdef->name.c_str());
 			break;
 
 		/* codes using resource definition in error structure */
@@ -2105,9 +2105,9 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case SERVER_USER_RES_LIMIT_REACHED:
 		case SERVER_RESOURCE_LIMIT_REACHED:
 			if (comment_msg != NULL && err->rdef != NULL)
-				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code), err->rdef->name);
+				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code), err->rdef->name.c_str());
 			if (log_msg != NULL && err->rdef != NULL)
-				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code), err->rdef->name);
+				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code), err->rdef->name.c_str());
 			break;
 
 		/* codes using a resource definition and arg1 in a different order */
@@ -2116,10 +2116,10 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case INSUFFICIENT_SERVER_RESOURCE:
 		case INSUFFICIENT_RESOURCE:
 			if (comment_msg != NULL && err->rdef != NULL)
-				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code), err->rdef->name,
+				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code), err->rdef->name.c_str(),
 					arg1 == NULL ? "" : arg1);
 			if (log_msg != NULL && err->rdef != NULL)
-				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code), err->rdef->name,
+				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code), err->rdef->name.c_str(),
 					arg1 == NULL ? "" : arg1);
 			break;
 
@@ -2128,9 +2128,9 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case QUEUE_BYPROJECT_RES_LIMIT_REACHED:
 		case QUEUE_BYUSER_RES_LIMIT_REACHED:
 			if (comment_msg != NULL && err->rdef != NULL)
-				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code), arg3, err->rdef->name, arg1);
+				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code), arg3, err->rdef->name.c_str(), arg1);
 			if (log_msg != NULL && err->rdef != NULL)
-				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code), arg3, err->rdef->name, arg1);
+				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code), arg3, err->rdef->name.c_str(), arg1);
 			break;
 
 		/* codes using resource definition and arg2 */
@@ -2139,10 +2139,10 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case SERVER_BYUSER_RES_LIMIT_REACHED:
 			if (comment_msg != NULL && err->rdef != NULL)
 				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code), arg2,
-					err->rdef->name);
+					err->rdef->name.c_str());
 			if (log_msg != NULL && err->rdef != NULL)
 				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code), arg2,
-					err->rdef->name);
+					err->rdef->name.c_str());
 			break;
 
 		case RESERVATION_INTERFERENCE:
@@ -2483,12 +2483,12 @@ create_resresv_sets_resdef(status *policy) {
 	limres = query_limres();
 
 	defs = policy->resdef_to_check;
-	defs.insert(getallres(RES_CPUT));
-	defs.insert(getallres(RES_WALLTIME));
-	defs.insert(getallres(RES_MAX_WALLTIME));
-	defs.insert(getallres(RES_MIN_WALLTIME));
+	defs.insert(allres["cput"]);
+	defs.insert(allres["walltime"]);
+	defs.insert(allres["max_walltime"]);
+	defs.insert(allres["min_walltime"]);
 	if(sc_attrs.preempt_targets_enable)
-		defs.insert(getallres(RES_PREEMPT_TARGETS));
+		defs.insert(allres["preempt_targets"]);
 
 	for (auto cur_res = limres; cur_res != NULL; cur_res = cur_res->next)
 			defs.insert(cur_res->def);
@@ -2892,16 +2892,16 @@ get_job_req_used_time(resource_resv *pjob, int *rtime, int *utime)
 			|| rtime == NULL || utime == NULL)
 		return 1;
 
-	req = find_resource_req(pjob->resreq, getallres(RES_SOFT_WALLTIME));
+	req = find_resource_req(pjob->resreq, allres["soft_walltime"]);
 
 	if (req == NULL)
-		req = find_resource_req(pjob->resreq, getallres(RES_WALLTIME));
+		req = find_resource_req(pjob->resreq, allres["walltime"]);
 
 	if (req == NULL) {
-		req = find_resource_req(pjob->resreq, getallres(RES_CPUT));
-		used = find_resource_req(pjob->job->resused, getallres(RES_CPUT));
+		req = find_resource_req(pjob->resreq, allres["cput"]);
+		used = find_resource_req(pjob->job->resused, allres["cput"]);;
 	} else
-		used = find_resource_req(pjob->job->resused, getallres(RES_WALLTIME));
+		used = find_resource_req(pjob->job->resused, allres["walltime"]);
 
 	if (req != NULL && used != NULL) {
 		*rtime = req->amount;
@@ -3290,7 +3290,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	pjobs[0] = NULL;
 
 	if (sc_attrs.preempt_targets_enable) {
-		preempt_targets_req = find_resource_req(hjob->resreq, getallres(RES_PREEMPT_TARGETS));
+		preempt_targets_req = find_resource_req(hjob->resreq, allres["preempt_targets"]);
 		if (preempt_targets_req != NULL) {
 
 			preempt_targets_list = break_comma_list(preempt_targets_req->res_str);
@@ -4213,7 +4213,6 @@ formula_evaluate(const char *formula, resource_resv *resresv, resource_req *resr
 	resource_req *req;
 	sch_resource_t ans = 0;
 	const char *str;
-	int i;
 	char *formula_buf;
 	int formula_buf_len;
 
@@ -4222,7 +4221,7 @@ formula_evaluate(const char *formula, resource_resv *resresv, resource_req *resr
 	PyObject *obj;
 
 	if (formula == NULL || resresv == NULL ||
-		resresv->job == NULL || consres == NULL)
+		resresv->job == NULL)
 		return 0;
 
 	formula_buf_len = sizeof(buf) + strlen(formula) + 1;
@@ -4248,14 +4247,14 @@ formula_evaluate(const char *formula, resource_resv *resresv, resource_req *resr
 	}
 
 
-	for (i = 0; consres[i] != NULL; i++) {
-		req = find_resource_req(resreq, consres[i]);
+	for (const auto& cr: consres) {
+		req = find_resource_req(resreq, cr);
 
 		if (req != NULL)
-			sprintf(buf, "\'%s\':%.*f,", consres[i]->name,
+			sprintf(buf, "\'%s\':%.*f,", cr->name.c_str(),
 				float_digits(req->amount, FLOAT_NUM_DIGITS), req->amount);
 		else
-			sprintf(buf, "\'%s\' : 0,", consres[i]->name);
+			sprintf(buf, "\'%s\' : 0,", cr->name.c_str());
 
 		if (pbs_strcat(&globals, &globals_size, buf) == NULL) {
 			free(globals);
@@ -4525,7 +4524,7 @@ getaoename(selspec *select)
 		return NULL;
 
 	for (i = 0; select->chunks[i] != NULL; i++) {
-		req = find_resource_req(select->chunks[i]->req, getallres(RES_AOE));
+		req = find_resource_req(select->chunks[i]->req, allres["aoe"]);
 		if (req != NULL)
 			return string_dup(req->res_str);
 	}
@@ -4564,7 +4563,7 @@ geteoename(selspec *select)
 	/* we only need to look at 1st chunk since either all request eoe
 	 * or none request eoe.
 	 */
-	req = find_resource_req(select->chunks[0]->req, getallres(RES_EOE));
+	req = find_resource_req(select->chunks[0]->req, allres["eoe"]);
 	if (req != NULL)
 		return string_dup(req->res_str);
 
@@ -5072,8 +5071,8 @@ extend_soft_walltime(resource_resv *resresv, time_t server_time)
 	if (resresv == NULL)
 		return UNSPECIFIED;
 
-	soft_walltime_req = find_resource_req(resresv->resreq, getallres(RES_SOFT_WALLTIME));
-	walltime_req = find_resource_req(resresv->resreq, getallres(RES_WALLTIME));
+	soft_walltime_req = find_resource_req(resresv->resreq, allres["soft_walltime"]);
+	walltime_req = find_resource_req(resresv->resreq, allres["walltime"]);
 
 	if (soft_walltime_req == NULL) { /* Nothing to extend */
 		if(walltime_req != NULL)
@@ -5223,10 +5222,10 @@ static int cull_preemptible_jobs(resource_resv *job, const void *arg)
 			 * do not get into chunk level resources. So in such a case we
 			 * compare the resource name with the chunk name
 			 */
-			if (inp->err->rdef == getallres(RES_VNODE)) {
+			if (inp->err->rdef == allres["vnode"]) {
 				if (inp->err->arg2 != NULL && find_node_info(job->ninfo_arr, inp->err->arg2) != NULL)
 					return 1;
-			} else if (inp->err->rdef == getallres(RES_HOST)) {
+			} else if (inp->err->rdef == allres["host"]) {
 				if (inp->err->arg2 != NULL && find_node_by_host(job->ninfo_arr, inp->err->arg2) != NULL)
 					return 1;
 			} else {

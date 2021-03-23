@@ -79,9 +79,7 @@ extern const int num_resget;
 /* Variables from pbs_sched code */
 extern int got_sigpipe;
 
-/* static indexes into allres */
-extern const struct enum_conv resind[];
-
+extern const std::vector<std::string> well_known_res;
 /* Stuff needed for multi-threading */
 extern pthread_mutex_t general_lock;
 extern pthread_mutex_t work_lock;
@@ -96,9 +94,9 @@ extern int num_threads;
 extern pthread_key_t th_id_key;
 extern pthread_once_t key_once;
 
-extern resdef **allres;
-extern resdef **consres;
-extern resdef **boolres;
+extern std::unordered_map<std::string, resdef *> allres;
+extern std::unordered_set<resdef *> consres;
+extern std::unordered_set<resdef *> boolres;
 
 extern const char *sc_name;
 extern char *logfile;

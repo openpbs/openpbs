@@ -49,21 +49,13 @@
  * 	conv_rsc_type()
  * 	def_is_consumable()
  * 	def_is_bool()
- * 	new_resdef()
- * 	dup_resdef()
- * 	dup_resdef_array()
- * 	free_resdef()
- * 	add_resdef_to_array()
  * 	copy_resdef_array()
- * 	free_resdef_array()
  * 	find_resdef()
- * 	reset_global_resource_ptrs()
  * 	is_res_avail_set()
  * 	add_resource_sig()
  * 	create_resource_signature()
  * 	update_resource_defs()
  * 	resstr_to_resdef()
- * 	getallres()
  * 	collect_resources_from_requests()
  * 	update_sorting_defs()
  *
@@ -96,129 +88,72 @@
 
 /**
  * @brief
- * 		query a pbs server for the resources it knows about
+ * 		query a pbs server for the resources it knows about and fill in the global unordered_map
  *
  * @param[in]	pbs_sd	-	communication descriptor to pbs server
  *
- * @return	resdef**
- * @retval	array of resources from server
- * @retval	NULL	: on error
+ * @return	bool
+ * @retval	true success
+ * @retval	false failure
  *
  */
-resdef **
+std::unordered_map<std::string, resdef *>
 query_resources(int pbs_sd)
 {
 	struct batch_status *bs;		/* queried resources from server */
 	struct batch_status *cur_bs;		/* used to iterate over resources */
 	struct attrl *attrp;			/* iterate over resource fields */
-	int num_defs = 0;			/* number of resource definitions */
-
-	resdef **defarr = NULL;		/* internal sched array for resources */
-	resdef *def;
-	int i = RES_HIGH;			/*index in defarr past known resources*/
-	int j = 0;
-
-	int num;				/* int used for converting str to num */
-
-	char *endp;				/* used for strtol() validation */
-
-	const char *errmsg;
-	int error = 0;
+	std::unordered_map<std::string, resdef *> tmpres;
 
 	if ((bs = pbs_statrsc(pbs_sd, NULL, NULL, const_cast<char *>("p"))) == NULL) {
-		errmsg = pbs_geterrmsg(pbs_sd);
+		const char *errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";
 
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_REQUEST, LOG_INFO, "pbs_statrsc",
 			"pbs_statrsc failed: %s (%d)", errmsg, pbs_errno);
-		return NULL;
+		return {};
 	}
-
-	for (cur_bs = bs; cur_bs != NULL; cur_bs = cur_bs->next)
-		num_defs++;
-
-	if (num_defs < RES_HIGH) { /* too few resources! */
-		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__,
-			"query_resources() returned too few resources");
-		pbs_statfree(bs);
-		return NULL;
-	}
-
-	/* Worst case scenario: query_resources() returns none of the expected builtin
-	 * resources.  If that happens, all num_defs are non-expected.  We will have
-	 * allocated RES_HIGH resources for the expected resources and overrun our
-	 * array.  Better to waste a wee bit of memory for this case.
-	 */
-	defarr = static_cast<resdef **>(malloc((num_defs + RES_HIGH + 1) * sizeof(resdef*)));
-	if (defarr == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-	for (j = 0; j <= RES_HIGH; j++)
-		defarr[j] = NULL;
 
 	for (cur_bs = bs; cur_bs != NULL; cur_bs = cur_bs->next) {
-		def = new_resdef();
+		int flags;
+		resource_type rtype;
+		char *endp;
+		resdef *def;
 
-		if (def == NULL) {
-			pbs_statfree(bs);
-			free_resdef_array(defarr);
-			return NULL;
-		}
-
-		def->name = string_dup(cur_bs->name);
-		if (def->name == NULL) {
-			free_resdef(def);
-			pbs_statfree(bs);
-			free_resdef_array(defarr);
-			return NULL;
-		}
 		attrp = cur_bs->attribs;
 
 		while (attrp != NULL) {
 			if (!strcmp(attrp->name, ATTR_RESC_TYPE)) {
-				num = strtol(attrp->value, &endp, 10);
-				conv_rsc_type(num, &(def->type));
+				int num = strtol(attrp->value, &endp, 10);
+				rtype = conv_rsc_type(num);
 			}
 			else if (!strcmp(attrp->name, ATTR_RESC_FLAG)) {
-				def->flags = strtol(attrp->value, &endp, 10);
+				flags = strtol(attrp->value, &endp, 10);
 			}
 			attrp = attrp->next;
 		}
-		for (j = 0; j < RES_HIGH; j++) {
-			if (!strcmp(def->name, resind[j].str)) {
-				defarr[resind[j].value] = def;
-				break;
-			}
+		def = new resdef(cur_bs->name, flags, rtype);
+		if (def == NULL) {
+			for (auto& d: tmpres)
+				delete d.second;
+			return {};
 		}
-		if (j == RES_HIGH) {
-			defarr[i] = def;
-			i++;
-			defarr[i] = NULL;
-		}
+		tmpres[def->name] = def;
 	}
 
-	/* check for all expected resources. If we didn't find one, it will be NULL */
-	for (i = 0; i < RES_HIGH; i++) {
-		if (defarr[i] == NULL) {
-			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__, "query_resources() did not return all expected resources(%d)", i);
-			/* Since we didn't get all the expected built in resources, we have holes
-			 * in our resdef array.  If we free it, we'll free the first part and leak
-			 * the rest.  We need to fill in the holes so we can free the entire thing
-			 */
-			defarr[i] = new_resdef();
-			error = 1;
+	// Make sure most used resources were sent to us
+	for (const auto& r: well_known_res) {
+		if (tmpres.find(r) == allres.end()) {
+			for (auto &d : tmpres)
+				delete d.second;
+			return {};
 		}
 	}
 
 	pbs_statfree(bs);
 
-	if (error) {
-		free_resdef_array(defarr);
-		return NULL;
-	}
-	return defarr;
+	return tmpres;
 }
 
 /**
@@ -228,342 +163,52 @@ query_resources(int pbs_sd)
  * @param[in]	type	-	server type number
  * @param[out]	rtype	-	resource type structure
  *
- * @return	void
+ * @return	converted resource_type
  *
  */
-void
-conv_rsc_type(int type, struct resource_type *rtype)
+resource_type
+conv_rsc_type(int type)
 {
-	if (rtype == NULL)
-		return;
-
+	resource_type rtype;
 	switch (type) {
 		case ATR_TYPE_STR:
 		case ATR_TYPE_ARST:
-			rtype->is_string = 1;
-			rtype->is_non_consumable = 1;
+			rtype.is_string = true;
+			rtype.is_non_consumable = true;
 			break;
 		case ATR_TYPE_BOOL:
-			rtype->is_boolean = 1;
-			rtype->is_non_consumable = 1;
+			rtype.is_boolean = true;
+			rtype.is_non_consumable = true;
 			break;
 		case ATR_TYPE_SIZE:
-			rtype->is_size = 1;
-			rtype->is_num = 1;
-			rtype->is_consumable = 1;
+			rtype.is_size = true;
+			rtype.is_num = true;
+			rtype.is_consumable = true;
 			break;
 		case ATR_TYPE_SHORT:
 		case ATR_TYPE_LONG:
 		case ATR_TYPE_LL:
-			rtype->is_long = 1;
-			rtype->is_num = 1;
-			rtype->is_consumable = 1;
+			rtype.is_long = true;
+			rtype.is_num = true;
+			rtype.is_consumable = true;
 			break;
 		case ATR_TYPE_FLOAT:
-			rtype->is_float = 1;
-			rtype->is_num = 1;
-			rtype->is_consumable = 1;
+			rtype.is_float = true;
+			rtype.is_num = true;
+			rtype.is_consumable = true;
 			break;
 	}
-}
-/**
- * @brief
- * 		is resource consumable?
- *
- * @param[in]	vdef	-	resource definition structure.
- * @param[in]	n	- not used here
- *
- * @see	filter_array()
- */
-int
-def_is_consumable(void *vdef, void *n)
-{
-	resdef *def = (resdef *) vdef;
-	if (vdef == NULL)
-		return 0;
-	if (def->type.is_consumable)
-		return 1;
-	return 0;
-}
-/**
- * @brief
- * 		is resource a boolean?
- *
- * @param[in]	vdef	-	resource definition structure.
- * @param[in]	n	- not used here
- *
- * @see	filter_array()
- */
-int
-def_is_bool(void *vdef, void *n)
-{
-	resdef *def = (resdef *) vdef;
-	if (vdef == NULL)
-		return 0;
-
-	if (def->type.is_boolean)
-		return 1;
-	return 0;
-}
-/* constructor, copy constructor and destructors for resdef */
-
-/**
- * @brief
- * 		resdef constructor
- *
- * @return	newly allocated resdef
- */
-resdef *
-new_resdef(void)
-{
-	resdef *newdef;
-
-	if ((newdef = static_cast<resdef *>(calloc(1, sizeof(resdef)))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-
-	newdef->name = NULL;
-	/* calloc will have zeroed flags and the type structure */
-
-	return newdef;
-}
-
-/**
- * @brief
- * 		resdef copy constructor
- *
- * @param[in]	olddef	-	resdef to copy
- *
- * @return	duplicated resdef *
- */
-resdef *
-dup_resdef(resdef *olddef)
-{
-	resdef *newdef;
-
-	newdef = new_resdef();
-
-	if (newdef == NULL)
-		return NULL;
-
-	newdef->type = olddef->type;
-	newdef->flags = olddef->flags;
-	newdef->name = string_dup(olddef->name);
-
-	if (newdef->name == NULL) {
-		free(newdef);
-		return NULL;
-	}
-
-	return newdef;
-}
-
-/**
- * @brief
- * 		copy constructor for array of resdefs
- *
- * @param[in]	odef_arr	-	array of resdefs to copy
- *
- * @return	duplicated array of resdef **s
- */
-resdef **
-dup_resdef_array(resdef **odef_arr)
-{
-	resdef **ndef_arr;
-	int ct;
-	int i;
-
-	if (odef_arr == NULL)
-		return NULL;
-
-	ct = count_array(odef_arr);
-
-	ndef_arr = static_cast<resdef **>(malloc((ct + 1) * sizeof(resdef*)));
-	if (ndef_arr == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-
-	for (i = 0; odef_arr[i] != NULL; i++) {
-		ndef_arr[i] = dup_resdef(odef_arr[i]);
-		if (ndef_arr[i] == NULL) {
-			free_resdef_array(ndef_arr);
-			return NULL;
-		}
-	}
-	ndef_arr[i] = NULL;
-
-	return ndef_arr;
-}
-
-/**
- * @brief
- * 		resdef destructor
- *
- * @param[in,out]	def	-	resdef to free
- *
- * @return	void
- */
-void
-free_resdef(resdef *def)
-{
-	if (def->name != NULL)
-		free(def->name);
-
-	free(def);
-}
-
-/**
- * @brief
- * 		add resdef to resdef array
- *
- * @param[in,out]	resdef_arr	-	pointer to an array of resdef to be added to(i.e. resdef ***)
- * @param[in]	def	-	def to add to array
- *
- * @return	int
- * @retval	index	: index of string on success
- * @retval	-1	: failure
- */
-int
-add_resdef_to_array(resdef ***resdef_arr, resdef *def)
-{
-	resdef **tmp_arr;
-	int cnt;
-
-	if (resdef_arr == NULL || def == NULL)
-		return -1;
-
-	cnt = count_array(*resdef_arr);
-
-	tmp_arr = static_cast<resdef **>(realloc(*resdef_arr, (cnt + 2) * sizeof(resdef*)));
-	if (tmp_arr == NULL)
-		return -1;
-
-	tmp_arr[cnt] = def;
-	tmp_arr[cnt+1] = NULL;
-
-	*resdef_arr = tmp_arr;
-
-	return cnt;
-}
-
-/**
- * @brief
- *  	make a copy of a resdef array -- array itself is new memory,
- *      pointers point to the same thing.
- *
- * @param[in]	deflist	-	array to copy
- *
- * @returns	resdef **
- * @retval	copied array
- * @retval	NULL	: on error
- */
-resdef **
-copy_resdef_array(resdef **deflist)
-{
-	resdef **new_deflist;
-	int cnt;
-
-	if (deflist == NULL)
-		return NULL;
-
-	cnt = count_array(deflist);
-	new_deflist = static_cast<resdef **>(malloc((cnt + 1) * sizeof(resdef*)));
-	if (new_deflist == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-	memcpy(new_deflist, deflist, (cnt+1)*sizeof(resdef*));
-
-	new_deflist[cnt] = NULL;
-
-	return new_deflist;
-}
-
-/**
- * @brief
- * 		destructor for array of resdef
- *
- * @param[in]	deflist	-	array of resdef to free
- *
- * @return	void
- */
-void
-free_resdef_array(resdef **deflist)
-{
-	int i;
-
-	if (deflist == NULL)
-		return;
-
-	for (i = 0; deflist[i] != NULL; i++)
-		free_resdef(deflist[i]);
-
-	free(deflist);
-}
-
-
-/**
- * @brief
- * 		find and return a resdef entry by name
- *
- * @param[in]	deflist	-	array of resdef to search
- * @param[in] name	-	name of resource to search for
- *
- * @return	resdef *
- * @retval	found resource def
- * @retval	NULL	: if not found
- */
-resdef *
-find_resdef(resdef **deflist, const char *name)
-{
-	int i;
-
-	if (deflist == NULL || name == NULL)
-		return NULL;
-
-	for (i = 0; deflist[i] != NULL && strcmp(deflist[i]->name, name) != 0; i++)
-		;
-
-	return deflist[i];
+	return rtype;
 }
 
 resdef *
-find_resdef(resdef **deflist, const std::string& name)
+find_resdef(const std::string& name)
 {
-	return find_resdef(deflist, name.c_str());
-}
+	auto f = allres.find(name);
+	if (f == allres.end())
+		return NULL;
 
-/**
- * @brief
- * 		free and clear global resource definition pointers
- *
- * @return	void
- */
-void
-reset_global_resource_ptrs(void)
-{
-	/* references into allres, only need to free() */
-	conf.resdef_to_check.clear();
-	if (consres != NULL) {
-		free(consres);
-		consres = NULL;
-	}
-	if (boolres != NULL) {
-		free(boolres);
-		boolres = NULL;
-	}
-	update_sorting_defs(SD_FREE);
-
-	last_running.clear();
-
-	/* The above references into this array.  We now free the memory */
-	if (allres != NULL) {
-		free_resdef_array(allres);
-		allres = NULL;
-	}
-	clear_limres();
+	return f->second;
 }
 
 /**
@@ -643,7 +288,6 @@ create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& 
 {
 	char *sig = NULL;
 	int sig_size = 0;
-	int i;
 	schd_resource *res;
 
 	if (reslist == NULL)
@@ -673,9 +317,9 @@ create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& 
 	}
 
 	if ((flags & ADD_ALL_BOOL)) {
-		for (i = 0; boolres[i] != NULL; i++) {
-			if (resources.find(boolres[i]) == resources.end()) {
-				res = find_resource(reslist, boolres[i]);
+		for (const auto& br : boolres) {
+			if (resources.find(br) == resources.end()) {
+				res = find_resource(reslist, br);
 				if (res != NULL) {
 					add_resource_sig(&sig, &sig_size, res);
 					if (pbs_strcat(&sig, &sig_size, ":") == NULL) {
@@ -696,71 +340,66 @@ create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& 
 
 
 /**
- * @brief
- * 		query the resource definition from the server and create derived
- *        data structures.  Only query if required.
+ * @brief update allres and sub-containers of resource definitions.  This is called
+ *		in schedule().  If it fails in schedule() we'll pick it up in the next call to quuery_server()
  *
  * @param[in]	pbs_sd	-	connection descriptor to the pbs server
  *
- * @return	int
- * @retval	1	: success - we've updated the global resdef arrays
- * @retval	0	: failure - we haven't updated the global resdef arrays.  Scheduling
- *                     		should not continue.
+ * @return	bool
+ * @retval	true - successfully updated resdefs
+ * @retval	false - failed to update resdefs
  */
-int
+bool
 update_resource_defs(int pbs_sd)
 {
-	int error = 0;
-	/* only query when needed*/
-	if (allres != NULL)
-		return 1;
+	clear_limres();
+	auto tmpres = query_resources(pbs_sd);
 
-	allres = query_resources(pbs_sd);
+	if (tmpres.empty())
+		return false;
 
-	if (allres != NULL) {
-		consres = (resdef**) filter_array((void **) allres,
-			def_is_consumable, NULL, NO_FLAGS);
-		if (consres == NULL)
-			error = 1;
-
-		if (!error) {
-			boolres = (resdef**) filter_array((void **) allres,
-				def_is_bool, NULL, NO_FLAGS);
-			if (boolres == NULL)
-				error = 1;
+	for (auto &lr : last_running) {
+		resource_req *prev_res = NULL;
+		for (auto ru = lr.resused; ru != NULL;) {
+			auto f = tmpres.find(ru->name);
+			if (f == tmpres.end()) {
+				resource_req *tru;
+				tru = ru->next;
+				free_resource_req(ru);
+				if (prev_res != NULL)
+					prev_res->next = tru;
+				else
+					lr.resused = tru;
+				ru = tru;
+			} else {
+				ru->def = f->second;
+				prev_res = ru;
+				ru = ru->next;
+			}
 		}
-
-		if (!conf.res_to_check.empty()) {
-			conf.resdef_to_check = resstr_to_resdef(conf.res_to_check);
-			if (conf.resdef_to_check.empty())
-				error = 1;
-		}
-		update_sorting_defs(SD_UPDATE);
-	}
-	else
-		error = 1;
-
-	if (error) {
-		if (consres != NULL) {
-			free(consres);
-			consres = NULL;
-		}
-		if (boolres != NULL) {
-			free(boolres);
-			boolres = NULL;
-		}
-
-			conf.resdef_to_check.clear();
-
-		if (allres != NULL) {
-			free_resdef_array(allres);
-			allres = NULL;
-		}
-
-		return 0;
 	}
 
-	return 1;
+	allres = tmpres;
+
+	consres.clear();
+	for (const auto& def: allres) {
+		if (def.second->type.is_consumable)
+			consres.insert(def.second);
+	}
+
+	boolres.clear();
+	for (const auto &def : allres) {
+		if (def.second->type.is_boolean)
+			boolres.insert(def.second);
+	}
+
+	conf.resdef_to_check.clear();
+	if (!conf.res_to_check.empty()) {
+		conf.resdef_to_check = resstr_to_resdef(conf.res_to_check);
+	}
+	update_sorting_defs();
+
+	return true;
 }
 
 /**
@@ -779,7 +418,7 @@ resstr_to_resdef(const std::unordered_set<std::string>& resstr)
 	resdef *def;
 
 	for (const auto& str : resstr) {
-		def = find_resdef(allres, str);
+		def = find_resdef(str);
 		if (def != NULL)
 			defs.insert(def);
 		else {
@@ -791,13 +430,13 @@ resstr_to_resdef(const std::unordered_set<std::string>& resstr)
 }
 
 std::unordered_set<resdef *>
-resstr_to_resdef(const char * const*resstr)
+resstr_to_resdef(const char * const* resstr)
 {
 	std::unordered_set<resdef *> defs;
 	resdef *def;
 
 	for (int i = 0; resstr[i] != NULL; i++) {
-		def = find_resdef(allres, resstr[i]);
+		def = find_resdef(resstr[i]);
 		if (def != NULL)
 			defs.insert(def);
 		else {
@@ -806,22 +445,6 @@ resstr_to_resdef(const char * const*resstr)
 	}
 
 	return defs;
-}
-
-/**
- * @brief
- * 		safely access allres by index.  This can be used if allres is NULL
- *
- * @param[in]	ind	-	index into allres array
- *
- * @return	resdef*
- */
-resdef *
-getallres(enum resource_index ind)
-{
-	if (allres == NULL)
-		return NULL;
-	return allres[ind];
 }
 
 /**
@@ -866,21 +489,10 @@ collect_resources_from_requests(resource_resv **resresv_arr)
 		 * sums all the requested amounts in the select and sets job wide
 		 */
 		for (req = r->resreq; req != NULL; req = req->next)
-			defset.insert(req->def);
+			if (conf.res_to_check.find(req->name) != conf.res_to_check.end())
+				defset.insert(req->def);
 	}
 	return defset;
-}
-
-/**
- * @brief filter function for filter_array(). Used to filter out non consumable resources
- */
-int
-filter_noncons(void *v, void *arg)
-{
-	resdef *r = (resdef *)v;
-	if (r->type.is_non_consumable)
-		return 1;
-	return 0;
 }
 
 /**
@@ -892,16 +504,18 @@ filter_noncons(void *v, void *arg)
  * 
  * @return nothing
  */
-void update_single_sort_def(int op, std::vector<sort_info>& siv, int obj, const char *prefix)
+void update_single_sort_def(std::vector<sort_info>& siv, int obj, const char *prefix)
 {
 	for (auto &si : siv) {
-		if (op == SD_UPDATE) {
-			si.def = find_resdef(allres, si.res_name);
-			if (si.def == NULL && !is_speccase_sort(si.res_name, obj))
-				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, CONFIG_FILE,
-					"%s sorting resource %s is not a valid resource", prefix, si.res_name.c_str());
-		} else
+		auto f = allres.find(si.res_name);
+		if (is_speccase_sort(si.res_name, obj))
 			si.def = NULL;
+		else if (f == allres.end()) {
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, CONFIG_FILE,
+				"%s sorting resource %s is not a valid resource", prefix, si.res_name.c_str());
+			si.def = NULL;
+		} else
+			si.def = f->second;
 	}
 }
 
@@ -914,10 +528,27 @@ void update_single_sort_def(int op, std::vector<sort_info>& siv, int obj, const 
  *
  * @param[in]	op	-	update(non-zero) or clear definitions(0)
  */
-void update_sorting_defs(int op)
+void update_sorting_defs(void)
 {
-	update_single_sort_def(op, conf.prime_node_sort, SOBJ_NODE, "prime node");
-	update_single_sort_def(op, conf.non_prime_node_sort, SOBJ_NODE, "Non-prime node");
-	update_single_sort_def(op, conf.prime_sort, SOBJ_JOB, "prime job");
-	update_single_sort_def(op, conf.non_prime_sort, SOBJ_JOB, "Non-prime job");
+	update_single_sort_def(conf.prime_node_sort, SOBJ_NODE, "prime node");
+	update_single_sort_def(conf.non_prime_node_sort, SOBJ_NODE, "Non-prime node");
+	update_single_sort_def(conf.prime_sort, SOBJ_JOB, "prime job");
+	update_single_sort_def(conf.non_prime_sort, SOBJ_JOB, "Non-prime job");
+}
+
+/**
+ * 	@brief resource_type constructor
+ */
+resource_type::resource_type()
+{
+	is_non_consumable = false;
+	is_string = false;
+	is_boolean = false;
+
+	is_consumable = false;
+	is_num = false;
+	is_long = false;
+	is_float = false;
+	is_size = false;
+	is_time = false;
 }

@@ -390,7 +390,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 	char *str;
 	int free_str = 0;
 	int np_arr_size = 0;
-	schd_resource *res;
+	static schd_resource *res;
 
 	int num_nodes;
 	int reslen;
@@ -404,8 +404,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 	int node_i;		/* index into nodes array */
 	int np_i;		/* index into node partition array we are creating */
 
-	schd_resource unset_res;
-	const char *unsetarr[] = {"\"\"", NULL};
+	schd_resource *unset_res = NULL;
 
 	resdef *def;
 
@@ -429,15 +428,11 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 	np_i = 0;
 	np_arr[0] = NULL;
 
-	if (flags & NP_CREATE_REST) {
-		memset(&unset_res, 0, sizeof(unset_res));
-		unset_res.str_avail = (char **) unsetarr;
-		unset_res.type.is_non_consumable = 1;
-		unset_res.type.is_string = 1;
-	}
+	if (flags & NP_CREATE_REST && unset_res == NULL)
+		unset_res = new_resource();
 
 	for (res_i = 0; resnames[res_i] != NULL; res_i++) {
-		def = find_resdef(allres, resnames[res_i]);
+		def = find_resdef(resnames[res_i]);
 		reslen = strlen(resnames[res_i]);
 		for (node_i = 0; nodes[node_i] != NULL; node_i++) {
 			if (nodes[node_i]->is_stale)
@@ -446,8 +441,9 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 			res = find_resource(nodes[node_i]->res, def);
 
 			if (res == NULL && (flags & NP_CREATE_REST)) {
-				unset_res.name = resnames[res_i];
-				res = &unset_res;
+				unset_res->name = resnames[res_i];
+				set_resource(unset_res, "\"\"", RF_AVAIL);
+				res = unset_res;
 			}
 			if (res != NULL) {
 				/* Incase of indirect resource, point it to the right place */
@@ -557,8 +553,8 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 
 			res = find_resource(nodes[node_i]->res, np_arr[np_i]->def);
 			if (res == NULL && (flags & NP_CREATE_REST)) {
-				unset_res.name = resnames[res_i];
-				res = &unset_res;
+				set_resource(unset_res, "\"\"", RF_AVAIL);
+				res = unset_res;
 			}
 			if (res != NULL) {
 				/* Incase of indirect resource, point it to the right place */
@@ -566,7 +562,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 					res = res->indirect_res;
 				if (compare_res_to_str(res, np_arr[np_i]->res_val, CMP_CASE)) {
 					if (np_arr[np_i]->ok_break) {
-						tmpres = find_resource(nodes[node_i]->res, getallres(RES_HOST));
+						tmpres = find_resource(nodes[node_i]->res, allres["host"]);
 						if (tmpres != NULL) {
 							if (hostres == NULL)
 								hostres = tmpres;
@@ -1246,7 +1242,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 				schd_resource *hostres;
 				char hostbuf[256];
 
-				hostres = find_resource(sinfo->nodes[i]->res, getallres(RES_HOST));
+				hostres = find_resource(sinfo->nodes[i]->res, allres["host"]);
 				if (hostres != NULL) {
 					snprintf(hostbuf, sizeof(hostbuf), "host=%s", hostres->str_avail[0]);
 					sinfo->nodes[i]->hostset =

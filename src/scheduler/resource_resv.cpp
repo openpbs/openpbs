@@ -1018,7 +1018,7 @@ dup_resource_req(resource_req *oreq)
 
 	nreq->def = oreq->def;
 	if(nreq->def)
-		nreq->name = nreq->def->name;
+		nreq->name = nreq->def->name.c_str();
 
 	memcpy(&(nreq->type), &(oreq->type), sizeof(struct resource_type));
 	nreq->res_str = string_dup(oreq->res_str);
@@ -1048,7 +1048,7 @@ resource_count *dup_resource_count(resource_count *orcount)
 
 	nrcount->def = orcount->def;
 	if(nrcount->def)
-		nrcount->name = nrcount->def->name;
+		nrcount->name = nrcount->def->name.c_str();
 
 	nrcount->amount = orcount->amount;
 	nrcount->soft_limit_preempt_bit = orcount->soft_limit_preempt_bit;
@@ -1130,12 +1130,12 @@ create_resource_req(const char *name, const char *value)
 		return NULL;
 
 
-	rdef = find_resdef(allres, name);
+	rdef = find_resdef(name);
 
 	if (rdef != NULL) {
 		if ((resreq = new_resource_req()) != NULL) {
 			resreq->def = rdef;
-			resreq->name = rdef->name;
+			resreq->name = rdef->name.c_str();
 			resreq->type = rdef->type;
 
 			if (value != NULL) {
@@ -1185,7 +1185,7 @@ find_alloc_resource_req(resource_req *reqlist, resdef *def)
 
 		req->def = def;
 		req->type = req->def->type;
-		req->name = def->name;
+		req->name = def->name.c_str();
 		if (prev != NULL)
 			prev->next = req;
 	}
@@ -1222,7 +1222,7 @@ resource_count *find_alloc_resource_count(resource_count *rcountlist, resdef *de
 			return NULL;
 
 		rcount->def = def;
-		rcount->name = def->name;
+		rcount->name = def->name.c_str();
 		if (prev != NULL)
 			prev->next = rcount;
 	}
@@ -1365,7 +1365,7 @@ set_resource_req(resource_req *req, const char *val)
 	if (req->def != NULL)
 		rdef = req->def;
 	else {
-		rdef = find_resdef(allres, req->name);
+		rdef = find_resdef(req->name);
 		req->def = rdef;
 	}
 	if (rdef != NULL)

@@ -483,9 +483,9 @@ schedule(int sd, const sched_cmd *cmd)
 		case SCH_SCHEDULE_FIRST:
 			/*
 			 * on the first cycle after the server restarts custom resources
-			 * may have been added.  Dump what we have so we'll requery them.
+			 * may have been added.
 			 */
-			reset_global_resource_ptrs();
+			update_resource_defs(sd);
 
 			/* Get config from the qmgr sched object */
 			if (!set_validate_sched_attrs(sd))
@@ -506,11 +506,11 @@ schedule(int sd, const sched_cmd *cmd)
 		case SCH_CONFIGURE:
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
 				  "reconfigure", "Scheduler is reconfiguring");
-			reset_global_resource_ptrs();
-
 			/* Get config from sched_priv/ files */
 			if (schedinit(-1) != 0)
 				return 0;
+
+			update_resource_defs(sd);
 
 			/* Get config from the qmgr sched object */
 			if (!set_validate_sched_attrs(sd))

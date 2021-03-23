@@ -196,13 +196,11 @@ query_server(status *pol, int pbs_sd)
 	if (pol == NULL)
 		return NULL;
 
-	if (update_resource_defs(pbs_sd) == 0) {
-		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, "resources",
-			"Failed to update global resource definition arrays");
-		return NULL;
-	}
-
 	PBSD_server_ready(pbs_sd);
+
+	if (allres.empty())
+		if (update_resource_defs(pbs_sd) == false)
+			return NULL;
 
 	/* get server information from pbs server */
 	if ((server = pbs_statserver(pbs_sd, NULL, NULL)) == NULL) {
@@ -210,7 +208,7 @@ query_server(status *pol, int pbs_sd)
 		if (errmsg == NULL)
 			errmsg = "";
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_NOTICE, "server_info",
-			"pbs_statserver failed: %s (%d)", errmsg, pbs_errno);
+			   "pbs_statserver failed: %s (%d)", errmsg, pbs_errno);
 		return NULL;
 	}
 
@@ -337,7 +335,7 @@ query_server(status *pol, int pbs_sd)
 	/* create res_to_check arrays based on current jobs/resvs */
 	policy->resdef_to_check = collect_resources_from_requests(sinfo->all_resresv);
 	for (const auto& rd : policy->resdef_to_check) {
-		if (!(rd == getallres(RES_HOST) || rd == getallres(RES_VNODE)))
+		if (!(rd == allres["host"] || rd == allres["vnode"]))
 			policy->resdef_to_check_no_hostvnode.insert(rd);
 		
 		if (rd->flags & ATR_DFLAG_RASSN)
@@ -869,7 +867,7 @@ find_alloc_resource(schd_resource *resplist, resdef *def)
 
 		resp->def = def;
 		resp->type = def->type;
-		resp->name = def->name;
+		resp->name = def->name.c_str();
 
 		if (prev != NULL)
 			prev->next = resp;
@@ -1326,12 +1324,12 @@ create_resource(const char *name, const char *value, enum resource_fields field)
 	if(value == NULL && field != RF_NONE)
 		return NULL;
 
-	rdef = find_resdef(allres, name);
+	rdef = find_resdef(name);
 
 	if (rdef != NULL) {
 		if ((nres = new_resource()) != NULL) {
 			nres->def = rdef;
-			nres->name = rdef->name;
+			nres->name = rdef->name.c_str();
 			nres->type = rdef->type;
 
 			if (value != NULL) {
@@ -1424,7 +1422,6 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 	schd_resource *end_r1 = NULL;
 	schd_resource *nres;
 	sch_resource_t assn;
-	int i;
 
 	if (r1 == NULL || r2 == NULL)
 		return 0;
@@ -1464,7 +1461,7 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 		} else {
 			if (!(flags & NO_UPDATE_NON_CONSUMABLE)) {
 				if (cur_r1->type.is_string) {
-					if (cur_r1->def == getallres(RES_VNODE))
+					if (cur_r1->def == allres["vnode"])
 						add_resource_str_arr(cur_r1, cur_r2->str_avail, 1);
 					else
 						add_resource_str_arr(cur_r1, cur_r2->str_avail, 0);
@@ -1475,27 +1472,25 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 	}
 
 	if (flags & ADD_UNSET_BOOLS_FALSE) {
-		if (boolres != NULL) {
-			for (i = 0; boolres[i] != NULL; i++) {
-				if (find_resource(r2, boolres[i]) == NULL) {
-					cur_r1 = find_resource(r1, boolres[i]);
-					if (cur_r1 == NULL) {
-						nres = create_resource(boolres[i]->name, ATR_FALSE, RF_AVAIL);
-						if (nres == NULL)
-							return 0;
+		for (const auto &br : boolres) {
+			if (find_resource(r2, br) == NULL) {
+				cur_r1 = find_resource(r1, br);
+				if (cur_r1 == NULL) {
+					nres = create_resource(br->name.c_str(), ATR_FALSE, RF_AVAIL);
+					if (nres == NULL)
+						return 0;
 
-						if (end_r1 == NULL)
-							for (end_r1 = r1; end_r1->next != NULL; end_r1 = end_r1->next)
-								;
-						end_r1->next = nres;
-						end_r1 = nres;
-					} else {
-						nres = false_res();
-						if (nres == NULL)
-							return 0;
-						nres->name = boolres[i]->name;
-						(void)add_resource_bool(cur_r1, nres);
-					}
+					if (end_r1 == NULL)
+						for (end_r1 = r1; end_r1->next != NULL; end_r1 = end_r1->next)
+							;
+					end_r1->next = nres;
+					end_r1 = nres;
+				} else {
+					nres = false_res();
+					if (nres == NULL)
+						return 0;
+					nres->name = br->name.c_str();
+					(void) add_resource_bool(cur_r1, nres);
 				}
 			}
 		}
@@ -2485,7 +2480,6 @@ dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef *>& de
 	schd_resource *nres;
 	schd_resource *prev = NULL;
 	schd_resource *head = NULL;
-	int i;
 
 	for (pres = res; pres != NULL; pres = pres->next) {
 		if (((flags & ADD_ALL_BOOL) && pres->type.is_boolean) ||
@@ -2509,10 +2503,10 @@ dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef *>& de
 		}
 	}
 	/* add on any booleans which are unset (i.e.,  false) */
-	if (boolres != NULL && (flags & ADD_UNSET_BOOLS_FALSE)) {
-		for (i = 0; boolres[i] != NULL; i++) {
-			if (find_resource(res, boolres[i]) == NULL) {
-				nres = create_resource(boolres[i]->name, ATR_FALSE, RF_AVAIL);
+	if (flags & ADD_UNSET_BOOLS_FALSE) {
+		for (const auto& br : boolres) {
+			if (find_resource(res, br) == NULL) {
+				nres = create_resource(br->name.c_str(), ATR_FALSE, RF_AVAIL);
 				if (nres == NULL) {
 					free_resource_list(head);
 					return NULL;
@@ -2591,7 +2585,7 @@ dup_resource(schd_resource *res)
 
 	nres->def = res->def;
 	if (nres->def != NULL)
-		nres->name = nres->def->name;
+		nres->name = nres->def->name.c_str();
 
 
 	if (res->indirect_vnode_name != NULL)
@@ -3122,6 +3116,15 @@ set_resource(schd_resource *res, const char *val, enum resource_fields field)
 	if (res == NULL || val == NULL)
 		return 0;
 
+	if (res->def != NULL)
+		rdef = res->def;
+	else {
+		rdef = find_resdef(res->name);
+		res->def = rdef;
+	}
+	if (rdef != NULL)
+		res->type = rdef->type;
+
 	if (field == RF_AVAIL) {
 		/* if this resource is being re-set, lets free the memory we previously
 		 * allocated in the last call to this function.  We NULL the values just
@@ -3153,12 +3156,8 @@ set_resource(schd_resource *res, const char *val, enum resource_fields field)
 			if (res->indirect_vnode_name == NULL)
 				return 0;
 		} else {
-			/* if the resource type is already set, clear it so we can set it here */
-			if (res->type.is_consumable != 0 || res->type.is_non_consumable !=0)
-				memset(&(res->type), 0, sizeof(struct resource_type));
-
 			/* if val is a string, avail will be set to SCHD_INFINITY_RES */
-			res->avail = res_to_num(val, &(res->type));
+			res->avail = res_to_num(val, NULL);
 			if (res->avail == SCHD_INFINITY_RES) {
 				/* Verify that this is a string type resource */
 				if (!res->def->type.is_string)
@@ -3182,15 +3181,6 @@ set_resource(schd_resource *res, const char *val, enum resource_fields field)
 		if (res->str_assigned == NULL)
 			return 0;
 	}
-
-	if(res->def != NULL)
-		rdef = res->def;
-	else {
-		rdef = find_resdef(allres, res->name);
-		res->def = rdef;
-	}
-	if (rdef != NULL)
-		res->type = rdef->type;
 
 	return 1;
 }
@@ -3834,7 +3824,7 @@ create_resource_assn_for_node(node_info *ninfo)
 	for (r = ninfo->res; r != NULL; r = r->next)
 		if(r->type.is_consumable) {
 			r->assigned = 0;
-			if (r->def == getallres(RES_NCPUS))
+			if (r->def == allres["ncpus"])
 				ncpus_res = r;
 		}
 
