@@ -251,17 +251,23 @@ int
 encode_DIS_replyTPP(int sock, char *tppcmd_msgid, struct batch_reply *reply)
 {
 	int rc;
+
 	/* first encode "header" consisting of protocol type and version */
-
-	/* since it TPP connection, write a header */
-	if ((rc = is_compose(sock, IS_CMD_REPLY)) != DIS_SUCCESS)
+	if (reply->brp_choice == BATCH_REPLY_CHOICE_Status) {
+		if ((rc = ps_compose(sock, PS_STAT_RPLY)) != DIS_SUCCESS)
+			return rc;
+		return encode_DIS_reply(sock, reply);
+	} else {
+		if ((rc = is_compose(sock, IS_CMD_REPLY)) != DIS_SUCCESS)
 		return rc;
 
-	/* for IS_CMD_REPLY, also send across the tppcmd_msgid, so that
-	 * server can match the reply with the request it had sent earlier
-	 */
-	if ((rc = diswst(sock, tppcmd_msgid)) != DIS_SUCCESS)
-		return rc;
+		/* 
+		* for IS_CMD_REPLY, also send across the tppcmd_msgid, so that
+		* server can match the reply with the request it had sent earlier
+		*/
+		if ((rc = diswst(sock, tppcmd_msgid)) != DIS_SUCCESS)
+			return rc;
+	}
 
 	return (encode_DIS_reply_inner(sock, reply));
 }

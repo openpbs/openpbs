@@ -158,6 +158,7 @@ struct rq_move {
 	char *run_exec_vnode;
 	int orig_rq_type;
 	void *ptask_runjob;
+	int peersvr_stream;
 };
 
 /* Resource Query/Reserve/Free */

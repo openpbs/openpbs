@@ -75,12 +75,13 @@ int query_server_dyn_res(server_info *sinfo);
  */
 
 schd_resource *find_alloc_resource(schd_resource *resplist, resdef *def);
-schd_resource *find_alloc_resource_by_str(schd_resource *resplist, char *name);
-
+schd_resource *find_alloc_resource_by_str(schd_resource *resplist, const char *name);
+schd_resource *find_alloc_resource_by_str(schd_resource *resplist, const std::string& name);
 
 /*  finds a resource in a resource list by string resource name */
 
 schd_resource *find_resource_by_str(schd_resource *reslist, const char *name);
+schd_resource *find_resource_by_str(schd_resource *reslist, const std::string& name);
 
 /*
  *	find resource by resource definition
@@ -203,7 +204,7 @@ schd_resource *dup_resource_list(schd_resource *res);
 
 /* dup a resource list selectively only duping specific resources */
 
-schd_resource *dup_selective_resource_list(schd_resource *res, resdef **deflist, unsigned flags);
+schd_resource *dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef*>& deflist, unsigned flags);
 
 /*
  *	dup_ind_resource_list - dup a resource list - if a resource is indirect
@@ -401,25 +402,6 @@ int resolve_indirect_resources(node_info **nodes);
 char *read_formula(void);
 
 /*
- * 	new_status - status constructor
- */
-#ifdef NAS /* localmod 005 */
-status *new_status(void);
-#else
-status *new_status();
-#endif /* localmod 005 */
-
-/*
- *	dup_status - status copy constructor
- */
-status *dup_status(status *ost);
-
-/*
- * free_status - status destructor
- */
-void free_status(status *st);
-
-/*
  * create_total_counts -  Creates total counts list for server & queue
  */
 void
@@ -484,5 +466,7 @@ int compare_resource_avail_list(schd_resource *r1, schd_resource *r2);
 int compare_resource_avail(schd_resource *r1, schd_resource *r2);
 
 node_info **dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes);
+
+status *dup_status(status *ost);
 
 #endif	/* _SERVER_INFO_H */

@@ -50,6 +50,9 @@
  * 	is_ded_time()
  *
  */
+
+#include <algorithm>
+
 #include <pbs_config.h>
 
 #include <stdio.h>
@@ -60,6 +63,7 @@
 
 #include <log.h>
 
+#include "data_types.h"
 #include "misc.h"
 #include "dedtime.h"
 #include "globals.h"
@@ -88,7 +92,6 @@ parse_ded_file(const char *filename)
 	int error = 0;		/* boolean: is there an error? */
 	struct tm tm_from, tm_to;	/* tm structs used to convert to time_t */
 	time_t from, to;		/* time_t values for dedtime start - end */
-	int i;
 
 	if ((fp = fopen(filename, "r")) == NULL) {
 		sprintf(log_buffer, "Error opening file %s", filename);
@@ -96,8 +99,10 @@ parse_ded_file(const char *filename)
 		return 1;
 	}
 
-	i = 0;
-	memset(conf.ded_time, 0, MAX_DEDTIME_SIZE * sizeof(struct timegap));
+	// We are rereading the dedtime file.  The current dedtime might not exist any more.
+	cstat.is_ded_time = false;
+	conf.ded_time.clear();
+
 	while (fgets(line, 256, fp) != NULL) {
 		if (!skip_line(line)) {
 			/* mktime() will figure out if it is dst or not if tm_isdst == -1 */
@@ -131,11 +136,8 @@ parse_ded_file(const char *filename)
 				to = mktime(&tm_to);
 
 				/* ignore all dedtime which has passed */
-				if (!(from < cstat.current_time && to < cstat.current_time)) {
-					conf.ded_time[i].from = from;
-					conf.ded_time[i].to = to;
-					i++;
-				}
+				if (!(from < cstat.current_time && to < cstat.current_time))
+					conf.ded_time.emplace_back(from, to);
 
 				if (from > to) {
 					snprintf(log_buffer, LOG_BUF_SIZE-1, "From date is greater than To date in the line - '%s'.", line);
@@ -151,7 +153,7 @@ parse_ded_file(const char *filename)
 		}
 	}
 	/* sort dedtime in ascending order with all 0 elements at the end */
-	qsort(conf.ded_time, MAX_DEDTIME_SIZE, sizeof(struct timegap), cmp_ded_time);
+	std::sort(conf.ded_time.begin(), conf.ded_time.end(), cmp_ded_time);
 	fclose(fp);
 	return 0;
 }
@@ -169,19 +171,15 @@ parse_ded_file(const char *filename)
  *	    - descending by the start time
  *
  */
-int
-cmp_ded_time(const void *v1, const void *v2)
+bool
+cmp_ded_time(const timegap& t1, const timegap& t2)
 {
-	if (((struct timegap *)v1)->from == 0 && ((struct timegap *)v2)->from != 0)
-		return 1;
-	else if (((struct timegap *)v2)->from == 0 && ((struct timegap *)v1)->from !=0)
-		return -1;
-	else if (((struct timegap *)v1)->from > ((struct timegap *)v2)->from)
-		return 1;
-	else if (((struct timegap *)v1)->from < ((struct timegap *)v2)->from)
-		return -1;
-	else
+	if (t1.from == 0 && t2.from != 0)
 		return 0;
+	else if (t2.from == 0 && t1.from != 0)
+		return 1;
+
+	return t1.from < t2.from;
 }
 
 /**
@@ -190,25 +188,23 @@ cmp_ded_time(const void *v1, const void *v2)
  *
  * @param[in]	t	-	the time to check
  *
- * @return	int
- * @retval 1 if it is currently ded time
- * @retval	0 if it is not ded time
+ * @return	bool
+ * @retval	true if it is currently ded time
+ * @retval	false if it is not ded time
  *
  */
-int
+bool
 is_ded_time(time_t t)
 {
-	struct timegap ded;
-
 	if (t == 0)
 		t = cstat.current_time;
 
-	ded = find_next_dedtime(t);
+	struct timegap ded = find_next_dedtime(t);
 
 	if (t >= ded.from && t < ded.to)
-		return 1;
+		return true;
 	else
-		return 0;
+		return false;
 }
 
 
@@ -222,10 +218,9 @@ is_ded_time(time_t t)
  */
 struct timegap find_next_dedtime(time_t t)
 {
-	int i;
+	for (const auto& dt : conf.ded_time)
+		if (dt.to >= t)
+			return dt;
 
-	for (i = 0; conf.ded_time[i].from != 0 && conf.ded_time[i].to <= t; i++)
-		;
-
-	return conf.ded_time[i];
+	return {0, 0};
 }

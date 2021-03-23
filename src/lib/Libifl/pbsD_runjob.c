@@ -49,40 +49,6 @@
 #include "dis.h"
 #include "pbs_ecl.h"
 
-/**
- * @brief
- * 	get destination server corresponds to a select spec
- *
- * @param[in] conn - connection
- * @param[in] location - select spec
- *
- * @return - dest server identifier
- * @retval server_name:port - success
- * @retval NULL - No corresponding server
- *
- */
-static char *
-get_dest_server(int conn, char *location)
-{
-	char *vnode;
-	struct batch_status *bstat = NULL;
-	char *dest = NULL;
-	struct attrl pat;
-
-	pat.name = ATTR_server_inst_id;
-	pat.value = "";
-
-	vnode = get_first_vnode(location);
-	if ((bstat = pbs_statvnode(conn, vnode, &pat, NULL)) != NULL) {
-		if (bstat->attribs && bstat->attribs->value)
-			pbs_asprintf(&dest, "%s=%s", SERVER_IDENTIFIER,
-				     bstat->attribs->value);
-	}
-
-	pbs_statfree(bstat);
-
-	return dest;
-}
 
 /**
  * @brief	Inner function for pbs_asynrunjob and pbs_asynrunjob_ack
@@ -180,7 +146,6 @@ __runjob_helper(int c, char *jobid, char *location, char *extend, int req_type)
 	int start = 0;
 	int ct;
 	int nsvrs = get_num_servers();
-	char *dest = NULL;
 
 	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
@@ -194,13 +159,6 @@ __runjob_helper(int c, char *jobid, char *location, char *extend, int req_type)
 			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
 				continue;
 
-			/* if the vfd comes without node owning server, ifl need to figure out */
-			if (!extend && location && msvr_mode()) {
-				dest = get_dest_server(c, location);
-				extend = dest;
-				pbs_errno = 0;
-			}
-
 			if (svr_conns[i]->sd == c) {
 				rc = __runjob_inner(svr_conns[i]->sd, jobid, location, extend, req_type);
 				break;
@@ -211,13 +169,11 @@ __runjob_helper(int c, char *jobid, char *location, char *extend, int req_type)
 				break;
 		}
 
-		free(dest);
 		return rc;
 	}
 
 	/* Not a cluster fd. Treat it as an instance fd */
 	rc = __runjob_inner(c, jobid, location, extend, req_type);
-	free(dest);
 	return rc;
 }
 

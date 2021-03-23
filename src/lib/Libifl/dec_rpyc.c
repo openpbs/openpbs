@@ -274,6 +274,7 @@ cmp_sj_name(struct batch_status *a, struct batch_status *b)
  *
  * @param[in] sock - socket descriptor
  * @param[in] reply - pointer to batch_reply structure
+ * @param[in] prot - protocol type
  *
  * @return	int
  * @retval	-1	error
@@ -282,7 +283,7 @@ cmp_sj_name(struct batch_status *a, struct batch_status *b)
  */
 
 int
-decode_DIS_replyCmd(int sock, struct batch_reply *reply)
+decode_DIS_replyCmd(int sock, struct batch_reply *reply, int prot)
 {
 	int ct;
 	int i;
@@ -379,16 +380,15 @@ again:
 			reply->brp_count += ct;
 
 			while (ct--) {
-				int mgr_obj;
 
 				rc = DIS_PROTO;
-				pstcmd = read_batch_status(sock, &mgr_obj, &rc);
+				pstcmd = read_batch_status(sock, &reply->brp_type, &rc);
 				if (rc != DIS_SUCCESS || pstcmd == NULL) {
 					if (pstcmd)
 						pbs_statfree(pstcmd);
 					return rc;
 				}
-				if (mgr_obj == MGR_OBJ_JOBARRAY_PARENT) {
+				if (reply->brp_type == MGR_OBJ_JOBARRAY_PARENT) {
 					if (pstcmd_ja != NULL) {
 						pstcmd_ja->next = bs_isort(pstcmd_ja->next, cmp_sj_name);
 						for (pstcmd_last = pstcmd_ja; pstcmd_last->next; pstcmd_last = pstcmd_last->next)
@@ -403,7 +403,7 @@ again:
 					}
 					pstcmd_ja = pstcmd;
 					continue;
-				} else if (mgr_obj == MGR_OBJ_SUBJOB) {
+				} else if (reply->brp_type == MGR_OBJ_SUBJOB) {
 					pstcmd->next = pstcmd_ja->next;
 					pstcmd_ja->next = pstcmd;
 					continue;

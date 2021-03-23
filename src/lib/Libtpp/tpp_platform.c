@@ -710,19 +710,22 @@ tpp_sock_resolve_host(char *host, int *count)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
+#ifndef WIN32
 	/* 
 	 * introducing a new mutex to prevent child process from 
 	 * inheriting getaddrinfo mutex using pthread_atfork handlers
 	 */
 	tpp_lock(&tpp_nslookup_mutex);
-
-	if ((rc = getaddrinfo(host, NULL, &hints, &pai)) != 0) {
+#endif
+	rc = getaddrinfo(host, NULL, &hints, &pai);
+	/* unlock nslookup mutex */
+#ifndef WIN32
 		tpp_unlock(&tpp_nslookup_mutex);
+#endif
+	if (rc != 0) {
 		tpp_log(LOG_CRIT, NULL, "Error %d resolving %s", rc, host);
 		return NULL;
 	}
-	/* unlock nslook up mutex */
-	tpp_unlock(&tpp_nslookup_mutex);
 
 	*count = 0;
 	for (aip = pai; aip != NULL; aip = aip->ai_next) {

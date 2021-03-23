@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #include <pbs_config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -370,7 +369,7 @@ char *create_node_bucket_name(status *policy, node_bucket *nb) {
 			free(name);
 			return NULL;
 		}
-		if (pbs_strcat(&name, &len, nb->queue->name) == NULL) {
+		if (pbs_strcat(&name, &len, nb->queue->name.c_str()) == NULL) {
 			free(name);
 			return NULL;
 		}
@@ -421,7 +420,7 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsi
 		if (nodes[i]->is_down || nodes[i]->is_offline || node_ind == -1 || nodes[i]->lic_lock == 0)
 			continue;
 
-		if (queues != NULL && nodes[i]->queue_name != NULL)
+		if (queues != NULL && !nodes[i]->queue_name.empty())
 			qinfo = find_queue_info(queues, nodes[i]->queue_name);
 
 		bkt_ind = find_node_bucket_ind(buckets, nodes[i]->res, qinfo, nodes[i]->priority);
@@ -784,7 +783,7 @@ chunk_to_nspec(status *policy, chunk *chk, node_info *node, char *aoename)
 		}
 	}
 	for (cur_req = chk->req; cur_req != NULL; cur_req = cur_req->next) {
-		if (resdef_exists_in_array(policy->resdef_to_check, cur_req->def) && cur_req->def->type.is_consumable) {
+		if (cur_req->def->type.is_consumable && policy->resdef_to_check.find(cur_req->def) != policy->resdef_to_check.end()) {
 			req = dup_resource_req(cur_req);
 			if (req == NULL) {
 				free_nspec(ns);
@@ -911,9 +910,10 @@ int job_should_use_buckets(resource_resv *resresv) {
 		return 0;
 
 	/* Job's requesting specific hosts or vnodes use the standard path */
-	if (resdef_exists_in_array(resresv->select->defs, getallres(RES_HOST)))
+	const auto& defs = resresv->select->defs;
+	if (defs.find(getallres(RES_HOST)) != defs.end())
 		return 0;
-	if (resdef_exists_in_array(resresv->select->defs, getallres(RES_VNODE)))
+	if (defs.find(getallres(RES_VNODE)) != defs.end())
 		return 0;
 	/* If a job has an execselect, it means it's requesting vnode */
 	if (resresv->execselect != NULL)

@@ -293,7 +293,7 @@ int compare_place(place *pl1, place *pl2);
  *	returns requested resource list (& number of chunks in numchunks)
  *		NULL on error or invalid spec
  */
-selspec *parse_selspec(char *selspec);
+selspec *parse_selspec(const std::string& sspec);
 
 /* compare two selspecs to see if they are equal*/
 int compare_selspec(selspec *sel1, selspec *sel2);

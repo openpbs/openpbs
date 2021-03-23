@@ -213,6 +213,7 @@ struct batch_reply
 	int brp_choice; /* the union discriminator */
 	int brp_is_part;
 	int brp_count;
+	int brp_type;
 	struct batch_status *last;
 	union {
 		char brp_jid[PBS_MAXSVRJOBID + 1];
@@ -338,6 +339,7 @@ struct batch_reply
 #define EXTEND_OPT_NEXT_MSG_PARAM "next_msg_param"
 
 int is_compose(int, int);
+int ps_compose(int, int);
 int is_compose_cmd(int, int, char **);
 void PBS_free_aopl(struct attropl *);
 void advise(char *, ...);
@@ -358,17 +360,17 @@ int PBSD_jobfile(int, int, char *, char *, enum job_file, int, char **);
 int PBSD_status_put(int, int, char *, struct attrl *, char *, int, char **);
 int PBSD_select_put(int, int, struct attropl *, struct attrl *, char *);
 struct batch_reply *PBSD_rdrpy(int);
-struct batch_reply *PBSD_rdrpy_sock(int, int *);
+struct batch_reply *PBSD_rdrpy_sock(int, int *, int prot);
 void PBSD_FreeReply(struct batch_reply *);
 struct batch_status *PBSD_status(int, int, char *, struct attrl *, char *);
 struct batch_status *PBSD_status_random(int c, int function, char *id, struct attrl *attrib, char *extend, int parent_object);
 struct batch_status *PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int parent_object, struct attrl *);
-struct batch_status *PBSD_status_get(int, struct batch_status **last);
+struct batch_status *PBSD_status_get(int c, struct batch_status **last, int *obj_type, int prot);
 char *PBSD_queuejob(int, char *, char *, struct attropl *, char *, int, char **, int *);
 int decode_DIS_svrattrl(int, pbs_list_head *);
 int decode_DIS_attrl(int, struct attrl **);
 int decode_DIS_JobId(int, char *);
-int decode_DIS_replyCmd(int, struct batch_reply *);
+int decode_DIS_replyCmd(int, struct batch_reply *, int);
 int encode_DIS_JobCred(int, int, char *, int);
 int encode_DIS_UserCred(int, char *, int, char *, int);
 int encode_DIS_JobFile(int, int, char *, int, char *, int);

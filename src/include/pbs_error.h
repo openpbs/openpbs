@@ -288,6 +288,7 @@ extern "C" {
 #define PBSE_HISTDEPEND  15229		/* Finished job did not satisfy dependency */
 #define PBSE_SCHEDCONNECTED	15230
 #define PBSE_NOTARRAY_ATTR  15231		/* Not an array job */
+#define PBSE_UNKOBJ	15232		/* Named object is not in the list nor in alien cache */
 
 
 /* the following structure is used to tie error number      */

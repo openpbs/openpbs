@@ -507,10 +507,12 @@ int
 multi_sort(resource_resv *r1, resource_resv *r2)
 {
 	int ret = 0;
-	int i;
 
-	for (i = 0; i <= MAX_SORTS && ret == 0 && cstat.sort_by[i].res_name != NULL; i++)
-		ret = resresv_sort_cmp(r1, r2, &cstat.sort_by[i]);
+	for (const auto& si : *cstat.sort_by) {
+		ret = resresv_sort_cmp(r1, r2, si);
+		if (ret)
+			break;
+	}
 
 	return ret;
 }
@@ -552,10 +554,12 @@ int
 multi_node_sort(const void *n1, const void *n2)
 {
 	int ret = 0;
-	int i;
 
-	for (i = 0; i <= MAX_SORTS && ret == 0 && cstat.node_sort[i].res_name != NULL; i++)
-		ret = node_sort_cmp(n1, n2, &cstat.node_sort[i], SOBJ_NODE);
+	for (const auto& si : *cstat.node_sort) {
+		ret = node_sort_cmp(n1, n2, si, SOBJ_NODE);
+		if (ret)
+			break;
+	}
 
 	return ret;
 }
@@ -575,10 +579,12 @@ int
 multi_nodepart_sort(const void *n1, const void *n2)
 {
 	int ret = 0;
-	int i;
 
-	for (i = 0; i <= MAX_SORTS && ret == 0 && cstat.node_sort[i].res_name != NULL; i++)
-		ret = node_sort_cmp(n1, n2, &cstat.node_sort[i], SOBJ_PARTITION);
+	for (const auto& si : *cstat.node_sort) {
+		ret = node_sort_cmp(n1, n2, si, SOBJ_PARTITION);
+		if (ret)
+			break;
+	}
 	return ret;
 }
 
@@ -596,10 +602,12 @@ int
 multi_bkt_sort(const void *b1, const void *b2)
 {
 	int ret = 0;
-	int i;
 
-	for (i = 0; i <= MAX_SORTS && ret == 0 && cstat.node_sort[i].res_name != NULL; i++)
-		ret = node_sort_cmp(b1, b2, &cstat.node_sort[i], SOBJ_BUCKET);
+	for (const auto& si : *cstat.node_sort) {
+		ret = node_sort_cmp(b1, b2, si, SOBJ_BUCKET);
+		if (ret)
+			break;
+	}
 
 	return ret;
 }
@@ -617,7 +625,7 @@ multi_bkt_sort(const void *b1, const void *b2)
  *
  */
 int
-resresv_sort_cmp(resource_resv *r1, resource_resv *r2, struct sort_info *si)
+resresv_sort_cmp(resource_resv *r1, resource_resv *r2, const struct sort_info& si)
 {
 	sch_resource_t v1, v2;
 
@@ -630,16 +638,13 @@ resresv_sort_cmp(resource_resv *r1, resource_resv *r2, struct sort_info *si)
 	if (r1 == NULL && r2 != NULL)
 		return 1;
 
-	if(si == NULL)
-		return 0;
-
-	v1 = find_resresv_amount(r1, si->res_name, si->def);
-	v2 = find_resresv_amount(r2, si->res_name, si->def);
+	v1 = find_resresv_amount(r1, si.res_name, si.def);
+	v2 = find_resresv_amount(r2, si.res_name, si.def);
 
 	if (v1 == v2)
 		return 0;
 
-	if (si->order == ASC) {
+	if (si.order == ASC) {
 		if (v1 < v2)
 			return -1;
 		else
@@ -667,7 +672,7 @@ resresv_sort_cmp(resource_resv *r1, resource_resv *r2, struct sort_info *si)
  * @retval -1, 0, 1 : standard qsort() cmp
  */
 int
-node_sort_cmp(const void *vp1, const void *vp2, struct sort_info *si, enum sort_obj_type obj_type)
+node_sort_cmp(const void *vp1, const void *vp2, const struct sort_info& si, const enum sort_obj_type obj_type)
 {
 	sch_resource_t v1, v2;
 	node_info **n1 = NULL;
@@ -687,32 +692,29 @@ node_sort_cmp(const void *vp1, const void *vp2, struct sort_info *si, enum sort_
 	if (vp1 == NULL && vp2 != NULL)
 		return 1;
 
-	if (si == NULL)
-		return 0;
-
 	switch(obj_type)
 	{
 		case SOBJ_NODE:
 			n1 = (node_info **) vp1;
 			n2 = (node_info **) vp2;
-			v1 = find_node_amount(*n1, si->res_name, si->def, si->res_type);
-			v2 = find_node_amount(*n2, si->res_name, si->def, si->res_type);
+			v1 = find_node_amount(*n1, si.res_name, si.def, si.res_type);
+			v2 = find_node_amount(*n2, si.res_name, si.def, si.res_type);
 			rank1 = (*n1)->rank;
 			rank2 = (*n2)->rank;
 			break;
 		case SOBJ_PARTITION:
 			np1 = (node_partition **) vp1;
 			np2 = (node_partition **) vp2;
-			v1 = find_nodepart_amount(*np1, si->res_name, si->def, si->res_type);
-			v2 = find_nodepart_amount(*np2, si->res_name, si->def, si->res_type);
+			v1 = find_nodepart_amount(*np1, si.res_name, si.def, si.res_type);
+			v2 = find_nodepart_amount(*np2, si.res_name, si.def, si.res_type);
 			rank1 = (*np1)->rank;
 			rank2 = (*np2)->rank;
 			break;
 		case SOBJ_BUCKET:
 			b1 = (node_bucket **) vp1;
 			b2 = (node_bucket **) vp2;
-			v1 = find_bucket_amount(*b1, si->res_name, si->def, si->res_type);
-			v2 = find_bucket_amount(*b2, si->res_name, si->def, si->res_type);
+			v1 = find_bucket_amount(*b1, si.res_name, si.def, si.res_type);
+			v2 = find_bucket_amount(*b2, si.res_name, si.def, si.res_type);
 			rank1 = 0;
 			rank2 = 0;
 			break;
@@ -725,7 +727,7 @@ node_sort_cmp(const void *vp1, const void *vp2, struct sort_info *si, enum sort_
 	if (v1 == v2)
 		return 0;
 
-	if (si->order == ASC) {
+	if (si.order == ASC) {
 		if (v1 < v2)
 			return -1;
 		else if (v1 > v2)
@@ -854,7 +856,7 @@ cmp_sort(const void *v1, const void *v2)
  * @return	sch_resource_t
  */
 sch_resource_t
-find_nodepart_amount(node_partition *np, char *res, resdef *def,
+find_nodepart_amount(node_partition *np, const std::string& res, resdef *def,
 	enum resource_fields res_type)
 {
 	schd_resource *nres;
@@ -890,14 +892,13 @@ find_nodepart_amount(node_partition *np, char *res, resdef *def,
  * @return	sch_resource_t
  */
 sch_resource_t
-find_bucket_amount(node_bucket *bkt, char *res, resdef *def,
-	enum resource_fields res_type)
+find_bucket_amount(node_bucket *bkt, const std::string& res, resdef *def, enum resource_fields res_type)
 {
 	schd_resource *nres;
 
 	if (def != NULL)
 		nres = find_resource(bkt->res_spec, def);
-	else if (!strcmp(res, SORT_PRIORITY))
+	else if (res == SORT_PRIORITY)
 		return bkt->priority;
 	else
 		nres = find_resource_by_str(bkt->res_spec, res);
@@ -929,16 +930,16 @@ find_bucket_amount(node_bucket *bkt, char *res, resdef *def,
  * @retval	0	: error
  */
 sch_resource_t
-find_node_amount(node_info *ninfo, char *res, resdef *def,
+find_node_amount(node_info *ninfo, const std::string& res, resdef *def,
 	enum resource_fields res_type)
 {
 	/* def is NULL on special case sort keys */
 	if(def != NULL) {
-		schd_resource*nres;
+		schd_resource *nres;
 		nres = find_resource(ninfo->res, def);
 
 		if (nres != NULL) {
-			if(nres -> indirect_res != NULL)
+			if(nres->indirect_res != NULL)
 				nres = nres -> indirect_res;
 			if (res_type == RF_AVAIL)
 				return nres->avail;
@@ -950,9 +951,9 @@ find_node_amount(node_info *ninfo, char *res, resdef *def,
 				return 0;
 		}
 
-	} else if (!strcmp(res, SORT_PRIORITY))
+	} else if (res == SORT_PRIORITY)
 		return ninfo->priority;
-	else if (!strcmp(res, SORT_USED_TIME))
+	else if (res == SORT_USED_TIME)
 		return ninfo->last_used_time;
 
 	return 0;
@@ -970,7 +971,7 @@ find_node_amount(node_info *ninfo, char *res, resdef *def,
  * @retval	0	: on error
  */
 sch_resource_t
-find_resresv_amount(resource_resv *resresv, char *res, resdef *def)
+find_resresv_amount(resource_resv *resresv, const std::string& res, resdef *def)
 {
 	/* def is NULL on special case sort keys */
 	if( def != NULL) {
@@ -982,25 +983,25 @@ find_resresv_amount(resource_resv *resresv, char *res, resdef *def)
 			return req->amount;
 	}
 
-	if (!strcmp(res, SORT_JOB_PRIORITY))
+	if (res == SORT_JOB_PRIORITY)
 #ifdef NAS /* localmod 045 */
 		return(sch_resource_t) resresv->job->NAS_pri;
 #else
 		return(sch_resource_t) resresv->job->priority;
 #endif /* localmod 045 */
-	else if (!strcmp(res, SORT_FAIR_SHARE) && resresv->job->ginfo != NULL)
+	else if (res == SORT_FAIR_SHARE && resresv->job->ginfo != NULL)
 		return(sch_resource_t) resresv->job->ginfo->tree_percentage;
-	else if (!strcmp(res, SORT_PREEMPT))
+	else if (res == SORT_PREEMPT)
 		return(sch_resource_t) resresv->job->preempt;
 #ifdef NAS
 		/* localmod 034 */
-	else if (!strcmp(res, SORT_ALLOC))
+	else if (res == SORT_ALLOC)
 		return(sch_resource_t) (100.0 * site_get_share(resresv));
 		/* localmod 039 */
-	else if (!strcmp(res, SORT_QPRI) && resresv->job->queue != NULL)
+	else if (res == SORT_QPRI && resresv->job->queue != NULL)
 		return(sch_resource_t) resresv->job->queue->priority;
 		/* localmod 040 */
-	else if (!strcmp(res, SORT_NODECT)) {
+	else if (res == SORT_NODECT) {
 		/* return the node count - dpr */
 		int ndct = resresv->job->nodect;
 		return(sch_resource_t) ndct;
@@ -1038,7 +1039,7 @@ cmp_node_host(const void *v1, const void *v2)
 		rc = strcmp(res1->orig_str_avail, res2->orig_str_avail);
 
 	/* if the host is the same and we have a node_sort_key, preserve the sort */
-	if (rc == 0 && cstat.node_sort[0].res_name != NULL)
+	if (rc == 0 && !cstat.node_sort->empty())
 		return multi_node_sort(v1, v2);
 
 	return rc;

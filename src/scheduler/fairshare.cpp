@@ -492,7 +492,7 @@ update_usage_on_run(resource_resv *resresv)
 	if (!resresv->is_job || resresv->job == NULL)
 		return;
 
-	u = formula_evaluate(conf.fairshare_res, resresv, resresv->resreq);
+	u = formula_evaluate(conf.fairshare_res.c_str(), resresv, resresv->resreq);
 	if (resresv->job->ginfo !=NULL) {
 		gpath = resresv->job->ginfo->gpath;
 		while (gpath != NULL) {

@@ -6100,7 +6100,7 @@ start_exec(job *pjob)
 			}
 			if (pbs_conf.pbs_use_mcast == 1) {
 				/* add each of the tpp streams to the tpp mcast channel */
-				if (tpp_mcast_add_strm(mtfd, np->hn_stream) == -1) {
+				if (tpp_mcast_add_strm(mtfd, np->hn_stream, FALSE) == -1) {
 					tpp_close(np->hn_stream);
 					np->hn_stream = -1;
 					tpp_mcast_close(mtfd);

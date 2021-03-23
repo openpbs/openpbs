@@ -96,9 +96,7 @@
  * 	resolve_indirect_resources()
  * 	update_preemption_on_run()
  * 	read_formula()
- * 	new_status()
  * 	dup_status()
- * 	free_status()
  * 	free_queue_list()
  * 	create_total_counts()
  * 	update_total_counts()
@@ -110,6 +108,7 @@
  * 	append_to_queue_list()
  *
  */
+
 #include <pbs_config.h>
 
 #include <stdio.h>
@@ -229,7 +228,7 @@ query_server(status *pol, int pbs_sd)
 
 	if(query_server_dyn_res(sinfo) == -1) {
 		pbs_statfree(server);
-		sinfo -> fairshare = NULL;
+		sinfo->fstree = NULL;
 		free_server(sinfo);
 		return NULL;
 	}
@@ -237,7 +236,7 @@ query_server(status *pol, int pbs_sd)
 	if (!dflt_sched && (sc_attrs.partition == NULL)) {
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Scheduler does not contain a partition");
 		pbs_statfree(server);
-		sinfo->fairshare = NULL;
+		sinfo->fstree = NULL;
 		free_server(sinfo);
 		return NULL;
 	}
@@ -253,21 +252,21 @@ query_server(status *pol, int pbs_sd)
 	/* get the nodes, if any - NOTE: will set sinfo -> num_nodes */
 	if ((sinfo->nodes = query_nodes(pbs_sd, sinfo)) == NULL) {
 		pbs_statfree(server);
-		sinfo->fairshare = NULL;
+		sinfo->fstree = NULL;
 		free_server(sinfo);
 		pbs_statfree(bs_resvs);
 		return NULL;
 	}
 
 	/* sort the nodes before we filter them down to more useful lists */
-	if (policy->node_sort[0].res_name != NULL)
+	if (!policy->node_sort->empty())
 		qsort(sinfo->nodes, sinfo->num_nodes, sizeof(node_info *),
 			multi_node_sort);
 
 	/* get the queues */
 	if ((sinfo->queues = query_queues(policy, pbs_sd, sinfo)) == NULL) {
 		pbs_statfree(server);
-		sinfo->fairshare = NULL;
+		sinfo->fstree = NULL;
 		free_server(sinfo);
 		pbs_statfree(bs_resvs);
 		return NULL;
@@ -309,7 +308,7 @@ query_server(status *pol, int pbs_sd)
 		for (i = 0; i < sinfo->num_queues; i++) {
 			ret_val = add_queue_to_list(&sinfo->queue_list, sinfo->queues[i]);
 			if (ret_val == 0) {
-				sinfo->fairshare = NULL;
+				sinfo->fstree = NULL;
 				free_server(sinfo);
 				pbs_statfree(bs_resvs);
 				return NULL;
@@ -322,7 +321,7 @@ query_server(status *pol, int pbs_sd)
 	pbs_statfree(bs_resvs);
 
 	if (create_server_arrays(sinfo) == 0) { /* bad stuff happened */
-		sinfo->fairshare = NULL;
+		sinfo->fstree = NULL;
 		free_server(sinfo);
 		return NULL;
 	}
@@ -337,25 +336,26 @@ query_server(status *pol, int pbs_sd)
 
 	/* create res_to_check arrays based on current jobs/resvs */
 	policy->resdef_to_check = collect_resources_from_requests(sinfo->all_resresv);
-	policy->resdef_to_check_no_hostvnode = (resdef **)
-		filter_array((void **) policy->resdef_to_check,
-		no_hostvnode, NULL, NO_FLAGS);
-	policy->resdef_to_check_rassn = (resdef **)
-		filter_array((void **) policy->resdef_to_check,
-		def_rassn, NULL, NO_FLAGS);
-	policy->resdef_to_check_rassn_select = (resdef **)
-		filter_array((void **) policy->resdef_to_check,
-		def_rassn_select, NULL, NO_FLAGS);
+	for (const auto& rd : policy->resdef_to_check) {
+		if (!(rd == getallres(RES_HOST) || rd == getallres(RES_VNODE)))
+			policy->resdef_to_check_no_hostvnode.insert(rd);
+		
+		if (rd->flags & ATR_DFLAG_RASSN)
+			policy->resdef_to_check_rassn.insert(rd);
+
+		if ((rd->flags & ATR_DFLAG_RASSN) && (rd->flags & ATR_DFLAG_CVTSLT))
+			policy->resdef_to_check_rassn_select.insert(rd);
+	}
 
 	sinfo->calendar = create_event_list(sinfo);
 
 	sinfo->running_jobs =
 		resource_resv_filter(sinfo->jobs, sinfo->sc.total, check_run_job,
-		NULL, FILTER_FULL);
+				     NULL, FILTER_FULL);
 	sinfo->exiting_jobs = resource_resv_filter(sinfo->jobs,
-		sinfo->sc.total, check_exit_job, NULL, 0);
-	if (sinfo->running_jobs == NULL || sinfo->exiting_jobs ==NULL) {
-		sinfo->fairshare = NULL;
+						   sinfo->sc.total, check_exit_job, NULL, 0);
+	if (sinfo->running_jobs == NULL || sinfo->exiting_jobs == NULL) {
+		sinfo->fstree = NULL;
 		free_server(sinfo);
 		return NULL;
 	}
@@ -371,14 +371,14 @@ query_server(status *pol, int pbs_sd)
 		/* set the user, group , project counts */
 		for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
 			cts = find_alloc_counts(sinfo->user_counts,
-				sinfo->running_jobs[i]->user);
+						sinfo->running_jobs[i]->user);
 			if (sinfo->user_counts == NULL)
 				sinfo->user_counts = cts;
 
 			update_counts_on_run(cts, sinfo->running_jobs[i]->resreq);
 
 			cts = find_alloc_counts(sinfo->group_counts,
-				sinfo->running_jobs[i]->group);
+						sinfo->running_jobs[i]->group);
 
 			if (sinfo->group_counts == NULL)
 				sinfo->group_counts = cts;
@@ -386,7 +386,7 @@ query_server(status *pol, int pbs_sd)
 			update_counts_on_run(cts, sinfo->running_jobs[i]->resreq);
 
 			cts = find_alloc_counts(sinfo->project_counts,
-				sinfo->running_jobs[i]->project);
+						sinfo->running_jobs[i]->project);
 
 			if (sinfo->project_counts == NULL)
 				sinfo->project_counts = cts;
@@ -399,7 +399,7 @@ query_server(status *pol, int pbs_sd)
 			 */
 			if ((sinfo->running_jobs[i]->job->is_subjob) &&
 			    (associate_array_parent(sinfo->running_jobs[i], sinfo) == 1)) {
-				sinfo->fairshare = NULL;
+				sinfo->fstree = NULL;
 				free_server(sinfo);
 				return NULL;
 			}
@@ -410,14 +410,14 @@ query_server(status *pol, int pbs_sd)
 		for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
 			if ((sinfo->running_jobs[i]->job->is_subjob) &&
 			    (associate_array_parent(sinfo->running_jobs[i], sinfo) == 1)) {
-				sinfo->fairshare = NULL;
+				sinfo->fstree = NULL;
 				free_server(sinfo);
 				return NULL;
 			}
 		}
 	}
 
-	policy->equiv_class_resdef = create_resresv_sets_resdef(policy, sinfo);
+	policy->equiv_class_resdef = create_resresv_sets_resdef(policy);
 	sinfo->equiv_classes = create_resresv_sets(policy, sinfo);
 
 	/* To avoid duplicate accounting of jobs on nodes, we are only interested in
@@ -432,28 +432,27 @@ query_server(status *pol, int pbs_sd)
 
 	collect_resvs_on_nodes(sinfo->nodes, sinfo->resvs, sinfo->num_resvs);
 
-	sinfo->unordered_nodes = static_cast<node_info **>(malloc((sinfo->num_nodes+1) * sizeof(node_info*)));
-	if(sinfo->unordered_nodes == NULL) {
-		sinfo->fairshare = NULL;
+	sinfo->unordered_nodes = static_cast<node_info **>(malloc((sinfo->num_nodes + 1) * sizeof(node_info *)));
+	if (sinfo->unordered_nodes == NULL) {
+		sinfo->fstree = NULL;
 		free_server(sinfo);
 		return NULL;
 	}
 
 	for (i = 0; sinfo->nodes[i] != NULL; i++) {
 		node_info *ninfo = sinfo->nodes[i];
-		ninfo->nodesig = create_resource_signature(ninfo  ->res,
-			policy->resdef_to_check_no_hostvnode, ADD_ALL_BOOL);
+		ninfo->nodesig = create_resource_signature(ninfo->res,
+							   policy->resdef_to_check_no_hostvnode, ADD_ALL_BOOL);
 		ninfo->nodesig_ind = add_str_to_unique_array(&(sinfo->nodesigs),
-			ninfo->nodesig);
+							     ninfo->nodesig);
 
-		if(ninfo->has_ghost_job)
+		if (ninfo->has_ghost_job)
 			create_resource_assn_for_node(ninfo);
 
 		sinfo->nodes[i]->node_ind = i;
 		sinfo->unordered_nodes[i] = ninfo;
 	}
 	sinfo->unordered_nodes[i] = NULL;
-
 
 	generic_sim(sinfo->calendar, TIMED_RUN_EVENT, 0, 0, add_node_events, NULL, NULL);
 
@@ -462,11 +461,11 @@ query_server(status *pol, int pbs_sd)
 	 */
 	create_placement_sets(policy, sinfo);
 	if (!sinfo->node_group_enable && sinfo->node_group_key != NULL &&
-			strcmp(sinfo->node_group_key[0], "msvr_node_group") == 0) {
+	    strcmp(sinfo->node_group_key[0], "msvr_node_group") == 0) {
 		node_partition **np = NULL;
 
 		np = create_node_partitions(policy, sinfo->unassoc_nodes,
-				sinfo->node_group_key, NP_NONE, &sinfo->num_parts);
+					    sinfo->node_group_key, NP_NONE, &sinfo->num_parts);
 
 		/* For each job, we'll need the placement set of nodes which belong to its server
 		 * So, we need to associate psets with their respective server ids
@@ -578,7 +577,7 @@ query_server_info(status *pol, struct batch_status *server)
 			sinfo->node_group_key = break_comma_list(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {	/* Deprecated */
 			sinfo->job_sort_formula = read_formula();
-			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
+			if (policy->sort_by->size() > 1) /* 0 is the formula itself */
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 					"Job sorting formula and job_sort_key are incompatible.  "
 					"The job sorting formula will be used.");
@@ -659,7 +658,7 @@ query_server_info(status *pol, struct batch_status *server)
 	 * copy in the global fairshare tree root.  Be careful to not free it
 	 * at the end of the cycle.
 	 */
-	sinfo->fairshare = conf.fairshare;
+	sinfo->fstree = fstree;
 #ifdef NAS /* localmod 034 */
 	site_set_share_head(sinfo);
 #endif /* localmod 034 */
@@ -688,7 +687,7 @@ query_server_info(status *pol, struct batch_status *server)
 int
 query_server_dyn_res(server_info *sinfo)
 {
-	int i, k;
+	int k;
 	int pipe_err;
 	char res_zero[] = "0";	/* dynamic res failure implies resource <-0 */
 	char buf[256];		/* buffer for reading from pipe */
@@ -696,8 +695,8 @@ query_server_dyn_res(server_info *sinfo)
 	FILE *fp;			/* for popen() for res_assn */
 
 
-	for (i = 0; (i < MAX_SERVER_DYN_RES) && (conf.dynamic_res[i].res != NULL); i++) {
-		res = find_alloc_resource_by_str(sinfo->res, conf.dynamic_res[i].res);
+	for (const auto& dr : conf.dynamic_res) {
+		res = find_alloc_resource_by_str(sinfo->res, dr.res);
 		if (res != NULL) {
 			int ret;
 			fd_set set;
@@ -705,10 +704,6 @@ query_server_dyn_res(server_info *sinfo)
 			pid_t pid;			/* pid of child */
 			int pdes[2];
 			k = 0;
-			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-				int err;
-				char *filename;
-			#endif
 
 			if (sinfo->res == NULL)
 				sinfo->res = res;
@@ -718,12 +713,12 @@ query_server_dyn_res(server_info *sinfo)
 
 			/* Make sure file does not have open permissions */
 			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-				filename = conf.dynamic_res[i].script_name;
-				err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
+				int err;
+				err = tmp_file_sec_user(const_cast<char *>(dr.script_name.c_str()), 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
 				if (err != 0) {
 					log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
 						"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
-						filename, res->name, err);
+						dr.script_name.c_str(), res->name, err);
 					set_resource(res, res_zero, RF_AVAIL);
 					continue;
 				}
@@ -756,7 +751,7 @@ query_server_dyn_res(server_info *sinfo)
 					char *argv[4];
 					argv[0] = const_cast<char *>("/bin/sh");
 					argv[1] = const_cast<char *>("-c");
-					argv[2] = conf.dynamic_res[i].command_line;
+					argv[2] = const_cast<char *>(dr.command_line.c_str());
 					argv[3] = NULL;
 
 					execve("/bin/sh", argv, environ);
@@ -778,10 +773,10 @@ query_server_dyn_res(server_info *sinfo)
 				}
 				if (ret == -1) {
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-					"Select() failed for script %s", conf.dynamic_res[i].command_line);
+					"Select() failed for script %s", dr.command_line.c_str());
 				} else if (ret == 0) {
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-					"Program %s timed out", conf.dynamic_res[i].command_line);
+					"Program %s timed out", dr.command_line.c_str());
 				}
 				if (pid > 0 && ret > 0) {
 					/* Parent; only open if child created and select showed sth to read,
@@ -808,23 +803,23 @@ query_server_dyn_res(server_info *sinfo)
 				}
 				if (set_resource(res, buf, RF_AVAIL) == 0) {
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-						"Script %s returned bad output", conf.dynamic_res[i].command_line);
+						"Script %s returned bad output", dr.command_line.c_str());
 					(void) set_resource(res, res_zero, RF_AVAIL);
 				}
 			} else {
 				if (pipe_err != 0)
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-						"Can't pipe to program %s: %s", conf.dynamic_res[i].command_line, strerror(pipe_err));
+						"Can't pipe to program %s: %s", dr.command_line.c_str(), strerror(pipe_err));
 				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"Setting resource %s to 0", res->name);
 				(void) set_resource(res, res_zero, RF_AVAIL);
 			}
 			if (res->type.is_non_consumable)
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-					"%s = %s", conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL));
+					"%s = %s", dr.command_line.c_str(), res_to_str(res, RF_AVAIL));
 			else
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-					"%s = %s (\"%s\")", conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL), buf);
+					"%s = %s (\"%s\")", dr.command_line.c_str(), res_to_str(res, RF_AVAIL), buf);
 
 			if (pid > 0) {
 				kill(-pid, SIGTERM);
@@ -838,10 +833,6 @@ query_server_dyn_res(server_info *sinfo)
 			}
 		}
 	}
-
-	if (i == MAX_SERVER_DYN_RES) /* reached max and stopped */
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_INFO, "server_dyn_res",
-			"Reached max number of server_dyn_res of %d", MAX_SERVER_DYN_RES);
 
 	return 0;
 }
@@ -901,7 +892,7 @@ find_alloc_resource(schd_resource *resplist, resdef *def)
  * @par MT-Safe:	no
  */
 schd_resource *
-find_alloc_resource_by_str(schd_resource *resplist, char *name)
+find_alloc_resource_by_str(schd_resource *resplist, const char *name)
 {
 	schd_resource *resp;		/* used to search through list of resources */
 	schd_resource *prev = NULL;	/* the previous resources in the list */
@@ -923,6 +914,10 @@ find_alloc_resource_by_str(schd_resource *resplist, char *name)
 	}
 
 	return resp;
+}
+schd_resource *find_alloc_resource_by_str(schd_resource *resplist, const std::string& name)
+{
+	return find_alloc_resource_by_str(resplist, name.c_str());
 }
 
 /**
@@ -952,6 +947,13 @@ find_resource_by_str(schd_resource *reslist, const char *name)
 
 	return resp;
 }
+
+schd_resource *
+find_resource_by_str(schd_resource *reslist, const std::string& name)
+{
+	return find_resource_by_str(reslist, name.c_str());
+}
+
 /**
  * @brief
  * 		find resource by resource definition
@@ -989,7 +991,7 @@ find_resource(schd_resource *reslist, resdef *def)
 static void
 free_server_psets(std::unordered_map<std::string, node_partition *>& spsets)
 {
-	for (auto& spset: spsets) {
+	for (auto& spset : spsets) {
 		free_node_partition(spset.second);
 		spset.second = NULL;
 	}
@@ -1010,7 +1012,7 @@ dup_server_psets(std::unordered_map<std::string, node_partition *>& spsets, serv
 {
 	std::unordered_map<std::string, node_partition *> newpset;
 
-	for (auto& spset: spsets) {
+	for (const auto& spset : spsets) {
 		newpset[spset.first] = dup_node_partition(spset.second, sinfo);
 		if (newpset[spset.first] == NULL) {
 			free_server_psets(newpset);
@@ -1083,9 +1085,9 @@ free_server_info(server_info *sinfo)
 	if (sinfo->calendar != NULL)
 		free_event_list(sinfo->calendar);
 	if (sinfo->policy != NULL)
-		free_status(sinfo->policy);
-	if (sinfo->fairshare != NULL)
-		free_fairshare_head(sinfo->fairshare);
+		delete sinfo->policy;
+	if (sinfo->fstree != NULL)
+		free_fairshare_head(sinfo->fstree);
 	if (sinfo->liminfo != NULL) {
 		lim_free_liminfo(sinfo->liminfo);
 		sinfo->liminfo = NULL;
@@ -1123,6 +1125,9 @@ void
 free_resource_list(schd_resource *reslist)
 {
 	schd_resource *resp, *tmp;
+
+	if (reslist == NULL)
+		return;
 
 	resp = reslist;
 	while (resp != NULL) {
@@ -1236,7 +1241,7 @@ new_server_info(int limallocflag)
 	sinfo->npc_arr = NULL;
 	sinfo->qrun_job = NULL;
 	sinfo->policy = NULL;
-	sinfo->fairshare = NULL;
+	sinfo->fstree = NULL;
 	sinfo->equiv_classes = NULL;
 	sinfo->buckets = NULL;
 	sinfo->unordered_nodes = NULL;
@@ -1428,8 +1433,8 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 		if ((flags & NO_UPDATE_NON_CONSUMABLE) && cur_r2->def->type.is_non_consumable)
 			continue;
 		if ((flags & USE_RESOURCE_LIST)) {
-			if (!resdef_exists_in_array(policy->resdef_to_check, cur_r2->def) &&
-				!cur_r2->type.is_boolean)
+			const auto& rtc = policy->resdef_to_check;
+			if (rtc.find(cur_r2->def) == rtc.end() && !cur_r2->type.is_boolean)
 				continue;
 		}
 
@@ -1711,7 +1716,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 		sinfo->sc.queued--;
 
 		/* sort the nodes before we filter them down to more useful lists */
-		if (cstat.node_sort[0].res_name != NULL && conf.node_sort_unused) {
+		if (!cstat.node_sort->empty() && conf.node_sort_unused) {
 			if (resresv->job->resv != NULL &&
 				resresv->job->resv->resv != NULL) {
 				node_info **resv_nodes;
@@ -2225,9 +2230,9 @@ dup_server_info(server_info *osinfo)
 	if ((nsinfo = new_server_info(0)) == NULL)
 		return NULL;                /* error */
 
-	if (osinfo->fairshare != NULL) {
-		nsinfo->fairshare = dup_fairshare_head(osinfo->fairshare);
-		if (nsinfo->fairshare == NULL) {
+	if (osinfo->fstree != NULL) {
+		nsinfo->fstree = dup_fairshare_head(osinfo->fstree);
+		if (nsinfo->fstree == NULL) {
 			free_server(nsinfo);
 			return NULL;
 		}
@@ -2301,7 +2306,7 @@ dup_server_info(server_info *osinfo)
 		for (i = 0; i < nsinfo->num_queues; i++) {
 			ret_val = add_queue_to_list(&nsinfo->queue_list, nsinfo->queues[i]);
 			if (ret_val == 0) {
-				nsinfo->fairshare = NULL;
+				nsinfo->fstree = NULL;
 				free_server(nsinfo);
 				return NULL;
 			}
@@ -2474,7 +2479,7 @@ dup_resource_list(schd_resource *res)
  * @par MT-Safe:	no
  */
 schd_resource *
-dup_selective_resource_list(schd_resource *res, resdef **deflist, unsigned flags)
+dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef *>& deflist, unsigned flags)
 {
 	schd_resource *pres;
 	schd_resource *nres;
@@ -2484,7 +2489,7 @@ dup_selective_resource_list(schd_resource *res, resdef **deflist, unsigned flags
 
 	for (pres = res; pres != NULL; pres = pres->next) {
 		if (((flags & ADD_ALL_BOOL) && pres->type.is_boolean) ||
-			resdef_exists_in_array(deflist, pres->def)) {
+			deflist.find(pres->def) != deflist.end()) {
 			nres = dup_resource(pres);
 			if (nres == NULL) {
 				free_resource_list(head);
@@ -2625,7 +2630,7 @@ dup_resource(schd_resource *res)
 int
 is_unassoc_node(node_info *ninfo, void *arg)
 {
-	if (ninfo->queue_name == NULL)
+	if (ninfo->queue_name.empty())
 		return 1;
 
 	return 0;
@@ -2701,6 +2706,9 @@ void
 free_counts_list(counts *ctslist)
 {
 	counts *prev, *cur;
+
+	if (ctslist == NULL)
+		return;
 
 	cur = prev = ctslist;
 
@@ -3030,12 +3038,12 @@ update_universe_on_end(status *policy, resource_resv *resresv, const char *job_s
 
 	if (resresv->is_job) {
 		qinfo = resresv->job->queue;
-		if (resresv->job != NULL && resresv->execselect != NULL &&
-		    resresv->execselect->defs != NULL) {
+		if (resresv->job != NULL && resresv->execselect != NULL) {
 			int need_metadata_update = 0;
-			for (i = 0; resresv->execselect->defs[i] != NULL; i++) {
-				if (!resdef_exists_in_array(policy->resdef_to_check, resresv->execselect->defs[i])) {
-					add_resdef_to_array(&(policy->resdef_to_check), resresv->execselect->defs[i]);
+			for (const auto& sdef : resresv->execselect->defs) {
+				const auto &rdc = policy->resdef_to_check;
+				if (rdc.find(sdef) == rdc.end()) {
+					policy->resdef_to_check.insert(sdef);
 					need_metadata_update = 1;
 				}
 			}
@@ -3402,30 +3410,6 @@ read_formula(void)
 
 /**
  * @brief
- * 		new_status - status constructor
- *
- * @return	status*
- * @retval	NULL	: malloc failed
- */
-status *
-new_status(void)
-{
-	status *st;
-
-	st = static_cast<status *>(malloc(sizeof(status)));
-
-	if (st == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-
-	memset(st, 0, sizeof(status));
-
-	return st;
-}
-
-/**
- * @brief
  * 		dup_status - status copy constructor
  *
  * @param[in]	ost	-	status input
@@ -3441,53 +3425,13 @@ dup_status(status *ost)
 	if (ost == NULL)
 		return NULL;
 
-	nst = new_status();
+	nst = new status();
 	if (nst == NULL)
 		return NULL;
 
-	/* structure to structure shallow copy */
 	*nst = *ost;
 
-	/* deep copy what is required */
-	nst->resdef_to_check = copy_resdef_array(ost->resdef_to_check);
-	nst->resdef_to_check_no_hostvnode =
-		copy_resdef_array(ost->resdef_to_check_no_hostvnode);
-	nst->resdef_to_check_rassn = copy_resdef_array(ost->resdef_to_check_rassn);
-	nst->resdef_to_check_rassn_select = copy_resdef_array(ost->resdef_to_check_rassn_select);
-	nst->resdef_to_check_noncons = copy_resdef_array(ost->resdef_to_check_noncons);
-	nst->equiv_class_resdef = copy_resdef_array(ost->equiv_class_resdef);
-	nst->rel_on_susp = copy_resdef_array(ost->rel_on_susp);
-
-
 	return nst;
-}
-
-/**
- * @brief
- * 		free_status - status destructor
- *
- * @param[in,out]	st	-	status input
- */
-void
-free_status(status *st)
-{
-	if (st == NULL)
-		return;
-	if (st->resdef_to_check != NULL)
-		free(st->resdef_to_check);
-	if (st->resdef_to_check_no_hostvnode != NULL)
-		free(st->resdef_to_check_no_hostvnode);
-	if (st->resdef_to_check_rassn != NULL)
-		free(st->resdef_to_check_rassn);
-	if (st->resdef_to_check_rassn_select != NULL)
-		free(st->resdef_to_check_rassn_select);
-	if (st->resdef_to_check_noncons != NULL)
-		free(st->resdef_to_check_noncons);
-	if (st->rel_on_susp != NULL)
-		free(st->rel_on_susp);
-	if (st->equiv_class_resdef != NULL)
-		free(st->equiv_class_resdef);
-	free(st);
 }
 
 /**

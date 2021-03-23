@@ -373,7 +373,7 @@ tcp_send_auth_req(int sock, unsigned int port, char *user, char *auth_method, ch
 		return -1;
 	}
 
-	reply = PBSD_rdrpy_sock(sock, &rc);
+	reply = PBSD_rdrpy_sock(sock, &rc, PROT_TCP);
 	if (reply == NULL) {
 		pbs_errno = PBSE_SYSTEM;
 		return -1;

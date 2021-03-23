@@ -103,10 +103,9 @@ encode_DIS_attrl(int sock, struct attrl *pattrl)
 	unsigned int name_len;
 	struct attrl *ps;
 	int rc;
-
+	char *value;
 
 	/* count how many */
-
 	for (ps = pattrl; ps; ps = ps->next) {
 		++ct;
 	}
@@ -116,7 +115,8 @@ encode_DIS_attrl(int sock, struct attrl *pattrl)
 
 	for (ps = pattrl; ps; ps = ps->next) {
 		/* length of three strings */
-		name_len = (int)strlen(ps->name) + (int)strlen(ps->value) + 2;
+		value = ps->value ? ps->value : "";
+		name_len = (int)strlen(ps->name) + (int)strlen(value) + 2;
 		if (ps->resource)
 			name_len += strlen(ps->resource) + 1;
 
@@ -133,9 +133,10 @@ encode_DIS_attrl(int sock, struct attrl *pattrl)
 			if ((rc = diswui(sock, 0)) != 0) /* no resource name */
 				break;
 		}
-		if ((rc = diswst(sock, ps->value))	||
+		if ((rc = diswst(sock, value))	||
 			(rc = diswui(sock, (unsigned int)SET)))
 				break;
 	}
+
 	return rc;
 }

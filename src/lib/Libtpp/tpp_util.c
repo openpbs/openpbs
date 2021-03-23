@@ -66,6 +66,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <stdarg.h>
+#include <ctype.h>
 #include "pbs_idx.h"
 #include "pbs_error.h"
 #include "tpp_internal.h"
@@ -80,6 +81,10 @@
 /*
  *	Global Variables
  */
+
+#ifndef WIN32
+pthread_mutex_t tpp_nslookup_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 /* TLS data for each TPP thread */
 static pthread_key_t tpp_key_tls;
@@ -241,7 +246,7 @@ tpp_log(int level, const char *routine, const char *fmt, ...)
 int
 set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *nodenames, int port, char *r)
 {
-	int i;
+	int i, end;
 	int num_routers = 0;
 	char *routers = NULL;
 	char *s, *t, *ctx;
@@ -436,41 +441,32 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 			p++;
 		}
 
-		tpp_conf->routers = malloc(sizeof(char *) * (num_routers + 1));
+		tpp_conf->routers = calloc(num_routers + 1, sizeof(char *));
 		if (!tpp_conf->routers) {
 			tpp_log(LOG_CRIT, __func__, "Out of memory allocating routers array");
 			return -1;
 		}
 
-		p = routers;
-
-		/* trim leading spaces, if any */
-		while (*p && (*p == ' ' || *p == '\t'))
-			p++;
-
-		q = p;
-		i = 0;
-		while (*p) {
-			if (*p == ',') {
+		q = p = routers;
+		i = end = 0;
+		while (!end) {
+			if (!*p)
+				end = 1;
+			if ((*p && *p == ',') || end) {
 				*p = 0;
-				tpp_conf->routers[i++] = strdup(q);
-
-				p++; /* go past the null char and trim any spaces */
-				while (*p && (*p == ' ' || *p == '\t'))
-					p++;
-
-				q = p;
+				while (isspace(*q))
+					q++;
+				nm = mk_hostname(q, TPP_DEF_ROUTER_PORT);
+				if (!nm) {
+					tpp_log(LOG_CRIT, NULL, "Failed to make router name");
+					return -1;
+				}
+				tpp_conf->routers[i++] = nm;
+				q = p + 1;
 			}
-			p++;
+			if (!end)
+				p++;
 		}
-
-		nm = mk_hostname(q, TPP_DEF_ROUTER_PORT);
-		if (!nm) {
-			tpp_log(LOG_CRIT, NULL, "Failed to make router name");
-			return -1;
-		}
-		tpp_conf->routers[i++] = nm;
-		tpp_conf->routers[i++] = NULL;
 
 	} else {
 		tpp_conf->routers = NULL;

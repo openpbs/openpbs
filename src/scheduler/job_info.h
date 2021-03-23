@@ -54,7 +54,7 @@ resource_resv *query_job(struct batch_status *job, server_info *sinfo, schd_erro
 void query_jobs_chunk(th_data_query_jinfo *data);
 
 /* create an array of jobs for a particular queue */
-resource_resv **query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs, char *queue_name);
+resource_resv **query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs, const std::string& queue_name);
 
 
 /*
@@ -247,7 +247,7 @@ queue_subjob(resource_resv *array, server_info *sinfo,
  *		NOTE: currently done through embedded python interpreter
  */
 
-sch_resource_t formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq);
+sch_resource_t formula_evaluate(const char *formula, resource_resv *resresv, resource_req *resreq);
 
 /*
  *
@@ -377,7 +377,7 @@ int find_resresv_set(status *policy, resresv_set **rsets, char *user, char *grou
 int find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *resresv);
 
 /* create the array of resdef's to use to create resresv->req*/
-resdef **create_resresv_sets_resdef(status *policy, server_info *sinfo);
+std::unordered_set<resdef *> create_resresv_sets_resdef(status *policy);
 
 /* Create an array of resresv_sets based on sinfo*/
 resresv_set **create_resresv_sets(status *policy, server_info *sinfo);
@@ -387,12 +387,12 @@ resresv_set **create_resresv_sets(status *policy, server_info *sinfo);
  *  The string created will be similar to how exec_vnode is presented
  *  example: (node1:ncpus=8)+(node2:ncpus=8)
  */
-void create_res_released( status *policy, resource_resv *pjob);
+void create_res_released(status *policy, resource_resv *pjob);
 
 /*
  *This function populates resreleased job structure for a particular job.
  */
-nspec **create_res_released_array( status *policy, resource_resv *resresv);
+nspec **create_res_released_array(status *policy, resource_resv *resresv);
 
 /*
  * @brief create a resource_rel array for a job by accumulating all of the RASSN

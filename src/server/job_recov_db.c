@@ -205,7 +205,7 @@ db_to_job(job *pjob,  pbs_db_job_info_t *dbjob)
 	strcpy(pjob->ji_extended.ji_ext.ji_jid, dbjob->ji_jid);
 	pjob->ji_extended.ji_ext.ji_credtype = dbjob->ji_credtype;
 
-	if ((decode_attr_db(pjob, &dbjob->db_attr_list, job_attr_idx, job_attr_def, pjob->ji_wattr, JOB_ATR_LAST, JOB_ATR_UNKN)) != 0)
+	if ((decode_attr_db(pjob, &dbjob->db_attr_list.attrs, job_attr_idx, job_attr_def, pjob->ji_wattr, JOB_ATR_LAST, JOB_ATR_UNKN)) != 0)
 		return -1;
 
 	compare_obj_hash(&pjob->ji_qs, sizeof(pjob->ji_qs), pjob->qs_hash);
@@ -415,7 +415,7 @@ db_to_resv(resc_resv *presv, pbs_db_resv_info_t *dbresv)
 	presv->ri_qs.ri_svrflags = dbresv->ri_svrflags;
 	presv->ri_qs.ri_tactive = dbresv->ri_tactive;
 
-	if ((decode_attr_db(presv, &dbresv->db_attr_list, resv_attr_idx, resv_attr_def, presv->ri_wattr, RESV_ATR_LAST, RESV_ATR_UNKN)) != 0)
+	if ((decode_attr_db(presv, &dbresv->db_attr_list.attrs, resv_attr_idx, resv_attr_def, presv->ri_wattr, RESV_ATR_LAST, RESV_ATR_UNKN)) != 0)
 		return -1;
 
 	compare_obj_hash(&presv->ri_qs, sizeof(presv->ri_qs), presv->qs_hash);
