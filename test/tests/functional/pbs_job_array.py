@@ -165,12 +165,26 @@ e.accept()
         self.server.expect(JOB, {'job_state': 'X'},
                            j.create_subjob_id(j_id, 1), max_attempts=1)
 
-        # 6. subjob 2 should be R
-        self.server.expect(JOB, {'job_state': 'R'}, subjid_2, max_attempts=1)
+        subjob2_finished = False
+        # 6. subjob 2 should be in R or X state
+        try:
+            self.server.expect(JOB, {'job_state': 'R'}, subjid_2,
+                               max_attempts=1)
+        except PtlExpectError:
+            self.server.expect(JOB, {'job_state': 'X'}, subjid_2,
+                               max_attempts=1)
+            subjob2_finished = True
 
-        # 7. subjob 3 should be Q
-        self.server.expect(JOB, {'job_state': 'Q'},
-                           j.create_subjob_id(j_id, 3), max_attempts=1)
+        subjid_3 = j.create_subjob_id(j_id, 3)
+        # 7. subjob 3 should be Q if subjob2 is in R state
+        if not subjob2_finished:
+            self.server.expect(JOB, {'job_state': 'Q'}, subjid_3,
+                               max_attempts=1)
+        else:
+            try:
+                self.server.expect(JOB, {'job_state': 'R'}, subjid_3)
+            except PtlExpectError:
+                self.server.expect(JOB, {'job_state': 'X'}, subjid_3)
 
     def test_running_subjob_survive_restart_with_history(self):
         """
