@@ -8030,6 +8030,7 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 
 			break;
 		case HOOK_EVENT_RESVSUB:
+		case HOOK_EVENT_MODIFYRESV:
 			if (!PyObject_IsInstance(py_owner,
 				pbs_python_types_table[PP_RESV_IDX].t_class) &&
 				!PyObject_IsInstance(py_owner,
