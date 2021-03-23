@@ -72,7 +72,6 @@ char  pbs_recov_filename[MAXPATHLEN+1];
 /* data items global to functions in this file */
 
 #define PKBUFSIZE 4096
-#define ENDATTRIBUTES -711
 
 char   pk_buffer[PKBUFSIZE];	/* used to do buffered output */
 static int     pkbfds = -2;	/* descriptor to use for saves */

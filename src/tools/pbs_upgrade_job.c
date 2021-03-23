@@ -227,7 +227,10 @@ typedef struct taskfix_PRE19
 } taskfix_PRE19;
 
 /* Create a global buffer for reading and writing data. */
-char buf[4096];
+#define BUFSZ 4096
+char buf[BUFSZ];
+
+svrattrl *read_all_attrs_from_jbfile(int fd, char **state, char **substate);
 
 /**
  * @brief
@@ -316,7 +319,7 @@ check_job_file_exit:
  * @retval	v19 converted jobfix
  */
 jobfix_19_20
-convert_pre18_to_19(jobfix_PRE19 old_jobfix_pre19)
+convert_pre18jf_to_19(jobfix_PRE19 old_jobfix_pre19)
 {
 	jobfix_19_20 jobfix_19_20;
 
@@ -346,20 +349,20 @@ convert_pre18_to_19(jobfix_PRE19 old_jobfix_pre19)
  * @retval	v19 converted jobfix
  */
 struct jobfix
-convert_19_to_21(jobfix_19_20 jobfix_19_20)
+convert_19jf_to_21(jobfix_19_20 old_jf)
 {
 	struct jobfix jf;
 
 	memset(&jf, 0, sizeof(jf));
 	jf.ji_jsversion = JSVERSION;
-	jf.ji_svrflags = jobfix_19_20.ji_svrflags;
-	jf.ji_stime = jobfix_19_20.ji_stime;
-	snprintf(jf.ji_jobid, sizeof(jf.ji_jobid), "%s", jobfix_19_20.ji_jobid);
-	snprintf(jf.ji_fileprefix, sizeof(jf.ji_fileprefix), "%s", jobfix_19_20.ji_fileprefix);
-	snprintf(jf.ji_queue, sizeof(jf.ji_queue), "%s", jobfix_19_20.ji_queue);
-	snprintf(jf.ji_destin, sizeof(jf.ji_destin), "%s", jobfix_19_20.ji_destin);
-	jf.ji_un_type = jobfix_19_20.ji_un_type;
-	memcpy(&jf.ji_un, &jobfix_19_20.ji_un, sizeof(jf.ji_un));
+	jf.ji_svrflags = old_jf.ji_svrflags;
+	jf.ji_stime = old_jf.ji_stime;
+	snprintf(jf.ji_jobid, sizeof(jf.ji_jobid), "%s", old_jf.ji_jobid);
+	snprintf(jf.ji_fileprefix, sizeof(jf.ji_fileprefix), "%s", old_jf.ji_fileprefix);
+	snprintf(jf.ji_queue, sizeof(jf.ji_queue), "%s", old_jf.ji_queue);
+	snprintf(jf.ji_destin, sizeof(jf.ji_destin), "%s", old_jf.ji_destin);
+	jf.ji_un_type = old_jf.ji_un_type;
+	memcpy(&jf.ji_un, &old_jf.ji_un, sizeof(jf.ji_un));
 
 	return jf;
 }
@@ -409,6 +412,11 @@ upgrade_job_file(int fd, int ver)
 	job new_job;
 	errno = 0;
 	int len;
+	svrattrl *pal = NULL;
+	char statechar;
+	svrattrl *pali;
+	char statebuf[2];
+	char ssbuf[5];
 
 	/* The following code has been modeled after job_recov_fs() */
 
@@ -426,7 +434,7 @@ upgrade_job_file(int fd, int ver)
 			return 1;
 		}
 
-		qs_19_20 = convert_pre18_to_19(old_jobfix_pre19);
+		qs_19_20 = convert_pre18jf_to_19(old_jobfix_pre19);
 	} else {
 		/* Read in the 19_20 jobfix structure */
 		memset(&qs_19_20, 0, sizeof(qs_19_20));
@@ -442,7 +450,7 @@ upgrade_job_file(int fd, int ver)
 		}
 	}
 	memset(&new_job, 0, sizeof(new_job));
-	new_job.ji_qs = convert_19_to_21(qs_19_20);
+	new_job.ji_qs = convert_19jf_to_21(qs_19_20);
 
 	/* Convert old extended data to new */
 	memset(&old_ji_extended, 0, sizeof(old_ji_extended));
@@ -457,25 +465,57 @@ upgrade_job_file(int fd, int ver)
 	}
 	new_job.ji_extended = convert_19ext_to_21(old_ji_extended);
 
+	/* previous versions may not have updated values of state and substate in the attribute list
+	 * since we now rely on these attributes instead of the quick save area, it's important
+	 * to make sure that state and substate attributes are set correctly */
+	statechar = state_int2char(qs_19_20.ji_state);
+	if (statechar != JOB_STATE_LTR_UNKNOWN) {
+		bool stateset = false;
+		bool substateset = false;
+
+		snprintf(statebuf, sizeof(statebuf), "%c", statechar);
+		snprintf(ssbuf, sizeof(ssbuf), "%d", qs_19_20.ji_substate);
+		pal = read_all_attrs_from_jbfile(fd, NULL, NULL);
+		pali = pal;
+		while (pali != NULL) {
+			if (strcmp(pali->al_name, ATTR_state) == 0) {
+				pali->al_value = strdup(statebuf);
+				pali->al_valln = strlen(statebuf) + 1;
+				pali->al_tsize = sizeof(svrattrl) + pali->al_nameln + pali->al_valln;
+				stateset = true;
+				if (substateset)
+					break;
+			}
+			else if (strcmp(pali->al_name, ATTR_substate) == 0) {
+				pali->al_value = strdup(ssbuf);
+				pali->al_valln = strlen(ssbuf) + 1;
+				pali->al_tsize = sizeof(svrattrl) + pali->al_nameln + pali->al_valln;
+				substateset = true;
+				if (stateset)
+					break;
+			}
+			if (pali->al_link.ll_next == NULL)
+				break;
+			pali = GET_NEXT(pali->al_link);
+		}
+	}
+
 	/* Open a temporary file to stage data */
 	tmp = tmpfile();
 	if (!tmp) {
-		fprintf(stderr, "Failed to open temporary file [%s]\n",
-				errno ? strerror(errno) : "No error");
+		fprintf(stderr, "Failed to open temporary file [%s]\n", errno ? strerror(errno) : "No error");
 		return 1;
 	}
 	tmpfd = fileno(tmp);
 	if (tmpfd < 0) {
-		fprintf(stderr, "Failed to find temporary file descriptor [%s]\n",
-				errno ? strerror(errno) : "No error");
+		fprintf(stderr, "Failed to find temporary file descriptor [%s]\n", errno ? strerror(errno) : "No error");
 		return 1;
 	}
 
 	/* Write the new jobfix structure to the output file */
 	len = write(tmpfd, &new_job.ji_qs, sizeof(new_job.ji_qs));
 	if (len != sizeof(new_job.ji_qs)) {
-		fprintf(stderr, "Failed to write jobfix to output file [%s]\n",
-				errno ? strerror(errno) : "No error");
+		fprintf(stderr, "Failed to write jobfix to output file [%s]\n", errno ? strerror(errno) : "No error");
 		return 1;
 	}
 
@@ -487,20 +527,46 @@ upgrade_job_file(int fd, int ver)
 		return 1;
 	}
 
+	/* Write the job attribute list to the output file */
+	pali = pal;
+	while (pali != NULL) {	/* Modeled after save_struct() */
+		int copysize;
+		int objsize;
+		char *pobj;
+
+		objsize = pali->al_tsize;
+		pobj = (char *) pali;
+		while (objsize > 0) {
+			if (objsize > BUFSZ)
+				copysize = BUFSZ;
+			else
+				copysize = objsize;
+			memcpy(buf, pobj, copysize);
+			len = write(tmpfd, buf, copysize);
+			if (len < 0) {
+				fprintf(stderr, "Failed to write output file [%s]\n", errno ? strerror(errno) : "No error");
+				return 1;
+			}
+			objsize -= copysize;
+			pobj += copysize;
+		}
+		if (pali->al_link.ll_next == NULL)
+			break;
+		pali = GET_NEXT(pali->al_link);
+	}
+
 	/* Read the rest of the input and write it to the temporary file */
 	do {
-		len = read(fd, buf, sizeof(buf));
+		len = read(fd, buf, BUFSZ);
 		if (len < 0) {
-			fprintf(stderr, "Failed to read input file [%s]\n",
-					errno ? strerror(errno) : "No error");
+			fprintf(stderr, "Failed to read input file [%s]\n", errno ? strerror(errno) : "No error");
 			return 1;
 		}
 		if (len < 1)
 			break;
 		len = write(tmpfd, buf, len);
 		if (len < 0) {
-			fprintf(stderr, "Failed to write output file [%s]\n",
-					errno ? strerror(errno) : "No error");
+			fprintf(stderr, "Failed to write output file [%s]\n", errno ? strerror(errno) : "No error");
 			return 1;
 		}
 	} while (len > 0);
@@ -508,8 +574,7 @@ upgrade_job_file(int fd, int ver)
 	/* Reset the file descriptors to zero */
 	pos = lseek(fd, 0, SEEK_SET);
 	if (pos != 0) {
-		fprintf(stderr, "Failed to reset job file position [%s]\n",
-				errno ? strerror(errno) : "No error");
+		fprintf(stderr, "Failed to reset job file position [%s]\n", errno ? strerror(errno) : "No error");
 		return 1;
 	}
 	pos = lseek(tmpfd, 0, SEEK_SET);
@@ -521,26 +586,23 @@ upgrade_job_file(int fd, int ver)
 
 	/* Copy the data from the temporary file back to the original */
 	do {
-		len = read(tmpfd, buf, sizeof(buf));
+		len = read(tmpfd, buf, BUFSZ);
 		if (len < 0) {
-			fprintf(stderr, "Failed to read temporary file [%s]\n",
-					errno ? strerror(errno) : "No error");
+			fprintf(stderr, "Failed to read temporary file [%s]\n", errno ? strerror(errno) : "No error");
 			return 1;
 		}
 		if (len < 1)
 			break;
 		len = write(fd, buf, len);
 		if (len < 0) {
-			fprintf(stderr, "Failed to write job file [%s]\n",
-					errno ? strerror(errno) : "No error");
+			fprintf(stderr, "Failed to write job file [%s]\n", errno ? strerror(errno) : "No error");
 			return 1;
 		}
 	} while (len > 0);
 
 	ret = fclose(tmp);
 	if (ret != 0) {
-		fprintf(stderr, "Failed to close temporary file [%s]\n",
-				errno ? strerror(errno) : "No error");
+		fprintf(stderr, "Failed to close temporary file [%s]\n", errno ? strerror(errno) : "No error");
 		return 1;
 	}
 	return 0;
