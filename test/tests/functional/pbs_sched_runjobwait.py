@@ -73,7 +73,7 @@ class TestSchedJobRunWait(TestFunctional):
             a = {'resources_available.ncpus': 1, 'partition': pname}
             prefix = 'vnode' + str(i)
             nname = prefix + "[0]"
-            self.mom.create_vnodes(prefix, a, 1, delall=False,
+            self.mom.create_vnodes(a, 1, delall=False,
                                    additive=True, vname=nname)
         return sc_quenames
 
@@ -106,7 +106,16 @@ class TestSchedJobRunWait(TestFunctional):
         # Setting job_run_wait to 'none' should just delete TP
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'job_run_wait': "none"}, id="default")
-        self.server.expect(SCHED, 'throughput_mode', op=UNSET, id="default")
+        qmgr_path = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                                 'qmgr')
+        qmgr_cmd = [qmgr_path, "-c", "\'print sched throughput_mode\'"]
+        ret = self.du.run_cmd(self.server.hostname,
+                              cmd=qmgr_cmd, as_script=True)
+        self.assertEqual(ret['rc'], 0)
+        self.logger.info(ret['out'])
+        for l in ret['out']:
+            self.assertNotIn('throughput_mode', l,
+                             'throughput_mode displayed when not expected')
 
         # Setting JRW to runjob/execjob should set TP correctly
         self.server.manager(MGR_CMD_SET, SCHED,
@@ -300,13 +309,13 @@ pbs.event().accept()
 
         self.server.manager(MGR_CMD_SET, SCHED, {'throughput_mode': "False"},
                             id="default")
+        t1 = time.time()
         jid = self.server.submit(Job())
-        t = time.time()
         self.scheduler.run_scheduling_cycle()
         self.server.expect(JOB, {"job_state": "R"}, id=jid)
 
         # Check that server received PBS_BATCH_RunJob request
-        self.server.log_match("Type 15 request received", starttime=t)
+        self.server.log_match("Type 15 request received", starttime=t1)
 
         hook_txt = """
 import pbs
@@ -320,13 +329,13 @@ pbs.event().accept()
 
         self.server.manager(MGR_CMD_SET, SCHED, {'throughput_mode': "True"},
                             id="default")
+        t2 = time.time()
         jid = self.server.submit(Job())
-        t = time.time()
         self.scheduler.run_scheduling_cycle()
         self.server.expect(JOB, {"job_state": "R"}, id=jid)
 
         # Check that server received PBS_BATCH_AsynJob_ack request
-        self.server.log_match("Type 97 request received", starttime=t)
+        self.server.log_match("Type 97 request received", starttime=t2)
 
     def test_runhook_reject_comment_sched(self):
         """
