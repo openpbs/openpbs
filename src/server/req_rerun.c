@@ -151,11 +151,12 @@ force_reque(job *pjob)
 
 	/* Allocate space for the endjob hook event params */
 	preq = alloc_br(PBS_BATCH_EndJob);
-	(preq->rq_ind.rq_end).rq_pjob = pjob;
 
 	if (preq == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "rq_endjob alloc failed");
 	} else {
+		(preq->rq_ind.rq_end).rq_pjob = pjob;
+
 		/*
 		 * Call process_hooks
 	 	 */
