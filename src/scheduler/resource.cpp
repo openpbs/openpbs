@@ -379,6 +379,9 @@ update_resource_defs(int pbs_sd)
 		}
 	}
 
+	for (auto& d: allres)
+		delete d.second;
+
 	allres = tmpres;
 
 	consres.clear();

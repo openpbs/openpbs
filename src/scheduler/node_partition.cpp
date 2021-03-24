@@ -404,7 +404,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 	int node_i;		/* index into nodes array */
 	int np_i;		/* index into node partition array we are creating */
 
-	schd_resource *unset_res = NULL;
+	static schd_resource *unset_res = NULL;
 
 	resdef *def;
 
