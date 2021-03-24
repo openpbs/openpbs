@@ -116,7 +116,7 @@ query_resources(int pbs_sd)
 	}
 
 	for (cur_bs = bs; cur_bs != NULL; cur_bs = cur_bs->next) {
-		int flags;
+		int flags = NO_FLAGS;
 		resource_type rtype;
 		char *endp;
 		resdef *def;
