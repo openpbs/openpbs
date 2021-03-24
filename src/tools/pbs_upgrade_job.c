@@ -415,8 +415,10 @@ upgrade_job_file(int fd, int ver)
 	svrattrl *pal = NULL;
 	char statechar;
 	svrattrl *pali;
+	svrattrl dummy;
 	char statebuf[2];
 	char ssbuf[5];
+	char *charstrm;
 
 	/* The following code has been modeled after job_recov_fs() */
 
@@ -479,16 +481,18 @@ upgrade_job_file(int fd, int ver)
 		pali = pal;
 		while (pali != NULL) {
 			if (strcmp(pali->al_name, ATTR_state) == 0) {
-				pali->al_value = strdup(statebuf);
 				pali->al_valln = strlen(statebuf) + 1;
+				pali->al_value = pali->al_name + pali->al_nameln + pali->al_rescln;
+				strcpy(pali->al_value, statebuf);
 				pali->al_tsize = sizeof(svrattrl) + pali->al_nameln + pali->al_valln;
 				stateset = true;
 				if (substateset)
 					break;
 			}
 			else if (strcmp(pali->al_name, ATTR_substate) == 0) {
-				pali->al_value = strdup(ssbuf);
 				pali->al_valln = strlen(ssbuf) + 1;
+				pali->al_value = pali->al_name + pali->al_nameln + pali->al_rescln;
+				strcpy(pali->al_value, ssbuf);
 				pali->al_tsize = sizeof(svrattrl) + pali->al_nameln + pali->al_valln;
 				substateset = true;
 				if (stateset)
@@ -532,27 +536,36 @@ upgrade_job_file(int fd, int ver)
 	while (pali != NULL) {	/* Modeled after save_struct() */
 		int copysize;
 		int objsize;
-		char *pobj;
 
 		objsize = pali->al_tsize;
-		pobj = (char *) pali;
+		charstrm = (char *) pali;
 		while (objsize > 0) {
 			if (objsize > BUFSZ)
 				copysize = BUFSZ;
 			else
 				copysize = objsize;
-			memcpy(buf, pobj, copysize);
+			memcpy(buf, charstrm, copysize);
 			len = write(tmpfd, buf, copysize);
 			if (len < 0) {
 				fprintf(stderr, "Failed to write output file [%s]\n", errno ? strerror(errno) : "No error");
 				return 1;
 			}
 			objsize -= copysize;
-			pobj += copysize;
+			charstrm += copysize;
 		}
 		if (pali->al_link.ll_next == NULL)
 			break;
 		pali = GET_NEXT(pali->al_link);
+	}
+
+	/* Write a dummy attribute to indicate the end of attribute list, refer to save_attr_fs */
+	dummy.al_tsize = ENDATTRIBUTES;
+	charstrm = (char *) &dummy;
+	memcpy(buf, charstrm, sizeof(dummy));
+	len = write(tmpfd, buf, sizeof(dummy));
+	if (len < 0) {
+		fprintf(stderr, "Failed to write dummy to output file [%s]\n", errno ? strerror(errno) : "No error");
+		return 1;
 	}
 
 	/* Read the rest of the input and write it to the temporary file */
@@ -580,6 +593,13 @@ upgrade_job_file(int fd, int ver)
 	pos = lseek(tmpfd, 0, SEEK_SET);
 	if (pos != 0) {
 		fprintf(stderr, "Failed to reset temporary file position [%s]\n",
+				errno ? strerror(errno) : "No error");
+		return 1;
+	}
+
+	/* truncate the original file before writing new contents */
+	if (ftruncate(fd, 0) != 0) {
+		fprintf(stderr, "Failed to truncate the job file [%s]\n",
 				errno ? strerror(errno) : "No error");
 		return 1;
 	}
