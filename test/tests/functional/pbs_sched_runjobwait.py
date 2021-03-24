@@ -106,16 +106,9 @@ class TestSchedJobRunWait(TestFunctional):
         # Setting job_run_wait to 'none' should just delete TP
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'job_run_wait': "none"}, id="default")
-        qmgr_path = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
-                                 'qmgr')
-        qmgr_cmd = [qmgr_path, "-c", "\'print sched throughput_mode\'"]
-        ret = self.du.run_cmd(self.server.hostname,
-                              cmd=qmgr_cmd, as_script=True)
-        self.assertEqual(ret['rc'], 0)
-        self.logger.info(ret['out'])
-        for l in ret['out']:
-            self.assertNotIn('throughput_mode', l,
-                             'throughput_mode displayed when not expected')
+        rt = self.server.status(SCHED)
+        self.assertNotIn('throughput_mode', rt[0].keys(),
+                         'throughput_mode displayed when not expected')
 
         # Setting JRW to runjob/execjob should set TP correctly
         self.server.manager(MGR_CMD_SET, SCHED,
