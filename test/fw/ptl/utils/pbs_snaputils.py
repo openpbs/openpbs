@@ -767,13 +767,13 @@ class _PBSSnapUtils(object):
             # Job information
             value = (QSTAT_F_PATH, [QSTAT_CMD, "-f"])
             self.job_info[QSTAT_F_OUT] = value
+            value = (QSTAT_TF_PATH, [QSTAT_CMD, "-tf"])
+            self.job_info[QSTAT_TF_OUT] = value
             if not self.basic:
                 value = (QSTAT_PATH, [QSTAT_CMD])
                 self.job_info[QSTAT_OUT] = value
                 value = (QSTAT_T_PATH, [QSTAT_CMD, "-t"])
                 self.job_info[QSTAT_T_OUT] = value
-                value = (QSTAT_TF_PATH, [QSTAT_CMD, "-tf"])
-                self.job_info[QSTAT_TF_OUT] = value
                 value = (QSTAT_X_PATH, [QSTAT_CMD, "-x"])
                 self.job_info[QSTAT_X_OUT] = value
                 value = (QSTAT_XF_PATH, [QSTAT_CMD, "-xf"])
