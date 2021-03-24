@@ -2921,7 +2921,7 @@ job_no_args:
 
 				if (conn <= 0) {
 					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n",
-						pbs_server, pbs_errno);
+						def_server, pbs_errno);
 #ifdef NAS /* localmod 071 */
 					(void)tcl_stat(error, NULL, tcl_opt);
 #else
@@ -3106,7 +3106,7 @@ job_no_args:
 que_no_args:
 				conn = cnt2server(server_out);
 				if (conn <= 0) {
-					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n", pbs_server, pbs_errno);
+					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n", def_server, pbs_errno);
 #ifdef NAS /* localmod 071 */
 					(void)tcl_stat(error, NULL, tcl_opt);
 #else
@@ -3154,7 +3154,7 @@ svr_no_args:
 				conn = cnt2server(server_out);
 				if (conn <= 0) {
 					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n",
-						pbs_server, pbs_errno);
+						def_server, pbs_errno);
 #ifdef NAS /* localmod 071 */
 					(void)tcl_stat(error, NULL, tcl_opt);
 #else
