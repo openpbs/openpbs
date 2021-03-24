@@ -161,9 +161,9 @@ sleep 5
         cmd = [self.qstat_cmd, '-xf', jid]
         ret = self.du.run_cmd(self.server.hostname, cmd=cmd)
         if '\t' in chk_var:
-            job_str = ''.join(ret['out']).replace('\t\t','\t')
+            job_str = ''.join(ret['out']).replace('\t\t', '\t')
         else:
-            job_str = ''.join(ret['out']).replace('\t','')
+            job_str = ''.join(ret['out']).replace('\t', '')
         self.assertIn(chk_var, job_str)
         self.logger.info('qstat -xf output has: %s' % chk_var)
 
