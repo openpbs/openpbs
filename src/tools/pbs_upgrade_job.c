@@ -374,8 +374,8 @@ convert_19ext_to_21(union jobextend_19_20 old_extend)
 	union jobextend je;
 
 	memset(&je, 0, sizeof(je));
-	snprintf(je.fill, sizeof(je.fill), old_extend.fill);
-	snprintf(je.ji_ext.ji_jid, sizeof(je.ji_ext.ji_jid), old_extend.ji_ext.ji_4jid);
+	snprintf(je.fill, sizeof(je.fill), "%s", old_extend.fill);
+	snprintf(je.ji_ext.ji_jid, sizeof(je.ji_ext.ji_jid), "%s", old_extend.ji_ext.ji_4jid);
 	je.ji_ext.ji_credtype = old_extend.ji_ext.ji_credtype;
 #ifdef PBS_MOM
 	je.ji_ext.ji_nodeidx = old_extend.ji_ext.ji_nodeidx;
