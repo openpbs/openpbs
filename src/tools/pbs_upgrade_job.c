@@ -90,6 +90,7 @@
 /* From pbs_ifl.h */
 #define PBS_MAXSEQNUM_PRE19	7
 #define PBS_MAXSVRJOBID_PRE19	(PBS_MAXSEQNUM_PRE19 - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2)
+#define PBS_MAXSVRJOBID_19_20	(PBS_MAXSEQNUM - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2)
 
 /*
  * Replicate the jobfix structure as it was defined in 19.x and 20.x versions
@@ -105,10 +106,10 @@ typedef struct jobfix_19_20 {
 	time_t ji_stime;    /* time job started execution */
 	time_t ji_endtBdry; /* estimate upper bound on end time */
 
-	char ji_jobid[PBS_MAXSVRJOBID + 1];   /* job identifier */
-	char ji_fileprefix[PBS_JOBBASE + 1];  /* no longer used */
-	char ji_queue[PBS_MAXQUEUENAME + 1];  /* name of current queue */
-	char ji_destin[PBS_MAXROUTEDEST + 1]; /* dest from qmove/route */
+	char ji_jobid[PBS_MAXSVRJOBID_19_20 + 1]; /* job identifier */
+	char ji_fileprefix[PBS_JOBBASE + 1];	  /* no longer used */
+	char ji_queue[PBS_MAXQUEUENAME + 1];	  /* name of current queue */
+	char ji_destin[PBS_MAXROUTEDEST + 1];	  /* dest from qmove/route */
 	/* MomS for execution    */
 
 	int ji_un_type;				 /* type of ji_un union */
@@ -321,29 +322,29 @@ check_job_file_exit:
 jobfix_19_20
 convert_pre18jf_to_19(jobfix_PRE19 old_jobfix_pre19)
 {
-	jobfix_19_20 jobfix_19_20;
+	jobfix_19_20 jf_19_20;
 
 	/* Copy the data to the new jobfix structure */
-	memset(&jobfix_19_20, 0, sizeof(jobfix_19_20));
-	memcpy(&jobfix_19_20, &old_jobfix_pre19, sizeof(jobfix_19_20));
-	snprintf(jobfix_19_20.ji_jobid, sizeof(jobfix_19_20.ji_jobid),
+	memset(&jf_19_20, 0, sizeof(jf_19_20));
+	memcpy(&jf_19_20, &old_jobfix_pre19, sizeof(jf_19_20));
+	snprintf(jf_19_20.ji_jobid, sizeof(jf_19_20.ji_jobid),
 			"%s", old_jobfix_pre19.ji_jobid);
-	snprintf(jobfix_19_20.ji_fileprefix, sizeof(jobfix_19_20.ji_fileprefix),
+	snprintf(jf_19_20.ji_fileprefix, sizeof(jf_19_20.ji_fileprefix),
 			"%s", old_jobfix_pre19.ji_fileprefix);
-	snprintf(jobfix_19_20.ji_queue, sizeof(jobfix_19_20.ji_queue),
+	snprintf(jf_19_20.ji_queue, sizeof(jf_19_20.ji_queue),
 			"%s", old_jobfix_pre19.ji_queue);
-	snprintf(jobfix_19_20.ji_destin, sizeof(jobfix_19_20.ji_destin),
+	snprintf(jf_19_20.ji_destin, sizeof(jf_19_20.ji_destin),
 			"%s", old_jobfix_pre19.ji_destin);
-	jobfix_19_20.ji_un_type = old_jobfix_pre19.ji_un_type;
-	memcpy(&jobfix_19_20.ji_un, &old_jobfix_pre19.ji_un, sizeof(jobfix_19_20.ji_un));
+	jf_19_20.ji_un_type = old_jobfix_pre19.ji_un_type;
+	memcpy(&jf_19_20.ji_un, &old_jobfix_pre19.ji_un, sizeof(jf_19_20.ji_un));
 
-	return jobfix_19_20;
+	return jf_19_20;
 }
 
 /**
- * @brief	Upgrade pre 18.x jobfix structure to 19
+ * @brief	Upgrade 19-20 jobfix structure to latest
  *
- * @param[in]	old_jobfix_pre19 - pre-19 jobfix struct
+ * @param[in]	old_jf - 19-20 jobfix struct
  *
  * @return	jobfix_19_20
  * @retval	v19 converted jobfix
