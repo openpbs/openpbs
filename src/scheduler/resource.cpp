@@ -369,6 +369,7 @@ update_resource_defs(int pbs_sd)
 				ru = tru;
 			} else {
 				ru->def = f->second;
+				ru->name = ru->def->name.c_str();
 				prev_res = ru;
 				ru = ru->next;
 			}

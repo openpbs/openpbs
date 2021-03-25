@@ -2227,7 +2227,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 	int queues_finished = 0;
 	int queue_index_size = 0;
 	int j = 0;
-	int ind;
+	int ind = -1;
 
 	if ((policy == NULL) || (sinfo == NULL))
 		return NULL;
