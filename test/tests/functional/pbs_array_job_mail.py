@@ -160,6 +160,7 @@ class Test_array_job_email(TestFunctional):
         exp_msg = "PBS Job Id: " + subjid
         err_msg = "%s msg not found in pbsuser's mail log" % exp_msg
 
+        time.sleep(10)
         # Check if mail is deliverd to valid user mail file
         ret = self.du.tail(filename=pbsuser_mailfile, runas=TEST_USER,
                            option="-n 50")
