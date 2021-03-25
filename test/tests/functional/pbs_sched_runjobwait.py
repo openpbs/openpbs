@@ -106,7 +106,7 @@ class TestSchedJobRunWait(TestFunctional):
         # Setting job_run_wait to 'none' should just delete TP
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'job_run_wait': "none"}, id="default")
-        rt = self.server.status(SCHED)
+        rt = self.server.status(SCHED, id="default")
         self.assertNotIn('throughput_mode', rt[0].keys(),
                          'throughput_mode displayed when not expected')
 
@@ -279,6 +279,7 @@ pbs.event().accept()
         # Check that server received PBS_BATCH_AsyrunJob_ack request
         self.server.log_match("Type 97 request received", starttime=t)
 
+    @skip("issue 2330")
     def test_throughput_ok(self):
         """
         Test that throughput_mode still works correctly
@@ -302,13 +303,13 @@ pbs.event().accept()
 
         self.server.manager(MGR_CMD_SET, SCHED, {'throughput_mode': "False"},
                             id="default")
-        t1 = time.time()
         jid = self.server.submit(Job())
+        t = time.time()
         self.scheduler.run_scheduling_cycle()
         self.server.expect(JOB, {"job_state": "R"}, id=jid)
 
         # Check that server received PBS_BATCH_RunJob request
-        self.server.log_match("Type 15 request received", starttime=t1)
+        self.server.log_match("Type 15 request received", starttime=t)
 
         hook_txt = """
 import pbs
@@ -322,13 +323,13 @@ pbs.event().accept()
 
         self.server.manager(MGR_CMD_SET, SCHED, {'throughput_mode': "True"},
                             id="default")
-        t2 = time.time()
         jid = self.server.submit(Job())
+        t = time.time()
         self.scheduler.run_scheduling_cycle()
         self.server.expect(JOB, {"job_state": "R"}, id=jid)
 
         # Check that server received PBS_BATCH_AsynJob_ack request
-        self.server.log_match("Type 97 request received", starttime=t2)
+        self.server.log_match("Type 97 request received", starttime=t)
 
     def test_runhook_reject_comment_sched(self):
         """
