@@ -107,7 +107,7 @@ class TestEntityLimits(TestFunctional):
         j = Job(TEST_USER, job_attr)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'B'}, id=jid)
-        subjob1 = jid.replace('[]', '[1]')
+        subjob1 = j.create_subjob_id(jid, 1)
         self.server.expect(JOB, {'job_state': 'R'}, id=subjob1)
 
         del job_attr[ATTR_J]
