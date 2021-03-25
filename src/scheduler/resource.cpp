@@ -124,8 +124,7 @@ query_resources(int pbs_sd)
 			if (!strcmp(attrp->name, ATTR_RESC_TYPE)) {
 				int num = strtol(attrp->value, &endp, 10);
 				rtype = conv_rsc_type(num);
-			}
-			else if (!strcmp(attrp->name, ATTR_RESC_FLAG)) {
+			} else if (!strcmp(attrp->name, ATTR_RESC_FLAG)) {
 				flags = strtol(attrp->value, &endp, 10);
 			}
 			attrp = attrp->next;
@@ -141,7 +140,7 @@ query_resources(int pbs_sd)
 
 	// Make sure most used resources were sent to us
 	for (const auto& r: well_known_res) {
-		if (tmpres.find(r) == allres.end()) {
+		if (tmpres.find(r) == tmpres.end()) {
 			for (auto& d : tmpres)
 				delete d.second;
 			return {};
