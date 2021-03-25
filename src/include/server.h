@@ -211,7 +211,7 @@ typedef enum msvr_stats_type msvr_stat_type_t;
 /* Multi-svr statistical logging */
 struct msvr_stats {
 	time_t last_logged_tm;	/* Time when we logged last */
-	ulong stat[END_OF_STAT];	/* Number of node cache miss */
+	unsigned long stat[END_OF_STAT];	/* Number of node cache miss */
 };
 typedef struct msvr_stats msvr_stat_t;
 
@@ -252,7 +252,7 @@ void mcast_resc_update_all(void *);
 void clean_saved_rsc(void*);
 int process_status_reply(int);
 void *get_peersvr_from_svrid(char *);
-void update_msvr_stat(ulong, msvr_stat_type_t);
+void update_msvr_stat(unsigned long, msvr_stat_type_t);
 
 /* end of multi-svr functions */
 
