@@ -211,9 +211,6 @@ class PTLJsonData(object):
                 test_status = "PASS"
                 m_avg['testsuites'][tsname]['testcases'][tcname] = []
                 t_sum = []
-                sum_std = []
-                sum_min = []
-                sum_max = []
                 count = 0
                 j_data = data_json['testsuites'][tsname]['testcases'][tcname]
                 measurements_data = []
@@ -227,11 +224,17 @@ class PTLJsonData(object):
                     m_sum = []
                     for i in range(len(m)):
                         sum_mean = 0
+                        sum_std = []
+                        sum_min = []
+                        sum_max = []
                         record = []
                         if "test_measure" in m[i].keys():
                             if len(t_sum) > i:
                                 sum_mean = m[i]["test_data"]['mean'] + \
                                     t_sum[i][0]
+                                sum_std.extend(t_sum[i][1])
+                                sum_min.extend(t_sum[i][2])
+                                sum_max.extend(t_sum[i][3])
                             else:
                                 measurements_data.append(m[i])
                                 sum_mean = m[i]["test_data"]['mean']
