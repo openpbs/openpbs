@@ -92,10 +92,7 @@
  *
  * @param[in]	pbs_sd	-	communication descriptor to pbs server
  *
- * @return	bool
- * @retval	true success
- * @retval	false failure
- *
+ * @return unordered_map of resource defs
  */
 std::unordered_map<std::string, resdef *>
 query_resources(int pbs_sd)
@@ -145,7 +142,7 @@ query_resources(int pbs_sd)
 	// Make sure most used resources were sent to us
 	for (const auto& r: well_known_res) {
 		if (tmpres.find(r) == allres.end()) {
-			for (auto &d : tmpres)
+			for (auto& d : tmpres)
 				delete d.second;
 			return {};
 		}
@@ -352,7 +349,6 @@ create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& 
 bool
 update_resource_defs(int pbs_sd)
 {
-	clear_limres();
 	auto tmpres = query_resources(pbs_sd);
 
 	if (tmpres.empty())
@@ -401,6 +397,8 @@ update_resource_defs(int pbs_sd)
 		conf.resdef_to_check = resstr_to_resdef(conf.res_to_check);
 	}
 	update_sorting_defs();
+
+	clear_limres();
 
 	return true;
 }
