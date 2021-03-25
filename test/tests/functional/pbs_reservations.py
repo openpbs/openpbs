@@ -1344,11 +1344,11 @@ class TestReservations(TestFunctional):
         # Submit a advance reservation (R1) and an array job to the reservation
         # once reservation confirmed
         start_time = time.time()
-        now = int(start_time)
+        resv_start_time = int(start_time) + 20
         rid = self.submit_reservation(user=TEST_USER,
                                       select='1:ncpus=1',
-                                      start=now + 20,
-                                      end=now + 120)
+                                      start=resv_start_time,
+                                      end=resv_start_time + 100)
         rid_q = rid.split('.')[0]
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid)
@@ -1362,7 +1362,8 @@ class TestReservations(TestFunctional):
             subjid.append(j.create_subjob_id(jid2, i))
 
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, offset=20)
+        expect_offset = resv_start_time - int(time.time())
+        self.server.expect(RESV, a, id=rid, offset=expect_offset)
         self.server.expect(JOB, {'job_state': 'B'}, jid2)
         self.server.expect(JOB, {'job_state=R': 1}, count=True,
                            id=jid2, extend='t')
@@ -1386,11 +1387,11 @@ class TestReservations(TestFunctional):
         # Submit a advance reservation (R2) and an array job to the reservation
         # once reservation confirmed
         start_time = time.time()
-        now = int(start_time)
+        resv_start_time = int(start_time) + 20
         rid = self.submit_reservation(user=TEST_USER,
                                       select='1:ncpus=4',
-                                      start=now + 20,
-                                      end=now + 180)
+                                      start=resv_start_time,
+                                      end=resv_start_time + 160)
         rid_q = rid.split('.')[0]
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid)
@@ -1404,7 +1405,8 @@ class TestReservations(TestFunctional):
             subjid.append(j.create_subjob_id(jid2, i))
 
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, offset=20)
+        expect_offset = resv_start_time - int(time.time())
+        self.server.expect(RESV, a, id=rid, offset=expect_offset)
         self.server.expect(JOB, {'job_state': 'B'}, jid2)
         self.server.expect(JOB, {'job_state=R': 4}, count=True,
                            id=jid2, extend='t')
@@ -1422,7 +1424,8 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q'}, id=subjid2[0])
         # Wait for job array j2 to finish and verify all sub-job
         # from j3 start running
-        self.server.expect(JOB, {'job_state': 'B'}, jid3, offset=60)
+        self.server.expect(JOB, {'job_state': 'B'}, jid3, offset=30,
+                           interval=5, max_attempts=30)
         self.server.expect(JOB, {'job_state=R': 4}, count=True,
                            id=jid3, extend='t')
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
