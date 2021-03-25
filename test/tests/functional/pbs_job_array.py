@@ -144,47 +144,23 @@ e.accept()
         j = Job(TEST_USER, attrs={
             ATTR_J: '1-3', 'Resource_List.select': 'ncpus=1'})
 
-        j.set_sleep_time(20)
-
         j_id = self.server.submit(j)
-        subjid_2 = j.create_subjob_id(j_id, 2)
+        subjid_1 = j.create_subjob_id(j_id, 1)
 
         # 1. check job array has begun
         self.server.expect(JOB, {'job_state': 'B'}, j_id)
 
-        # 2. wait till subjob 2 starts running
-        self.server.expect(JOB, {'job_state': 'R'}, subjid_2, offset=20)
+        # 2. check subjob 1 started running
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_1)
 
         # 3. Kill and restart the server
         self.kill_and_restart_svr()
 
         # 4. array job should be B
-        self.server.expect(JOB, {'job_state': 'B'}, j_id, max_attempts=1)
+        self.server.expect(JOB, {'job_state': 'B'}, j_id)
 
-        # 5. subjob 1 should be X
-        self.server.expect(JOB, {'job_state': 'X'},
-                           j.create_subjob_id(j_id, 1), max_attempts=1)
-
-        subjob2_finished = False
-        # 6. subjob 2 should be in R or X state
-        try:
-            self.server.expect(JOB, {'job_state': 'R'}, subjid_2,
-                               max_attempts=1)
-        except PtlExpectError:
-            self.server.expect(JOB, {'job_state': 'X'}, subjid_2,
-                               max_attempts=1)
-            subjob2_finished = True
-
-        subjid_3 = j.create_subjob_id(j_id, 3)
-        # 7. subjob 3 should be Q if subjob2 is in R state
-        if not subjob2_finished:
-            self.server.expect(JOB, {'job_state': 'Q'}, subjid_3,
-                               max_attempts=1)
-        else:
-            try:
-                self.server.expect(JOB, {'job_state': 'R'}, subjid_3)
-            except PtlExpectError:
-                self.server.expect(JOB, {'job_state': 'X'}, subjid_3)
+        # 5. subjob 1 should be R
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_1)
 
     def test_running_subjob_survive_restart_with_history(self):
         """
