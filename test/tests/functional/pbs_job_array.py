@@ -144,33 +144,23 @@ e.accept()
         j = Job(TEST_USER, attrs={
             ATTR_J: '1-3', 'Resource_List.select': 'ncpus=1'})
 
-        j.set_sleep_time(20)
-
         j_id = self.server.submit(j)
-        subjid_2 = j.create_subjob_id(j_id, 2)
+        subjid_1 = j.create_subjob_id(j_id, 1)
 
         # 1. check job array has begun
         self.server.expect(JOB, {'job_state': 'B'}, j_id)
 
-        # 2. wait till subjob 2 starts running
-        self.server.expect(JOB, {'job_state': 'R'}, subjid_2, offset=20)
+        # 2. check subjob 1 started running
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_1)
 
         # 3. Kill and restart the server
         self.kill_and_restart_svr()
 
         # 4. array job should be B
-        self.server.expect(JOB, {'job_state': 'B'}, j_id, max_attempts=1)
+        self.server.expect(JOB, {'job_state': 'B'}, j_id)
 
-        # 5. subjob 1 should be X
-        self.server.expect(JOB, {'job_state': 'X'},
-                           j.create_subjob_id(j_id, 1), max_attempts=1)
-
-        # 6. subjob 2 should be R
-        self.server.expect(JOB, {'job_state': 'R'}, subjid_2, max_attempts=1)
-
-        # 7. subjob 3 should be Q
-        self.server.expect(JOB, {'job_state': 'Q'},
-                           j.create_subjob_id(j_id, 3), max_attempts=1)
+        # 5. subjob 1 should be R
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_1)
 
     def test_running_subjob_survive_restart_with_history(self):
         """
@@ -414,6 +404,7 @@ e.accept()
         self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER, attrs={
             ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(300)
         j_id = self.server.submit(j)
         subjid_1 = j.create_subjob_id(j_id, 1)
         a = {'job_state': 'R', 'run_count': 1}
