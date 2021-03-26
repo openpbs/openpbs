@@ -1344,6 +1344,7 @@ sleep 300
     "online_offlined_nodes" : true,
     "use_hyperthreads"      : false,
     "ncpus_are_cores"       : false,
+    "manage_rlimit_as"      : true,
     "cgroup" : {
         "cpuacct" : {
             "enabled"            : true,
@@ -4714,6 +4715,7 @@ sleep 300
 
         self.load_config(self.cfg16
                          % enforce_flags)
+
         a = {'Resource_List.select':
              '1:ncpus=1:vnode=%s'
              % self.mom.shortname}
@@ -4861,6 +4863,71 @@ sleep 300
         # enforce flags should both be overrided by exclhost
         self.test_cgroup_enforce_default(enforce_flags=('true', 'true'),
                                          exclhost=True)
+
+    def test_manage_rlimit_as(self):
+        if not self.mem:
+            self.skipTest('Test requires memory subystem mounted')
+        if not self.swapctl:
+            self.skipTest('Test requires memsw accounting enabled')
+
+        # Make sure job history is enabled to see when job has ended
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.assertEqual(rc, 0)
+        self.server.expect(SERVER, {'job_history_enable': 'True'})
+
+        self.load_config(self.cfg16 % ('true', 'true'))
+
+        # First job -- request vmem and no pvmem,
+        # RLIMIT_AS shoud be unlimited
+        a = {'Resource_List.select':
+             '1:ncpus=0:mem=300mb:vmem=300mb:vnode=%s'
+             % self.mom.shortname}
+
+        j = Job(TEST_USER, attrs=a)
+        j.create_script("#!/bin/bash\nulimit -v")
+        jid = self.server.submit(j)
+        bs = {'job_state': 'F'}
+        self.server.expect(JOB, bs, jid, extend='x', offset=1)
+
+        thisjob = self.server.status(JOB, id=jid, extend='x')
+        try:
+            job_output_file = thisjob[0]['Output_Path'].split(':')[1]
+        except Exception:
+            self.assertTrue(False, "Could not determine job output path")
+        result = self.du.cat(hostname=self.server.hostname,
+                             filename=job_output_file,
+                             sudo=True)
+        self.assertTrue('out' in result, "Nothing in job output file?")
+        self.logger.info("job_out=%s" % result['out'][0])
+        self.assertTrue('unlimited' in result['out'][0])
+        self.logger.info("Job that requests vmem "
+                         "but no pvmem correctly has unlimited RLIMIT_AS")
+
+        # Second job -- see if pvmem still works
+        # RLIMIT_AS should correspond to pvmem
+        a['Resource_List.pvmem'] = '300mb'
+        j = Job(TEST_USER, attrs=a)
+        j.create_script("#!/bin/bash\nulimit -v")
+        jid = self.server.submit(j)
+        bs = {'job_state': 'F'}
+        self.server.expect(JOB, bs, jid, extend='x', offset=1)
+
+        thisjob = self.server.status(JOB, id=jid, extend='x')
+        try:
+            job_output_file = thisjob[0]['Output_Path'].split(':')[1]
+        except Exception:
+            self.assertTrue(False, "Could not determine job output path")
+
+        result = self.du.cat(hostname=self.server.hostname,
+                             filename=job_output_file,
+                             sudo=True)
+        self.assertTrue('out' in result, "Nothing in job output file?")
+        self.logger.info("job_out=%s" % result['out'][0])
+        # ulimit reports kb, not bytes
+        self.assertTrue(str(300 * 1024) in result['out'][0])
+        self.logger.info("Job that requests 300mb pvmem "
+                         "correctly has 300mb RLIMIT_AS")
 
     def tearDown(self):
         TestFunctional.tearDown(self)

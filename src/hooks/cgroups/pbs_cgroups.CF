@@ -9,6 +9,7 @@
     "use_hyperthreads"      : false,
     "ncpus_are_cores"       : false,
     "discover_gpus"         : true,
+    "manage_rlimit_as"      : true,
     "cgroup" : {
         "cpuacct" : {
             "enabled"            : true,

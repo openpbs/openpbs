@@ -1153,6 +1153,53 @@ class HookUtils(object):
                            'Error removing file: %s' % (filename))
         return True
 
+    def manage_rlimit_as(self, job):
+        """
+        Sets rlimit_as according to pvmem (if present)
+        if pvmem is not present, sets it to unlimited
+        (since we know vmem specifies memory+swap usage limit,
+         not address space limit)
+        """
+        import resource
+        rlimit_as = None
+        parent_pid = os.getppid()
+        if 'pvmem' in job.Resource_List and job.Resource_List['pvmem']:
+            rlimit_as = size_as_int(job.Resource_List['pvmem'])
+        else:
+            rlimit_as = resource.RLIM_INFINITY
+
+        prlimit_command = None
+        if hasattr(resource, 'prlimit'):
+            # No need to call command -- Python has direct support
+            prlimit_command = ''
+            pbs.logmsg(pbs.EVENT_DEBUG3,
+                       'Calling resource.prlimit(%s, resource.RLIMIT_AS, %s)'
+                       % (parent_pid, str((rlimit_as, rlimit_as))))
+            resource.prlimit(parent_pid, resource.RLIMIT_AS,
+                             (rlimit_as, rlimit_as))
+        elif os.path.isfile('/usr/bin/prlimit'):
+            prlimit_command = '/usr/bin/prlimit'
+        elif os.path.isfile('/bin/prlimit'):
+            prlimit_command = '/bin/prlimit'
+
+        if prlimit_command is None:
+            pbs.logmsg(pbs.EVENT_ERROR, "cannot set rlimit_as for task: "
+                       "prlimit command not found")
+        elif prlimit_command != '':
+            cmd = [prlimit_command,
+                   '--as=' + str(rlimit_as) + ':' + str(rlimit_as),
+                   '--pid=' + str(parent_pid)]
+            pbs.logmsg(pbs.EVENT_DEBUG3, 'Running: ' + ' '.join(cmd))
+            try:
+                # Try running the prlimit command
+                process = subprocess.Popen(cmd, shell=False,
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+                out = process.communicate()[0]
+            except Exception:
+                pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
+                           ' '.join(cmd))
+
     def _execjob_launch_handler(self, event, cgroup, jobutil):
         """
         Handler for execjob_launch events.
@@ -1173,6 +1220,13 @@ class HookUtils(object):
                        (cgroup.assigned_resources))
             if "gpu" in node.devices:
                 cgroup.setup_job_devices_env(node.devices['gpu'])
+
+        # If vmem was requested, set per process address space limit
+        # or clear the one MoM has set,
+        # if possible (requires prlimit support)
+        if (cgroup.cfg['manage_rlimit_as']
+                and cgroup.cfg['cgroup']['memsw']['enabled']):
+            self.manage_rlimit_as(pbs.event().job)
         return True
 
     def _exechost_periodic_handler(self, event, cgroup, jobutil):
@@ -3199,6 +3253,7 @@ class CgroupUtils(object):
         defaults['job_setup_timeout'] = 30
         defaults['placement_type'] = 'load_balanced'
         defaults['propagate_vntype_to_server'] = True
+        defaults['manage_rlimit_as'] = True
         defaults['cgroup'] = {}
         defaults['cgroup']['cpu'] = {}
         defaults['cgroup']['cpu']['enabled'] = False
@@ -3518,7 +3573,7 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         assigned = {}
 
-        # Get totals available for all jobs to compare with later        
+        # Get totals available for all jobs to compare with later
         mem_avail = None
         filename = self._cgroup_path('memory', 'limit_in_bytes')
         if filename and os.path.isfile(filename):
@@ -4968,6 +5023,7 @@ class CgroupUtils(object):
                                'scheduler configuration file' %
                                caller_name())
                     hostresc['vmem'] = pbs.size(vmem_limit)
+
         # Initialize hpmem variables
         hpmem_default = None
         hpmem_limit = None
