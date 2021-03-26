@@ -2511,7 +2511,7 @@ if %s e.job.in_ms_mom():
     def test_cgroup_enforce_memory(self):
         """
         Test to verify that the job is killed when it tries to
-        use more memory then it requested
+        use more memory than it requested
         """
         if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
@@ -2538,7 +2538,7 @@ if %s e.job.in_ms_mom():
     def test_cgroup_enforce_memsw(self):
         """
         Test to verify that the job is killed when it tries to
-        use more vmem then it requested
+        use more vmem than it requested
         """
         if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
@@ -2581,6 +2581,13 @@ if %s e.job.in_ms_mom():
         verify that the node is offlined when it can't clean up the cgroup
         and brought back online once the cgroup is cleaned up.
         """
+
+        # Make sure job history is enabled to see when job is gone
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.assertEqual(rc, 0)
+        self.server.expect(SERVER, {'job_history_enable': 'True'})
+
         if 'freezer' not in self.paths[self.hosts_list[0]]:
             self.skipTest('Freezer cgroup is not mounted')
         # Get the grandparent directory
@@ -2597,10 +2604,14 @@ if %s e.job.in_ms_mom():
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, ATTR_o, jid)
+        job_status = self.server.status(JOB, id=jid)
         filename = j.attributes[ATTR_o]
         tmp_file = filename.split(':')[1]
         self.tempfile.append(tmp_file)
+        self.logger.info("Added %s to temp files to clean up"
+                         % tmp_file)
+        self.logger.info("Job session ID is apparently %s"
+                         % str(j.attributes['session_id']))
         # Query the pids in the cgroup
         jdir = self.get_cgroup_job_dir('cpuset', jid, self.hosts_list[0])
         tasks_file = os.path.join(jdir, 'tasks')
@@ -2616,27 +2627,31 @@ if %s e.job.in_ms_mom():
         if not self.du.isdir(fdir_pbs):
             self.du.mkdir(hostname=self.hosts_list[0], path=fdir_pbs,
                           mode=0o755, sudo=True)
-        # Write a PID into the tasks file for the freezer cgroup
+        # Write PIDs into the tasks file for the freezer cgroup
+        # All except the top job process -- it remains thawed to
+        # let the job exit
         task_file = os.path.join(fdir_pbs, 'tasks')
-        success = False
-        for pid in reversed(tasks[1:]):
-            fn = self.du.create_temp_file(
-                hostname=self.hosts_list[0], body=pid)
-            self.tempfile.append(fn)
-            ret = self.du.run_copy(hosts=self.hosts_list[0], src=fn,
-                                   dest=task_file, sudo=True,
-                                   uid='root', gid='root',
-                                   mode=0o644)
-            if ret['rc'] == 0:
-                success = True
-                break
-            self.logger.info('Failed to copy %s to %s on %s' %
-                             (fn, task_file, self.hosts_list[0]))
-            self.logger.info('rc = %d', ret['rc'])
-            self.logger.info('stdout = %s', ret['out'])
-            self.logger.info('stderr = %s', ret['err'])
+        success = True
+        body = ''
+        for pidstr in tasks:
+            if pidstr.strip() == j.attributes['session_id']:
+                self.logger.info('Skipping top job process ' + pidstr)
+            else:
+                cmd = ['echo ' + pidstr + ' >>' + task_file]
+                ret = self.du.run_cmd(hosts=self.hosts_list[0],
+                                      cmd=cmd,
+                                      sudo=True,
+                                      as_script=True)
+                if ret['rc'] != 0:
+                    success = False
+                    self.logger.info('Failed to copy %s to %s on %s' %
+                                     (fn, task_file, self.hosts_list[0]))
+                    self.logger.info('rc = %d', ret['rc'])
+                    self.logger.info('stdout = %s', ret['out'])
+                    self.logger.info('stderr = %s', ret['err'])
         if not success:
             self.skipTest('pbs_cgroups_hook: Failed to copy freezer tasks')
+
         # Freeze the cgroup
         freezer_file = os.path.join(fdir_pbs, 'freezer.state')
         state = 'FROZEN'
@@ -2650,8 +2665,29 @@ if %s e.job.in_ms_mom():
             self.skipTest('pbs_cgroups_hook: Failed to copy '
                           'freezer state FROZEN')
 
-        # Make sure the kernel knows about the freeze on MoM
-        time.sleep(1)
+        confirmed_frozen = False
+
+        for count in range(30):
+            ret = self.du.cat(hostname=self.hosts_list[0],
+                              filename=freezer_file,
+                              sudo=True)
+            if ret['rc'] != 0:
+                self.logger.info("Cannot confirm freezer state"
+                                 "sleeping 30 seconds instead")
+                confirmed_frozen = True
+                time.sleep(30)
+                break
+            if ret['out'][0] == 'FROZEN':
+                self.logger.info("job processes reported as FROZEN")
+                confirmed_frozen = True
+                break
+            else:
+                self.logger.info("freezer state reported as "
+                                 + ret['out'][0])
+                time.sleep(1)
+
+        if not confirmed_frozen:
+            self.logger.info("Freezer did not work -- skip test")
 
         # Catch any exception so we can thaw the cgroup or the jobs
         # will remain frozen and impact subsequent tests
@@ -2664,14 +2700,16 @@ if %s e.job.in_ms_mom():
             passed = False
             self.logger.info('Job could not be deleted')
 
-        # The cgroup hook should fail to clean up the cgroups
-        # because of the freeze, and offline node
-        try:
-            self.server.expect(NODE, {'state': (MATCH_RE, 'offline')},
-                               id=self.nodes_list[0], offset=10, interval=3)
-        except Exception as exc:
-            passed = False
-            self.logger.info('Node never went offline')
+        if confirmed_frozen:
+            # The cgroup hook should fail to clean up the cgroups
+            # because of the freeze, and offline node
+            try:
+                self.server.expect(NODE, {'state': (MATCH_RE, 'offline')},
+                                   id=self.nodes_list[0], offset=10,
+                                   interval=3)
+            except Exception as exc:
+                passed = False
+                self.logger.info('Node never went offline')
 
         # Thaw the cgroup
         state = 'THAWED'
@@ -2681,21 +2719,94 @@ if %s e.job.in_ms_mom():
                                dest=freezer_file, sudo=True,
                                uid='root', gid='root',
                                mode=0o644)
+
         if ret['rc'] != 0:
-            self.skipTest('pbs_cgroups_hook: Failed to copy '
-                          'freezer state THAWED')
-        time.sleep(3)
+            # Skip the test at the end when this happens,
+            # but still attempt to clean up!
+            confirmed_frozen = False
+
+        # First confirm the processes were thawed
+        for count in range(30):
+            ret = self.du.cat(hostname=self.hosts_list[0],
+                              filename=freezer_file,
+                              sudo=True)
+            if ret['rc'] != 0:
+                self.logger.info("Cannot confirm freezer state"
+                                 "sleeping 30 seconds instead")
+                time.sleep(30)
+                break
+            if ret['out'][0] == 'THAWED':
+                self.logger.info("job processes reported as THAWED")
+                break
+            else:
+                self.logger.info("freezer state reported as "
+                                 + ret['out'][0])
+                time.sleep(1)
+
+        # once the freezer is thawed, all the processes should receive
+        # the cgroup hook's kill signal and disappear;
+        # confirm they're gone before deleting freezer
+        freezer_tasks = os.path.join(fdir_pbs, 'tasks')
+        for count in range(30):
+            ret = self.du.cat(hostname=self.hosts_list[0],
+                              filename=freezer_tasks,
+                              sudo=True)
+            if ret['rc'] != 0:
+                self.logger.info("Cannot confirm freezer tasks"
+                                 "sleeping 30 seconds instead")
+                time.sleep(30)
+                break
+            if ret['out'] == [] or ret['out'][0] == '':
+                self.logger.info("Processed in thawed freezer are gone")
+                break
+            else:
+                self.logger.info("tasks still in thawed freezer: "
+                                 + str(ret['out']))
+                time.sleep(1)
+
         cmd = ["rmdir", fdir_pbs]
         self.logger.info("Removing %s" % fdir_pbs)
         self.du.run_cmd(cmd=cmd, sudo=True)
         # Due to orphaned jobs node is not coming back to free state
         # workaround is to recreate the nodes. Orphaned jobs will
         # get cleaned up in tearDown hence not doing it here
-        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
+
+        # try deleting the job once more, to ensure that the node isn't
+        # busy
+        try:
+            self.server.delete(id=jid)
+        except Exception as exc:
+            pass
+
+        bs = {'job_state': 'F'}
+        self.server.expect(JOB, bs, jid, extend='x', offset=1)
+
+        # since the job delete action was purposefully bent out of shape,
+        # node state might stay busy for some time
+        # retry until it works -- this is for the sanity of the next
+        # test
+        for count in range(30):
+            try:
+                self.server.manager(MGR_CMD_DELETE, NODE, None, "")
+                self.logger.info('Managed to delete nodes')
+                break
+            except Exception:
+                self.logger.info('Failed to delete nodes (still busy?)')
+                time.sleep(1)
+
         for host in self.hosts_list:
-            self.server.manager(MGR_CMD_CREATE, NODE, id=host)
+            try:
+                self.server.manager(MGR_CMD_CREATE, NODE, id=host)
+            except Exception:
+                # the delete might have failed and then the create will,
+                # but still confirm the node goes back to free state
+                pass
             self.server.expect(NODE, {'state': 'free'},
                                id=host, interval=3)
+
+        if not confirmed_frozen:
+            self.skipTest('Could not confirm freeze/thaw worked')
+
         return passed
 
     def test_cgroup_offline_node(self):
