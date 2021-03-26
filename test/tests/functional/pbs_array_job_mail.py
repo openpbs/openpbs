@@ -76,18 +76,19 @@ class Test_array_job_email(TestFunctional):
                   ("PBS Job Id: " + subjob_jid, "Begun execution"),
                   ("PBS Job Id: " + subjob_jid, "Execution terminated")]
 
-        self.logger.info("Wait 10s for saving the e-mails")
-        time.sleep(10)
-
-        ret = self.du.cat(filename=mailfile, sudo=True)
-        maillog = [x.strip() for x in ret['out'][-600:]]
-
         for (jobid, msg) in emails:
             emailpass = 0
-            for i in range(0, len(maillog)-2):
-                if jobid == maillog[i] and msg == maillog[i+2]:
-                    emailpass = 1
-
+            for j in range(5):
+                time.sleep(5)
+                ret = self.du.cat(filename=mailfile, sudo=True)
+                maillog = [x.strip() for x in ret['out'][-600:]]
+                for i in range(0, len(maillog) - 2):
+                    if jobid == maillog[i] and msg == maillog[i + 2]:
+                        emailpass = 1
+                        break
+                else:
+                    continue
+                break
             self.assertTrue(emailpass, "Message '" + jobid + " " + msg +
                             "' not found in " + mailfile)
 
@@ -160,12 +161,17 @@ class Test_array_job_email(TestFunctional):
         exp_msg = "PBS Job Id: " + subjid
         err_msg = "%s msg not found in pbsuser's mail log" % exp_msg
 
-        time.sleep(10)
-        # Check if mail is deliverd to valid user mail file
-        ret = self.du.tail(filename=pbsuser_mailfile, runas=TEST_USER,
-                           option="-n 50")
-        maillog = [x.strip() for x in ret['out']]
-        self.assertIn(exp_msg, maillog, err_msg)
+        email_pass = 0
+        for i in range(5):
+            time.sleep(5)
+            # Check if mail is deliverd to valid user mail file
+            ret = self.du.tail(filename=pbsuser_mailfile, runas=TEST_USER,
+                               option="-n 50")
+            maillog = [x.strip() for x in ret['out']]
+            if exp_msg in maillog:
+                email_pass = 1
+                break
+        self.assertTrue(email_pass, err_msg)
 
         # Verify there should not be any email for invalid user
         self.assertFalse(os.path.isfile(non_existent_mailfile))
