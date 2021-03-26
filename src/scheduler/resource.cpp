@@ -138,7 +138,11 @@ query_resources(int pbs_sd)
 		tmpres[def->name] = def;
 	}
 
-	// Make sure most used resources were sent to us
+	/**
+	 * @par Make sure all the well known resources are sent to us.
+	 *      This is to allow us to directly index into the allres umap.
+	 *      Do not directly index into the allres umap for non-well known resources.  Use find_resdef()
+	 */
 	for (const auto& r: well_known_res) {
 		if (tmpres.find(r) == tmpres.end()) {
 			for (auto& d : tmpres)
@@ -197,6 +201,16 @@ conv_rsc_type(int type)
 	return rtype;
 }
 
+/**
+ * @brief find a resdef in the global allres
+ * 	  This function should be used if not finding a well known resource
+ *
+ * @param name - the name of the resdef to find
+ *
+ * @return resdef *
+ * @retval found resdef
+ * @retval NULL if not found
+ */
 resdef *
 find_resdef(const std::string& name)
 {
