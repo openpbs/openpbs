@@ -80,15 +80,15 @@ class Test_array_job_email(TestFunctional):
             emailpass = 0
             for j in range(5):
                 time.sleep(5)
-                ret = self.du.cat(filename=mailfile, sudo=True)
-                maillog = [x.strip() for x in ret['out'][-600:]]
+                ret = self.du.tail(filename=mailfile, sudo=True,
+                                   option="-n 600")
+                maillog = [x.strip() for x in ret['out']]
                 for i in range(0, len(maillog) - 2):
                     if jobid == maillog[i] and msg == maillog[i + 2]:
                         emailpass = 1
                         break
-                else:
-                    continue
-                break
+                if emailpass:
+                    break
             self.assertTrue(emailpass, "Message '" + jobid + " " + msg +
                             "' not found in " + mailfile)
 
