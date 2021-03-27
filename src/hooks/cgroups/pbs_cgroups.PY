@@ -2889,13 +2889,23 @@ class CgroupUtils(object):
         Write a message to the job stderr file
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
+        filename = None
         try:
-            filename = job.stderr_file()
+            if str(job.Join_Path) == 'oe':
+                # If we write in stderr we might do it after the join!
+                # so write in stdout instead
+                filename = job.stdout_file()
+            else:
+                filename = job.stderr_file()
+            pbs.logmsg(pbs.EVENT_DEBUG4,"Message to be written to %s: %s"
+                       % (str(filename), msg.strip()))
             if filename is None:
                 return
             with open(filename, 'a') as desc:
                 desc.write(msg)
         except Exception:
+            # tough luck for user, but not fatal to system
+            # Note: sometimes normal (e.g. interactive jobs)
             pass
 
     def _target_subsystems(self):
@@ -4751,7 +4761,7 @@ class CgroupUtils(object):
                                 and pbs.event().job.in_ms_mom()):
                             self.write_to_stderr(pbs.event().job,
                                                  "Cgroup mem limit "
-                                                 "exceeded: %s" % (err_msg))
+                                                 "exceeded: %s\n" % (err_msg))
             elif subsys == 'memsw':
                 max_vmem = self._get_max_memsw_usage(jobid)
                 if max_vmem is None:
@@ -4771,7 +4781,7 @@ class CgroupUtils(object):
                     if vmem_failcnt > 0:
                         err_msg = self._get_error_msg(jobid)
                         pbs.logjobmsg(jobid,
-                                      'Cgroup memsw limit exceeded: %s' %
+                                      'Cgroup memsw limit exceeded: %s\n' %
                                       (err_msg))
                         if (pbs.event().type == pbs.EXECJOB_EPILOGUE
                                 and pbs.event().job.in_ms_mom()):
@@ -5703,6 +5713,16 @@ class CgroupUtils(object):
             if job_start < 0:
                 continue
             return kill_line
+
+        # Found nothing -- more recent kernels have different messages
+        for line in out_split:
+            start = line.find('oom-kill')
+            kill_line = line[start:]
+            job_start = line.find(jobid)
+            if job_start < 0:
+                continue
+            return kill_line
+
         return ''
 
     def write_job_env_file(self, jobid, env_list):

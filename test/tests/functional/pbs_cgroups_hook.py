@@ -770,6 +770,56 @@ sleep 300
     }
 }
 """
+        self.cfg3b = """{
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : [],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : %s,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : true,
+    "cgroup":
+    {
+        "cpuacct":
+        {
+            "enabled"         : true,
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "cpuset":
+        {
+            "enabled"         : true,
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "devices":
+        {
+            "enabled"         : false
+        },
+        "hugetlb":
+        {
+            "enabled"         : false
+        },
+        "memory":
+        {
+            "enabled"         : true,
+            "default"         : "96MB",
+            "reserve_amount"  : "50MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : [],
+            "swappiness"      : 0
+        },
+        "memsw":
+        {
+            "enabled"         : false,
+            "default"         : "96MB",
+            "reserve_amount"  : "45MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        }
+    }
+}
+"""
         self.cfg4 = """{
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
@@ -1815,7 +1865,10 @@ if %s e.job.in_ms_mom():
         # Wait for output to flush
         time.sleep(2)
         output = self.du.cat(hostname=host, filename=filename, sudo=True)
-        return output['out']
+        if output['rc'] == 0:
+            return output['out']
+        else:
+            return []
 
     def get_hostname(self, host):
         """
@@ -2513,11 +2566,12 @@ if %s e.job.in_ms_mom():
         Test to verify that the job is killed when it tries to
         use more memory than it requested
         """
-        if not self.paths[self.hosts_list[0]]['memory']:
+        if not self.paths[self.hosts_list[0]]['memory'] or not self.mem:
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP5'
-        self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
-                                      self.swapctl, ''))
+
+        self.load_config(self.cfg3b % ('false'))
+
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -2543,6 +2597,9 @@ if %s e.job.in_ms_mom():
         if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         # run the test if swap space is available
+        if not self.mem or not self.swapctl:
+            self.skipTest('Test requires memory controller with memsw'
+                          'swap accounting enabled')
         if have_swap() == 0:
             self.skipTest('no swap space available on the local host')
         # Get the grandparent directory
@@ -2550,12 +2607,15 @@ if %s e.job.in_ms_mom():
         fn = os.path.join(fn, 'memory.memsw.limit_in_bytes')
         if not self.is_file(fn, self.hosts_list[0]):
             self.skipTest('vmem resource not present on node')
-        name = 'CGROUP6'
+
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
+
+        name = 'CGROUP6'
         # Make sure output file is gone, otherwise wait and read
         # may pick up stale copy of earlier test
         self.du.rm(runas=TEST_USER, path='~/' + name + '.*', as_script=True)
+
         a = {
             'Resource_List.select':
             '1:ncpus=1:mem=300mb:vmem=320mb:host=%s' % self.hosts_list[0],
@@ -2567,13 +2627,30 @@ if %s e.job.in_ms_mom():
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
         filename = j.attributes[ATTR_o]
-        self.tempfile.append(filename)
         ehost = j.attributes['exec_host']
         tmp_file = filename.split(':')[1]
         tmp_host = ehost.split('/')[0]
         tmp_out = self.wait_and_read_file(filename=tmp_file, host=tmp_host)
-        self.assertTrue('MemoryError' in tmp_out,
-                        'MemoryError not present in output')
+        self.tempfile.append(tmp_out)
+        success = False
+        foundstr = ''
+        if tmp_out == []:
+            success = False
+        else:
+            joined_out = '\n'.join(tmp_out)
+            if 'Cgroup memsw limit exceeded' in joined_out:
+                success = True
+                foundstr = 'Cgroup memsw limit exceeded'
+            elif 'Cgroup mem limit exceeded' in joined_out:
+                success = True
+                foundstr = 'Cgroup mem limit exceeded'
+            elif 'MemoryError' in joined_out:
+                success = True
+                foundstr = 'MemoryError'
+        self.assertTrue(success, 'No Cgroup memory/memsw limit exceeded '
+                        'or MemoryError found in joined stdout/stderr')
+        self.logger.info('Joined stdout/stderr contained expected string: '
+                         + foundstr)
 
     def cgroup_offline_node(self, name, vnpernuma=False):
         """
@@ -2703,6 +2780,10 @@ if %s e.job.in_ms_mom():
         if confirmed_frozen:
             # The cgroup hook should fail to clean up the cgroups
             # because of the freeze, and offline node
+            # Note that when vnode per numa node is enabled, this
+            # will take longer: the execjob_epilogue will first mark
+            # the per-socket vnode offline, but only the exechost_periodic
+            # will mark the natural node offline
             try:
                 self.server.expect(NODE, {'state': (MATCH_RE, 'offline')},
                                    id=self.nodes_list[0], offset=10,
