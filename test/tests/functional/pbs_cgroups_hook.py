@@ -2751,7 +2751,6 @@ if %s e.job.in_ms_mom():
             if ret['rc'] != 0:
                 self.logger.info("Cannot confirm freezer state"
                                  "sleeping 30 seconds instead")
-                confirmed_frozen = True
                 time.sleep(30)
                 break
             if ret['out'][0] == 'FROZEN':
@@ -2764,7 +2763,7 @@ if %s e.job.in_ms_mom():
                 time.sleep(1)
 
         if not confirmed_frozen:
-            self.logger.info("Freezer did not work -- skip test")
+            self.logger.info("Freezer did not work; skip test after cleanup")
 
         # Catch any exception so we can thaw the cgroup or the jobs
         # will remain frozen and impact subsequent tests
