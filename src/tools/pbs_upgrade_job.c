@@ -397,7 +397,7 @@ convert_19ext_to_21(union jobextend_19_20 old_extend)
  * @param[in]	ver		-	Old version
  *
  * @return	int
- * @retval	-1	: failure
+ * @retval	1	: failure
  * @retval	 0	: success
  */
 int
