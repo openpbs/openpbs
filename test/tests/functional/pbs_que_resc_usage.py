@@ -39,6 +39,7 @@
 
 
 from tests.functional import *
+from time import time
 
 
 class TestQueRescUsage(TestFunctional):
@@ -90,12 +91,11 @@ class TestQueRescUsage(TestFunctional):
         self.assertEqual(
             int(q_status[0]['resources_available.ncpus']), 8, self.err_msg)
         # job submission
+        t1 = time()
         j_attr = {'Resource_List.ncpus': '3'}
         j1 = Job(attrs=j_attr)
-        j1.set_sleep_time(30)
         jid_1 = self.server.submit(j1)
         j2 = Job(attrs=j_attr)
-        j2.set_sleep_time(30)
         jid_2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, jid_1)
         self.server.expect(JOB, {'job_state': 'R'}, jid_2)
@@ -121,8 +121,9 @@ class TestQueRescUsage(TestFunctional):
         self.assertEqual(
             int(q_status[0]['resources_assigned.ncpus']), 6, self.err_msg)
         # If no jobs are running at the time of restart the server
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid_1)
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid_2)
+        delta = time() - t1
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid_1, offset=delta)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid_2, offset=delta)
         self.server.restart()
         q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn('resources_available.ncpus',
@@ -141,15 +142,14 @@ class TestQueRescUsage(TestFunctional):
         # create a resource
         self.create_custom_resc()
 
+        t1 = time()
         # resources_assigned is zero but still jobs are in the system
         j1_attr = {'Resource_List.foo': '3'}
         j1 = Job(attrs=j1_attr)
-        j1.set_sleep_time(30)
         jid_1 = self.server.submit(j1)
         # requesting negative resource here
         j2_attr = {'Resource_List.foo': '-3'}
         j2 = Job(attrs=j2_attr)
-        j2.set_sleep_time(30)
         jid_2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, jid_1)
         self.server.expect(JOB, {'job_state': 'R'}, jid_2)
@@ -162,8 +162,9 @@ class TestQueRescUsage(TestFunctional):
         q_status = self.server.status(QUEUE, id='workq')
         self.assertEqual(
             int(q_status[0]['resources_assigned.foo']), 0, self.err_msg)
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid_1)
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid_2)
+        delta = time() - t1
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid_1, offset=delta)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid_2, offset=delta)
         # jobs are finished now, resources_assigned should unset this time
         self.server.restart()
         q_status = self.server.status(QUEUE, id='workq')
