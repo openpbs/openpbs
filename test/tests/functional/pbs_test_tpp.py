@@ -918,7 +918,7 @@ class TestTPP(TestFunctional):
         """
         Test for verifying the allowable values for PBS_COMM_LOG_EVENTS
         """
-        a = [0, 511, "T"]
+        a = [0, "T", 511]
         for log_event in a:
             hook_name = "begin_" + str(log_event)
             attrib = {'PBS_COMM_LOG_EVENTS': log_event}
@@ -926,20 +926,22 @@ class TestTPP(TestFunctional):
                 existence = False
             else:
                 existence = True
-            start_time = time.time()
             self.set_pbs_conf(host_name=self.server.shortname,
                               conf_param=attrib)
-            attrs = {'event': 'execjob_begin', 'enabled': 'True'}
-            self.server.create_hook(hook_name, attrs)
             exp_msg = ["MCAST packet from .*:15001",
                        "mcast done"]
+            attrs = {'event': 'execjob_begin', 'enabled': 'True'}
+            start_time = time.time()
+            self.server.create_hook(hook_name, attrs)
             for msg in exp_msg:
                 self.comm.log_match(msg, existence=existence,
                                     starttime=start_time, regexp=True)
+            start_time = time.time()
             self.server.import_hook(hook_name, body="import pbs")
             for msg in exp_msg:
                 self.comm.log_match(msg, existence=existence,
                                     starttime=start_time, regexp=True)
+            start_time = time.time()
             self.server.manager(MGR_CMD_DELETE, HOOK, id=hook_name)
             for msg in exp_msg:
                 self.comm.log_match(msg, existence=existence,
