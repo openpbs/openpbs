@@ -117,15 +117,17 @@ class TestJobTask(TestFunctional):
         mom1 = self.moms.keys()[0]
         mom2 = self.moms.keys()[1]
         mom3 = self.moms.keys()[2]
+        fqdn_mom2 = socket.getfqdn(mom2)
+        fqdn_mom3 = socket.getfqdn(mom3)
         pbstmrsh_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                     'bin', 'pbs_tmrsh')
 
         script_mom2 = """#!/bin/bash\n%s %s hostname""" % \
-                      (pbstmrsh_cmd, mom3)
+                      (pbstmrsh_cmd, fqdn_mom3)
         fn = self.du.create_temp_file(hostname=mom2, body=script_mom2)
         self.du.chmod(hostname=mom2, path=fn, mode=0o755)
         a = {ATTR_S: '/bin/bash'}
-        script = ['%s %s %s' % (pbstmrsh_cmd, mom2, fn)]
+        script = ['%s %s %s' % (pbstmrsh_cmd, fqdn_mom2, fn)]
         job = Job(TEST_USER, attrs=a)
         job.set_attributes({'Resource_List.select': '3:ncpus=1',
                             'Resource_List.place': 'scatter'})
