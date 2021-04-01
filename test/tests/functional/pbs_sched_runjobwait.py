@@ -73,7 +73,7 @@ class TestSchedJobRunWait(TestFunctional):
             a = {'resources_available.ncpus': 1, 'partition': pname}
             prefix = 'vnode' + str(i)
             nname = prefix + "[0]"
-            self.mom.create_vnodes(prefix, a, 1, delall=False,
+            self.mom.create_vnodes(a, 1, delall=False,
                                    additive=True, vname=nname)
         return sc_quenames
 
@@ -106,7 +106,9 @@ class TestSchedJobRunWait(TestFunctional):
         # Setting job_run_wait to 'none' should just delete TP
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'job_run_wait': "none"}, id="default")
-        self.server.expect(SCHED, 'throughput_mode', op=UNSET, id="default")
+        rt = self.server.status(SCHED, id="default")
+        self.assertNotIn('throughput_mode', rt[0].keys(),
+                         'throughput_mode displayed when not expected')
 
         # Setting JRW to runjob/execjob should set TP correctly
         self.server.manager(MGR_CMD_SET, SCHED,
@@ -277,6 +279,7 @@ pbs.event().accept()
         # Check that server received PBS_BATCH_AsyrunJob_ack request
         self.server.log_match("Type 97 request received", starttime=t)
 
+    @skip("issue 2330")
     def test_throughput_ok(self):
         """
         Test that throughput_mode still works correctly

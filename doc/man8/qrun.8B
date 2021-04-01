@@ -36,7 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-.TH qrun 8B "6 May 2020" Local "PBS Professional"
+.TH qrun 8B "25 January 2021" Local "PBS Professional"
 .SH NAME
 .B qrun 
 \- run a PBS batch job now
@@ -105,6 +105,12 @@ option, all schedulers are bypassed, and partition boundaries are ignored.
 The 
 .B qrun
 command cannot be used on a job that is in the process of provisioning.
+
+If you use 
+.B qrun
+on a subjob, PBS will try to run the subjob regardless of whether the job 
+has hit the limit specified in 
+.I max_run_subjobs.
 .RE
 
 .SH OPTIONS

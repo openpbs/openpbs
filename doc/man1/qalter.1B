@@ -36,7 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-.TH qalter 1B "6 May 2020" Local "PBS Professional"
+.TH qalter 1B "25 January 2021" Local "PBS Professional"
 .SH NAME
 .B qalter 
 \- alter PBS job
@@ -249,6 +249,11 @@ The behavior of the
 command may be affected by 
 any site hooks.  Site hooks can modify the job's attributes, 
 change its routing, etc.
+
+To modify the 
+.I max_run_subjobs 
+attribute, use 
+.B qalter -Wmax_run_subjobs=<new value> <job ID>.
 
 .SH Caveats and Restrictions for Altering Jobs
 When you lengthen the 
@@ -1089,7 +1094,7 @@ Format:
 .br
 .I \ \ \ <group>[@<hostname>][,<group>@<hostname> ...]
 
-Default: Login group name of job owner
+Default: no default
 .LP
 
 .IP "release_nodes_on_stageout=<value>"

@@ -36,30 +36,38 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-.TH pbs_ralter 1B "21 April 2020" Local "PBS Professional"
+.TH pbs_ralter 1B "28 February 2021" Local "PBS Professional"
 .SH NAME
 .B pbs_ralter 
 \- modify an existing reservation
 .SH SYNOPSIS
 .B pbs_ralter
 [-D <duration>] [-E <end time>] [-G <auth group list>] 
-           [-I <block time>] [-m <mail points>] [-M <mail list>] 
+           [-I <block time>] [-l select=<select spec>]
+           [-m <mail points>] [-M <mail list>] 
            [-N <reservation name>] [-R <start time>] 
            [-U <auth user list>] <reservation ID>
+.br
+.B pbs_ralter
+-Wforce [-D <duration>] [-E <end time>] [-R <start time>]
+           <reservation ID>
 .br
 .B pbs_ralter
 --version
 .SH DESCRIPTION
 You can use the 
 .B pbs_ralter 
-command to alter an existing advance, job-specific, or standing
+command to alter an existing reservation, whether it is an 
+individual job-specific, advance, or maintenance reservation,
+or the next or current occurrence of a standing
 reservation.  You can change the start time, end time, duration,
-events that generate mail, mail recipient list, group name(s), 
-username(s), and reservation name.
+events that generate mail, mail recipient list, authorized groups,
+authorized users, and reservation name.
 
-You can use this command to change an advance or job-specific
-reservation, or the next or current instance of a standing
-reservation.
+The PBS Administrator can use the 
+.I -Wforce
+option to this command to change the start time, end time, or duration
+of a reservation; this option overrides the scheduler's actions.
 
 After the change is requested, the change is either confirmed or
 denied. On denial of the change, the reservation is not deleted and is
@@ -96,16 +104,27 @@ or
 If the reservation has not started and it cannot be confirmed on the same vnodes, PBS
 searches for another set of vnodes.
 
+If the reservation is altered, PBS logs a 
+.I Y 
+accounting record.  
+
 .B Caveats and Restrictions
 .br
-You cannot change the start time of a reservtion if jobs are running in it.
+You cannot change the start time of a reservation if jobs are running in it.
 
 If you change the end time of a reservation so that it ends before a job running in the 
 reservation finishes, the job is killed when the reservation ends.
 
 .B Required Privilege
 .br
-You must be the reservation owner or the PBS Administrator to run this command.
+Without the 
+.I Wforce
+option, this command can be used by the reservation owner or the PBS
+Administrator.
+
+With the 
+.I Wforce 
+option, this command can be used only by the PBS Administrator.
 
 .SH Options to pbs_ralter
 
@@ -170,10 +189,10 @@ pbs_resv_attributes(7B) man page.
 Syntax: 
 .I [+|-]<group name>[,[+|-]<group name> ...]
 .br
-Default: All groups are authorized to submit jobs.
+Default: no default; group names are unchanged
 
 .IP "-I <block time>" 10
-Specifies interactive mode. The pbs_ralter command will block, up to
+(Capital I) Specifies interactive mode. The pbs_ralter command will block, up to
 .I block time 
 seconds, while waiting for the reservation's change request
 to be confirmed or denied.
@@ -190,6 +209,14 @@ Format:
 .I Integer
 
 Default: Not interactive
+
+.IP "-l select=<select spec>" 10
+(Lowercase L) Specifies new select specification for reservation.  New
+specification must be a subset of the same chunks requested by the
+original reservation.  If reservation is started, cannot be used to
+release chunks where reservation jobs are running.  If reservation is
+started and degraded, you must release all unavailable chunks in
+order to alter the reservation select specification.
 
 .IP "-m <mail points>" 10
 Specifies the set of events that cause mail to be sent to the list of
@@ -296,8 +323,18 @@ See the
 reservation attribute in the pbs_resv_attributes(7B) man page.
 .br
 Syntax:
-.I [+|-]<username>@<hostname>[,[+|-]<username>@<hostname>...]
+.I [+|-]<username>[@<hostname>][,[+|-]<username>[@<hostname>]...]
+.br 
+Default: no default; user list is unchanged
 .br
+
+.IP "-Wforce" 10
+Enforces changes made to the reservation start time, end time, or
+duration, regardless of the actions of the scheduler.  Can be used
+only by the PBS Administrator.  Note that with this option you can
+force PBS to oversubscribe resources, in which case you (the
+administrator) may need to manage them yourself.  Cannot be used to
+change the start time of a reservation in which jobs are running.
 
 .IP "--version" 10
 The 
@@ -315,6 +352,10 @@ For an advance or job-specific reservation this has the form:
 For a standing reservation this has the form:
 .RS 4
 .I "S<sequence number>[.<server name>][@<remote server>]"
+.RE
+For a maintenance reservation this has the form:
+.RS 4
+.I "M<sequence number>[.<server name>][@<remote server>]"
 .RE
 
 .I @<remote server> 
