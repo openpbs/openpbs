@@ -426,5 +426,6 @@ class TestHookJob(TestFunctional):
         ret = self.server.delete_hook(hook_name)
 
         # check that the hook was not ran since the job was deleted by force
-        self.server.log_match(hook_msg, starttime=start_time, existence=False)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
+        self.server.log_match(hook_msg, starttime=start_time)
         self.logger.info("**************** HOOK END ****************")
