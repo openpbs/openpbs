@@ -2699,8 +2699,9 @@ if %s e.job.in_ms_mom():
             self.skipTest('pbs_cgroups_hook: only one task in cgroup')
         self.logger.info('Tasks: %s' % tasks)
         self.assertTrue(tasks, 'No tasks in cpuset cgroup for job')
-        # Make dir in freezer subsystem
-        fdir_pbs = os.path.join(fdir, 'PtlPbs')
+        # Make dir in freezer subsystem under directory where we
+        # have delegate control from systemd
+        fdir_pbs = os.path.join(fdir, 'pbs_jobs.service', 'PtlPbs')
         if not self.du.isdir(fdir_pbs):
             self.du.mkdir(hostname=self.hosts_list[0], path=fdir_pbs,
                           mode=0o755, sudo=True)
@@ -2837,7 +2838,7 @@ if %s e.job.in_ms_mom():
                 time.sleep(30)
                 break
             if ret['out'] == [] or ret['out'][0] == '':
-                self.logger.info("Processed in thawed freezer are gone")
+                self.logger.info("Processes in thawed freezer are gone")
                 break
             else:
                 self.logger.info("tasks still in thawed freezer: "
@@ -5139,33 +5140,101 @@ sleep 300
         self.du.rm(hostname=self.serverA, path=self.tempfile, force=True,
                    recursive=True, sudo=True)
         # Cleanup frozen jobs
+        # Thaw ALL freezers found
+        # If directory starts with a number (i.e. a job)
+        # kill processes in the freezers and remove them
+
         if 'freezer' in self.paths[self.hosts_list[0]]:
+            # Find freezers to thaw
             self.logger.info('Cleaning up frozen jobs ****')
             fdir = self.paths[self.hosts_list[0]]['freezer']
-            if os.path.isdir(fdir):
-                self.logger.info('freezer directory present')
-                fpath = os.path.join(fdir, 'PtlPbs')
-                if os.path.isdir(fpath):
-                    jid = glob.glob(os.path.join(fpath, '*', ''))
-                    self.logger.info('found jobs %s' % jid)
-                    if jid:
-                        for files in jid:
-                            self.logger.info('*** found jobdir %s' % files)
-                            jpath = os.path.join(fpath, files)
-                            freezer_file = os.path.join(jpath, 'freezer.state')
-                            # Thaw the cgroup
-                            state = 'THAWED'
-                            fn = self.du.create_temp_file(
-                                hostname=self.hosts_list[0], body=state)
-                            self.du.run_copy(hosts=self.hosts_list[0], src=fn,
-                                             dest=freezer_file, sudo=True,
-                                             uid='root', gid='root',
-                                             mode=0o644)
-                            self.du.rm(hostname=self.hosts_list[0], path=fn)
-                            cmd = ['rmdir', jpath]
-                            self.logger.info('deleting jobdir %s' % cmd)
-                            self.du.run_cmd(cmd=cmd, sudo=True)
-                        self.du.rm(hostname=self.hosts_list[0], path=fpath)
+            freezer_states = \
+                glob.glob(os.path.join(fdir, '*', '*', '*', 'freezer.state'))
+            freezer_states += \
+                glob.glob(os.path.join(fdir, '*', '*', 'freezer.state'))
+            freezer_states += \
+                glob.glob(os.path.join(fdir, '*', 'freezer.state'))
+            self.logger.info('*** found freezer states %s'
+                             % str(freezer_states))
+
+            for freezer_state in freezer_states:
+                # thaw the freezer
+                self.logger.info('Thawing ' + freezer_state)
+                state = 'THAWED'
+                fn = self.du.create_temp_file(
+                     hostname=self.hosts_list[0], body=state)
+                self.du.run_copy(hosts=self.hosts_list[0], src=fn,
+                                 dest=freezer_state, sudo=True,
+                                 uid='root', gid='root',
+                                 mode=0o644)
+                # Confirm it's thawed
+                for count in range(30):
+                    ret = self.du.cat(hostname=self.hosts_list[0],
+                                      filename=freezer_state,
+                                      sudo=True)
+                    if ret['rc'] != 0:
+                        self.logger.info("Cannot confirm freezer state"
+                                         "sleeping 30 seconds instead")
+                        time.sleep(30)
+                        break
+                    if ret['out'][0] == 'THAWED':
+                        self.logger.info("freezer processes reported as"
+                                         " THAWED")
+                        break
+                    else:
+                        self.logger.info("freezer state reported as "
+                                         + ret['out'][0])
+                        time.sleep(1)
+
+                freezer_basename = os.path.basename(
+                    os.path.dirname(freezer_state))
+                jobid = None
+                try:
+                    jobid = int(freezer_basename.split('.')[0])
+                except Exception:
+                    # not a job directory
+                    pass
+                if jobid is not None:
+                    self.logger.info("Apparently found job freezer for job %s"
+                                     % freezer_basename)
+                    freezer_tasks = os.path.join(
+                        os.path.dirname(freezer_state), "tasks")
+
+                    # Kill tasks before trying to rmdir freezer
+                    ret = self.du.cat(hostname=self.hosts_list[0],
+                                      filename=freezer_tasks,
+                                      sudo=True)
+                    if ret['rc'] == 0:
+                        for taskstr in ret['out']:
+                            self.logger.info("trying to kill %s on %s"
+                                             % (taskstr,
+                                                self.hosts_list[0]))
+                            self.du.run_cmd(self.hosts_list[0],
+                                            ['kill', '-9'] + [taskstr],
+                                            sudo=True)
+                    for count in range(30):
+                        ret = self.du.cat(hostname=self.hosts_list[0],
+                                          filename=freezer_tasks,
+                                          sudo=True)
+                        if ret['rc'] != 0:
+                            self.logger.info("Cannot confirm freezer tasks; "
+                                             "sleeping 30 seconds instead")
+                            time.sleep(30)
+                            break
+                        if ret['out'] == [] or ret['out'][0] == '':
+                            self.logger.info("Processes in thawed freezer"
+                                             " are gone")
+                            break
+                        else:
+                            self.logger.info("tasks still in thawed freezer: "
+                                             + str(ret['out']))
+                            time.sleep(1)
+
+                    cmd = ["rmdir", os.path.dirname(freezer_state)]
+                    self.logger.info("Executing %s" % ' '.join(cmd))
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=cmd, sudo=True)
+
         # Remove the jobdir if any under other cgroups
         cgroup_subsys = ('systemd', 'cpu', 'cpuacct', 'cpuset', 'devices',
                          'memory', 'hugetlb', 'perf_event', 'freezer',
@@ -5176,11 +5245,55 @@ sleep 300
                 self.logger.info('Looking for orphaned jobdir in %s' % subsys)
                 cdir = self.paths[self.hosts_list[0]][subsys]
                 if os.path.isdir(cdir):
+                    self.logger.info("Inspecting " + cdir)
                     cpath = self.find_main_cpath(cdir)
+                    # not always immediately under main path
                     if cpath is not None and os.path.isdir(cpath):
-                        for jdir in glob.glob(os.path.join(cpath, '*', '')):
+                        tasks_files = (
+                            glob.glob(os.path.join(cpath,
+                                                   '*', '*', 'tasks'))
+                            + glob.glob(os.path.join(cpath,
+                                                     '*', 'tasks')))
+                        if tasks_files != []:
+                            self.logger.info("Tasks files found in %s: %s"
+                                             % (cpath, tasks_files))
+                        for tasks_file in tasks_files:
+                            jdir = os.path.dirname(tasks_file)
                             if not os.path.isdir(jdir):
                                 continue
                             self.logger.info('deleting jobdir %s' % jdir)
+
+                            # Kill tasks before trying to rmdir freezer
+                            cgroup_tasks = os.path.join(jdir, 'tasks')
+                            ret = self.du.cat(hostname=self.hosts_list[0],
+                                              filename=cgroup_tasks,
+                                              sudo=True)
+                            if ret['rc'] == 0:
+                                for taskstr in ret['out']:
+                                    self.logger.info("trying to kill %s on %s"
+                                                     % (taskstr,
+                                                        self.hosts_list[0]))
+                                    self.du.run_cmd(self.hosts_list[0],
+                                                    ['kill', '-9'] + [taskstr],
+                                                    sudo=True)
+                            for count in range(30):
+                                ret = self.du.cat(hostname=self.hosts_list[0],
+                                                  filename=cgroup_tasks,
+                                                  sudo=True)
+                                if ret['rc'] != 0:
+                                    self.logger.info("Cannot confirm "
+                                                     "cgroup tasks; sleeping "
+                                                     "30 seconds instead")
+                                    time.sleep(30)
+                                    break
+                                if ret['out'] == [] or ret['out'][0] == '':
+                                    self.logger.info("Processes in cgroup "
+                                                     "are gone")
+                                    break
+                                else:
+                                    self.logger.info("tasks still in cgroup: "
+                                                     + str(ret['out']))
+                                    time.sleep(1)
+
                             cmd2 = ['rmdir', jdir]
                             self.du.run_cmd(cmd=cmd2, sudo=True)
