@@ -131,7 +131,7 @@ query_resources(int pbs_sd)
 		}
 		def = new resdef(cur_bs->name, flags, rtype);
 		if (def == NULL) {
-			for (auto& d: tmpres)
+			for (auto& d : tmpres)
 				delete d.second;
 			return {};
 		}
@@ -143,7 +143,7 @@ query_resources(int pbs_sd)
 	 *      This is to allow us to directly index into the allres umap.
 	 *      Do not directly index into the allres umap for non-well known resources.  Use find_resdef()
 	 */
-	for (const auto& r: well_known_res) {
+	for (const auto& r : well_known_res) {
 		if (tmpres.find(r) == tmpres.end()) {
 			for (auto& d : tmpres)
 				delete d.second;
@@ -389,13 +389,13 @@ update_resource_defs(int pbs_sd)
 		}
 	}
 
-	for (auto& d: allres)
+	for (auto& d : allres)
 		delete d.second;
 
 	allres = tmpres;
 
 	consres.clear();
-	for (const auto& def: allres) {
+	for (const auto& def : allres) {
 		if (def.second->type.is_consumable)
 			consres.insert(def.second);
 	}

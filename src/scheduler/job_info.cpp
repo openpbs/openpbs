@@ -4247,7 +4247,7 @@ formula_evaluate(const char *formula, resource_resv *resresv, resource_req *resr
 	}
 
 
-	for (const auto& cr: consres) {
+	for (const auto& cr : consres) {
 		req = find_resource_req(resreq, cr);
 
 		if (req != NULL)
