@@ -2631,7 +2631,7 @@ if %s e.job.in_ms_mom():
         tmp_file = filename.split(':')[1]
         tmp_host = ehost.split('/')[0]
         tmp_out = self.wait_and_read_file(filename=tmp_file, host=tmp_host)
-        self.tempfile.append(tmp_out)
+        self.tempfile.append(tmp_file)
         success = False
         foundstr = ''
         if tmp_out == []:
