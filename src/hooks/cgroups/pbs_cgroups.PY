@@ -1183,7 +1183,7 @@ class HookUtils(object):
             prlimit_command = '/bin/prlimit'
 
         if prlimit_command is None:
-            pbs.logmsg(pbs.EVENT_ERROR, "cannot set rlimit_as for task: "
+            pbs.logmsg(pbs.EVENT_DEBUG, "cannot set rlimit_as for task: "
                        "prlimit command not found")
         elif prlimit_command != '':
             cmd = [prlimit_command,
@@ -1197,7 +1197,8 @@ class HookUtils(object):
                                            stderr=subprocess.PIPE)
                 out = process.communicate()[0]
             except Exception:
-                pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
+                pbs.logmsg(pbs.EVENT_ERROR,
+                           'Found but to failed to execute: %s' %
                            ' '.join(cmd))
 
     def _execjob_launch_handler(self, event, cgroup, jobutil):
@@ -2897,7 +2898,7 @@ class CgroupUtils(object):
                 filename = job.stdout_file()
             else:
                 filename = job.stderr_file()
-            pbs.logmsg(pbs.EVENT_DEBUG4,"Message to be written to %s: %s"
+            pbs.logmsg(pbs.EVENT_DEBUG4, "Message to be written to %s: %s"
                        % (str(filename), msg.strip()))
             if filename is None:
                 return
