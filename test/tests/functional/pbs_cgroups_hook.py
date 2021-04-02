@@ -2721,8 +2721,8 @@ if %s e.job.in_ms_mom():
                                       as_script=True)
                 if ret['rc'] != 0:
                     success = False
-                    self.logger.info('Failed to copy %s to %s on %s' %
-                                     (fn, task_file, self.hosts_list[0]))
+                    self.logger.info('Failed to put %s into %s on %s' %
+                                     (pidstr, task_file, self.hosts_list[0]))
                     self.logger.info('rc = %d', ret['rc'])
                     self.logger.info('stdout = %s', ret['out'])
                     self.logger.info('stderr = %s', ret['err'])
