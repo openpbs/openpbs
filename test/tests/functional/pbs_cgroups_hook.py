@@ -167,20 +167,24 @@ class TestCgroupsHook(TestFunctional):
         else return false
         """
         if not mem_path:
+            self.logger.info("memory controller not enabled on this host")
             return 'false'
         # List all files and check if memsw files exists
         if self.du.isfile(hostname=host,
                           path=mem_path + os.path.sep
                           + "memory.memsw.usage_in_bytes"):
-            self.logger.info("memsw is enabled on this host")
+            self.logger.info("memsw swap accounting is enabled on this host")
             return 'true'
-        return 'false'
+        else:
+            self.logger.info("memsw swap accounting not enabled on this host")
+            return 'false'
 
     def setUp(self):
 
         self.hook_name = 'pbs_cgroups'
         # Cleanup previous pbs_cgroup hook so as to not interfere with test
-        c_hook = self.server.filter(HOOK, {'enabled': True}, id=self.hook_name)
+        c_hook = self.server.filter(HOOK, 
+                                    {'enabled': True}, id=self.hook_name)
         if c_hook:
             self.server.manager(MGR_CMD_DELETE, HOOK, id=self.hook_name)
 
@@ -3278,27 +3282,49 @@ if %s e.job.in_ms_mom():
         if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
 
-        vn_attrs = {ATTR_rescavail + '.ncpus': 1,
-                    ATTR_rescavail + '.mem': '500mb'}
-        self.load_config(self.cfg4 % (self.mem, self.swapctl))
+        # vnode_per_numa_node enabled, so we get per-socket vnodes
+        self.load_config(self.cfg3
+                         % ('', 'true', '', self.mem, '', self.swapctl, ''))
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
-                           id=self.nodes_list[0])
-        self.moms.values()[0].create_vnodes(vn_attrs, 2)
-        self.server.expect(NODE, {ATTR_NODE_state: 'free'},
-                           id=self.nodes_list[0])
-        a = {'Resource_List.select': '1:ncpus=1:mem=500mb'}
+                           id=self.hosts_list[0]+'[0]')
+        socket1_found = False
+        nodestat = self.server.status(NODE)
+        total_kb = 0
+        for node in nodestat:
+            if (self.mom.shortname + '[') not in node['id']:
+                self.logger.info('Skipping vnode %s' % node['id'])
+            else:
+                if node['id'] == self.mom.shortname + '[0]':
+                    self.logger.info('Found socket 0, vnode %s'
+                                     % node['id'])
+                if node['id'] == self.mom.shortname + '[1]':
+                    socket1_found = True
+                    self.logger.info('Found socket 1, vnode %s '
+                                     '(multi socket!)'
+                                     % node['id'])
+                # PbsTypeSize value is in kb
+                node_kb = PbsTypeSize(node['resources_available.mem']).value
+                self.logger.info('Vnode %s memory: %skb'
+                                 % (node['id'], node_kb))
+                total_kb += node_kb
+        total_mb = int(total_kb / 1024)
+        self.logger.info("Total memory on first MoM: %smb" % total_mb)
+        if not socket1_found:
+            self.skipTest('Test requires more than one NUMA node '
+                          '(i.e. "socket") on first host')
+        memreq_mb = total_mb - 2
+        a = {'Resource_List.select':
+             '1:ncpus=1:host=%s:mem=%smb'
+             % (self.mom.shortname, str(memreq_mb))}
         j1 = Job(TEST_USER, attrs=a)
         j1.create_script('date')
         jid1 = self.server.submit(j1)
+        # Job should finish and thus dequeued
         self.server.expect(JOB, 'queue', id=jid1, op=UNSET,
                            interval=1, offset=1)
-        a = {'Resource_List.select': '1:ncpus=1:mem=1000mb'}
-        j2 = Job(TEST_USER, attrs=a)
-        j2.create_script('date')
-        jid2 = self.server.submit(j2)
-        self.server.expect(JOB, 'queue', id=jid2, op=UNSET,
-                           interval=1, offset=1)
-        a = {'Resource_List.select': '1:ncpus=1:mem=40gb'}
+        a = {'Resource_List.select':
+             '1:ncpus=1:host=%s:mem=%smb'
+             % (self.mom.shortname, str(memreq_mb + 1024))}
         j3 = Job(TEST_USER, attrs=a)
         j3.create_script('date')
         jid3 = self.server.submit(j3)
@@ -4755,7 +4781,7 @@ sleep 300
         """
         if not self.mem:
             self.skipTest('Test requires memory subystem mounted')
-        if not self.swapctl:
+        if self.swapctl != 'true':
             self.skipTest('Test requires memsw accounting enabled')
         self.server.remove_resource('cgswap')
         self.server.add_resource('cgswap', 'size', 'nh')
@@ -4902,7 +4928,7 @@ sleep 300
         """
         if not self.mem:
             self.skipTest('Test requires memory subystem mounted')
-        if not self.swapctl:
+        if self.swapctl != 'true':
             self.skipTest('Test requires memsw accounting enabled')
 
         self.load_config(self.cfg16
@@ -4950,10 +4976,10 @@ sleep 300
         except Exception:
             # None will be seen as a failure, nothing to do
             pass
-        self.logger.info("total available memsw: %d"
-                         % vmem_avail_in_bytes)
         self.assertTrue(vmem_avail_in_bytes is not None,
                         "Unable to read total memsw available")
+        self.logger.info("total available memsw: %d"
+                         % vmem_avail_in_bytes)
 
         # Get job physical mem limit
         mem_limit = os.path.join(mem_base, str(jid),
@@ -4966,10 +4992,10 @@ sleep 300
         except Exception:
             # None will be seen as a failure, nothing to do
             pass
-        self.logger.info("job mem limit: %d"
-                         % mem_limit_in_bytes)
         self.assertTrue(mem_limit_in_bytes is not None,
                         "Unable to read job mem limit")
+        self.logger.info("job mem limit: %d"
+                         % mem_limit_in_bytes)
 
         # Get job phys+swap mem limit
         vmem_limit = os.path.join(mem_base, str(jid),
@@ -4982,10 +5008,10 @@ sleep 300
         except Exception:
             # None will be seen as a failure, nothing to do
             pass
-        self.logger.info("job memsw limit: %d"
-                         % vmem_limit_in_bytes)
         self.assertTrue(vmem_limit_in_bytes is not None,
                         "Unable to read job memsw limit")
+        self.logger.info("job memsw limit: %d"
+                         % vmem_limit_in_bytes)
 
         # Check results correspond to enforcement flags and job placement
         swap_avail = vmem_avail_in_bytes - mem_avail_in_bytes
@@ -5059,7 +5085,7 @@ sleep 300
     def test_manage_rlimit_as(self):
         if not self.mem:
             self.skipTest('Test requires memory subystem mounted')
-        if not self.swapctl:
+        if self.swapctl != 'true':
             self.skipTest('Test requires memsw accounting enabled')
 
         # Make sure job history is enabled to see when job has ended
