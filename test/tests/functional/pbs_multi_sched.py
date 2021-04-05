@@ -2079,6 +2079,14 @@ e.accept()
         if rrule is not None:
             attr.update({ATTR_resv_rrule: rrule,
                          ATTR_resv_timezone: self.get_tzid()})
+        now = int(time.time())
+        if start <= now:
+            dur = end - start
+            start = now + 10
+            end = start + dur
+            attr['reserve_start'] = start
+            attr['reserve_end'] = end
+
         resv = Reservation(TEST_USER, attr)
         rid = self.server.submit(resv)
 
