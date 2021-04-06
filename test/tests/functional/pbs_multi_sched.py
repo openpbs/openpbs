@@ -2073,19 +2073,13 @@ e.accept()
 
         self.set_scheduling(['sc2', 'sc3', 'default'], False)
 
+        now = int(time.time())
         attr = {'Resource_List.select': '1:ncpus=2',
-                'reserve_start': start,
-                'reserve_end': end}
+                'reserve_start': now + start,
+                'reserve_end': now + end}
         if rrule is not None:
             attr.update({ATTR_resv_rrule: rrule,
                          ATTR_resv_timezone: self.get_tzid()})
-        now = int(time.time())
-        if start <= now:
-            dur = end - start
-            start = now + 10
-            end = start + dur
-            attr['reserve_start'] = start
-            attr['reserve_end'] = end
 
         resv = Reservation(TEST_USER, attr)
         rid = self.server.submit(resv)
@@ -2133,8 +2127,7 @@ e.accept()
         node of the same partition in multi-sched environment
         """
         self.common_setup()
-        now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 600, end=now + 800)
+        self.degraded_resv_reconfirm(start=600, end=800)
 
     def test_advance_running_resv_reconfirm(self):
         """
@@ -2142,8 +2135,7 @@ e.accept()
         node of the same partition in multi-sched environment
         """
         self.common_setup()
-        now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True)
+        self.degraded_resv_reconfirm(start=20, end=200, run=True)
 
     def test_standing_confimred_resv_reconfirm(self):
         """
@@ -2151,8 +2143,7 @@ e.accept()
         node of the same partition in multi-sched environment
         """
         self.common_setup()
-        now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 600, end=now + 800,
+        self.degraded_resv_reconfirm(start=600, end=800,
                                      rrule='FREQ=HOURLY;COUNT=2')
 
     def test_standing_running_resv_reconfirm(self):
@@ -2161,8 +2152,7 @@ e.accept()
         node of the same partition in multi-sched environment
         """
         self.common_setup()
-        now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True,
+        self.degraded_resv_reconfirm(start=20, end=200, run=True,
                                      rrule='FREQ=HOURLY;COUNT=2')
 
     def test_resv_from_job_in_multi_sched_using_qsub(self):
