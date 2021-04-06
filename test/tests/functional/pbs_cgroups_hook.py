@@ -3328,10 +3328,12 @@ if %s e.job.in_ms_mom():
         j3 = Job(TEST_USER, attrs=a)
         j3.create_script('date')
         jid3 = self.server.submit(j3)
+        # Will either start with "Can Never Run" or "Not Running"
+        # Don't match only one
         a = {'job_state': 'Q',
              'comment':
              (MATCH_RE,
-              '.*Can Never Run: Insufficient amount of resource: mem.*')}
+              '.*: Insufficient amount of resource: mem.*')}
         self.server.expect(JOB, a, attrop=PTL_AND, id=jid3, offset=10,
                            interval=1)
 
