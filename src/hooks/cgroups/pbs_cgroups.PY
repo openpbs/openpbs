@@ -2846,6 +2846,29 @@ class CgroupUtils(object):
         else:
             self.subsystems = self._target_subsystems()
 
+        # Check if memsw is enabled despite lack of kernel support
+        # if so disable memsw
+        if 'memsw' in self.subsystems:
+            memsw_limit_file = (self.paths['memsw']
+                                + 'limit_in_bytes')
+            if not os.path.isfile(memsw_limit_file):
+                pbs.logmsg(pbs.EVENT_ERROR,
+                           'CONFIG ERROR: CF enables memsw '
+                           'but %s is missing'
+                           % memsw_limit_file)
+                pbs.logmsg(pbs.EVENT_ERROR,
+                           'CONFIG ERROR: kernel swapaccount parameter is 0, '
+                           'disabling memsw subsystem')
+                pbs.logmsg(pbs.EVENT_ERROR,
+                           'CONFIG ERROR: to fix this, either add '
+                           'swapaccount=1 to kernel command line '
+                           'or disable memsw')
+                self.cfg['cgroup']['memsw']['enabled'] = False
+                self.subsystems.remove('memsw')
+                pbs.logmsg(pbs.EVENT_DEBUG4,
+                           'remaining enabled subsystems: '
+                           + repr(self.subsystems))
+
         # Return now if nothing is enabled
         if not self.subsystems:
             pbs.logmsg(pbs.EVENT_DEBUG2, '%s: No cgroups enabled' %

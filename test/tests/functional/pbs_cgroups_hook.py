@@ -183,7 +183,7 @@ class TestCgroupsHook(TestFunctional):
 
         self.hook_name = 'pbs_cgroups'
         # Cleanup previous pbs_cgroup hook so as to not interfere with test
-        c_hook = self.server.filter(HOOK, 
+        c_hook = self.server.filter(HOOK,
                                     {'enabled': True}, id=self.hook_name)
         if c_hook:
             self.server.manager(MGR_CMD_DELETE, HOOK, id=self.hook_name)
