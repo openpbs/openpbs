@@ -423,7 +423,7 @@ upgrade_job_file(int fd, int ver)
 {
 	FILE *tmp = NULL;
 	int tmpfd = -1;
-	jobfix_19_21 qs_19_20;
+	jobfix_19_21 qs_19_21;
 	jobfix_PRE19 old_jobfix_pre19;
 	union jobextend_19_21 old_ji_extended;
 	int ret;
@@ -455,23 +455,23 @@ upgrade_job_file(int fd, int ver)
 			return 1;
 		}
 
-		qs_19_20 = convert_pre19jf_to_19(old_jobfix_pre19);
+		qs_19_21 = convert_pre19jf_to_19(old_jobfix_pre19);
 	} else {
-		/* Read in the 19_20 jobfix structure */
-		memset(&qs_19_20, 0, sizeof(qs_19_20));
-		len = read(fd, (char *) &qs_19_20, sizeof(qs_19_20));
+		/* Read in the 19_21 jobfix structure */
+		memset(&qs_19_21, 0, sizeof(qs_19_21));
+		len = read(fd, (char *) &qs_19_21, sizeof(qs_19_21));
 		if (len < 0) {
 			fprintf(stderr, "Failed to read input file [%s]\n",
 				errno ? strerror(errno) : "No error");
 			return 1;
 		}
-		if (len != sizeof(qs_19_20)) {
+		if (len != sizeof(qs_19_21)) {
 			fprintf(stderr, "Format not recognized, not enough fixed data.\n");
 			return 1;
 		}
 	}
 	memset(&new_job, 0, sizeof(new_job));
-	new_job.ji_qs = convert_19jf_to_22(qs_19_20);
+	new_job.ji_qs = convert_19jf_to_22(qs_19_21);
 
 	/* Convert old extended data to new */
 	memset(&old_ji_extended, 0, sizeof(old_ji_extended));
@@ -489,7 +489,7 @@ upgrade_job_file(int fd, int ver)
 	/* previous versions may not have updated values of state and substate in the attribute list
 	 * since we now rely on these attributes instead of the quick save area, it's important
 	 * to make sure that state and substate attributes are set correctly */
-	statechar = state_int2char(qs_19_20.ji_state);
+	statechar = state_int2char(qs_19_21.ji_state);
 	if (statechar != JOB_STATE_LTR_UNKNOWN) {
 		bool stateset = false;
 		bool substateset = false;
@@ -500,7 +500,7 @@ upgrade_job_file(int fd, int ver)
 			return 1;
 		}
 		snprintf(statebuf, sizeof(statebuf), "%c", statechar);
-		snprintf(ssbuf, sizeof(ssbuf), "%d", qs_19_20.ji_substate);
+		snprintf(ssbuf, sizeof(ssbuf), "%d", qs_19_21.ji_substate);
 		pal = read_all_attrs_from_jbfile(fd, NULL, NULL, &errbuf);
 		if (pal == NULL && errbuf[0] != '\0') {
 			fprintf(stderr, "%s\n", errbuf);
