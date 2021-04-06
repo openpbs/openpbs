@@ -2203,8 +2203,15 @@ class NodeUtils(object):
                        caller_name())
         cpuinfo['physical_cpus'] = int(cpuinfo['logical_cpus']
                                        // cpuinfo['hyperthreads_per_core'])
-        pbs.logmsg(pbs.EVENT_DEBUG4, '%s returning: %s' %
-                   (caller_name(), cpuinfo))
+        wanted_keys = ['physical_cpus', 'logical_cpus','hyperthreads_per_core',
+                       'hyperthreads']
+        cpuinfo_short = dict((k, cpuinfo[k])
+                             for k in wanted_keys if k in cpuinfo)
+        pbs.logmsg(pbs.EVENT_DEBUG4, "%s returning: %s"
+                   % (caller_name(), cpuinfo_short))
+        if 0 in cpuinfo['cpu']:
+            pbs.logmsg(pbs.EVENT_DEBUG4, "%s For CPU 0: cpuinfo['cpu'][0]: %s"
+                       % (caller_name(), cpuinfo['cpu'][0]))
         return cpuinfo
 
     def gather_jobs_on_node(self, cgroup):

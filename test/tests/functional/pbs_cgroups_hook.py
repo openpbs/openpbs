@@ -259,6 +259,13 @@ class TestCgroupsHook(TestFunctional):
             self.nodes_list.append(node)
             self.vntypename.append(vntype)
 
+            # Tell the MoM's kernel to flush the buffer cache:
+            # when we run a job we want less dirty page cache
+            # which might slow down memory allocations
+            flush_cmd = ["echo 3 >/proc/sys/vm/drop_caches"]
+            self.du.run_cmd(hosts=mom.hostname, cmd=flush_cmd,
+                            as_script=True, sudo=True)
+
         # Setting self.mom defaults to primary mom as some of
         # library methods assume that
         self.mom = self.moms_list[0]
@@ -372,7 +379,6 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
         self.eatmem_job1 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
-            'timeout -s KILL 60 sync\n' \
             'sleep 10\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
@@ -393,7 +399,6 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
         self.eatmem_job2 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
-            'timeout -s KILL 60 sync\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
             'python2_path=`which python2 2>/dev/null`\n' \
@@ -419,7 +424,6 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
         self.eatmem_job3 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
-            'timeout -s KILL 60 sync\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
             'python2_path=`which python2 2>/dev/null`\n' \
