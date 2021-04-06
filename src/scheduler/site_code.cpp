@@ -2091,7 +2091,7 @@ site_vnode_inherit(node_info ** nodes)
 		/*
 		 * Is this a natural node?
 		 */
-		res = find_resource(ninfo->res, getallres(RES_HOST));
+		res = find_resource(ninfo->res, allres["host"]);
 		if (res == NULL)
 			continue;
 		if (compare_res_to_str(res, ninfo->name, CMP_CASELESS)) {
@@ -2255,7 +2255,7 @@ count_cpus(node_info **nodes, int ncnt, queue_info **queues, sh_amt *totals)
 		 * counted against running jobs.
 		 */
 #if 0 /* XXX HACK until SBUrate available, localmod 126 */
-		res = find_resource(node->res, getallres(RES_NCPUS));
+		res = find_resource(node->res, allres["ncpus"]);
 		if (res != NULL && res->avail != SCHD_INFINITY) {
 			if (node->is_down || node->is_offline)
 				/*

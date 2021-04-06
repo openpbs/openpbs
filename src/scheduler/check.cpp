@@ -955,7 +955,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 #ifdef NAS /* localmod 036 */
 			{
 				if (resresv->job->resv->resv->is_standing) {
-					resource_req *req = find_resource_req(resresv->resreq, getallres(RES_MIN_WALLTIME));
+					resource_req *req = find_resource_req(resresv->resreq, allres["min_walltime"];
 
 					if (req != NULL) {
 						int resv_time_left = calc_time_left(resresv->job->resv, 0);
@@ -1169,7 +1169,7 @@ match_resource(schd_resource *res, resource_req *resreq, unsigned int flags, enu
 				/* Set arg2 for vnode/host resource. In case of preemption, arg2 is used to cull
 				 * the list of running jobs
 				 */
-				if ((res->def == getallres(RES_HOST)) || (res->def == getallres(RES_VNODE)))
+				if (res->def == allres["host"] || (res->def == allres["vnode"]))
 					set_schd_error_arg(err, ARG2, requested);
 			}
 		}

@@ -114,24 +114,25 @@ const struct enum_conv preempt_prio_info[] =
 	{ PREEMPT_HIGH, "" }
 };
 
-/* Used to create static indexes into allres */
-const struct enum_conv resind[] =
+/* Well known resources: If these aren't queried, we return an error.
+ * Any resource you want to directly index into allres should be in this list
+ */
+const std::vector<std::string> well_known_res
 	{
-	{RES_CPUT, "cput"},
-	{RES_MEM, "mem"},
-	{RES_WALLTIME, "walltime"},
-	{RES_SOFT_WALLTIME, "soft_walltime"},
-	{RES_NCPUS, "ncpus"},
-	{RES_ARCH, "arch"},
-	{RES_HOST, "host"},
-	{RES_VNODE, "vnode"},
-	{RES_AOE, "aoe"},
-	{RES_EOE, "eoe"},
-	{RES_MIN_WALLTIME, "min_walltime"},
-	{RES_MAX_WALLTIME, "max_walltime"},
-	{RES_PREEMPT_TARGETS, "preempt_targets"},
-	{RES_HIGH, ""}
-};
+		"cput",
+		"mem",
+		"walltime",
+		"soft_walltime",
+		"ncpus",
+		"arch",
+		"host",
+		"vnode",
+		"aoe",
+		"eoe",
+		"min_walltime",
+		"max_walltime",
+		"preempt_targets",
+	};
 
 struct config conf;
 struct status cstat;
@@ -165,11 +166,11 @@ pthread_once_t key_once = PTHREAD_ONCE_INIT;
 /* resource definitions from the server */
 
 /* all resources */
-resdef **allres = NULL;
+std::unordered_map<std::string, resdef *> allres;
 /* consumable resources */
-resdef **consres = NULL;
+std::unordered_set<resdef *> consres;
 /* boolean resources*/
-resdef **boolres = NULL;
+std::unordered_set<resdef *> boolres;
 
 /* AOE name used to compare nodes, free when exit cycle */
 char *cmp_aoename = NULL;

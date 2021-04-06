@@ -49,7 +49,7 @@
  *
  *	returns resdef list of resources
  */
-resdef **query_resources(int pbs_sd);
+std::unordered_map<std::string, resdef *> query_resources(int pbs_sd);
 
 /*
  *	conv_rsc_type - convert server type number into resource_type struct
@@ -57,24 +57,10 @@ resdef **query_resources(int pbs_sd);
  *	  OUT: rtype - resource type structure
  *	returns nothing
  */
-void conv_rsc_type(int type, struct resource_type *rtype);
-
-/* used with filter_array*/
-int def_is_consumable(void *vdef, void *n);
-int def_is_bool(void *vdef, void *n);
-int filter_noncons(void *v, void *arg);
-
-
-/* constructors and destructors for resdef list object */
-resdef *new_resdef(void);				/* constructor */
-resdef *dup_resdef(resdef *olddef);		/* copy constructor */
-resdef **dup_resdef_array(resdef **);	/* list copy constructor */
-void free_resdef(resdef *def);		/* destructor */
-void free_resdef_array(resdef **deflist);
+resource_type conv_rsc_type(int type);
 
 /* find and return a resdef entry by name */
-resdef *find_resdef(resdef **deflist, const char *name);
-resdef *find_resdef(resdef **deflist, const std::string& name);
+resdef *find_resdef(const std::string& name);
 
 /*
  *  create resdef array based on a str array of resource names
@@ -82,20 +68,10 @@ resdef *find_resdef(resdef **deflist, const std::string& name);
 resdef** resdef_arr_from_str_arr(resdef **deflist, char **strarr);
 
 /*
- *  safely access allres by index.  This can be used if allres is NULL
- */
-resdef *getallres(enum resource_index ind);
-
-/*
  * query the resource definition from the server and create derived
  * data structures.  Only query if required.
  */
-int update_resource_defs(int pbs_sd);
-
-/*
- * free and clear global resource definition pointers
- */
-void reset_global_resource_ptrs(void);
+bool update_resource_defs(int pbs_sd);
 
 /* checks if a resource avail is set. */
 int is_res_avail_set(schd_resource *res);
@@ -122,6 +98,6 @@ int add_resdef_to_array(resdef ***resdef_arr, resdef *def);
 resdef **copy_resdef_array(resdef **deflist);
 
 /* update the def member in sort_info structures in conf */
-void update_sorting_defs(int op);
+void update_sorting_defs(void);
 
 #endif /* _RESOURCE_H */

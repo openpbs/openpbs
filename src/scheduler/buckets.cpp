@@ -911,9 +911,9 @@ int job_should_use_buckets(resource_resv *resresv) {
 
 	/* Job's requesting specific hosts or vnodes use the standard path */
 	const auto& defs = resresv->select->defs;
-	if (defs.find(getallres(RES_HOST)) != defs.end())
+	if (defs.find(allres["host"]) != defs.end())
 		return 0;
-	if (defs.find(getallres(RES_VNODE)) != defs.end())
+	if (defs.find(allres["vnode"]) != defs.end())
 		return 0;
 	/* If a job has an execselect, it means it's requesting vnode */
 	if (resresv->execselect != NULL)
