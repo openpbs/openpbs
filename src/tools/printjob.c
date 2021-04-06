@@ -85,7 +85,7 @@ attribute_def job_attr_def[1] = {{0}};
 #define BUF_SIZE 512
 int display_script = 0;	 /* to track if job-script is required or not */
 
-svrattrl *read_all_attrs_from_jbfile(int fd, char **state, char **substate);
+svrattrl *read_all_attrs_from_jbfile(int fd, char **state, char **substate, char **errbuf);
 
 /**
  * @brief
@@ -532,6 +532,12 @@ char *argv[];
 			svrattrl *pal, *pali;
 			char *state = "";
 			char *substate = "";
+			char *errbuf = malloc(1024);
+
+			if (errbuf == NULL) {
+				fprintf(stderr, "Malloc error\n");
+				exit(1);
+			}
 
 			amt = read(fp, &xjob.ji_qs, sizeof(xjob.ji_qs));
 			if (amt != sizeof(xjob.ji_qs)) {
@@ -563,13 +569,17 @@ char *argv[];
 				}
 			}
 
-			pal = read_all_attrs_from_jbfile(fp, &state, &substate);
+			pal = read_all_attrs_from_jbfile(fp, &state, &substate, &errbuf);
+			if (pal == NULL && errbuf[0] != '\0') {
+				fprintf(stderr, "%s\n", errbuf);
+				exit(1);
+			}
 
 			/* Print the summary first */
 			prt_job_struct(&xjob, state, substate);
 
 			/* now do attributes, one at a time */
-			if (no_attributes == 0) {
+			if (no_attributes == 0 && pal != NULL) {
 				/* Now print all attributes */
 				printf("--attributes--\n");
 

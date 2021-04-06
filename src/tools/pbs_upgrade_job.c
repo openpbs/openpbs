@@ -90,12 +90,12 @@
 /* From pbs_ifl.h */
 #define PBS_MAXSEQNUM_PRE19	7
 #define PBS_MAXSVRJOBID_PRE19	(PBS_MAXSEQNUM_PRE19 - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2)
-#define PBS_MAXSVRJOBID_19_20	(PBS_MAXSEQNUM - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2)
+#define PBS_MAXSVRJOBID_19_21	(PBS_MAXSEQNUM - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2)
 
 /*
- * Replicate the jobfix structure as it was defined in 19.x and 20.x versions
+ * Replicate the jobfix structure as it was defined in versions 19.x - 21.x
  */
-typedef struct jobfix_19_20 {
+typedef struct jobfix_19_21 {
 	int ji_jsversion;   /* job structure version - JSVERSION */
 	int ji_state;	    /* internal copy of state */
 	int ji_substate;    /* job sub-state */
@@ -106,7 +106,7 @@ typedef struct jobfix_19_20 {
 	time_t ji_stime;    /* time job started execution */
 	time_t ji_endtBdry; /* estimate upper bound on end time */
 
-	char ji_jobid[PBS_MAXSVRJOBID_19_20 + 1]; /* job identifier */
+	char ji_jobid[PBS_MAXSVRJOBID_19_21 + 1]; /* job identifier */
 	char ji_fileprefix[PBS_JOBBASE + 1];	  /* no longer used */
 	char ji_queue[PBS_MAXQUEUENAME + 1];	  /* name of current queue */
 	char ji_destin[PBS_MAXROUTEDEST + 1];	  /* dest from qmove/route */
@@ -135,9 +135,9 @@ typedef struct jobfix_19_20 {
 			gid_t ji_exgid;	      /* execution gid */
 		} ji_momt;
 	} ji_un;
-} jobfix_19_20;
+} jobfix_19_21;
 
-union jobextend_19_20 {
+union jobextend_19_21 {
 	char fill[256]; /* fill to keep same size */
 	struct {
 #if defined(__sgi)
@@ -231,7 +231,7 @@ typedef struct taskfix_PRE19
 #define BUFSZ 4096
 char buf[BUFSZ];
 
-svrattrl *read_all_attrs_from_jbfile(int fd, char **state, char **substate);
+svrattrl *read_all_attrs_from_jbfile(int fd, char **state, char **substate, char **errbuf);
 
 /**
  * @brief
@@ -316,41 +316,49 @@ check_job_file_exit:
  *
  * @param[in]	old_jobfix_pre19 - pre-19 jobfix struct
  *
- * @return	jobfix_19_20
+ * @return	jobfix_19_21
  * @retval	v19 converted jobfix
  */
-jobfix_19_20
-convert_pre18jf_to_19(jobfix_PRE19 old_jobfix_pre19)
+jobfix_19_21
+convert_pre19jf_to_19(jobfix_PRE19 old_jobfix_pre19)
 {
-	jobfix_19_20 jf_19_20;
+	jobfix_19_21 jf_19_21;
 
 	/* Copy the data to the new jobfix structure */
-	memset(&jf_19_20, 0, sizeof(jf_19_20));
-	memcpy(&jf_19_20, &old_jobfix_pre19, sizeof(jf_19_20));
-	snprintf(jf_19_20.ji_jobid, sizeof(jf_19_20.ji_jobid),
+	memset(&jf_19_21, 0, sizeof(jf_19_21));
+	jf_19_21.ji_jsversion = JSVERSION_19;
+	jf_19_21.ji_state = old_jobfix_pre19.ji_state;
+	jf_19_21.ji_substate = old_jobfix_pre19.ji_substate;
+	jf_19_21.ji_svrflags = old_jobfix_pre19.ji_svrflags;
+	jf_19_21.ji_numattr = old_jobfix_pre19.ji_numattr;
+	jf_19_21.ji_ordering = old_jobfix_pre19.ji_ordering;
+	jf_19_21.ji_priority = old_jobfix_pre19.ji_priority;
+	jf_19_21.ji_stime = old_jobfix_pre19.ji_stime;
+	jf_19_21.ji_endtBdry = old_jobfix_pre19.ji_endtBdry;
+	snprintf(jf_19_21.ji_jobid, sizeof(jf_19_21.ji_jobid),
 			"%s", old_jobfix_pre19.ji_jobid);
-	snprintf(jf_19_20.ji_fileprefix, sizeof(jf_19_20.ji_fileprefix),
+	snprintf(jf_19_21.ji_fileprefix, sizeof(jf_19_21.ji_fileprefix),
 			"%s", old_jobfix_pre19.ji_fileprefix);
-	snprintf(jf_19_20.ji_queue, sizeof(jf_19_20.ji_queue),
+	snprintf(jf_19_21.ji_queue, sizeof(jf_19_21.ji_queue),
 			"%s", old_jobfix_pre19.ji_queue);
-	snprintf(jf_19_20.ji_destin, sizeof(jf_19_20.ji_destin),
+	snprintf(jf_19_21.ji_destin, sizeof(jf_19_21.ji_destin),
 			"%s", old_jobfix_pre19.ji_destin);
-	jf_19_20.ji_un_type = old_jobfix_pre19.ji_un_type;
-	memcpy(&jf_19_20.ji_un, &old_jobfix_pre19.ji_un, sizeof(jf_19_20.ji_un));
+	jf_19_21.ji_un_type = old_jobfix_pre19.ji_un_type;
+	memcpy(&jf_19_21.ji_un, &old_jobfix_pre19.ji_un, sizeof(jf_19_21.ji_un));
 
-	return jf_19_20;
+	return jf_19_21;
 }
 
 /**
- * @brief	Upgrade 19-20 jobfix structure to latest
+ * @brief	Upgrade 19-21 jobfix structure to latest
  *
- * @param[in]	old_jf - 19-20 jobfix struct
+ * @param[in]	old_jf - 19-21 jobfix struct
  *
- * @return	jobfix_19_20
- * @retval	v19 converted jobfix
+ * @return	jobfix_19_21
+ * @retval	converted jobfix
  */
 struct jobfix
-convert_19jf_to_21(jobfix_19_20 old_jf)
+convert_19jf_to_22(jobfix_19_21 old_jf)
 {
 	struct jobfix jf;
 
@@ -368,14 +376,24 @@ convert_19jf_to_21(jobfix_19_20 old_jf)
 	return jf;
 }
 
+/**
+ * @brief	Upgrade 19-21 jobextend structure to latest
+ *
+ * @param[in]	old_extend - 19-21 jobextend struct
+ *
+ * @return	jobextend
+ * @retval	converted jobextend
+ */
 union jobextend
-convert_19ext_to_21(union jobextend_19_20 old_extend)
+convert_19ext_to_22(union jobextend_19_21 old_extend)
 {
 	union jobextend je;
 
 	memset(&je, 0, sizeof(je));
 	snprintf(je.fill, sizeof(je.fill), "%s", old_extend.fill);
+#if !defined(__sgi)
 	snprintf(je.ji_ext.ji_jid, sizeof(je.ji_ext.ji_jid), "%s", old_extend.ji_ext.ji_4jid);
+#endif
 	je.ji_ext.ji_credtype = old_extend.ji_ext.ji_credtype;
 #ifdef PBS_MOM
 	je.ji_ext.ji_nodeidx = old_extend.ji_ext.ji_nodeidx;
@@ -405,9 +423,9 @@ upgrade_job_file(int fd, int ver)
 {
 	FILE *tmp = NULL;
 	int tmpfd = -1;
-	jobfix_19_20 qs_19_20;
+	jobfix_19_21 qs_19_20;
 	jobfix_PRE19 old_jobfix_pre19;
-	union jobextend_19_20 old_ji_extended;
+	union jobextend_19_21 old_ji_extended;
 	int ret;
 	off_t pos;
 	job new_job;
@@ -437,7 +455,7 @@ upgrade_job_file(int fd, int ver)
 			return 1;
 		}
 
-		qs_19_20 = convert_pre18jf_to_19(old_jobfix_pre19);
+		qs_19_20 = convert_pre19jf_to_19(old_jobfix_pre19);
 	} else {
 		/* Read in the 19_20 jobfix structure */
 		memset(&qs_19_20, 0, sizeof(qs_19_20));
@@ -453,20 +471,20 @@ upgrade_job_file(int fd, int ver)
 		}
 	}
 	memset(&new_job, 0, sizeof(new_job));
-	new_job.ji_qs = convert_19jf_to_21(qs_19_20);
+	new_job.ji_qs = convert_19jf_to_22(qs_19_20);
 
 	/* Convert old extended data to new */
 	memset(&old_ji_extended, 0, sizeof(old_ji_extended));
-	len = read(fd, (char *)&old_ji_extended, sizeof(union jobextend_19_20));
+	len = read(fd, (char *)&old_ji_extended, sizeof(union jobextend_19_21));
 	if (len < 0) {
 		fprintf(stderr, "Failed to read input file [%s]\n", errno ? strerror(errno) : "No error");
 		return 1;
 	}
-	if (len != sizeof(union jobextend_19_20)) {
+	if (len != sizeof(union jobextend_19_21)) {
 		fprintf(stderr, "Format not recognized, not enough extended data.\n");
 		return 1;
 	}
-	new_job.ji_extended = convert_19ext_to_21(old_ji_extended);
+	new_job.ji_extended = convert_19ext_to_22(old_ji_extended);
 
 	/* previous versions may not have updated values of state and substate in the attribute list
 	 * since we now rely on these attributes instead of the quick save area, it's important
@@ -475,10 +493,19 @@ upgrade_job_file(int fd, int ver)
 	if (statechar != JOB_STATE_LTR_UNKNOWN) {
 		bool stateset = false;
 		bool substateset = false;
+		char *errbuf = malloc(1024);
 
+		if (errbuf == NULL) {
+			fprintf(stderr, "Malloc error\n");
+			return 1;
+		}
 		snprintf(statebuf, sizeof(statebuf), "%c", statechar);
 		snprintf(ssbuf, sizeof(ssbuf), "%d", qs_19_20.ji_substate);
-		pal = read_all_attrs_from_jbfile(fd, NULL, NULL);
+		pal = read_all_attrs_from_jbfile(fd, NULL, NULL, &errbuf);
+		if (pal == NULL && errbuf[0] != '\0') {
+			fprintf(stderr, "%s\n", errbuf);
+			return 1;
+		}
 		pali = pal;
 		while (pali != NULL) {
 			if (strcmp(pali->al_name, ATTR_state) == 0) {
@@ -551,8 +578,8 @@ upgrade_job_file(int fd, int ver)
 				fprintf(stderr, "Failed to write output file [%s]\n", errno ? strerror(errno) : "No error");
 				return 1;
 			}
-			objsize -= copysize;
-			charstrm += copysize;
+			objsize -= len;
+			charstrm += len;
 		}
 		if (pali->al_link.ll_next == NULL)
 			break;

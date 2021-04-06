@@ -2626,14 +2626,15 @@ create_subjob_id(char *parent_jid, int sjidx)
  * @brief
  * 		read attributes from file descriptor of a job file
  *
- * @param[in]	fd	-	file descriptor.
+ * @param[in]	fd	-	file descriptor
+ * @param[out]	errbuf	-	buffer to return messages for any errors
  *
- * @return	int
- * @return	1	: success
- * @return	0	: failure
+ * @return	svrattrl *
+ * @retval	svrattrl object for the attribute read
+ * @retval	NULL for error
  */
 static svrattrl *
-read_attr(int fd)
+read_attr(int fd, char **errbuf)
 {
 	int amt;
 	int i;
@@ -2642,16 +2643,18 @@ read_attr(int fd)
 
 	i = read(fd, (char *)&tempal, sizeof(tempal));
 	if (i != sizeof(tempal)) {
-		fprintf(stderr, "bad read of attribute\n");
+		if (errbuf != NULL)
+			sprintf(*errbuf, "bad read of attribute");
 		return NULL;
 	}
 	if (tempal.al_tsize == ENDATTRIBUTES)
 		return NULL;
 
-	pal = (svrattrl *)malloc(tempal.al_tsize);
+	pal = (svrattrl *) malloc(tempal.al_tsize);
 	if (pal == NULL) {
-		fprintf(stderr, "malloc failed\n");
-		exit(1);
+		if (errbuf != NULL)
+			sprintf(*errbuf, "malloc failed");
+		return NULL;
 	}
 	*pal = tempal;
 
@@ -2660,8 +2663,9 @@ read_attr(int fd)
 	amt = pal->al_tsize - sizeof(svrattrl);
 	i = read(fd, (char *)pal + sizeof(svrattrl), amt);
 	if (i != amt) {
-		fprintf(stderr, "short read of attribute\n");
-		exit(2);
+		if (errbuf != NULL)
+			sprintf(*errbuf, "short read of attribute");
+		return NULL;
 	}
 	pal->al_name = (char *)pal + sizeof(svrattrl);
 	if (pal->al_rescln)
@@ -2682,16 +2686,19 @@ read_attr(int fd)
  * @param[in]	fd - fd of job file
  * @param[out]	state - return pointer to state value
  * @param[out]	substate - return pointer for substate value
+ * @param[out]	errbuf	-	buffer to return messages for any errors
  *
- * @return	void
+ * @return	svrattrl*
+ * @retval	list of attributes read from a job file
+ * @retval	NULL for error
  */
 svrattrl *
-read_all_attrs_from_jbfile(int fd, char **state, char **substate)
+read_all_attrs_from_jbfile(int fd, char **state, char **substate, char **errbuf)
 {
 	svrattrl *pal = NULL;
 	svrattrl *pali = NULL;
 
-	while ((pali = read_attr(fd)) != NULL) {
+	while ((pali = read_attr(fd, errbuf)) != NULL) {
 		if (pal == NULL) {
 			pal = pali;
 			(&pal->al_link)->ll_struct = (void *)(&pal->al_link);
