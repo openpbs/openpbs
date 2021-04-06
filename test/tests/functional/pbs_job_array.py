@@ -133,6 +133,7 @@ e.accept()
         rv = self.is_server_licensed(self.server)
         _msg = 'No license found on server %s' % (self.server.shortname)
         self.assertTrue(rv, _msg)
+        self.mom.isUp()
 
     def test_running_subjob_survive_restart(self):
         """
@@ -480,7 +481,6 @@ e.accept()
         self.server.holdjob(j_id2, USER_HOLD)
         self.server.expect(JOB, {'job_state': 'H'}, j_id2)
         self.kill_and_restart_svr()
-        self.mom.isUp()
         self.server.delete(j_id, wait=True)
         self.server.expect(JOB, {'job_state': 'H'}, j_id2)
         self.server.rlsjob(j_id2, USER_HOLD)
