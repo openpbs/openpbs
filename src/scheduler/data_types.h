@@ -1087,7 +1087,7 @@ struct peer_queue
 	const std::string remote_queue;
 	const std::string remote_server;
 	int peer_sd;
-	peer_queue(const char *lqueue, const char *rqueue, const char *rserver): local_queue(lqueue), remote_queue(rqueue), remote_server(rserver) {}
+	peer_queue(const char *lqueue, const char *rqueue, const char *rserver): local_queue(lqueue), remote_queue(rqueue), remote_server(rserver) {peer_sd = -1;}
 };
 
 struct nspec

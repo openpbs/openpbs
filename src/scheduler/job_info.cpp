@@ -1043,12 +1043,14 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 		/* don't use multi-threading if I am a worker thread or num_threads is 1 */
 		tdata = alloc_tdata_jquery(policy, pbs_sd, jobs, qinfo, 0, num_new_jobs - 1);
 		if (tdata == NULL) {
+			free_resource_resv_array(resresv_arr);
 			pbs_statfree(jobs);
 			return NULL;
 		}
 		query_jobs_chunk(tdata);
 
 		if (tdata->error || tdata->oarr == NULL) {
+			free_resource_resv_array(resresv_arr);
 			pbs_statfree(jobs);
 			free(tdata->oarr);
 			free(tdata);
