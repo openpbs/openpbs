@@ -318,15 +318,31 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			exit $ret
 		fi
 		server_started=1
+		
+		PSI_VAL=
+		# Check if PBS_SERVER_INSTANCES is set for multi-server
+		if [ ! -z "${PBS_SERVER_INSTANCES}" ]; then
+			# We want to set PBS_SERVER_INSTANCES to just the server that's being started
+			# this is needed so that qmgr doesn't try to contact other servers, which may not be up yet
+			IFS=',' read -ra PSIARR <<< "$PBS_SERVER_INSTANCES"
+			for psi_svr in "${PSIARR[@]}"; do
+				psi_hostport=(${psi_svr//:/ })
+				psi_port=${psi_hostport[1]}
+				if [[ "$psi_port" == "$PBS_BATCH_SERVICE_PORT" ]]; then
+					PSI_VAL=$psi_svr
+					break
+				fi
+			done
+		fi
 		if is_cray_xt; then
-			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
+			PBS_SERVER_INSTANCES=$PSI_VAL ${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
 				set server restrict_res_to_release_on_suspend = ncpus
 			EOF
 		fi
 		tries=3
 		while [ $tries -ge 0 ]
 		do
-			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
+			PBS_SERVER_INSTANCES=$PSI_VAL ${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
 				create queue workq
 			EOF
 			ret=$?
@@ -336,7 +352,7 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			tries=$((tries-1))
 			sleep 2
 		done
-		${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
+		PBS_SERVER_INSTANCES=$PSI_VAL ${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
 			set queue workq queue_type = Execution
 			set queue workq enabled = True
 			set queue workq started = True
@@ -346,7 +362,7 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			read ans < ${PBS_HOME}/server_priv/$PBS_licensing_loc_file
 			echo "*** Setting license file location(s)."
 			echo "***"
-			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
+			PBS_SERVER_INSTANCES=$PSI_VAL ${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
 				set server pbs_license_info = $ans
 			EOF
 			if ! is_cray_xt; then
@@ -361,13 +377,13 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			echo "*** Setting license file location(s)."
 			echo "***"
 			${PBS_EXEC}/sbin/pbs_server > /dev/null
-			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
+			PBS_SERVER_INSTANCES=$PSI_VAL ${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
 				set server pbs_license_info = $ans
 			EOF
 			if ! is_cray_xt; then
 				rm -f ${PBS_HOME}/server_priv/$PBS_licensing_loc_file	# clean up after INSTALL
 			else
-				${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
+				PBS_SERVER_INSTANCES=$PSI_VAL ${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
 					set server restrict_res_to_release_on_suspend += ncpus
 				EOF
 			fi
@@ -386,14 +402,14 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			:
 		else
 			# node $server is not already available, create
-			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
+			PBS_SERVER_INSTANCES=$PSI_VAL ${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
 				create node $server
 			EOF
 		fi
 	fi
 
 	if [ $server_started -eq 1 ]; then
-		${PBS_EXEC}/bin/qterm
+		PBS_SERVER_INSTANCES=$PSI_VAL ${PBS_EXEC}/bin/qterm
 	fi
 fi
 
