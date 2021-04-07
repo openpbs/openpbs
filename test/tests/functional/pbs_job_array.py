@@ -133,7 +133,10 @@ e.accept()
         rv = self.is_server_licensed(self.server)
         _msg = 'No license found on server %s' % (self.server.shortname)
         self.assertTrue(rv, _msg)
-        self.mom.isUp()
+        attr = {'state': (MATCH_RE,
+                          'free|provisioning|offline|job-busy')}
+        self.server.expect(NODE, attr, id=self.mom.shortname)
+
 
     def test_running_subjob_survive_restart(self):
         """
