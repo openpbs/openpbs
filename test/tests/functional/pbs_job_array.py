@@ -137,7 +137,6 @@ e.accept()
                           'free|provisioning|offline|job-busy')}
         self.server.expect(NODE, attr, id=self.mom.shortname)
 
-
     def test_running_subjob_survive_restart(self):
         """
         Test to check if a running subjob of an array job survive a
