@@ -403,7 +403,8 @@ struct block_job_reply {
 
 
 #define	JSVERSION_18	800	/* 18 denotes the PBS version and it covers the job structure from >= 13.x to <= 18.x */
-#define	JSVERSION	1900	/* 1900 denotes the 19.x.x version */
+#define	JSVERSION_19	1900	/* 1900 denotes the 19.x.x version */
+#define	JSVERSION	2200	/* denotes 22.x and newer */
 #define	ji_taskid	ji_extended.ji_ext.ji_taskidx
 #define	ji_nodeid	ji_extended.ji_ext.ji_nodeidx
 
@@ -546,8 +547,6 @@ struct job {
 		int ji_jsversion;   /* job structure version - JSVERSION */
 		int ji_svrflags;    /* server flags */
 		time_t ji_stime;    /* time job started execution */
-		time_t ji_endtBdry; /* estimate upper bound on end time */
-
 		char ji_jobid[PBS_MAXSVRJOBID + 1];   /* job identifier */
 		char ji_fileprefix[PBS_JOBBASE + 1];  /* no longer used */
 		char ji_queue[PBS_MAXQUEUENAME + 1];  /* name of current queue */

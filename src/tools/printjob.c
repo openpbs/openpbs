@@ -84,6 +84,9 @@ attribute_def job_attr_def[1] = {{0}};
 
 #define BUF_SIZE 512
 int display_script = 0;	 /* to track if job-script is required or not */
+
+svrattrl *read_all_attrs_from_jbfile(int fd, char **state, char **substate, char **errbuf);
+
 /**
  * @brief
  *		Print usage text to stderr and exit.
@@ -217,99 +220,6 @@ print_attr(svrattrl *pal)
 	if (pal->al_value)
 		printf("%s", show_nonprint_chars(pal->al_value));
 	printf("\n");
-}
-
-/**
- * @brief
- * 		read attributes from file descriptor.
- *
- * @param[in]	fd	-	file descriptor.
- *
- * @return	int
- * @return	1	: success
- * @return	0	: failure
- */
-static svrattrl *
-read_attr(int fd)
-{
-	int amt;
-	int i;
-	svrattrl *pal;
-	svrattrl tempal;
-
-	i = read(fd, (char *)&tempal, sizeof(tempal));
-	if (i != sizeof(tempal)) {
-		fprintf(stderr, "bad read of attribute\n");
-		return NULL;
-	}
-	if (tempal.al_tsize == ENDATTRIBUTES)
-		return NULL;
-
-	pal = (svrattrl *)malloc(tempal.al_tsize);
-	if (pal == NULL) {
-		fprintf(stderr, "malloc failed\n");
-		exit(1);
-	}
-	*pal = tempal;
-
-	/* read in the actual attribute data */
-
-	amt = pal->al_tsize - sizeof(svrattrl);
-	i = read(fd, (char *)pal + sizeof(svrattrl), amt);
-	if (i != amt) {
-		fprintf(stderr, "short read of attribute\n");
-		exit(2);
-	}
-	pal->al_name = (char *)pal + sizeof(svrattrl);
-	if (pal->al_rescln)
-		pal->al_resc = pal->al_name + pal->al_nameln;
-	else
-		pal->al_resc = NULL;
-	if (pal->al_valln)
-		pal->al_value = pal->al_name + pal->al_nameln + pal->al_rescln;
-	else
-		pal->al_value = NULL;
-
-	return pal;
-}
-
-/**
- * @brief	Read all job attribute values
- *
- * @param[in]	fd - fd of job file
- * @param[out]	state - return pointer to state value
- * @param[out]	substate - return pointer for substate value
- *
- * @return	void
- */
-static svrattrl *
-read_all_attrs(int fd, char **state, char **substate)
-{
-	svrattrl *pal = NULL;
-	svrattrl *pali = NULL;
-
-	while ((pali = read_attr(fd)) != NULL) {
-		if (pal == NULL) {
-			pal = pali;
-			(&pal->al_link)->ll_struct = (void *)(&pal->al_link);
-			(&pal->al_link)->ll_next = NULL;
-			(&pal->al_link)->ll_prior = NULL;
-		} else {
-			pbs_list_link *head = &pal->al_link;
-			pbs_list_link *newp = &pali->al_link;
-			newp->ll_prior = NULL;
-			newp->ll_next  = head;
-			newp->ll_struct = pali;
-			pal = pali;
-		}
-		/* Check if the attribute read is state/substate and store it separately */
-		if (strcmp(pali->al_name, ATTR_state) == 0)
-			*state = pali->al_value;
-		else if (strcmp(pali->al_name, ATTR_substate) == 0)
-			*substate = pali->al_value;
-	}
-
-	return pal;
 }
 
 /**
@@ -622,6 +532,12 @@ char *argv[];
 			svrattrl *pal, *pali;
 			char *state = "";
 			char *substate = "";
+			char *errbuf = malloc(1024);
+
+			if (errbuf == NULL) {
+				fprintf(stderr, "Malloc error\n");
+				exit(1);
+			}
 
 			amt = read(fp, &xjob.ji_qs, sizeof(xjob.ji_qs));
 			if (amt != sizeof(xjob.ji_qs)) {
@@ -653,13 +569,17 @@ char *argv[];
 				}
 			}
 
-			pal = read_all_attrs(fp, &state, &substate);
+			pal = read_all_attrs_from_jbfile(fp, &state, &substate, &errbuf);
+			if (pal == NULL && errbuf[0] != '\0') {
+				fprintf(stderr, "%s\n", errbuf);
+				exit(1);
+			}
 
 			/* Print the summary first */
 			prt_job_struct(&xjob, state, substate);
 
 			/* now do attributes, one at a time */
-			if (no_attributes == 0) {
+			if (no_attributes == 0 && pal != NULL) {
 				/* Now print all attributes */
 				printf("--attributes--\n");
 

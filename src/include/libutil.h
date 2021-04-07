@@ -364,7 +364,6 @@ int get_index_from_jid(char *jid);
 char *get_range_from_jid(char *jid);
 char *create_subjob_id(char *parent_jid, int sjidx);
 
-
 #ifdef  __cplusplus
 }
 #endif
