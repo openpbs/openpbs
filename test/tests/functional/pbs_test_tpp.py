@@ -243,19 +243,14 @@ class TestTPP(TestFunctional):
         Node 2 : Mom
         """
         log_msgs = ["TPP initialization done",
-                    "Single pbs_comm configured, " +
-                    "TPP Fault tolerant mode disabled",
                     "Connected to pbs_comm %s.*:17001" % self.server.shortname]
         for msg in log_msgs:
             self.server.log_match(msg, regexp=True)
-            self.scheduler.log_match(msg, regexp=True)
             for mom in self.moms.values():
                 self.mom.log_match(msg, regexp=True)
         server_ip = socket.gethostbyname(self.server.hostname)
         msg = "Registering address %s:15001 to pbs_comm" % server_ip
         self.server.log_match(msg)
-        msg = "Registering address %s:15004 to pbs_comm" % server_ip
-        self.scheduler.log_match(msg)
         for mom in self.moms.values():
             ip = socket.gethostbyname(mom.shortname)
             msg1 = "Registering address %s:15003 to pbs_comm" % ip
