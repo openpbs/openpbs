@@ -119,7 +119,6 @@ __pbs_sigjob(int c, char *jobid, char *sig, char *extend)
 	int i;
 	int start = 0;
 	int ct;
-	int nsvrs = get_num_servers();
 
 	if ((jobid == NULL) || (*jobid == '\0') || (sig == NULL))
 		return (pbs_errno = PBSE_IVALREQ);
@@ -128,7 +127,7 @@ __pbs_sigjob(int c, char *jobid, char *sig, char *extend)
 		if ((start = get_obj_location_hint(jobid, MGR_OBJ_JOB)) == -1)
 			start = 0;
 
-		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+		for (i = start, ct = 0; ct < NSVR; i = (i + 1) % NSVR, ct++) {
 
 			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
 				continue;

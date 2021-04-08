@@ -130,7 +130,6 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 	svr_conn_t **svr_conns = get_conn_svr_instances(c);
 	int start = 0;
 	int ct;
-	int nsvrs = get_num_servers();
 
 	/* verify the object name if creating a new one */
 	if (command == MGR_CMD_CREATE)
@@ -149,7 +148,7 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 		if ((start = get_obj_location_hint(objname, objtype)) == -1)
 		    start = 0;
 
-		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+		for (i = start, ct = 0; ct < NSVR; i = (i + 1) % NSVR, ct++) {
 
 			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
 				continue;

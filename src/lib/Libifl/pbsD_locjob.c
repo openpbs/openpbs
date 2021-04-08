@@ -151,14 +151,13 @@ __pbs_locjob(int c, char *jobid, char *extend)
 		svr_conn_t **svr_conns = get_conn_svr_instances(c);
 		int start = 0;
 		int ct;
-		int nsvrs = get_num_servers();
 		char *ret = NULL;
 		int i;
 
 		if ((start = get_obj_location_hint(jobid, MGR_OBJ_JOB)) == -1)
 		    start = 0;
 
-		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+		for (i = start, ct = 0; ct < NSVR; i = (i + 1) % NSVR, ct++) {
 			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
 				continue;
 			ret = pbs_locjob2(svr_conns[i]->sd, jobid, extend);

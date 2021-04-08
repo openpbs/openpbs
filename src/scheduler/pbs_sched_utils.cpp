@@ -574,7 +574,6 @@ connect_svrpool()
 	int i;
 	svr_conn_t **svr_conns_primary = NULL;
 	svr_conn_t **svr_conns_secondary = NULL;
-	int num_conf_svrs = get_num_servers();
 
 	while (1) {
 		/* pbs_connect() will return a connection handle for all servers
@@ -613,7 +612,7 @@ connect_svrpool()
 			}
 		}
 
-		if (i != num_conf_svrs) {
+		if (i != NSVR) {
 			/* If we reached here means one of the servers is down or not connected
 			 * we should go to the top of the loop again and call pbs_connect
 			 * Also wait for 2s for not to burn too much CPU
@@ -658,14 +657,14 @@ static void
 sched_svr_init(void)
 {
 	if (poll_context == NULL) {
-		poll_context = tpp_em_init(get_num_servers());
+		poll_context = tpp_em_init(NSVR);
 		if (poll_context == NULL) {
 			log_err(errno, __func__, "Failed to init cmd connections context");
 			die(-1);
 		}
 	}
 
-	qrun_list = static_cast<sched_cmd *>(malloc((get_num_servers() + 1) * sizeof(sched_cmd)));
+	qrun_list = static_cast<sched_cmd *>(malloc((NSVR + 1) * sizeof(sched_cmd)));
 	if (qrun_list == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		die(0);

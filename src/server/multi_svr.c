@@ -637,7 +637,7 @@ init_msi()
 	CLEAR_HEAD(peersvrl);
 	alien_node_idx = pbs_idx_create(0, 0);
 
-	for (i = 0; i < get_num_servers(); i++) {
+	for (i = 0; i < NSVR; i++) {
 
 		if (pbs_conf.psi[i].port == pbs_server_port_dis &&
 		    is_same_host(pbs_conf.psi[i].name, server_host)) {

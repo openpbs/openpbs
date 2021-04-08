@@ -202,14 +202,13 @@ __pbs_selectjob(int c, struct attropl *attrib, char *extend)
 	struct reply_list *rlist = NULL;
 	struct reply_list *cur;
 	svr_conn_t **svr_conns = get_conn_svr_instances(c);
-	int nsvrs = get_num_servers();
 	int *failed_conn;
 	int rc = 0;
 
 	if (!svr_conns)
 		return NULL;
 
-	failed_conn = calloc(nsvrs, sizeof(int));
+	failed_conn = calloc(NSVR, sizeof(int));
 
 	if (pbs_client_thread_init_thread_context() != 0)
 		return NULL;

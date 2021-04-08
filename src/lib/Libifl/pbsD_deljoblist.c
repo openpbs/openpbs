@@ -351,7 +351,6 @@ broadcast_deljob(int c, int function, char **jobids, int numids, char *extend)
 {
 	int *skip_list;
 	svr_conn_t **conns = get_conn_svr_instances(c);
-	int num_svrs = get_num_servers();
 	int i;
 	struct batch_deljob_status **svr_retlist = NULL;
 	struct batch_deljob_status *retlist = NULL;
@@ -364,13 +363,13 @@ broadcast_deljob(int c, int function, char **jobids, int numids, char *extend)
 		return NULL;
 	}
 
-	skip_list = calloc(num_svrs, sizeof(int));
+	skip_list = calloc(NSVR, sizeof(int));
 	if (skip_list == NULL) {
 		pbs_errno = PBSE_SYSTEM;
 		return NULL;
 	}
 
-	svr_retlist = calloc(num_svrs, sizeof(struct batch_deljob_status *));
+	svr_retlist = calloc(NSVR, sizeof(struct batch_deljob_status *));
 	if (svr_retlist == NULL) {
 		free(skip_list);
 		pbs_errno = PBSE_SYSTEM;
@@ -401,7 +400,7 @@ broadcast_deljob(int c, int function, char **jobids, int numids, char *extend)
 		int error_code = PBSE_UNKJOBID;
 
 		/* Make sure that this jid is in ALL of the other lists as well */
-		for (i = 1; i < num_svrs; i++) {
+		for (i = 1; i < NSVR; i++) {
 			int job_found = 0;
 
 			for (iter_list2 = svr_retlist[i]; iter_list2 != NULL; iter_list2 = iter_list2->next) {
@@ -418,7 +417,7 @@ broadcast_deljob(int c, int function, char **jobids, int numids, char *extend)
 				break;	/* job deleted on this server, no point checking others */
 		}
 
-		if (job_count != num_svrs) {	/* Job was found (and deleted) on at least 1 server */
+		if (job_count != NSVR) {	/* Job was found (and deleted) on at least 1 server */
 			/* Remove the job from the list to return */
 			if (prev != NULL)
 				prev->next = next;
