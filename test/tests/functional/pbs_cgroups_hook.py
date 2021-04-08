@@ -5132,8 +5132,9 @@ sleep 300
                              filename=job_output_file,
                              sudo=True)
         self.assertTrue('out' in result, "Nothing in job output file?")
-        self.logger.info("job_out=%s" % result['out'][0])
-        self.assertTrue('unlimited' in result['out'][0])
+        job_out = '\n'.join(result['out'])
+        self.logger.info("job_out=%s" % job_out)
+        self.assertTrue('unlimited' in job_out)
         self.logger.info("Job that requests vmem "
                          "but no pvmem correctly has unlimited RLIMIT_AS")
 
@@ -5156,9 +5157,10 @@ sleep 300
                              filename=job_output_file,
                              sudo=True)
         self.assertTrue('out' in result, "Nothing in job output file?")
-        self.logger.info("job_out=%s" % result['out'][0])
+        job_out = '\n'.join(result['out'])
+        self.logger.info("job_out=%s" % job_out)
         # ulimit reports kb, not bytes
-        self.assertTrue(str(300 * 1024) in result['out'][0])
+        self.assertTrue(str(300 * 1024) in job_out)
         self.logger.info("Job that requests 300mb pvmem "
                          "correctly has 300mb RLIMIT_AS")
 
