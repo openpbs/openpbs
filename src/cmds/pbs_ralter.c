@@ -294,7 +294,8 @@ main(int argc, char *argv[], char *envp[])		/* pbs_ralter */
 			pbs_server, pbs_errno);
 		CS_close_app();
 		exit(pbs_errno);
-	}
+	} else
+		show_svr_inst_fail(connect, argv[0]);
 
 	pbs_strncpy(resv_id, argv[optind], sizeof(resv_id));
 	if (get_server(resv_id, resv_id_out, server_out)) {

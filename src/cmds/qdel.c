@@ -196,7 +196,9 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 	if (connect <= 0) {
 		fprintf(stderr, "Couldn't connect to cluster: %s\n", clusterid);
 		return pbs_errno;
-	}
+	} else
+		show_svr_inst_fail(connect, "qdel");
+	
 
 	/* retrieve default: suppress_email from server: default_qdel_arguments */
 	mails = dfltmail;

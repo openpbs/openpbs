@@ -162,8 +162,9 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 						aoplp,
 						extend);
 
-			if (objtype == MGR_OBJ_JOB || objtype == MGR_OBJ_RESV) {
-				if (rc == PBSE_NONE || (pbs_errno != PBSE_UNKJOBID && pbs_errno != PBSE_UNKRESVID))
+			/* break the loop for sharded objects */
+			if (objtype == MGR_OBJ_JOB || objtype == MGR_OBJ_RESV || objtype == MGR_OBJ_NODE) {
+				if (rc == PBSE_NONE || (pbs_errno != PBSE_UNKJOBID && pbs_errno != PBSE_UNKRESVID && pbs_errno != PBSE_UNKNODE))
 					break;
 			}
 		}

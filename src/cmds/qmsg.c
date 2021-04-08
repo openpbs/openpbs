@@ -137,7 +137,9 @@ cnt:
 				pbs_server, pbs_errno);
 			any_failed = pbs_errno;
 			continue;
-		}
+		} else
+			show_svr_inst_fail(connect, argv[0]);
+		
 
 		stat = pbs_msgjob(connect, job_id_out, to_file, msg_string, NULL);
 		if (stat && (pbs_errno != PBSE_UNKJOBID)) {

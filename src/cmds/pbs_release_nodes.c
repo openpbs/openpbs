@@ -169,7 +169,9 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 				"pbs_release_nodes: cannot connect to server %s (errno=%d)\n",
 							pbs_server, pbs_errno);
 			break;
-		}
+		} else
+			show_svr_inst_fail(connect, argv[0]);
+		
 
 		stat = pbs_relnodesjob(connect, job_id_out, node_list, keep_opt);
 		if (stat && (pbs_errno == PBSE_UNKJOBID)) {

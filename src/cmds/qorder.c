@@ -148,7 +148,8 @@ main(int argc, char **argv, char **envp)
 		fprintf(stderr, "qorder: cannot connect to server %s (errno=%d)\n",
 			pbs_server, pbs_errno);
 		exit(1);;
-	}
+	} else
+		show_svr_inst_fail(connect, argv[0]);
 
 	stat = pbs_orderjob(connect, job_id1_out, job_id2_out, NULL);
 	if (stat) {

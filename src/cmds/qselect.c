@@ -564,7 +564,8 @@ main(int argc, char **argv, char **envp) /* qselect */
 		CS_close_app();
 
 		exit(pbs_errno);
-	}
+	} else
+		show_svr_inst_fail(connect, argv[0]);
 
 	if (extendopts[0] == '\0')
 		selectjob_list = pbs_selectjob(connect, select_list, NULL);
