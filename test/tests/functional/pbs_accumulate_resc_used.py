@@ -951,6 +951,7 @@ for jj in e.job_list.keys():
             overwrite=True)
 
         a = {'Resource_List.select': '3:ncpus=1',
+             'Resource_List.walltime': 300,
              'Resource_List.place': 'scatter'}
         j = Job(TEST_USER)
         j.set_attributes(a)
