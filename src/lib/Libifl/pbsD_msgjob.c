@@ -199,16 +199,69 @@ pbs_py_spawn(int c, char *jobid, char **argv, char **envp)
  * @retval	!0	error
  *
  */
-
-int
-pbs_relnodesjob(c, jobid, node_list, extend)
-int c;
-char *jobid;
-char *node_list;
-char *extend;
+static int
+pbs_relnodesjob_inner(int c, char *jobid, char *node_list, char *extend)
 {
 	struct batch_reply *reply;
 	int	rc;
+
+	/* lock pthread mutex here for this connection */
+	/* blocking call, waits for mutex release */
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return pbs_errno;
+
+	/* setup DIS support routines for following DIS calls */
+
+	DIS_tcp_funcs();
+
+	if ((rc = PBSD_relnodes_put(c, jobid, node_list, extend, 0, NULL)) != 0) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
+			pbs_errno = PBSE_SYSTEM;
+		} else {
+			pbs_errno = PBSE_PROTOCOL;
+		}
+		(void)pbs_client_thread_unlock_connection(c);
+		return pbs_errno;
+	}
+
+	/* read reply */
+
+	reply = PBSD_rdrpy(c);
+	rc = get_conn_errno(c);
+
+	PBSD_FreeReply(reply);
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return pbs_errno;
+
+	return rc;
+}
+
+/**
+ * @brief
+ * 	-pbs_relnodesjob - release a set of sister nodes or vnodes,
+ * 	or all sister nodes or vnodes assigned to the specified PBS
+ * 	batch job.
+ *
+ * @param[in] c 	communication handle
+ * @param[in] jobid  job identifier
+ * @param[in] node_list 	list of hosts or vnodes to be released
+ * @param[in] extend 	additional params, currently passes -k arguments
+ *
+ * @return	int
+ * @retval	0	Success
+ * @retval	!0	error
+ *
+ */
+int
+pbs_relnodesjob(int c, char *jobid, char *node_list, char *extend)
+{
+	int i;
+	int rc = 0;
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int start = 0;
+	int ct;
 
 	if ((jobid == NULL) || (*jobid == '\0') ||
 					(node_list == NULL))
@@ -267,35 +320,29 @@ char *extend;
 			return rc;
 	}
 
-	/* lock pthread mutex here for this connection */
-	/* blocking call, waits for mutex release */
-	if (pbs_client_thread_lock_connection(c) != 0)
-		return pbs_errno;
+	if (svr_conns) {
+		/* For a single server cluster, instance fd and cluster fd are the same */
+		if (svr_conns[0]->sd == c)
+			return pbs_relnodesjob_inner(c, jobid, node_list, extend);
 
-	/* setup DIS support routines for following DIS calls */
+		if ((start = get_obj_location_hint(jobid, MGR_OBJ_JOB)) == -1)
+		    start = 0;
 
-	DIS_tcp_funcs();
+		for (i = start, ct = 0; ct < NSVR; i = (i + 1) % NSVR, ct++) {
 
-	if ((rc = PBSD_relnodes_put(c, jobid, node_list, extend, 0, NULL)) != 0) {
-		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
-			pbs_errno = PBSE_SYSTEM;
-		} else {
-			pbs_errno = PBSE_PROTOCOL;
+			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
+				continue;
+
+			rc = pbs_relnodesjob_inner(svr_conns[i]->sd, jobid, node_list, extend);
+
+			/* break the loop for sharded objects */
+			if (rc == PBSE_NONE || pbs_errno != PBSE_UNKJOBID)
+				break;
 		}
-		(void)pbs_client_thread_unlock_connection(c);
-		return pbs_errno;
+
+		return rc;
 	}
 
-	/* read reply */
-
-	reply = PBSD_rdrpy(c);
-	rc = get_conn_errno(c);
-
-	PBSD_FreeReply(reply);
-
-	/* unlock the thread lock and update the thread context data */
-	if (pbs_client_thread_unlock_connection(c) != 0)
-		return pbs_errno;
-
-	return rc;
+	/* Not a cluster fd. Treat it as an instance fd */
+	return pbs_relnodesjob_inner(c, jobid, node_list, extend);
 }
