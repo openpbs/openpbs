@@ -688,7 +688,6 @@ query_server_dyn_res(server_info *sinfo)
 	int k;
 	int pipe_err;
 	char res_zero[] = "0";	/* dynamic res failure implies resource <-0 */
-	char buf[256];		/* buffer for reading from pipe */
 	schd_resource *res;		/* used for updating node resources */
 	FILE *fp;			/* for popen() for res_assn */
 
@@ -699,15 +698,16 @@ query_server_dyn_res(server_info *sinfo)
 			int ret;
 			fd_set set;
 			sigset_t allsigs;
-			pid_t pid;			/* pid of child */
+			pid_t pid = 0;			/* pid of child */
 			int pdes[2];
+			char buf[256]; /* buffer for reading from pipe */
 			k = 0;
+			buf[0] = '\0';
 
 			if (sinfo->res == NULL)
 				sinfo->res = res;
 
 			pipe_err = errno = 0;
-			pid = 0;
 
 			/* Make sure file does not have open permissions */
 			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
@@ -776,18 +776,21 @@ query_server_dyn_res(server_info *sinfo)
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"Program %s timed out", dr.command_line.c_str());
 				}
-				if (pid > 0 && ret > 0) {
-					/* Parent; only open if child created and select showed sth to read,
-					 * but assume fdopen can't fail
-					 */
-					fp = fdopen(pdes[0], "r");
+				if (pid > 0) {
 					close(pdes[1]);
-					if (fgets(buf, sizeof(buf), fp) == NULL) {
-						pipe_err = errno;
+					if (ret > 0) {
+						/* Parent; only open if child created and select showed sth to read,
+						* but assume fdopen can't fail
+						*/
+						fp = fdopen(pdes[0], "r");
+						if (fgets(buf, sizeof(buf), fp) == NULL) {
+							pipe_err = errno;
+						} else
+							k = strlen(buf);
+						if (fp != NULL)
+							fclose(fp);
 					} else
-						k = strlen(buf);
-					if (fp != NULL)
-						fclose(fp);
+						close(pdes[0]);
 				}
 			}
 
