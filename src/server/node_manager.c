@@ -6581,10 +6581,10 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			    (pnode = find_alien_node(vname)) == NULL) {
 				if (svr_init && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_RescUpdt_Rqd))
 					continue;
+				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO,
+					   __func__, "Unknown node %s received", vname);
 				free(execvncopy);
 				rc = PBSE_UNKNODE;
-				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-					   pjob->ji_qs.ji_jobid, "Unknown node received");
 				send_nodestat_req();
 				goto end;
 			}
