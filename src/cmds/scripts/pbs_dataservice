@@ -225,9 +225,22 @@ case "$1" in
 			echo "${msg} - cannot stop"
 			exit 0
 		fi
+		# Check if PBS_SERVER_INSTANCES is set for multi-server
+		if [ ! -z "${PBS_SERVER_INSTANCES}" ]; then
+			# We don't want qstat to try to contact other servers
+			# So, set PBS_SERVER_INSTANCES to the current server's hostname and port
+			if [ -z "${PBS_BATCH_SERVICE_PORT}" ]; then
+				PBS_BATCH_SERVICE_PORT=15001
+			fi
+			msvr_host=${PBS_SERVER_HOST_NAME}
+			if [ -z $msvr_host ]; then
+				msvr_host="$(hostname -s)"
+			fi
+			export PBS_SERVER_INSTANCES="${msvr_host}:${PBS_BATCH_SERVICE_PORT}"
+		fi
 
 		# Check if PBS is running
-		PBS_SERVER_INSTANCES="" ${PBS_EXEC}/bin/qstat -Bf >/dev/null 2>&1
+		${PBS_EXEC}/bin/qstat -Bf >/dev/null 2>&1
 		if [ $? -eq 0 ]; then
 			echo "PBS server is running. Cannot stop PBS Data Service now."
 			server_pid="`ps -ef | grep "pbs_server.bi[n]" | awk '{print $2}'`"
@@ -285,4 +298,3 @@ case "$1" in
 		;;
 esac
 exit 1
-

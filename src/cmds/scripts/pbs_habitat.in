@@ -318,7 +318,7 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			exit $ret
 		fi
 		server_started=1
-		
+
 		# Check if PBS_SERVER_INSTANCES is set for multi-server
 		if [ ! -z "${PBS_SERVER_INSTANCES}" ]; then
 			# We don't want qmgr to try to contact other servers, which may not even be up yet
@@ -326,7 +326,11 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			if [ -z "${PBS_BATCH_SERVICE_PORT}" ]; then
 				PBS_BATCH_SERVICE_PORT=15001
 			fi
-			export PBS_SERVER_INSTANCES="$(hostname -s):${PBS_BATCH_SERVICE_PORT}"
+			msvr_host=${PBS_SERVER_HOST_NAME}
+			if [ -z $msvr_host ]; then
+				msvr_host="$(hostname -s)"
+			fi
+			export PBS_SERVER_INSTANCES="${msvr_host}:${PBS_BATCH_SERVICE_PORT}"
 		fi
 		if is_cray_xt; then
 			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
