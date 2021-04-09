@@ -3116,14 +3116,13 @@ set_resource(schd_resource *res, const char *val, enum resource_fields field)
 	if (res == NULL || val == NULL)
 		return 0;
 
-	if (res->def != NULL)
-		rdef = res->def;
-	else {
-		rdef = find_resdef(res->name);
-		res->def = rdef;
-	}
+	rdef = find_resdef(res->name);
+	res->def = rdef;
+
 	if (rdef != NULL)
 		res->type = rdef->type;
+	else
+		return 0;
 
 	if (field == RF_AVAIL) {
 		/* if this resource is being re-set, lets free the memory we previously
