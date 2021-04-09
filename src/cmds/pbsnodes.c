@@ -1090,7 +1090,7 @@ main(int argc, char *argv[])
 				argv[0], def_server, pbs_errno);
 		CS_close_app();
 		exit(1);
-	} else
+	} else if (!quiet)
 		show_svr_inst_fail(con, argv[0]);
 	
 
