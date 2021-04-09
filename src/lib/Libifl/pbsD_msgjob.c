@@ -52,7 +52,6 @@
 #include "dis.h"
 #include "pbs_ecl.h"
 
-
 /**
  * @brief
  *	-send the MessageJob request and get the reply.
@@ -69,8 +68,8 @@
  *
  */
 
-int
-__pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend)
+static int
+__pbs_msgjob_inner(int c, char *jobid, int fileopt, char *msg, char *extend)
 {
 	struct batch_reply *reply;
 	int	rc;
@@ -112,6 +111,66 @@ __pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend)
 		return pbs_errno;
 
 	return rc;
+}
+
+/**
+ * @brief
+ *	-send the MessageJob request and get the reply.
+ *
+ * @param[in] c - socket descriptor
+ * @param[in] jobid - job id
+ * @param[in] fileopt - which file
+ * @param[in] msg - msg to be encoded
+ * @param[in] extend - extend string for encoding req
+ *
+ * @return	int
+ * @retval	0	success
+ * @retval	!0	error
+ *
+ */
+
+int
+__pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend)
+{
+	int i;
+	int rc = 0;
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int start = 0;
+	int ct;
+
+	if ((jobid == NULL) || (*jobid == '\0') ||
+		(msg == NULL) || (*msg == '\0'))
+		return (pbs_errno = PBSE_IVALREQ);
+
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return pbs_errno;
+
+	if (svr_conns) {
+		/* For a single server cluster, instance fd and cluster fd are the same */
+		if (svr_conns[0]->sd == c)
+			return __pbs_msgjob_inner(c, jobid, fileopt, msg, extend);
+
+		if ((start = get_obj_location_hint(jobid, MGR_OBJ_JOB)) == -1)
+		    start = 0;
+
+		for (i = start, ct = 0; ct < NSVR; i = (i + 1) % NSVR, ct++) {
+
+			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
+				continue;
+
+			rc = __pbs_msgjob_inner(svr_conns[i]->sd, jobid, fileopt, msg, extend);
+
+			/* break the loop for sharded objects */
+			if (rc == PBSE_NONE || pbs_errno != PBSE_UNKJOBID)
+				break;
+		}
+
+		return rc;
+	}
+
+	/* Not a cluster fd. Treat it as an instance fd */
+	return __pbs_msgjob_inner(c, jobid, fileopt, msg, extend);
 }
 
 /**
