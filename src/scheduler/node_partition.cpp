@@ -442,7 +442,10 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 
 			if (res == NULL && (flags & NP_CREATE_REST)) {
 				unset_res->name = resnames[res_i];
-				set_resource(unset_res, "\"\"", RF_AVAIL);
+				if (set_resource(unset_res, "\"\"", RF_AVAIL) == 0) {
+					free_node_partition_array(np_arr);
+					return NULL;
+				}
 				res = unset_res;
 			}
 			if (res != NULL) {
