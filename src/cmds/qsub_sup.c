@@ -260,14 +260,6 @@ get_script(FILE *file, char *script, char *prefix)
 
 	while ((in = pbs_fgets_extend(&s_in, &s_len, file)) != NULL) {
 		if (!exec && ((sopt = pbs_ispbsdir(s_in, prefix)) != NULL)) {
-			if (fputs(in, TMP_FILE) < 0) {
-				perror("fputs");
-				fprintf(stderr,
-					"qsub: error writing copy of script, %s\n", tmp_name);
-				fclose(TMP_FILE);
-				free(s_in);
-				return (3);
-			}
 			/*
 			 * Setting options from the job script will not overwrite
 			 * options set on the command line. CMDLINE-1 means
