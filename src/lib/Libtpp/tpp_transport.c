@@ -1893,7 +1893,7 @@ add_pkt(phy_conn_t *conn)
 					} else if (rc == -2) {
 						conn->ev_mask &= ~EM_IN; /* reciever buffer full, must wait, remove EM_IN */
 						tpp_log(LOG_INFO, __func__, "tfd=%d, Receive buffer full, will wait", conn->sock_fd);
-						enque_deferred_event(conn->td, -1, TPP_CMD_READ, 0);
+						enque_deferred_event(conn->td, conn->sock_fd, TPP_CMD_READ, 0);
 						mod_rc = tpp_em_mod_fd(conn->td->em_context, conn->sock_fd, conn->ev_mask);
 					}
 				} else {
