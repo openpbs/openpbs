@@ -85,6 +85,7 @@ string_dup(const char *str)
 
 	if (str == NULL)
 		return NULL;
+
 	len = strlen(str) + 1;
 	if ((newstr = static_cast<char *>(malloc(len))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -1646,4 +1647,3 @@ free_ptr_array(void *inp)
 		free(arr[i]);
 	free(arr);
 }
-

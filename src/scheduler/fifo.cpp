@@ -41,6 +41,7 @@
 /**
  * This file contains functions related to scheduling
  */
+
 #include <pbs_config.h>
 
 #ifdef PYTHON
@@ -123,8 +124,7 @@ schedinit(int nthreads)
 	PyObject *dict;
 #endif
 
-	init_config();
-	parse_config(CONFIG_FILE);
+	conf = parse_config(CONFIG_FILE);
 
 	parse_holidays(HOLIDAYS_FILE);
 	time(&(cstat.current_time));
@@ -143,22 +143,21 @@ schedinit(int nthreads)
 
 	parse_ded_file(DEDTIME_FILE);
 
+	if (fstree != NULL)
+		free_fairshare_head(fstree);
 	/* preload the static members to the fairshare tree */
-	conf.fairshare = preload_tree();
-	if (conf.fairshare != NULL) {
-		parse_group(RESGROUP_FILE, conf.fairshare->root);
-		calc_fair_share_perc(conf.fairshare->root->child, UNSPECIFIED);
-		read_usage(USAGE_FILE, 0, conf.fairshare);
+	fstree = preload_tree();
+	if (fstree != NULL) {
+		parse_group(RESGROUP_FILE, fstree->root);
+		calc_fair_share_perc(fstree->root->child, UNSPECIFIED);
+		read_usage(USAGE_FILE, 0, fstree);
 
-		if (conf.fairshare->last_decay == 0)
-			conf.fairshare->last_decay = cstat.current_time;
+		if (fstree->last_decay == 0)
+			fstree->last_decay = cstat.current_time;
 	}
 #ifdef NAS /* localmod 034 */
 	site_parse_shares(SHARE_FILE);
 #endif /* localmod 034 */
-
-	/* initialize the iteration count */
-	cstat.iteration = 0;
 
 	/* set the zoneinfo directory to $PBS_EXEC/zoneinfo.
 	 * This is used for standing reservations user of libical */
@@ -223,64 +222,56 @@ schedinit(int nthreads)
  *
  */
 void
-update_cycle_status(struct status *policy, time_t current_time)
+update_cycle_status(status& policy, time_t current_time)
 {
-	char dedtime;				/* boolean: is it dedtime? */
+	bool dedtime;			/* is it dedtime? */
 	enum prime_time prime;		/* current prime time status */
 	struct tm *ptm;
 	struct tm *tmptr;
 	const char *primetime;
 
-	if (policy == NULL)
-		return;
-
 	if (current_time == 0)
-		time(&policy->current_time);
+		time(&policy.current_time);
 	else
-		policy->current_time = current_time;
+		policy.current_time = current_time;
 
 	/* cycle start in real time -- can be used for time deltas */
-	policy->cycle_start = time(NULL);
+	policy.cycle_start = time(NULL);
 
-	dedtime = is_ded_time(policy->current_time);
+	dedtime = is_ded_time(policy.current_time);
 
 	/* it was dedtime last scheduling cycle, and it is not dedtime now */
-	if (policy->is_ded_time && !dedtime) {
-		/* since the current dedtime is now passed, set it to zero and sort it to
-		 * the end of the dedtime array so the next dedtime is at the front
-		 */
-		conf.ded_time[0].from = 0;
-		conf.ded_time[0].to = 0;
-		qsort(conf.ded_time, MAX_DEDTIME_SIZE, sizeof(struct timegap), cmp_ded_time);
-	}
-	policy->is_ded_time = dedtime;
+	if (policy.is_ded_time && !dedtime)
+		conf.ded_time.erase(conf.ded_time.begin());
+
+	policy.is_ded_time = dedtime;
 
 	/* if we have changed from prime to nonprime or nonprime to prime
 	 * init the status respectively
 	 */
-	prime = is_prime_time(policy->current_time);
-	if (prime == PRIME && !policy->is_prime)
-		init_prime_time(policy, NULL);
-	else if (prime == NON_PRIME && policy->is_prime)
-		init_non_prime_time(policy, NULL);
+	prime = is_prime_time(policy.current_time);
+	if (prime == PRIME && !policy.is_prime)
+		init_prime_time(&policy, NULL);
+	else if (prime == NON_PRIME && policy.is_prime)
+		init_non_prime_time(&policy, NULL);
 
 	if (conf.holiday_year != 0) {
-		tmptr = localtime(&policy->current_time);
+		tmptr = localtime(&policy.current_time);
 		if ((tmptr != NULL) && ((tmptr->tm_year + 1900) > conf.holiday_year))
 			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_NOTICE,
 				  HOLIDAYS_FILE, "The holiday file is out of date; please update it.");
 	}
-	policy->prime_status_end = end_prime_status(policy->current_time);
+	policy.prime_status_end = end_prime_status(policy.current_time);
 
 	primetime = prime == PRIME ? "primetime" : "non-primetime";
-	if (policy->prime_status_end == SCHD_INFINITY)
+	if (policy.prime_status_end == SCHD_INFINITY)
 		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "", "It is %s.  It will never end", primetime);
 	else {
-		ptm = localtime(&(policy->prime_status_end));
+		ptm = localtime(&(policy.prime_status_end));
 		if (ptm != NULL) {
 			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "",
 				"It is %s.  It will end in %ld seconds at %02d/%02d/%04d %02d:%02d:%02d",
-				primetime, policy->prime_status_end - policy->current_time,
+				primetime, policy.prime_status_end - policy.current_time,
 				ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_year + 1900,
 				ptm->tm_hour, ptm->tm_min, ptm->tm_sec);
 		}
@@ -289,9 +280,15 @@ update_cycle_status(struct status *policy, time_t current_time)
 				"It is %s.  It will end at <UNKNOWN>", primetime);
 	}
 
-	policy->order = 0;
-	policy->preempt_attempts = 0;
-	policy->iteration++;
+	// Will be set in query_server()
+	policy.resdef_to_check_no_hostvnode.clear();
+	policy.resdef_to_check_noncons.clear();
+	policy.resdef_to_check_rassn.clear();
+	policy.resdef_to_check_rassn_select.clear();
+	policy.backfill_depth = UNSPECIFIED;
+
+	policy.order = 0;
+	policy.preempt_attempts = 0;
 }
 
 /**
@@ -329,34 +326,33 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 			return 0;
 	}
 
-	if ((policy->fair_share || sinfo->job_sort_formula != NULL) && sinfo->fairshare != NULL) {
+	if ((policy->fair_share || sinfo->job_sort_formula != NULL) && sinfo->fstree != NULL) {
 		FILE *fp;
 		int resort = 0;
 		if ((fp = fopen(USAGE_TOUCH, "r")) != NULL) {
 			fclose(fp);
-			reset_usage(conf.fairshare->root);
-			read_usage(USAGE_FILE, NO_FLAGS, conf.fairshare);
-			if (conf.fairshare->last_decay == 0)
-				conf.fairshare->last_decay = policy->current_time;
+			reset_usage(fstree->root);
+			read_usage(USAGE_FILE, NO_FLAGS, fstree);
+			if (fstree->last_decay == 0)
+				fstree->last_decay = policy->current_time;
 			remove(USAGE_TOUCH);
 			resort = 1;
 		}
-		if (last_running.size() > 0 && sinfo->running_jobs != NULL) {
+		if (!last_running.empty() && sinfo->running_jobs != NULL) {
 			/* add the usage which was accumulated between the last cycle and this
 			 * one and calculate a new value
 			 */
 
-			for (const auto& lj: last_running) {
-				user = find_alloc_ginfo(lj.entity_name.c_str(),
-							sinfo->fairshare->root);
+			for (const auto& lj : last_running) {
+				user = find_alloc_ginfo(lj.entity_name.c_str(), sinfo->fstree->root);
 
 				if (user != NULL) {
 					auto rj = find_resource_resv(sinfo->running_jobs, lj.name);
 
 					if (rj != NULL && rj->job != NULL) {
 						/* just in case the delta is negative just add 0 */
-						delta = formula_evaluate(conf.fairshare_res, rj, rj->job->resused) -
-							formula_evaluate(conf.fairshare_res, rj, lj.resused);
+						delta = formula_evaluate(conf.fairshare_res.c_str(), rj, rj->job->resused) -
+							formula_evaluate(conf.fairshare_res.c_str(), rj, lj.resused);
 
 						delta = IF_NEG_THEN_ZERO(delta);
 
@@ -377,11 +373,11 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 
 		t = policy->current_time;
 		while (conf.decay_time != SCHD_INFINITY &&
-			(t - sinfo->fairshare->last_decay) > conf.decay_time) {
+			(t - sinfo->fstree->last_decay) > conf.decay_time) {
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 				  "Fairshare", "Decaying Fairshare Tree");
-			if (conf.fairshare != NULL)
-				decay_fairshare_tree(sinfo->fairshare->root);
+			if (fstree != NULL)
+				decay_fairshare_tree(sinfo->fstree->root);
 			t -= conf.decay_time;
 			decayed = 1;
 			resort = 1;
@@ -389,18 +385,18 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 
 		if (decayed) {
 			/* set the time to the actual time the half-life should have occurred */
-			conf.fairshare->last_decay =
+			fstree->last_decay =
 				policy->current_time - (policy->current_time -
-				sinfo->fairshare->last_decay) % conf.decay_time;
+				sinfo->fstree->last_decay) % conf.decay_time;
 		}
 
-		if (policy->sync_fairshare_files && (decayed || !last_running.empty())) {
-			write_usage(USAGE_FILE, sinfo->fairshare);
+		if (decayed || !last_running.empty()) {
+			write_usage(USAGE_FILE, sinfo->fstree);
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 				  "Fairshare", "Usage Sync");
 		}
-		reset_temp_usage(sinfo->fairshare->root);
-		calc_usage_factor(sinfo->fairshare);
+		reset_temp_usage(sinfo->fstree->root);
+		calc_usage_factor(sinfo->fstree);
 		if (resort)
 			sort_jobs(policy, sinfo);
 	}
@@ -608,7 +604,7 @@ scheduling_cycle(int sd, const sched_cmd *cmd)
 	else
 		send_job_attr_updates = 0;
 
-	update_cycle_status(&cstat, 0);
+	update_cycle_status(cstat, 0);
 
 #ifdef NAS /* localmod 030 */
 	do_soft_cycle_interrupt = 0;
@@ -1125,40 +1121,6 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 }
 
 /**
- * @brief	cleanup routine for scheduler exit
- *
- * @param	void
- *
- * @return void
- */
-void
-schedexit(void)
-{
-	int i;
-
-	/* close any open connections to peers */
-	for (i = 0; (i < NUM_PEERS) &&
-		(conf.peer_queues[i].local_queue != NULL); i++) {
-		if (conf.peer_queues[i].peer_sd >= 0) {
-			/* When peering "local", do not disconnect server */
-			if (conf.peer_queues[i].remote_server != NULL)
-				pbs_disconnect(conf.peer_queues[i].peer_sd);
-			conf.peer_queues[i].peer_sd = -1;
-		}
-	}
-
-	/* Kill all worker threads */
-	if (num_threads > 1) {
-		int *thid;
-
-		thid = (int *) pthread_getspecific(th_id_key);
-
-		if (*thid == 0)
-			kill_threads();
-	}
-}
-
-/**
  * @brief
  *		end_cycle_tasks - stuff which needs to happen at the end of a cycle
  *
@@ -1170,28 +1132,25 @@ schedexit(void)
 void
 end_cycle_tasks(server_info *sinfo)
 {
-	int i;
-
 	/* keep track of update used resources for fairshare */
 	if (sinfo != NULL && sinfo->policy->fair_share)
 		create_prev_job_info(sinfo->running_jobs);
 
-	/* we copied in conf.fairshare into sinfo at the start of the cycle,
+	/* we copied in the global fairshare into sinfo at the start of the cycle,
 	 * we don't want to free it now, or we'd lose all fairshare data
 	 */
 	if (sinfo != NULL) {
-		sinfo->fairshare = NULL;
+		sinfo->fstree = NULL;
 		free_server(sinfo);	/* free server and queues and jobs */
 	}
 
 	/* close any open connections to peers */
-	for (i = 0; (i < NUM_PEERS) &&
-		(conf.peer_queues[i].local_queue != NULL); i++) {
-		if (conf.peer_queues[i].peer_sd >= 0) {
+	for (auto& pq : conf.peer_queues) {
+		if (pq.peer_sd >= 0) {
 			/* When peering "local", do not disconnect server */
-			if (conf.peer_queues[i].remote_server != NULL)
-				pbs_disconnect(conf.peer_queues[i].peer_sd);
-			conf.peer_queues[i].peer_sd = -1;
+			if (!pq.remote_server.empty())
+				pbs_disconnect(pq.peer_sd);
+			pq.peer_sd = -1;
 		}
 	}
 
@@ -1274,7 +1233,6 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
  * @param[in]	execvnode	-	the execvnode to run a multi-node job on
  * @param[in]	has_runjob_hook	-	does server have a runjob hook?
  * @param[out]	err	-	error struct to return errors
- * @param[in]	svr_id_node	- id of the server which owns the first vnode of exec_vnode
  *
  *
  * @retval	0	: success
@@ -1282,8 +1240,7 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
  * @retval -1	: error
  */
 int
-run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, schd_error *err,
- 	char *svr_id_node)
+run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, schd_error *err)
 {
 	char buf[100];	/* used to assemble queue@localserver */
 	const char *errbuf;		/* comes from pbs_geterrmsg() */
@@ -1301,14 +1258,14 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, s
 	if (rjob->is_peer_ob) {
 		if (strchr(rjob->server->name, (int) ':') == NULL) {
 #ifdef NAS /* localmod 005 */
-			sprintf(buf, "%s@%s:%u", rjob->job->queue->name,
+			sprintf(buf, "%s@%s:%u", rjob->job->queue->name.c_str(),
 #else
-			sprintf(buf, "%s@%s:%d", rjob->job->queue->name,
+			sprintf(buf, "%s@%s:%d", rjob->job->queue->name.c_str(),
 #endif /* localmod 005 */
 				rjob->server->name, pbs_conf.batch_service_port);
 		}
 		else {
-			sprintf(buf, "%s@%s", rjob->job->queue->name,
+			sprintf(buf, "%s@%s", rjob->job->queue->name.c_str(),
 				rjob->server->name);
 		}
 
@@ -1336,12 +1293,10 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, s
 				if (strlen(timebuf) > 0)
 					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rjob->name,
 						"Job will run for duration=%s", timebuf);
-				rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, svr_id_node,
- 						  rjob->svr_inst_id);
+				rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, rjob->svr_inst_id);
 			}
 		} else
-			rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, svr_id_node,
- 					  rjob->svr_inst_id);
+			rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, rjob->svr_inst_id);
 	}
 
 	if (rc) {
@@ -1567,15 +1522,6 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
  						}
 					}
 
-					if (rr->nodepart_name != NULL) {
-						if (array != NULL)
-							update_job_attr(pbs_sd, array, ATTR_pset, NULL,
-								array->nodepart_name, NULL, UPDATE_NOW);
-						else
-							update_job_attr(pbs_sd, rr, ATTR_pset, NULL,
-								rr->nodepart_name, NULL, UPDATE_NOW);
-					}
-
 #ifdef NAS /* localmod 031 */
 					/* debug dpr - Log vnodes assigned to job */
 					time_t tm = time(NULL);
@@ -1587,8 +1533,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 						execvnode != NULL ? execvnode : "(NULL)");
 					fflush(stdout);
 #endif /* localmod 031 */
-					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->has_runjob_hook, err,
-							ns[0]->ninfo->svr_inst_id);
+					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->has_runjob_hook, err);
 
 #ifdef NAS_CLUSTER /* localmod 125 */
 					ret = translate_runjob_return_code(pbsrc, resresv);
@@ -2012,16 +1957,15 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 				free_nspecs(bjob->nspec_arr);
 			bjob->nspec_arr = parse_execvnode(exec, sinfo, NULL);
 			if (bjob->nspec_arr != NULL) {
-				char *selectspec;
+				std::string selectspec;
 				if (bjob->ninfo_arr != NULL)
 					free(bjob->ninfo_arr);
 				bjob->ninfo_arr =
 					create_node_array_from_nspec(bjob->nspec_arr);
 				selectspec = create_select_from_nspec(bjob->nspec_arr);
-				if (selectspec != NULL) {
-					free_selspec(bjob->execselect);
+				if (!selectspec.empty()) {
+					delete bjob->execselect;
 					bjob->execselect = parse_selspec(selectspec);
-					free(selectspec);
 				}
 			} else {
 				free_server(nsinfo);
@@ -2643,8 +2587,7 @@ parse_sched_obj(int connector, struct batch_status *status)
 		} else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
 			free(sc_attrs.job_sort_formula);
 			sc_attrs.job_sort_formula = read_formula();
-			if ((conf.prime_sort != NULL && conf.prime_sort[0].res_name != NULL) ||
-			(conf.non_prime_sort != NULL && conf.non_prime_sort[0].res_name != NULL))
+			if (!conf.prime_sort.empty() || !conf.non_prime_sort.empty())
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
 						  "Job sorting formula and job_sort_key are incompatible.  "
 						  "The job sorting formula will be used.");

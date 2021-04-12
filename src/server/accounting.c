@@ -179,7 +179,7 @@ sum_resc_alloc(const job *pjob, pbs_list_head *list)
 	/* To do that, we first need to unmark them...			    */
 
 	for (i=0; i<svr_totnodes; i++)
-		pbsndlist[i]->nd_accted = 0;
+		pbsndlist[i]->nd_svrflags &= ~NODE_ACCTED;
 
 	exechost = get_jattr_str(pjob, JOB_ATR_exec_vnode);
 
@@ -224,12 +224,12 @@ sum_resc_alloc(const job *pjob, pbs_list_head *list)
 						}
 					}
 
-				} else if (pnode->nd_accted == 0) {
+				} else if (!(pnode->nd_svrflags & NODE_ACCTED)) {
 
 					/* vnode used exclusively and not already accounted, */
 					/* so incr sum by amount in whole vnode              */
 
-					pnode->nd_accted = 1;  /* mark that it has been recorded */
+					pnode->nd_svrflags |= NODE_ACCTED; /* mark that it has been recorded */
 					for (i=0; svr_resc_sum[i].rs_def; ++i) {
 						presc = find_resc_entry(get_nattr(pnode, ND_ATR_ResourceAvail), svr_resc_sum[i].rs_def);
 						if (presc && (is_attr_set(&presc->rs_value))) {

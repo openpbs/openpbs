@@ -292,6 +292,9 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         Test: induce a variety of vnode state changes with debug turned on
         and inspect the pbs log for expected entries
         """
+        if os.getuid() != 0 or sys.platform in ('cygwin', 'win32'):
+            self.skipTest("Test need to run as root")
+
         self.logger.debug("---- %s TEST STARTED ----" % get_method_name(self))
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})

@@ -122,7 +122,6 @@ static enum job_atr attrs_to_copy[] = {
 	JOB_ATR_umask,
 	JOB_ATR_cred,
 	JOB_ATR_runcount,
-	JOB_ATR_pset,
 	JOB_ATR_eligible_time,
 	JOB_ATR_sample_starttime,
 	JOB_ATR_executable,
@@ -296,14 +295,13 @@ update_sj_parent(job *parent, job *sj, char *sjid, char oldstate, char newstate)
 			int pe = 0;
 			if (is_jattr_set(parent, JOB_ATR_exit_status))
 				pe = get_jattr_long(parent, JOB_ATR_exit_status);
-			if (pe != 2) {
-				if (e > 0)
-					pe = 1;
-				else if (e < 0)
-					pe = 2;
-				else
-					pe = 0;
-			}
+			if (e > 0)
+				pe = 1;
+			else if (e < 0)
+				pe = 2;
+			else
+				pe = 0;
+
 			set_jattr_l_slim(parent, JOB_ATR_exit_status, pe, SET);
 		}
 		if (is_jattr_set(sj, JOB_ATR_stageout_status)) {
@@ -672,18 +670,18 @@ fixup_arrayindicies(attribute *pattr, void *pobj, int mode)
 job *
 create_subjob(job *parent, char *newjid, int *rc)
 {
-	pbs_list_head  attrl;
-	int	   i;
-	int	   j;
-	char	  *index;
+	pbs_list_head attrl;
+	int i;
+	int j;
+	char *index;
 	attribute_def *pdef;
 	attribute *ppar;
 	attribute *psub;
-	svrattrl  *psatl;
-	job 	  *subj;
-	long	   eligibletime;
-	long	    time_msec;
-	struct timeval	    tval;
+	svrattrl *psatl;
+	job *subj;
+	long eligibletime;
+	long long time_usec;
+	struct timeval tval;
 	char path[MAXPATHLEN + 1];
 
 	if (newjid == NULL) {
@@ -770,9 +768,9 @@ create_subjob(job *parent, char *newjid, int *rc)
 	}
 
 	gettimeofday(&tval, NULL);
-	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
+	time_usec = (tval.tv_sec * 1000000L) + tval.tv_usec;
 	/* set the queue rank attribute */
-	set_jattr_l_slim(subj, JOB_ATR_qrank, time_msec, SET);
+	set_jattr_ll_slim(subj, JOB_ATR_qrank, time_usec, SET);
 	if (svr_enquejob(subj, NULL) != 0) {
 		job_purge(subj);
 		*rc = PBSE_IVALREQ;

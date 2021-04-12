@@ -205,44 +205,43 @@ main(int argc, char *argv[])
 		perror("Unable to access fairshare data");
 		exit(1);
 	}
-	init_config();
-	parse_config(CONFIG_FILE);
-	if ((conf.fairshare = preload_tree()) == NULL) {
+	conf = parse_config(CONFIG_FILE);
+	if ((fstree = preload_tree()) == NULL) {
 		fprintf(stderr, "Error in preloading fairshare information\n");
 		return 1;
 	}
-	if (parse_group(RESGROUP_FILE, conf.fairshare->root) == 0)
+	if (parse_group(RESGROUP_FILE, fstree->root) == 0)
 		return 1;
 
 	if (flags & FS_TRIM_TREE) {
-		read_usage(USAGE_FILE, FS_TRIM, conf.fairshare);
-		conf.fairshare->last_decay = time(NULL);
+		read_usage(USAGE_FILE, FS_TRIM, fstree);
+		fstree->last_decay = time(NULL);
 	}
 	else
-		read_usage(USAGE_FILE, 0, conf.fairshare);
+		read_usage(USAGE_FILE, 0, fstree);
 
-	calc_fair_share_perc(conf.fairshare->root->child, UNSPECIFIED);
-	calc_usage_factor(conf.fairshare);
+	calc_fair_share_perc(fstree->root->child, UNSPECIFIED);
+	calc_usage_factor(fstree);
 
 	if (flags & FS_PRINT_TREE)
-		print_fairshare(conf.fairshare->root, 0);
+		print_fairshare(fstree->root, 0);
 	else if (flags & FS_PRINT  ) {
-		printf("Fairshare usage units are in: %s\n", conf.fairshare_res);
-		print_fairshare(conf.fairshare->root, -1);
+		printf("Fairshare usage units are in: %s\n", conf.fairshare_res.c_str());
+		print_fairshare(fstree->root, -1);
 	}
 	else if (flags & FS_DECAY) {
-		decay_fairshare_tree(conf.fairshare->root);
-		conf.fairshare->last_decay = time(NULL);
+		decay_fairshare_tree(fstree->root);
+		fstree->last_decay = time(NULL);
 	}
 	else if (flags & (FS_GET | FS_SET | FS_COMP)) {
-		ginfo = find_group_info(argv[optind], conf.fairshare->root);
+		ginfo = find_group_info(argv[optind], fstree->root);
 
 		if (ginfo == NULL) {
 			fprintf(stderr, "Fairshare Entity %s does not exist.\n", argv[optind]);
 			return 1;
 		}
 		if (flags & FS_COMP) {
-			ginfo2 = find_group_info(argv[optind + 1], conf.fairshare->root);
+			ginfo2 = find_group_info(argv[optind + 1], fstree->root);
 
 			if (ginfo2 == NULL) {
 				fprintf(stderr, "Fairshare Entity %s does not exist.\n", argv[optind + 1]);
@@ -278,7 +277,7 @@ main(int argc, char *argv[])
 		remove(USAGE_FILE ".bak");
 		if (rename(USAGE_FILE, USAGE_FILE ".bak") < 0)
 			perror("Could not backup usage database.");
-		write_usage(USAGE_FILE, conf.fairshare);
+		write_usage(USAGE_FILE, fstree);
 		if ((fp = fopen(USAGE_TOUCH, "w")) != NULL)
 			fclose(fp);
 	}
@@ -310,7 +309,7 @@ print_fairshare_entity(group_info *ginfo)
 		ginfo->shares,
 		ginfo->tree_percentage * 100,
 		ginfo->usage_factor,
-		ginfo->usage, conf.fairshare_res,
+		ginfo->usage, conf.fairshare_res.c_str(),
 		ginfo->tree_percentage == 0 ? -1 : ginfo->usage / ginfo->tree_percentage);
 
 	printf("Path from root: \n");

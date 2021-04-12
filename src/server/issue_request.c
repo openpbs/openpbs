@@ -144,7 +144,7 @@ relay_to_mom2(job *pjob, struct batch_request *request,
 	if ((pmom = tfind2((unsigned long) momaddr, momport, &ipaddrs)) == NULL)
 		return (PBSE_NORELYMOM);
 
-	mom_tasklist_ptr = &(((mom_svrinfo_t *) (pmom->mi_data))->msr_deferred_cmds);
+	mom_tasklist_ptr = &pmom->mi_dmn_info->dmn_deferred_cmds;
 
 	conn = svr_connect(momaddr, momport, process_Dreply, ToServerDIS, prot);
 	if (conn < 0) {
@@ -356,7 +356,7 @@ add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(), char *msgid,
 	delete_link(&ptask->wt_linkevent);
 
 	/* append to the moms deferred command list */
-	append_link(&(((mom_svrinfo_t *) (minfo->mi_data))->msr_deferred_cmds), &ptask->wt_linkobj2, ptask);
+	append_link(&minfo->mi_dmn_info->dmn_deferred_cmds, &ptask->wt_linkobj2, ptask);
 	return ptask;
 }
 
@@ -378,7 +378,7 @@ add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(), char *msgid,
  *
  *		Encode and send the request.
  *
- *		When the reply is ready,  process_reply() will decode it and
+ *		When the reply is ready,  process_Dreply() will decode it and
  *		dispatch the work task.
  *
  * @note
@@ -789,7 +789,7 @@ process_Dreply(int sock)
  * 		Reads the reply from the TPP stream and executes the work task associated
  * 		with the reply message. The request for which this reply arrived
  * 		is matched by comparing the msgid of the reply with the msgid of the work
- * 		tasks stored in the msr_deferred_cmds list of the mom for this stream.
+ * 		tasks stored in the dmn_deferred_cmds list of the mom for this stream.
  *
  * @param[in] handle - TPP handle on which reply/close arrived
  *
@@ -814,7 +814,7 @@ process_DreplyTPP(int handle)
 	msgid = disrst(handle, &rc);
 
 	if (!msgid || rc) { /* tpp connection actually broke, cull all pending requests */
-		while ((ptask = (struct work_task *)GET_NEXT((((mom_svrinfo_t *) (pmom->mi_data))->msr_deferred_cmds)))) {
+		while ((ptask = GET_NEXT(pmom->mi_dmn_info->dmn_deferred_cmds))) {
 			/* no need to compare wt_event with handle, since the
 			 * task list is for this mom and so it will always match
 			 */
@@ -836,7 +836,7 @@ process_DreplyTPP(int handle)
 		/* we read msgid fine, so proceed to match it and process the respective task */
 
 		/* get the task list */
-		ptask = (struct work_task *)GET_NEXT((((mom_svrinfo_t *) (pmom->mi_data))->msr_deferred_cmds));
+		ptask = GET_NEXT(pmom->mi_dmn_info->dmn_deferred_cmds);
 
 		while (ptask) {
 

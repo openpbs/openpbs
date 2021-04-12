@@ -263,7 +263,7 @@ svr_enquejob(job *pjob, char *selectspec)
 
 	pjcur = (job *)GET_PRIOR(svr_alljobs);
 	while (pjcur) {
-		if (get_jattr_long(pjob, JOB_ATR_qrank) >= get_jattr_long(pjcur, JOB_ATR_qrank))
+		if (get_jattr_ll(pjob, JOB_ATR_qrank) >= get_jattr_ll(pjcur, JOB_ATR_qrank))
 			break;
 		pjcur = (job *)GET_PRIOR(pjcur->ji_alljobs);
 	}
@@ -287,7 +287,7 @@ svr_enquejob(job *pjob, char *selectspec)
 
 	pjcur = (job *)GET_PRIOR(pque->qu_jobs);
 	while (pjcur) {
-		if (get_jattr_long(pjob, JOB_ATR_qrank) >= get_jattr_long(pjcur, JOB_ATR_qrank))
+		if (get_jattr_ll(pjob, JOB_ATR_qrank) >= get_jattr_ll(pjcur, JOB_ATR_qrank))
 			break;
 		pjcur = (job *)GET_PRIOR(pjcur->ji_jobque);
 	}

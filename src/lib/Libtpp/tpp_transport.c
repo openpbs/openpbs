@@ -505,6 +505,14 @@ tpp_transport_init(struct tpp_config *conf)
 
 	if (tpp_init_rwlock(&cons_array_lock))
 		return -1;
+	
+#ifndef WIN32
+	/* for unix, set a pthread_atfork handler */
+	if (pthread_atfork(tpp_nslookup_atfork_prepare, tpp_nslookup_atfork_parent, tpp_nslookup_atfork_child) != 0) {
+		tpp_log(LOG_CRIT, __func__, "tpp nslookup mutex atfork handler failed");
+		return -1;
+	}
+#endif
 
 	tpp_sock_layer_init();
 

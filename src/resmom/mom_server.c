@@ -129,6 +129,8 @@ extern	char	*path_hooks;
 extern	unsigned long	hooks_rescdef_checksum;
 extern	int	report_hook_checksums;
 
+int nsvrs = 0;
+
 /*
  * Tree search generalized from Knuth (6.2.2) Algorithm T just like
  * the AT&T man page says.
@@ -321,7 +323,6 @@ registermom(int stream, int combine_msg)
 		*   long    - run version (count)
 		*   int     - Node Id  (0 if Mother Superior)
 		*   string  - exec_vnode string
-		*   string  - pset value if set, otherwise null string
 	*/
 
 	if ((ret = diswui(stream, count)) != DIS_SUCCESS)
@@ -349,10 +350,7 @@ registermom(int stream, int combine_msg)
 			goto err;
 		if ((ret = diswst(stream, get_jattr_str(pjob, JOB_ATR_exec_vnode))) != DIS_SUCCESS)
 			goto err;
-		if (is_jattr_set(pjob, JOB_ATR_pset))
-			ret = diswst(stream, get_jattr_str(pjob, JOB_ATR_pset));
-		else
-			ret = diswst(stream, ""); /* send null string */
+
 		if (ret != DIS_SUCCESS)
 			goto err;
 	}
@@ -622,6 +620,7 @@ process_cluster_addrs(int stream)
 			DBPRT(("ipdepth: %lu\n", ipdepth))
 		}
 	}
+
 	return 0;
 }
 
@@ -693,15 +692,25 @@ is_request(int stream, int version)
 	switch (command) {
 
 		case IS_REPLYHELLO:	/* servers return greeting to IS_HELLOSVR */
+
 			DBPRT(("%s: IS_REPLYHELLO, state=0x%x stream=%d\n", __func__,
 				internal_state, stream))
+
 			time_delta_hellosvr(MOM_DELTA_RESET);
+
 			need_inv = disrsi(stream, &ret);
 			if (ret != DIS_SUCCESS)
 				goto err;
-			ret = process_cluster_addrs(stream);
-			if (ret != 0 && ret != DIS_EOD)
+
+			nsvrs = disrsi(stream, &ret);
+			if (ret != DIS_SUCCESS)
 				goto err;
+
+			if (nsvrs == 1) {
+				ret = process_cluster_addrs(stream);
+				if (ret != 0)
+					goto err;
+			}
 
 			 /* return a IS_REGISTERMOM followed by an UPDATE or UPDATE2 */
 
@@ -711,6 +720,7 @@ is_request(int stream, int version)
 			if ((ret = registermom(stream, 1)) != 0)
 				goto err;
 			internal_state_update = UPDATE_MOM_STATE;
+
 			if (need_inv) {
 				if ((ret = state_to_server(UPDATE_VNODES, 1)) != DIS_SUCCESS)
 					goto err;
@@ -726,6 +736,7 @@ is_request(int stream, int version)
 
 			if (send_hook_checksums() != DIS_SUCCESS)
 				goto err;
+				
 			/* send any unacknowledged hook job and vnl action requests */
 			send_hook_job_action(NULL);
 			hook_requests_to_server(&svr_hook_vnl_actions);

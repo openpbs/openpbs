@@ -41,6 +41,22 @@
 
 %{
 #include "pbs_ifl.h"
+#include "pbs_error.h"
+%}
+
+/* functions to acquire values from thread specific variables */
+%inline
+%{
+int get_pbs_errno(void)
+{
+    return pbs_errno;
+}
+
+const char * get_pbs_server(void)
+{
+    return pbs_server;
+}
 %}
 
 %include "pbs_ifl.h"
+%include "pbs_error.h"

@@ -763,7 +763,7 @@ node_partition_update(status *policy, node_partition *np)
 		}
 	}
 
-	if (policy->node_sort[0].res_name != NULL && conf.node_sort_unused) {
+	if (!policy->node_sort->empty() && conf.node_sort_unused) {
 		/* Resort the nodes in the partition so that selection works correctly. */
 		qsort(np->ninfo_arr, np->tot_nodes, sizeof(node_info *),
 			multi_node_sort);
@@ -1344,8 +1344,7 @@ sort_all_nodepart(status *policy, server_info *sinfo)
 			qsort(qinfo->nodepart, qinfo->num_parts,
 			      sizeof(node_partition *), cmp_placement_sets);
 	}
-	if (policy->node_sort[0].res_name != NULL &&
-	    conf.node_sort_unused && sinfo->hostsets != NULL) {
+	if (!policy->node_sort->empty() && conf.node_sort_unused && sinfo->hostsets != NULL) {
 		/* Resort the nodes in host sets to correctly reflect unused resources */
 		qsort(sinfo->hostsets, sinfo->num_hostsets, sizeof(node_partition *), multi_nodepart_sort);
 	}

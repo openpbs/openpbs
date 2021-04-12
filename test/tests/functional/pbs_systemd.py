@@ -85,14 +85,16 @@ class Test_systemd(TestFunctional):
         cmd = "systemctl stop pbs"
         self.du.run_cmd(self.hostname, cmd, True)
         if ('1' == self.server.pbs_conf['PBS_START_SERVER'] and
-                self.server.isUp()):
+                self.server.isUp(max_attempts=10)):
             return False
         if ('1' == self.server.pbs_conf['PBS_START_SCHED'] and
-                self.scheduler.isUp()):
+                self.scheduler.isUp(max_attempts=10)):
             return False
-        if '1' == self.server.pbs_conf['PBS_START_COMM'] and self.comm.isUp():
+        if ('1' == self.server.pbs_conf['PBS_START_COMM'] and
+                self.comm.isUp(max_attempts=10)):
             return False
-        if '1' == self.server.pbs_conf['PBS_START_MOM'] and self.mom.isUp():
+        if ('1' == self.server.pbs_conf['PBS_START_MOM'] and
+                self.mom.isUp(max_attempts=10)):
             return False
         return True
 
@@ -110,3 +112,50 @@ class Test_systemd(TestFunctional):
         rv = self.stop_using_systemd()
         self.assertTrue(rv)
         rv = self.start_using_systemd()
+
+    @skipOnShasta
+    def test_missing_daemon(self):
+        """
+        Test whether missing daemons starts without re-starting other daemons
+        """
+        self.hostname = self.server.hostname
+        self.shutdown_all()
+        rv = self.start_using_systemd()
+        self.assertTrue(rv)
+        cmd = "systemctl reload pbs"
+        # Mom
+        self.mom.signal("-KILL")
+        if self.mom.isUp(max_attempts=10):
+            self.fail("MoM is still running")
+        self.du.run_cmd(self.hostname, cmd, True)
+        if self.mom.isUp(max_attempts=10):
+            self.logger.info("MoM started and running")
+        else:
+            self.fail("MoM not started")
+        # Sched
+        self.scheduler.signal("-KILL")
+        if self.scheduler.isUp(max_attempts=10):
+            self.fail("Sched is still running")
+        self.du.run_cmd(self.hostname, cmd, True)
+        if self.scheduler.isUp(max_attempts=10):
+            self.logger.info("Sched started and running")
+        else:
+            self.fail("Sched not started")
+        # Comm
+        self.comm.signal("-KILL")
+        if self.comm.isUp(max_attempts=10):
+            self.fail("Comm is still running")
+        self.du.run_cmd(self.hostname, cmd, True)
+        if self.comm.isUp(max_attempts=10):
+            self.logger.info("Comm started and running")
+        else:
+            self.fail("Comm not started")
+        # Server
+        self.server.signal("-KILL")
+        if self.server.isUp(max_attempts=10):
+            self.fail("Server is still running")
+        self.du.run_cmd(self.hostname, cmd, True)
+        if self.server.isUp(max_attempts=10):
+            self.logger.info("Server started and running")
+        else:
+            self.fail("Server not started")

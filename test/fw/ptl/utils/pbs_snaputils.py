@@ -51,6 +51,7 @@ import tarfile
 import time
 import platform
 from subprocess import STDOUT
+from pathlib import Path
 
 from ptl.lib.pbs_ifl_mock import *
 from ptl.lib.pbs_testlib import (SCHED, BatchUtils, Scheduler, Server,
@@ -423,34 +424,46 @@ class ObfuscateSnapshot(object):
         acct_path = os.path.join(snap_dir, "server_priv", "accounting")
         if not os.path.isdir(acct_path):
             return
-        acct_fnames = self.du.listdir(path=acct_path, sudo=sudo_val)
-        for acct_fname in acct_fnames:
-            acct_fpath = os.path.join(acct_path, acct_fname)
+        acct_fpaths = self.du.listdir(path=acct_path, sudo=sudo_val)
+        for acct_fpath in acct_fpaths:
             self._obfuscate_acct_file(attrs_to_obf, acct_fpath)
         if self.num_bad_acct_records > 0:
             self.logger.info("Total bad records found: " +
                              str(self.num_bad_acct_records))
 
-    def _replace_str_in_file(self, key, val, fpath, sudo=False):
+    def _obfuscate_with_map(self, fpath, sudo=False):
         """
-        Helper function to replace a given string (key) with another (val)
+        Helper function to obfuscate a file with obfuscation map
 
-        :param key - the string to replace
-        :type key - str
-        :param val - the string to replace with
-        :type val - str
         :param filepath - path to the file
         :type filepath - str
+        :param sudo - sudo True/False?
+        :type bool
+
+        :return fpath - possibly updated path to the obfuscated file
         """
         fout = self.du.create_temp_file()
+        pathobj = Path(fpath)
+        fname = pathobj.name
+        fparent = pathobj.parent
         with open(fpath, "r", encoding="latin-1") as fd, \
                 open(fout, "w") as fdout:
             alltext = fd.read()
-            otext = re.sub(r'\b' + key + r'\b', val, alltext)
-            fdout.write(otext)
+            # Obfuscate values from val_obf_map
+            for key, val in self.val_obf_map.items():
+                alltext = re.sub(r'\b' + key + r'\b', val, alltext)
+                if key in fname:
+                    fname = fname.replace(key, val)
+                    fpath = os.path.join(fparent, fname)
+            # Remove the attr values from vals_to_del list
+            for val in self.vals_to_del:
+                alltext = alltext.replace(val, "")
+            fdout.write(alltext)
 
         self.du.rm(path=fpath, sudo=sudo)
         shutil.move(fout, fpath)
+
+        return fpath
 
     def obfuscate_snapshot(self, snap_dir, map_file, sudo_val):
         """
@@ -560,25 +573,7 @@ class ObfuscateSnapshot(object):
         for root, _, fnames in os.walk(snap_dir):
             for fname in fnames:
                 fpath = os.path.join(root, fname)
-                new_fname = None
-
-                # Obfuscate values from val_obf_map
-                for key, val in self.val_obf_map.items():
-                    self._replace_str_in_file(key, val, fpath, sudo=sudo_val)
-                    if key in fname:
-                        new_fname = fname.replace(key, val)
-
-                # Remove the attr values from vals_to_del list
-                fout = self.du.create_temp_file()
-                with open(fpath, "r") as fd, open(fout, "w") as fdout:
-                    data = fd.read()
-                    for val in self.vals_to_del:
-                        data = data.replace(val, "")
-                    fdout.write(data)
-                if new_fname is not None:
-                    os.remove(fpath)
-                    fpath = os.path.join(root, new_fname)
-                shutil.move(fout, fpath)
+                self._obfuscate_with_map(fpath, sudo=sudo_val)
 
         with open(map_file, "w") as fd:
             fd.write("Attributes Obfuscated:\n")
@@ -772,13 +767,13 @@ class _PBSSnapUtils(object):
             # Job information
             value = (QSTAT_F_PATH, [QSTAT_CMD, "-f"])
             self.job_info[QSTAT_F_OUT] = value
+            value = (QSTAT_TF_PATH, [QSTAT_CMD, "-tf"])
+            self.job_info[QSTAT_TF_OUT] = value
             if not self.basic:
                 value = (QSTAT_PATH, [QSTAT_CMD])
                 self.job_info[QSTAT_OUT] = value
                 value = (QSTAT_T_PATH, [QSTAT_CMD, "-t"])
                 self.job_info[QSTAT_T_OUT] = value
-                value = (QSTAT_TF_PATH, [QSTAT_CMD, "-tf"])
-                self.job_info[QSTAT_TF_OUT] = value
                 value = (QSTAT_X_PATH, [QSTAT_CMD, "-x"])
                 self.job_info[QSTAT_X_OUT] = value
                 value = (QSTAT_XF_PATH, [QSTAT_CMD, "-xf"])

@@ -41,6 +41,8 @@
 #ifndef	_CHECK_H
 #define	_CHECK_H
 
+#include <unordered_set>
+
 #include "server_info.h"
 #include "queue_info.h"
 #include "job_info.h"
@@ -108,8 +110,12 @@ shrink_to_run_event(status *policy, server_info *sinfo,
  */
 long long
 check_avail_resources(schd_resource *reslist, resource_req *reqlist,
-	unsigned int flags, resdef **res_to_check,
+	unsigned int flags, std::unordered_set<resdef *>& res_to_check,
 	enum sched_error_code fail_code, schd_error *err);
+long long
+check_avail_resources(schd_resource *reslist, resource_req *reqlist,
+		      unsigned int flags, enum sched_error_code fail_code, schd_error *perr);
+
 /*
  *	dynamic_avail - find out how much of a resource is available on a
  */

@@ -74,19 +74,9 @@ void free_queues(queue_info **qinfo);
 void update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state);
 
 /*
- *      free_queue_info - free space used by a queue info struct
- */
-void free_queue_info(queue_info *qinfo);
-
-/*
  *      dup_queues - duplicate the queues on a server
  */
 queue_info **dup_queues(queue_info **oqueues, server_info *nsinfo);
-
-/*
- *      dup_queue_info - duplicate a queue_info structure
- */
-queue_info *dup_queue_info(queue_info *oqinfo, server_info *nsinfo);
 
 /*
  *
@@ -98,7 +88,7 @@ queue_info *dup_queue_info(queue_info *oqinfo, server_info *nsinfo);
  *	return the found queue or NULL
  *
  */
-queue_info *find_queue_info(queue_info **qinfo_arr, char *name);
+queue_info *find_queue_info(queue_info **qinfo_arr, const std::string& name);
 
 /*
  *      update_queue_on_end - update a queue when a job has finished running

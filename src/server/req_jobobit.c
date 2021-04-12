@@ -414,9 +414,9 @@ on_job_exit(struct work_task *ptask)
 		pmom = tfind2((unsigned long) pjob->ji_qs.ji_un.ji_exect.ji_momaddr,
 			pjob->ji_qs.ji_un.ji_exect.ji_momport,
 			&ipaddrs);
-		if (!pmom || (((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN))
+		if (!pmom || (pmom->mi_dmn_info->dmn_state & INUSE_DOWN))
 			return;
-		mom_tasklist_ptr = &(((mom_svrinfo_t *)(pmom->mi_data))->msr_deferred_cmds);
+		mom_tasklist_ptr = &pmom->mi_dmn_info->dmn_deferred_cmds;
 	}
 
 	switch (get_job_substate(pjob)) {
@@ -811,9 +811,9 @@ on_job_rerun(struct work_task *ptask)
 		pmom = tfind2((unsigned long) pjob->ji_qs.ji_un.ji_exect.ji_momaddr,
 			pjob->ji_qs.ji_un.ji_exect.ji_momport,
 			&ipaddrs);
-		if (!pmom || (((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN))
+		if (!pmom || (pmom->mi_dmn_info->dmn_state & INUSE_DOWN))
 			return;
-		mom_tasklist_ptr = &(((mom_svrinfo_t *)(pmom->mi_data))->msr_deferred_cmds);
+		mom_tasklist_ptr = &pmom->mi_dmn_info->dmn_deferred_cmds;
 	}
 
 	switch (get_job_substate(pjob)) {
@@ -1106,7 +1106,6 @@ on_job_rerun(struct work_task *ptask)
 					free_jattr(pjob, JOB_ATR_exec_vnode);
 					free_jattr(pjob, JOB_ATR_exec_host);
 					free_jattr(pjob, JOB_ATR_exec_host2);
-					free_jattr(pjob, JOB_ATR_pset);
 				}
 				pjob->ji_momhandle = -1;
 				pjob->ji_mom_prot = PROT_INVALID;
@@ -1615,9 +1614,15 @@ job_obit(ruu *pruu, int stream)
 			case JOB_EXEC_FAILHOOK_RERUN:
 			case JOB_EXEC_HOOK_RERUN:
 			case JOB_EXEC_HOOKERROR:
+			case JOB_EXEC_JOINJOB:
 				if (exitstatus == JOB_EXEC_FAILHOOK_RERUN || exitstatus == JOB_EXEC_HOOKERROR) {
 					log_event(PBSEVENT_ERROR | PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, msg_hook_reject_rerunjob);
 					DBPRT(("%s: MOM rejected job %s due to a hook.\n", __func__, pruu->ru_pjobid))
+				} else if (exitstatus == JOB_EXEC_JOINJOB) {
+					log_event(PBSEVENT_ERROR | PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+						  pjob->ji_qs.ji_jobid, "Mom rejected job due to join job error");
+					send_nodestat_req();
+					exitstatus = JOB_EXEC_RETRY;
 				}
 RetryJob:
 				/* MOM rejected job, but said retry it */

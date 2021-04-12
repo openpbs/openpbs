@@ -36,7 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-.TH pbs_rsub 1B "6 May 2020" Local "PBS Professional"
+.TH pbs_rsub 1B "24 September 2020" Local "PBS Professional"
 .SH NAME
 .B pbs_rsub 
 \- create a PBS reservation 
@@ -306,7 +306,7 @@ pbs_resv_attributes(7B) man page.
 Syntax: 
 .I [+|-]<group name>[,[+|-]<group name> ...]
 .br
-Default: All groups are authorized to submit jobs.
+Default: No groups are authorized to submit jobs
 .RE
 
 .IP "--hosts <host list>" 8
@@ -783,7 +783,7 @@ See the
 reservation attribute in the pbs_resv_attributes(7B) man page.
 .br
 Syntax:
-.I [+|-]<username>@<hostname>[,[+|-]<username>@<hostname>...]
+.I [+|-]<username>[@<hostname>][,[+|-]<username>[@<hostname>]...]
 .br
 Default: Reservation owner only
 .br

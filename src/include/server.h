@@ -181,12 +181,80 @@ extern void			unlicense_nodes(void);
 extern void			set_sched_default(pbs_sched *, int from_scheduler);
 extern void			memory_debug_log(struct work_task *ptask);
 
-/* multi-server functions */
-extern void *get_peersvr(struct sockaddr_in *);
-extern void *create_svr_entry(char *, unsigned int);
-extern int init_msi();
-extern void *create_svr_struct(struct sockaddr_in *);
-extern void *connect_to_peersvr(pbs_net_t, uint);
+
+/* Multi-server specific structures */
+
+/* Resource update from peer server */
+struct peersvr_resc_update {
+	char *jobid;	/* job id of the resource update */
+	int op;		/* operation which is performed; INCR/DECR */
+	char *execvnode;	/* execvnode of the job */
+	int share_job;	/* job share type based on job's placement directive */
+	int broadcast; /* whether to broadcast the resc update to all the peer servers */
+	pbs_list_link ru_link;	/* Link to the next element in the list */
+};
+typedef struct peersvr_resc_update psvr_ru_t;
+
+/*
+ * enums indicating stat update flag
+ */
+enum msvr_stats_type {
+	CACHE_MISS,		/* Number of node cache miss */
+	CACHE_REFR_TM,		/* time spent in refreshing node cache */
+	NUM_RESC_UPDATE,	/* number of peer server resource updates */
+	NUM_MOVE_RUN,		/* number of move and run */
+	NUM_SCHED_MISS,		/* number of times when acks were not received by the next sched cycle */
+	END_OF_STAT		/* Indicates end of types */
+};
+typedef enum msvr_stats_type msvr_stat_type_t;
+
+/* Multi-svr statistical logging */
+struct msvr_stats {
+	time_t last_logged_tm;	/* Time when we logged last */
+	unsigned long stat[END_OF_STAT];	/* Number of node cache miss */
+};
+typedef struct msvr_stats msvr_stat_t;
+
+#define HOUR_IN_SEC	60 * 60
+#define STAT_LOG_INTL	24 * HOUR_IN_SEC /* 24 hours */
+
+/* multi-server gloabls and functions */
+
+extern pbs_list_head peersvrl;
+
+struct svrinfo {
+	int		ps_pending_replies; /* number of unacknowledged replies from this server */
+	void		*ps_rsc_idx; /* avl of resc updates based on job_id as the key and psvr_ru_t as value */
+	pbs_list_head	ps_node_list; /* list of nodes corresponding to this server. Useful for clearing the nodes in case of an update */
+};
+typedef struct svrinfo svrinfo_t;
+
+void *get_peersvr(struct sockaddr_in *);
+void *create_svr_entry(char *, unsigned int);
+int init_msi();
+void *create_svr_struct(struct sockaddr_in *, char *);
+int connect_to_peersvr(void *);
+bool is_peersvr(void *);
+void mcast_resc_usage(psvr_ru_t *, int);
+int open_ps_mtfd(void);
+void send_nodestat_req(void);
+void req_peer_svr_ack(int);
+void *pending_ack_svr(void);
+psvr_ru_t *init_psvr_ru(job *, int, char *, bool);
+void free_psvr_ru(psvr_ru_t *);
+int send_job_resc_updates(int);
+int send_command(int, int);
+int send_resc_usage(int, psvr_ru_t *, int, int);
+void req_resc_update(int, pbs_list_head *, void *);
+void replyhello_psvr(struct work_task *);
+void poke_peersvr(void);
+void mcast_resc_update_all(void *);
+void clean_saved_rsc(void*);
+int process_status_reply(int);
+void *get_peersvr_from_svrid(char *);
+void update_msvr_stat(unsigned long, msvr_stat_type_t);
+
+/* end of multi-svr functions */
 
 attribute *get_sattr(int attr_idx);
 char *get_sattr_str(int attr_idx);

@@ -96,7 +96,6 @@ typedef unsigned long long	u_Long;
 
 #endif
 
-const char *LTostr(Long value, int base);
 const char *uLTostr(u_Long value, int base);
 #ifdef	__cplusplus
 }

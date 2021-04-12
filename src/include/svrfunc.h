@@ -68,6 +68,7 @@ extern int is_compose(int, int);
 extern int is_compose_cmd(int, int, char **);
 extern char *get_servername(unsigned int *);
 extern char *gen_svr_inst_id(void);
+extern int get_server_index(void);
 extern void process_Areply(int);
 extern void process_Dreply(int);
 extern void process_DreplyTPP(int);

@@ -107,6 +107,9 @@
  */
 int		tpp_fd = -1;
 
+ /* whether a forked child called tpp_terminate or not? initialized to false */
+int tpp_terminated_in_child = 0;
+
 /*
  * app_mbox is the "monitoring mechanism" for the application
  * send notifications to the application about incoming data
@@ -1667,6 +1670,8 @@ tpp_mcast_open(void)
  *
  * @param[in] mtfd - The multicast channel to which to add streams to
  * @param[in] tfd - Array of stream descriptors to add to the multicast stream
+ * @param[in] unique - add only unique streams. Use only if caller might call
+ * 			this function with duplicate tfd.
  *
  * @return	Error code
  * @retval   -1 - Failure
@@ -1679,11 +1684,12 @@ tpp_mcast_open(void)
  *
  */
 int
-tpp_mcast_add_strm(int mtfd, int tfd)
+tpp_mcast_add_strm(int mtfd, int tfd, bool unique)
 {
 	void *p;
 	stream_t *mstrm;
 	stream_t *strm;
+	int i = 0;
 
 	mstrm = get_strm_atomic(mtfd);
 	if (!mstrm) {
@@ -1722,6 +1728,14 @@ tpp_mcast_add_strm(int mtfd, int tfd)
 		mstrm->mcast_data->strms = p;
 		mstrm->mcast_data->num_slots += TPP_MCAST_SLOT_INC;
 	}
+
+	if (unique) {
+		for (i = 0; i < mstrm->mcast_data->num_fds; i++) {
+			if (mstrm->mcast_data->strms[i] == tfd)
+				return 0;
+		}
+	}
+
 	mstrm->mcast_data->strms[mstrm->mcast_data->num_fds++] = tfd;
 
 	return 0;

@@ -692,6 +692,9 @@ pbsd_init(int type)
 	sprintf(zone_dir, "%s%s", pbs_conf.pbs_exec_path, ICAL_ZONEINFO_DIR);
 	set_ical_zoneinfo(zone_dir);
 
+	/* Initialize server instsances before loading jobs/resv */
+	init_msi();
+
 	/* load reservations */
 	if ((resvs_idx = pbs_idx_create(0, 0)) == NULL) {
 		log_err(-1, __func__, "Creating reservations index failed!");

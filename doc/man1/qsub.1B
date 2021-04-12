@@ -36,7 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-.TH qsub 1B "14 July 2020" Local "PBS Professional"
+.TH qsub 1B "25 January 2021" Local "PBS Professional"
 .SH NAME
 .B qsub 
 \- submit a job to PBS 
@@ -50,7 +50,7 @@
 .br
 [-I [-G [-- <GUI application/script>]] | [-X]] [-j <join>] 
 .br
-[-J <range>] [-k <discard>] [-l <resource list>] 
+[-J <range> [%<max subjobs]] [-k <discard>] [-l <resource list>] 
 .br
 [-m <mail events>] [-M <user list>] [-N <name>] [-o <path>]
 .br
@@ -796,11 +796,12 @@ Standard error and standard output are merged into standard error.
 Standard error and standard output are not merged.
 .RE
 
-.IP "-J <range>" 8
+.IP "-J <range> [%<max subjobs>]" 8
 Makes this job an array job.  Sets job's 
 .I array
 attribute to 
 .I True.
+
 Use the
 .I range 
 argument to specify the indices of the subjobs of the array.
@@ -818,6 +819,13 @@ is the stepping factor.  For example,  2-7:2 will produce indices of 2, 4, and
 .I Z 
 is not specified, it is taken to be 1.  Indices must be greater than or 
 equal to zero.
+
+Use the optional 
+.I %max subjobs 
+argument to set a limit on the number of subjobs that can be running
+at one time.  This sets the value of the 
+.I max_run_subjobs 
+job attribute to the specified maximum.
 
 Job arrays are always rerunnable.
 

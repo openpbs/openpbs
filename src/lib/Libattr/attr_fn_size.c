@@ -370,6 +370,7 @@ to_size(char *val, struct size_value *psize)
 
 	psize->atsv_units = ATR_SV_BYTESZ;
 	psize->atsv_num = strTouL(val, &pc, 10);
+	psize->atsv_shift = 0;
 	if (pc == val)		/* no numeric part */
 		return (PBSE_BADATVAL);
 

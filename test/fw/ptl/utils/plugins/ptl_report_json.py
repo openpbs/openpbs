@@ -40,6 +40,7 @@
 
 import re
 import copy
+import statistics
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.plugins.ptl_test_runner import PtlTextTestRunner
 import datetime
@@ -223,26 +224,23 @@ class PTLJsonData(object):
                     m_sum = []
                     for i in range(len(m)):
                         sum_mean = 0
-                        sum_std = 0
-                        sum_min = 0
-                        sum_max = 0
+                        sum_std = []
+                        sum_min = []
+                        sum_max = []
                         record = []
                         if "test_measure" in m[i].keys():
                             if len(t_sum) > i:
                                 sum_mean = m[i]["test_data"]['mean'] + \
                                     t_sum[i][0]
-                                sum_std = m[i]["test_data"]['std_dev'] + \
-                                    t_sum[i][1]
-                                sum_min = m[i]["test_data"]['minimum'] + \
-                                    t_sum[i][2]
-                                sum_max = m[i]["test_data"]['maximum'] + \
-                                    t_sum[i][3]
+                                sum_std.extend(t_sum[i][1])
+                                sum_min.extend(t_sum[i][2])
+                                sum_max.extend(t_sum[i][3])
                             else:
                                 measurements_data.append(m[i])
                                 sum_mean = m[i]["test_data"]['mean']
-                                sum_std = m[i]["test_data"]['std_dev']
-                                sum_min = m[i]["test_data"]['minimum']
-                                sum_max = m[i]["test_data"]['maximum']
+                            sum_std.append(m[i]["test_data"]['mean'])
+                            sum_min.append(m[i]["test_data"]['minimum'])
+                            sum_max.append(m[i]["test_data"]['maximum'])
                             record = [sum_mean, sum_std, sum_min, sum_max]
                         else:
                             if len(measurements_data) <= i:
@@ -265,9 +263,15 @@ class PTLJsonData(object):
                             m_data['test_data'] = {}
                             div = count
                             m_data['test_data']['mean'] = t_sum[i][0] / div
-                            m_data['test_data']['std_dev'] = t_sum[i][1] / div
-                            m_data['test_data']['minimum'] = t_sum[i][2] / div
-                            m_data['test_data']['maximum'] = t_sum[i][3] / div
+                            if len(t_sum[i][1]) < 2:
+                                m_data['test_data']['std_dev'] = 0
+                            else:
+                                std_dev = statistics.stdev(t_sum[i][1])
+                                m_data['test_data']['std_dev'] = std_dev
+                            minimum = min(t_sum[i][2])
+                            maximum = max(t_sum[i][3])
+                            m_data['test_data']['minimum'] = minimum
+                            m_data['test_data']['maximum'] = maximum
                         m_list.append(m_data)
                     m_avg['testsuites'][tsname]['testcases'][tcname] = m_list
         data_json["avg_measurements"] = m_avg

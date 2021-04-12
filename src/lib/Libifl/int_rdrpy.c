@@ -57,6 +57,7 @@
 #include <time.h>
 #include "libpbs.h"
 #include "dis.h"
+#include "tpp.h"
 
 
 /**
@@ -64,6 +65,7 @@
  *
  * @param[in] sock - The socket fd to read from
  * @param[out] rc  - Return DIS error code
+ * @param[in] prot - protocol type
  *
  * @return Batch reply structure
  * @retval  !NULL - Success
@@ -71,7 +73,7 @@
  *
  */
 struct batch_reply *
-PBSD_rdrpy_sock(int sock, int *rc)
+PBSD_rdrpy_sock(int sock, int *rc, int prot)
 {
 	struct batch_reply *reply;
 	time_t old_timeout;
@@ -83,25 +85,30 @@ PBSD_rdrpy_sock(int sock, int *rc)
 		return NULL;
 	}
 
-	DIS_tcp_funcs();
-	old_timeout = pbs_tcp_timeout;
-	if (pbs_tcp_timeout < PBS_DIS_TCP_TIMEOUT_LONG)
-		pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_LONG;
+	if (prot == PROT_TCP) {
+		DIS_tcp_funcs();
+		old_timeout = pbs_tcp_timeout;
+		if (pbs_tcp_timeout < PBS_DIS_TCP_TIMEOUT_LONG)
+			pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_LONG;
+	} else
+		DIS_tpp_funcs();
 
-	if ((*rc = decode_DIS_replyCmd(sock, reply)) != 0) {
+	if ((*rc = decode_DIS_replyCmd(sock, reply, prot)) != 0) {
 		(void)free(reply);
 		pbs_errno = PBSE_PROTOCOL;
 		return NULL;
 	}
+
 	dis_reset_buf(sock, DIS_READ_BUF);
-	pbs_tcp_timeout = old_timeout;
+	if (prot == PROT_TCP)
+		pbs_tcp_timeout = old_timeout;
 
 	pbs_errno = reply->brp_code;
 	return reply;
 }
 
 /**
- * @brief read a batch reply from the given connecction index
+ * @brief read a batch reply from the given connection index
  *
  * @param[in] c - The connection index to read from
  *
@@ -121,7 +128,8 @@ PBSD_rdrpy(int c)
 		pbs_errno = PBSE_SYSTEM;
 		return NULL;
 	}
-	reply = PBSD_rdrpy_sock(c, &rc);
+	/* PBSD_rdrpy() only handles TCP, hence passing PROT_TCP as prot */
+	reply = PBSD_rdrpy_sock(c, &rc, PROT_TCP);
 	if (reply == NULL) {
 		if (set_conn_errno(c, PBSE_PROTOCOL) != 0) {
 			pbs_errno = PBSE_SYSTEM;

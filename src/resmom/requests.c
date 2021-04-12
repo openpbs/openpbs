@@ -3548,7 +3548,7 @@ mom_checkpoint_job(job *pjob, int abort)
 		}
 	}
 #else
-	if ((cwdname = getcwd(NULL, PATH_MAX+2)) != NULL) {
+	if ((cwdname = getcwd(NULL, 0)) != NULL) {
 		if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
 			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
@@ -4123,7 +4123,7 @@ mom_restart_job(job *pjob)
 		}
 	}
 #else
-	if ((cwdname = getcwd(NULL, PATH_MAX+2)) != NULL) {
+	if ((cwdname = getcwd(NULL, 0)) != NULL) {
 		if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
 			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */

@@ -708,9 +708,6 @@ req_confirmresv(struct batch_request *preq)
 					return;
 				}
 			}
-			if (!is_being_altered)
-				set_rattr_l_slim(presv, RESV_ATR_resv_count, resv_count, SET);
-
 			/* Set first occurrence to index 1
 			 * (rather than 0 because it gets displayed in pbs_rstat -f) */
 			set_rattr_l_slim(presv, RESV_ATR_resv_idx, 1, SET);
@@ -720,8 +717,16 @@ req_confirmresv(struct batch_request *preq)
 		 * occurrence or when altering a reservation.
 		 */
 		if (!is_being_altered) {
-			if (get_rattr_long(presv, RESV_ATR_resv_idx) < get_rattr_long(presv, RESV_ATR_resv_count)) {
+			char *new_execvnode = preq->rq_ind.rq_run.rq_destin;
+			int remaining_occurrences = get_rattr_long(presv, RESV_ATR_resv_count) - get_rattr_long(presv, RESV_ATR_resv_idx) + 1; /* resv_idx starts at 1 */
+			if (get_execvnodes_count(new_execvnode) != remaining_occurrences) {
+				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_WARNING, presv->ri_qs.ri_resvID, "Number of execvnodes given does not equal the number of occurrences left");
+				free(next_execvnode);
+				req_reject(PBSE_BADATVAL, 0, preq);
+				return;
+			}
 
+			if (remaining_occurrences > 0) {
 				/* now assign the execvnodes sequence attribute */
 				set_rattr_str_slim(presv, RESV_ATR_resv_execvnodes, preq->rq_ind.rq_run.rq_destin, NULL);
 			}

@@ -36,7 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-.TH pbs_job_attributes 7B "6 May 2020" Local "PBS Professional"
+.TH pbs_job_attributes 7B "4 March 2021" Local "PBS Professional"
 .SH NAME
 .B pbs_job_attributes 
 \- attributes of PBS jobs
@@ -1168,6 +1168,13 @@ Python type:
 .br
 Default: Job owner only
 
+.IP "max_run_subjobs" 8
+Sets a limit on the number of subjobs that can be running at one time.
+Can be set using 
+.B qsub -J <range> [%<max subjobs>] 
+or 
+.B qalter -Wmax_run_subjobs=<new value> <job ID>.
+
 .IP mtime 8
 Timestamp; the time that the job was last modified, changed state, or changed locations.
 .br
@@ -1713,6 +1720,19 @@ Default: No default
 
 .IP sched_hint 8
 .B No longer used.
+
+.IP security_context 8
+Contains security context of job submitter.  Set by PBS to the
+security context of the job submitter at the time of job
+submission. If not present when a request is submitted, an error
+occurs, a server message is logged, and the request is rejected.
+.br
+Readable by all; set by PBS.
+.br
+Format: 
+.I String in SELinux format
+.br
+Default: Unset
 
 .IP server 8
 The name of the server which is currently managing the job.

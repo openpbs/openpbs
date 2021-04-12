@@ -87,6 +87,7 @@
 #include "constant.h"
 #include "node_partition.h"
 #include "pbs_internal.h"
+#include "libpbs.h"
 
 /**
  * @brief
@@ -536,8 +537,8 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 					release_nodes(resresv_ocr);
 
 					if (resresv_ocr->resv->select_standing != NULL) {
-						free_selspec(resresv_ocr->select);
-						resresv_ocr->select = dup_selspec(resresv_ocr->resv->select_standing);
+						delete resresv_ocr->select;
+						resresv_ocr->select = new selspec(*resresv_ocr->resv->select_standing);
 					}
 
 					resresv_ocr->resv->orig_nspec_arr = parse_execvnode(
@@ -616,7 +617,6 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 	resource_req *resreq = NULL;	/* used for the ATTR_l resources */
 	char *endp = NULL;		/* used with strtol() */
 	long count = 0; 		/* used to convert string -> num */
-	char *selectspec = NULL;	/* used for holding select specification */
 	char *resv_nodes = NULL;	/* used to hold the resv_nodes for later processing */
 
 	if (resv == NULL)
@@ -786,6 +786,7 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 
 	if (resv_nodes != NULL) {
 		selspec *sel;
+		std::string selectspec;
 		/* parse the execvnode and create an nspec array with ninfo ptrs pointing
 		 * to nodes in the real server
 		 */
@@ -803,7 +804,6 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 		advresv->resv->resv_nodes = create_resv_nodes(advresv->nspec_arr, sinfo);
 		selectspec = create_select_from_nspec(advresv->resv->orig_nspec_arr);
 		advresv->execselect = parse_selspec(selectspec);
-		free(selectspec);
 	}
 
 	/* If reservation is unconfirmed and the number of occurrences is 0 then flag
@@ -922,10 +922,10 @@ free_resv_info(resv_info *rinfo)
 		free(rinfo->partition);
 
 	if (rinfo->select_orig != NULL)
-		free_selspec(rinfo->select_orig);
+		delete rinfo->select_orig;
 
 	if (rinfo->select_standing != NULL)
-		free_selspec(rinfo->select_standing);
+		delete rinfo->select_standing;
 
 	if (rinfo->orig_nspec_arr != NULL)
 		free_nspecs(rinfo->orig_nspec_arr);
@@ -978,9 +978,9 @@ dup_resv_info(resv_info *rinfo, server_info *sinfo)
 	if (rinfo->partition != NULL)
 		nrinfo->partition = string_dup(rinfo->partition);
 	if (rinfo->select_orig != NULL)
-		nrinfo->select_orig = dup_selspec(rinfo->select_orig);
+		nrinfo->select_orig = new selspec(*rinfo->select_orig);
 	if (rinfo->select_standing != NULL)
-		nrinfo->select_standing = dup_selspec(rinfo->select_standing);
+		nrinfo->select_standing = new selspec(*rinfo->select_standing);
 
 	/* the queues may not be available right now.  If they aren't, we'll
 	 * catch this when we duplicate the queues
@@ -1052,7 +1052,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 	qsort(sinfo->resvs, sinfo->num_resvs, sizeof(resource_resv*), cmp_resv_state);
 
 	for (i = 0; sinfo->resvs[i] != NULL; i++) {
-		if (sinfo->resvs[i]->resv ==NULL) {
+		if (sinfo->resvs[i]->resv == NULL) {
 			log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 				sinfo->resvs[i]->name,
 				"Error determining if reservation can be confirmed: "
@@ -1178,8 +1178,8 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 							if (nresv_copy == NULL)
 								break;
 							if (nresv_copy->resv->select_standing != NULL) {
-								free_selspec(nresv_copy->select);
-								nresv_copy->select = dup_selspec(nresv_copy->resv->select_standing);
+								delete nresv_copy->select;
+								nresv_copy->select = new selspec(*nresv_copy->resv->select_standing);
 							}
 						}
 						/* Duplication deep-copies node info array. This array gets
@@ -1371,29 +1371,28 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 	resource_resv **tmp_resresv = NULL;
 	resource_resv *nresv_copy = NULL;
 
-	resource_resv *nresv_parent = nresv; /* the "original" / parent reservation */
+	resource_resv *nresv_parent = nresv;	/* the "original" / parent reservation */
 
-	int confirmd_occr = 0;   /* the number of confirmed occurrence(s) */
+	int confirmd_occr = 0;			/* the number of confirmed occurrence(s) */
 	int j, cur_count;
 
-	int tot_vnodes = 0;   /* total number of vnodes associated to the reservation */
-	int vnodes_down = 0;   /* the number of vnodes that are down */
+	int tot_vnodes = 0;			/* total number of vnodes associated to the reservation */
+	int vnodes_down = 0;			/* the number of vnodes that are down */
 	char names_of_down_vnodes[MAXVNODELIST] = "";  /* the list of down vnodes */
 
 	/* resv_start_time is used both for calculating the time of an ASAP
 	 * reservation and to keep track of the start time of the first occurrence
 	 * of a standing reservation.
 	 */
-	time_t resv_start_time = 0;       /* estimated start time for resv */
-	time_t *occr_start_arr = NULL;   /* an array of occurrence start times */
+	time_t resv_start_time = 0;		/* estimated start time for resv */
+	time_t *occr_start_arr = NULL;		/* an array of occurrence start times */
 
-	char *execvnodes = NULL;
+	std::string execvnodes;
 	char *short_xc = NULL;
 	char *tmp = NULL;
-	char *vnode_seq_tmp;
 	time_t next;
 
-	char *rrule = nresv->resv->rrule; /* NULL for advance reservation */
+	char *rrule = nresv->resv->rrule; 	/* NULL for advance reservation */
 	time_t dtstart = nresv->resv->req_start;
 	char *tz = nresv->resv->timezone;
 	int occr_count = nresv->resv->count;
@@ -1508,18 +1507,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				nsinfo->all_resresv = tmp_resresv;
 				nsinfo->num_resvs++;
 			}
-			/* Concatenate the execvnode to a Token separator */
-			if (pbs_asprintf(&tmp, "%s%s", execvnodes, TOKEN_SEPARATOR) == -1) {
-				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
-					"Error determining if reservation can be confirmed: "
-					"String concatenation failed.");
-				delete nresv;
-				free(tmp);
-				rconf = RESV_CONFIRM_FAIL;
-				break;
-			}
-			free(execvnodes);
-			execvnodes = tmp;
+			execvnodes += TOKEN_SEPARATOR;
 		}
 
 		/* If reservation is degraded, then verify that some node(s) associated to
@@ -1549,9 +1537,9 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			} else if (vnodes_down > 0 || nresv->resv->resv_substate == RESV_IN_CONFLICT ||
 				nresv->resv->resv_state == RESV_BEING_ALTERED) {
 				if (nresv->resv->is_running) {
-					char *sel;
+					std::string sel;
 					int ind;
-					free_selspec(nresv->execselect);
+					delete nresv->execselect;
 					/* Use resv->orig_nspec_arr over nspec_arr because
 					 * A) we modified it above in check_vnodes_unavailable() for reconfirmation
 					 * B) it will allow us to map the original select back to the new resv_nodes
@@ -1562,7 +1550,6 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 					    nresv->execselect->chunks[ind]->seq_num = nresv->resv->orig_nspec_arr[ind]->seq_num;
 					}
 
-					free(sel);
 					release_running_resv_nodes(nresv, nsinfo);
 				}
 				release_nodes(nresv);
@@ -1574,29 +1561,10 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				confirmd_occr++;
 				tmp = create_execvnode(nresv->resv->orig_nspec_arr);
 				if (j == 0)
-					execvnodes = string_dup(tmp);
+					execvnodes = tmp;
 				else  { /* subsequent occurrences */
-					if (pbs_asprintf(&vnode_seq_tmp, "%s%s", execvnodes, tmp) == -1) {
-						log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
-							"Error determining if reservation can be confirmed: "
-							"String concatenation failed.");
-						free(vnode_seq_tmp);
-						rconf = RESV_CONFIRM_FAIL;
-						break;
-					}
-					free(execvnodes);
-					execvnodes = vnode_seq_tmp;
-
-					if (pbs_asprintf(&vnode_seq_tmp, "%s%s", execvnodes, TOKEN_SEPARATOR) == -1) {
-						log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
-							"Error determining if reservation can be confirmed: "
-							"String concatenation failed.");
-						free(vnode_seq_tmp);
-						rconf = RESV_CONFIRM_FAIL;
-						break;
-					}
-					free(execvnodes);
-					execvnodes = vnode_seq_tmp;
+					execvnodes += tmp;
+					execvnodes += TOKEN_SEPARATOR;
 				}
 				continue;
 			}
@@ -1640,25 +1608,16 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				}
 
 				if (j == 0) { /* first occurrence keeps track of first execvnode */
-					execvnodes = (char *) string_dup(tmp);
+					execvnodes = tmp;
 					/* Update resv_start_time only if not an ASAP reservation to
 					 * schedule the reservation on the first occurrence.
 					 */
 					if (resv_start_time == 0)
 						resv_start_time = next;
 				}
-				else  { /* subsequent occurrences */
-					if (pbs_asprintf(&vnode_seq_tmp, "%s%s", execvnodes, tmp) == -1) {
-						log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
-							"Error determining if reservation can be confirmed: "
-							"String concatenation failed.");
-						free(vnode_seq_tmp);
-						rconf = RESV_CONFIRM_FAIL;
-						break;
-					}
-					free(execvnodes);
-					execvnodes = vnode_seq_tmp;
-				}
+				else /* subsequent occurrences */
+					execvnodes += tmp;
+
 				confirmd_occr++;
 			}
 			/* Something went wrong trying to determine if it's "ok to run", which
@@ -1697,21 +1656,26 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * each execvnode and condensing the concatenated string.
 		 */
 		if (nresv_parent->resv->is_standing)
-			short_xc = condense_execvnode_seq(execvnodes);
+			short_xc = condense_execvnode_seq(execvnodes.c_str());
 		else
-			short_xc = string_dup(execvnodes);
+			short_xc = string_dup(execvnodes.c_str());
+		
+		if (short_xc == NULL || get_execvnodes_count(short_xc) != occr_count) {
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG, nresv_parent->name, "Invalid execvnode_seq while confirming reservation");
+			rconf = RESV_CONFIRM_RETRY;
+		} else {
 
-		log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
-			"Confirming %d Occurrences", occr_count);
+			log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
+				"Confirming %d Occurrences", occr_count);
 
-		/* Send a reservation confirm message, if anything goes wrong pbsrc
-		 * will return an error
-		 */
-		snprintf(confirm_msg, LOG_BUF_SIZE, "%s:partition=%s", PBS_RESV_CONFIRM_SUCCESS,
-			 sc_attrs.partition ? sc_attrs.partition : DEFAULT_PARTITION);
+			/* Send a reservation confirm message, if anything goes wrong pbsrc
+			* will return an error
+			*/
+			snprintf(confirm_msg, LOG_BUF_SIZE, "%s:partition=%s", PBS_RESV_CONFIRM_SUCCESS,
+				sc_attrs.partition ? sc_attrs.partition : DEFAULT_PARTITION);
 
-		pbsrc = pbs_confirmresv(pbs_sd, const_cast<char *>(nresv_parent->name.c_str()), short_xc,
-			resv_start_time, confirm_msg);
+			pbsrc = send_confirmresv(pbs_sd, nresv_parent, short_xc, resv_start_time, confirm_msg);
+		}
 	}
 	else {
 		/* This message is sent to inform that we could not confirm the reservation.
@@ -1719,8 +1683,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * "null" is used satisfy the API but any string would do because we've
 		 * failed to confirm the reservation and no execvnodes were determined
 		 */
-		pbsrc = pbs_confirmresv(pbs_sd, const_cast<char *>(nresv_parent->name.c_str()), const_cast<char *>("null"),
-			resv_start_time, const_cast<char *>(PBS_RESV_CONFIRM_FAIL));
+		pbsrc = send_confirmresv(pbs_sd, nresv_parent, "null", resv_start_time, PBS_RESV_CONFIRM_FAIL);
 	}
 
 	/* Error handling first checks for the return code from the server and the
@@ -1784,7 +1747,6 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 	nresv_parent->resv->count = occr_count;
 
 	/* clean up */
-	free(execvnodes);
 	free_schd_error(err);
 
 	/* the return value is initialized to RESV_CONFIRM_SUCCESS */

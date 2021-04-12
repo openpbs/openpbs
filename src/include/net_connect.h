@@ -76,23 +76,25 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
  */
 
 #define RM_PROTOCOL	1	/* resource monitor protocol number */
-#define RM_PROTOCOL_VER	1	/* resmon protocol version number */
-
 #define	TM_PROTOCOL	2	/* task manager protocol number */
+#define	IM_PROTOCOL	3	/* inter-mom protocol number */
+#define	IS_PROTOCOL	4	/* inter-server protocol number */
+#define	PS_PROTOCOL	5	/* peer-server protocol number */
+
+
+/* When protocol changes, increment the version
+* not to be changed lightly as it makes everything incompatable.
+*/
+#define	RM_PROTOCOL_VER	1	/* resmon protocol version number */
 #define	TM_PROTOCOL_VER	2	/* task manager protocol version number */
 #define	TM_PROTOCOL_OLD	1	/* old task manager protocol version number */
-
-#define	IM_PROTOCOL	3	/* inter-mom protocol number */
 #define	IM_PROTOCOL_VER	6	/* inter-mom protocol version number */
 #define	IM_OLD_PROTOCOL_VER 5	/* inter-mom old protocol version number */
-
-#define	IS_PROTOCOL	4	/* inter-server protocol number */
 #define	IS_PROTOCOL_VER	4	/* inter-server protocol version number */
+#define	PS_PROTOCOL_VER	1	/* peer-server protocol version number */
 
 
-/*
- **	Types of Inter Server messages (between Server and Mom).
- */
+/*	Types of Inter Server messages (between Server and Mom). */
 #define IS_NULL                         0
 #define IS_CMD                          1
 #define IS_CMD_REPLY                    2
@@ -116,7 +118,13 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define IS_HOOK_CHECKSUMS               20 /* mom reports about hooks seen */
 #define IS_UPDATE_FROM_HOOK2            21 /* request to update vnodes from a hook running on a parent mom host or an allowed non-parent mom host */
 #define IS_HELLOSVR                     22 /* hello send to server from mom to initiate a hello sequence */
-#define IS_PEERSVR_CONNECT              23 /* hello from peer server  */
+
+/*	Types of Peer Server messages (between Server and Server). */
+#define PS_CONNECT		1 /* hello from peer server  */
+#define PS_RSC_UPDATE_FULL	2 /* complete resource update request  */
+#define PS_RSC_UPDATE		3 /* Peer server resource update */
+#define PS_RSC_UPDATE_ACK	4 /* Reply for peer server resource update */
+#define PS_STAT_RPLY		5 /* Asynchronous status reply */
 
 /* return codes for client_to_svr() */
 

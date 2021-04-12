@@ -74,11 +74,7 @@ void free_resdef_array(resdef **deflist);
 
 /* find and return a resdef entry by name */
 resdef *find_resdef(resdef **deflist, const char *name);
-
-/*
- * does resdef exist in a resdef array?
- */
-int resdef_exists_in_array(resdef **deflist, resdef *def);
+resdef *find_resdef(resdef **deflist, const std::string& name);
 
 /*
  *  create resdef array based on a str array of resource names
@@ -105,25 +101,17 @@ void reset_global_resource_ptrs(void);
 int is_res_avail_set(schd_resource *res);
 
 /* create a resource signature for a set of resources */
-char *create_resource_signature(schd_resource *reslist, resdef **resources, unsigned int flags);
+char *create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& resources, unsigned int flags);
 
 /* collect a unique list of resources from an array of requests */
-resdef **collect_resources_from_requests(resource_resv **resresv_arr);
+std::unordered_set<resdef *>collect_resources_from_requests(resource_resv **resresv_arr);
 
 /* convert an array of string resource names into resdefs */
-resdef **resstr_to_resdef(char **resstr);
+std::unordered_set<resdef *>resstr_to_resdef(const std::unordered_set<std::string>&);
+std::unordered_set<resdef *>resstr_to_resdef(const char * const *resstr);
+
 /* filter function for filter_array().  Used to filter out host and vnode */
 int no_hostvnode(void *v, void *arg);
-
-/* filter function for filter_array().  Used to filter for resources
- * that are at server/queue level and get summed at the job level
- */
-int def_rassn(void *v, void *arg);
-
-/* filter function for filter_array().  Used to filter for resources
- * that are host based and get summed at the job level
- */
-int def_rassn_select(void *v, void *arg);
 
 /* add resdef to resdef array */
 int add_resdef_to_array(resdef ***resdef_arr, resdef *def);

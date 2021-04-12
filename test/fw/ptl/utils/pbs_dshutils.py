@@ -949,7 +949,7 @@ class DshUtils(object):
             else:
                 runcmd = rc
 
-            _msg = hostname.split('.')[0] + ': '
+            _msg = hostname.split('.')[0] + '(run_cmd): '
             _runcmd = ['\'\'' if x == '' else str(x) for x in runcmd]
             _msg += ' '.join(_runcmd)
             _msg = [_msg]
@@ -1014,11 +1014,11 @@ class DshUtils(object):
             else:
                 ret['err'] = []
             if ret['err'] and logerr:
-                self.logger.error("<" + get_method_name(self) + '>err: ' +
-                                  str(ret['err']))
+                self.logger.error("<" + get_method_name(self) + '>cmd:' +
+                                  ' '.join(cmd) + ' err: ' + str(ret['err']))
             else:
-                self.logger.debug("<" + get_method_name(self) + '>err: ' +
-                                  str(ret['err']))
+                self.logger.debug("<" + get_method_name(self) + '>cmd:' +
+                                  ' '.join(cmd) + ' err: ' + str(ret['err']))
             self.logger.debug('rc: ' + str(ret['rc']))
 
         return ret
@@ -1092,6 +1092,12 @@ class DshUtils(object):
         if srchost:
             issrclocal = self.is_localhost(srchost)
         for targethost in hosts:
+            _msg = 'run_copy: '
+            _msg += " src:%s" % src
+            _msg += " to:%s dest:%s" % (targethost, dest)
+            _msg += " sudo:%s" % sudo
+            self.logger.debug(_msg)
+
             islocal = self.is_localhost(targethost)
             if sudo and not islocal and not issrclocal:
                 # to avoid a file copy as root, we copy it as current user
@@ -1482,15 +1488,28 @@ class DshUtils(object):
         """
         if (path is None) or (mode is None):
             return False
-        cmd = [self.which(hostname, 'chmod', level=level)]
-        if recursive:
-            cmd += ['-R']
-        mode = '{:o}'.format(mode)
-        cmd += [mode, path]
-        ret = self.run_cmd(hostname, cmd=cmd, sudo=sudo, logerr=logerr,
-                           runas=runas, level=level)
-        if ret['rc'] == 0:
+        islocal = self.is_localhost(hostname)
+        if islocal and not runas and not sudo and not recursive:
+            self.logger.debug('os.chmod %s %s' % (path, oct(mode)))
+            try:
+                os.chmod(path, mode)
+            except OSError as err:
+                if logerr:
+                    self.logger.error("os.chmod failed with err:%s" % str(err))
+                else:
+                    self.logger.debug("os.chmod failed with err:%s" % str(err))
+                return False
             return True
+        else:
+            cmd = [self.which(hostname, 'chmod', level=level)]
+            if recursive:
+                cmd += ['-R']
+            mode = '{:o}'.format(mode)
+            cmd += [mode, path]
+            ret = self.run_cmd(hostname, cmd=cmd, sudo=sudo, logerr=logerr,
+                               runas=runas, level=level)
+            if ret['rc'] == 0:
+                return True
         return False
 
     def chown(self, hostname=None, path=None, uid=None, gid=None, sudo=False,
@@ -1978,6 +1997,8 @@ class DshUtils(object):
         :param level: logging level, defaults to INFOCLI2
         :type level: int
         """
+        _msg = 'create_temp_file(vvv start vvv):'
+        self.logger.debug(_msg)
 
         # create a temp file as current user
         (fd, tmpfile) = tempfile.mkstemp(suffix, prefix, dirname, text)
@@ -2031,6 +2052,10 @@ class DshUtils(object):
             self.tmpfilelist.append(tmpfile2)
             return tmpfile2
         self.tmpfilelist.append(tmpfile)
+        _msg = 'create_temp_file(^^^ end ^^^): '
+        _msg += " hostname:%s" % hostname
+        _msg += " tmpfile:%s" % tmpfile
+        self.logger.debug(_msg)
         return tmpfile
 
     def create_temp_dir(self, hostname=None, suffix='', prefix='PtlPbs',

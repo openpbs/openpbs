@@ -59,6 +59,7 @@
 
 pbs_licensing_control licensing_control;
 pbs_license_counts license_counts;
+pbs_list_head unlicensed_nodes_list;
 struct work_task *init_licensing_task;
 struct work_task *get_more_licenses_task;
 struct work_task *licenses_linger_time_task;
@@ -114,14 +115,14 @@ static void
 add_to_unlicensed_node_list(struct pbsnode *pnode)
 {
 
-	if (pnode->nd_added_to_unlicensed_list)
+	if (pnode->nd_svrflags & NODE_UNLICENSED)
 		return;
 
 	CLEAR_LINK(pnode->un_lic_link);
 
 	append_link(&unlicensed_nodes_list, &pnode->un_lic_link, pnode);
 
-	pnode->nd_added_to_unlicensed_list = 1;
+	pnode->nd_svrflags |= NODE_UNLICENSED;
 }
 
 /**
@@ -137,10 +138,10 @@ add_to_unlicensed_node_list(struct pbsnode *pnode)
 void
 remove_from_unlicensed_node_list(struct pbsnode *pnode)
 {
-	if(!pnode->nd_added_to_unlicensed_list)
+	if(!(pnode->nd_svrflags & NODE_UNLICENSED))
 		return;
 
-	pnode->nd_added_to_unlicensed_list = 0;
+	pnode->nd_svrflags &= ~NODE_UNLICENSED;
 	delete_link(&pnode->un_lic_link);
 }
 
@@ -299,7 +300,7 @@ clear_node_lic_attrs(pbsnode *pnode, int clear_license_info)
 
 	if (is_nattr_set(pnode, ND_ATR_License)) {
 		clear_nattr(pnode, ND_ATR_License);
-		pnode->nd_added_to_unlicensed_list = 0;
+		pnode->nd_svrflags &= ~NODE_UNLICENSED;
 	}
 }
 

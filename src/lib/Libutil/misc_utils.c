@@ -464,14 +464,10 @@ pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp)
 		while (len > 0 && isspace(buf[len-1]))
 			len--;
 
-		if (len > 0) {
-			if (buf[len - 1] != '\\') {
-				break;
-			}
-			else {
-				buf[len - 1] = '\0'; /* remove the backslash (\) */
-			}
-		}
+		if (len > 0 && buf[len - 1] == '\\')
+			buf[len - 1] = '\0'; /* remove the backslash (\) */
+		else /* We're at the end of a non-extended line */
+			break;
 	}
 
 	/* if we read just EOF */

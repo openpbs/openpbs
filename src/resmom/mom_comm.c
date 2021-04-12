@@ -111,6 +111,7 @@ extern char mom_short_name[];
 extern unsigned int pbs_mom_port;
 extern unsigned int pbs_rm_port;
 extern int gen_nodefile_on_sister_mom;
+extern int nsvrs;
 
 extern int mom_net_up;
 extern time_t mom_net_up_time;
@@ -1136,7 +1137,7 @@ send_sisters_job_update(job *pjob)
 		}
 		if (pbs_conf.pbs_use_mcast == 1) {
 			/* add each of the tpp streams to the tpp mcast channel */
-			if (tpp_mcast_add_strm(mtfd, np->hn_stream) == -1) {
+			if (tpp_mcast_add_strm(mtfd, np->hn_stream, FALSE) == -1) {
 				snprintf(log_buffer,
 					sizeof(log_buffer),
 					"mcast add to %s failed",
@@ -1529,7 +1530,7 @@ send_sisters_mcast_inner(job *pjob, int com, pbs_jobndstm_t command_func,
 			continue;
 
 		/* add each of the tpp streams to the tpp mcast channel */
-		if (tpp_mcast_add_strm(mtfd, np->hn_stream) == -1) {
+		if (tpp_mcast_add_strm(mtfd, np->hn_stream, FALSE) == -1) {
 			tpp_close(np->hn_stream);
 			np->hn_stream = -1;
 			continue;
@@ -1956,6 +1957,8 @@ job_start_error(job *pjob, int code, char *nodename, char *cmd)
 		exec_bail(pjob, JOB_EXEC_FAILHOOK_DELETE, NULL);
 	else if (code == PBSE_HOOK_REJECT_RERUNJOB)
 		exec_bail(pjob, JOB_EXEC_FAILHOOK_RERUN, NULL);
+	else if (code == PBSE_SISCOMM)
+		exec_bail(pjob, JOB_EXEC_JOINJOB, NULL);
 	else
 		exec_bail(pjob, JOB_EXEC_RETRY, NULL);
 }
@@ -2988,14 +2991,20 @@ im_request(int stream, int version)
 		tpp_close(stream);
 		return;
 	}
-	ipaddr = ntohl(addr->sin_addr.s_addr);
-	DBPRT(("connect from %s\n", netaddr(addr)))
-	if (!addrfind(ipaddr)) {
-		sprintf(log_buffer, "bad connect from %s",
-			netaddr(addr));
-		log_err(-1, __func__, log_buffer);
-		im_eof(stream, 0);
-		return;
+
+	/* IP based authentication between sister moms CLUSTER_ADDRS2 
+	* is disabled in multi-server mode. Use other security realms.
+	*/
+	if (nsvrs <= 1) {
+		ipaddr = ntohl(addr->sin_addr.s_addr);
+		DBPRT(("connect from %s\n", netaddr(addr)))
+		if (!addrfind(ipaddr)) {
+			sprintf(log_buffer, "bad connect from %s",
+				netaddr(addr));
+			log_err(-1, __func__, log_buffer);
+			im_eof(stream, 0);
+			return;
+		}
 	}
 
 	jobid = disrst(stream, &ret);

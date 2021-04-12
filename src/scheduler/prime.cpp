@@ -56,6 +56,9 @@
  * 	init_non_prime_time()
  *
  */
+
+#include <algorithm>
+
 #include <pbs_config.h>
 
 #include <stdio.h>
@@ -209,7 +212,6 @@ enum prime_time check_prime(enum days d, struct tm *t)
 int
 is_holiday(long date)
 {
-	int i;
 	int jdate;
 	struct tm *tmptr;
 
@@ -220,14 +222,7 @@ is_holiday(long date)
 	else
 		jdate = date;
 
-
-	for (i = 0; i < conf.num_holidays && conf.holidays[i] != jdate; i++)
-		;
-
-	if (i == conf.num_holidays)
-		return 0;
-
-	return 1;
+	return std::find(conf.holidays.begin(), conf.holidays.end(), jdate) != conf.holidays.end();
 }
 
 /**
@@ -245,7 +240,8 @@ handle_missing_prime_info(void)
 
 	for (d = SUNDAY; d < HIGH_DAY; d++) {
 		if (conf.prime[d][PRIME].all + conf.prime[d][PRIME].none
-				+ conf.prime[d][PRIME].hour + conf.prime[d][PRIME].min == 0) {
+				+ conf.prime[d][PRIME].hour + conf.prime[d][PRIME].min
+				+ conf.prime[d][NON_PRIME].hour + conf.prime[d][NON_PRIME].min == 0) {
 			conf.prime[d][PRIME].all = TRUE;
 			conf.prime[d][PRIME].none = FALSE;
 			conf.prime[d][PRIME].hour = static_cast<unsigned int>(UNSPECIFIED);
@@ -279,7 +275,6 @@ parse_holidays(const char *fname)
 	int num;		/* used to convert string -> integer */
 	char error = 0;	/* boolean: is there an error ? */
 	int linenum = 0;	/* the current line number */
-	int hol_index = 0;	/* index into the holidays array in global var conf */
 
 	if ((fp = fopen(fname, "r")) == NULL) {
 		sprintf(log_buffer, "Error opening file %s", fname);
@@ -455,8 +450,7 @@ parse_holidays(const char *fname)
 			 */
 			else  {
 				num = strtol(config_name, &endp, 10);
-				conf.holidays[hol_index] = num;
-				hol_index++;
+				conf.holidays.push_back(num);
 			}
 
 			if (error) {
@@ -473,7 +467,6 @@ parse_holidays(const char *fname)
 		handle_missing_prime_info();
 	}
 
-	conf.num_holidays = hol_index;
 	fclose(fp);
 	return 0;
 }
@@ -691,14 +684,14 @@ init_prime_time(struct status *policy, char *arg)
 	policy->by_queue = conf.prime_bq;
 	policy->strict_fifo = conf.prime_sf;
 	policy->strict_ordering = conf.prime_so;
-	policy->sort_by = conf.prime_sort;
+	policy->sort_by = &conf.prime_sort;
 	policy->fair_share = conf.prime_fs;
 	policy->help_starving_jobs = conf.prime_hsv;
 	policy->backfill = conf.prime_bf;
 	policy->sort_nodes = conf.prime_sn;
 	policy->backfill_prime = conf.prime_bp;
 	policy->preempting = conf.prime_pre;
-	policy->node_sort = conf.prime_node_sort;
+	policy->node_sort = &conf.prime_node_sort;
 #ifdef NAS /* localmod 034 */
 	policy->shares_track_only = conf.prime_sto;
 #endif /* localmod 034 */
@@ -738,14 +731,14 @@ init_non_prime_time(struct status *policy, char *arg)
 	policy->by_queue = conf.non_prime_bq;
 	policy->strict_fifo = conf.non_prime_sf;
 	policy->strict_ordering = conf.non_prime_so;
-	policy->sort_by = conf.non_prime_sort;
+	policy->sort_by = &conf.non_prime_sort;
 	policy->fair_share = conf.non_prime_fs;
 	policy->help_starving_jobs = conf.non_prime_hsv;
 	policy->backfill = conf.non_prime_bf;
 	policy->sort_nodes = conf.non_prime_sn;
 	policy->backfill_prime = conf.non_prime_bp;
 	policy->preempting = conf.non_prime_pre;
-	policy->node_sort = conf.non_prime_node_sort;
+	policy->node_sort = &conf.non_prime_node_sort;
 #ifdef NAS /* localmod 034 */
 	policy->shares_track_only = conf.non_prime_sto;
 #endif /* localmod 034 */

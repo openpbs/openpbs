@@ -87,7 +87,7 @@ enum node_topology_type {
 typedef enum node_topology_type ntt_t;
 
 
-pbs_list_head unlicensed_nodes_list;
+extern pbs_list_head unlicensed_nodes_list;
 
 #define PBS_MIN_LICENSING_LICENSES	0
 #define PBS_MAX_LICENSING_LICENSES	INT_MAX

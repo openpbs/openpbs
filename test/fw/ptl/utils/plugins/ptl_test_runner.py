@@ -1043,17 +1043,19 @@ class PTLTestRunner(Plugin):
             if server not in self.param_dict['moms']:
                 hosts.update(self.param_dict['servers'])
         for user in PBS_USERS:
-            self.logger.info('Cleaning %s\'s home directory' % (str(user)))
+            self.logger.debug('Cleaning %s\'s home directory' % (str(user)))
             runas = PbsUser.get_user(user)
             for host in hosts:
                 ret = du.run_cmd(host, cmd=['echo', '$HOME'], sudo=True,
-                                 runas=runas, logerr=False, as_script=True)
+                                 runas=runas, logerr=False, as_script=True,
+                                 level=logging.DEBUG)
                 if ret['rc'] == 0:
                     path = ret['out'][0].strip()
                 else:
                     return None
                 ftd = []
-                files = du.listdir(host, path=path, runas=user)
+                files = du.listdir(host, path=path, runas=user,
+                                   level=logging.DEBUG)
                 bn = os.path.basename
                 ftd.extend([f for f in files if bn(f).startswith('PtlPbs')])
                 ftd.extend([f for f in files if bn(f).startswith('STDIN')])

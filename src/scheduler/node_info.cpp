@@ -111,6 +111,9 @@
  * 	set_current_eoe()
  *
  */
+
+#include <unordered_map>
+
 #include <pbs_config.h>
 
 #include <stdio.h>
@@ -504,7 +507,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 			ninfo->has_hard_limit = 1;
 		}
 		else if (!strcmp(attrp->name, ATTR_queue))
-			ninfo->queue_name = string_dup(attrp->value);
+			ninfo->queue_name = attrp->value;
 		else if (!strcmp(attrp->name, ATTR_p)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
@@ -672,7 +675,6 @@ node_info::node_info(const std::string& nname): name(nname)
 	run_resvs_arr = NULL;
 	res = NULL;
 	server = NULL;
-	queue_name = NULL;
 	group_counts = NULL;
 	user_counts = NULL;
 
@@ -838,7 +840,6 @@ free_nodes(node_info **ninfo_arr)
 node_info::~node_info()
 {
 	free(mom);
-	free(queue_name);
 	free_string_array(jobs);
 	free_string_array(resvs);
 	free(job_arr);
@@ -1407,7 +1408,7 @@ dup_node_info(node_info *onode, server_info *nsinfo, unsigned int flags)
 
 	nnode->server = nsinfo;
 	nnode->mom = string_dup(onode->mom);
-	nnode->queue_name = string_dup(onode->queue_name);
+	nnode->queue_name = onode->queue_name;
 
 	nnode->svr_inst_id = string_dup(onode->svr_inst_id);
 	nnode->is_down = onode->is_down;
@@ -2504,7 +2505,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 		ns_head = *nspec_arr;
 
 		if (pl->scatter || pl->vscatter || pl->free) {
-			dselspec = dup_selspec(spec);
+			dselspec = new selspec(*spec);
 			if (dselspec == NULL)
 				return 0;
 		}
@@ -2572,8 +2573,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 					rc = 1;
 					if ((hostsets[i]->free_nodes > 0)
 						&& (check_avail_resources(hostsets[i]->res,
-						dselspec->chunks[c]->req, UNSET_RES_ZERO,
-						NULL, INSUFFICIENT_RESOURCE, err))) {
+						dselspec->chunks[c]->req, UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err))) {
 						for (k = 0; dninfo_arr[k] != NULL; k++)
 							dninfo_arr[k]->nscr &= ~NSCR_VISITED;
 						while (rc > 0 && dselspec->chunks[c]->num_chunks > 0) {
@@ -2638,8 +2638,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 				for (c = 0; dselspec->chunks[c] != NULL && rc == 0; c++) {
 					if ((hostsets[i]->free_nodes > 0)
 						&& (check_avail_resources(hostsets[i]->res,
-						dselspec->chunks[c]->req, UNSET_RES_ZERO,
-						NULL, INSUFFICIENT_RESOURCE, err))) {
+						dselspec->chunks[c]->req, UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err))) {
 						if (dselspec->chunks[c]->num_chunks > 0) {
 							for (k = 0; dninfo_arr[k] != NULL; k++)
 								dninfo_arr[k]->nscr &= ~NSCR_VISITED;
@@ -2709,15 +2708,14 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 				dup_ninfo_arr = dup_nodes(hostsets[i]->ninfo_arr,
 					resresv->server, NO_FLAGS);
 				if (dup_ninfo_arr == NULL) {
-					free_selspec(dselspec);
+					delete dselspec;
 					return 0;
 				}
 
 				for (c = 0; dselspec->chunks[c] != NULL; c++) {
 					if ((hostsets[i]->free_nodes > 0)
 						&& (check_avail_resources(hostsets[i]->res,
-						dselspec->chunks[c]->req, UNSET_RES_ZERO,
-						NULL, INSUFFICIENT_RESOURCE, err))) {
+						dselspec->chunks[c]->req, UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err))) {
 						if (dselspec->chunks[c]->num_chunks >0) {
 							for (k = 0; dup_ninfo_arr[k] != NULL; k++)
 								dup_ninfo_arr[k]->nscr &= ~NSCR_VISITED;
@@ -2807,7 +2805,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 		set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 
 	if (dselspec != NULL)
-		free_selspec(dselspec);
+		delete dselspec;
 
 	if (tot == spec->total_chunks)
 		return 1;
@@ -2932,7 +2930,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 				 * of nodes.
 				 */
 				if (conf.provision_policy != AVOID_PROVISION &&
-					cstat.node_sort[0].res_name != NULL && conf.node_sort_unused)
+					!cstat.node_sort->empty() && conf.node_sort_unused)
 					qsort(nodes, tot_nodes, sizeof(node_info *), multi_node_sort);
 			}
 			chunks_needed--;
@@ -3395,7 +3393,7 @@ is_vnode_eligible_chunk(resource_req *specreq, node_info *node,
 
 	if (specreq != NULL) {
 		if (check_avail_resources(node->res, specreq,
-				CHECK_ALL_BOOLS | ONLY_COMP_NONCONS | UNSET_RES_ZERO, NULL,
+				CHECK_ALL_BOOLS | ONLY_COMP_NONCONS | UNSET_RES_ZERO,
 				INSUFFICIENT_RESOURCE, err) == 0) {
 			return 0;
 		}
@@ -3729,7 +3727,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 	noderes = ninfo->res;
 
 	min_chunks = check_avail_resources(noderes, resreq,
-		CHECK_ALL_BOOLS|UNSET_RES_ZERO, NULL, INSUFFICIENT_RESOURCE, err);
+		CHECK_ALL_BOOLS|UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err);
 
 	if (chunks != UNSPECIFIED && (min_chunks == SCHD_INFINITY || chunks < min_chunks))
 		min_chunks = chunks;
@@ -3821,8 +3819,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 						}
 						if (is_run_event) {
 							chunks = check_avail_resources(nres, resreq,
-								CHECK_ALL_BOOLS|UNSET_RES_ZERO, NULL,
-								INSUFFICIENT_RESOURCE, err);
+								CHECK_ALL_BOOLS|UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err);
 							if (chunks < min_chunks)
 								min_chunks = chunks;
 						}
@@ -3988,7 +3985,7 @@ parse_placespec(char *place_str)
  * @par MT-safe: Yes
  */
 selspec *
-parse_selspec(char *select_spec)
+parse_selspec(const std::string& sspec)
 {
 	/* select specs can be large.  We need to allocate a buffer large enough
 	 * to handle the spec.  We'll keep it around so we don't have to allocate
@@ -3999,7 +3996,7 @@ parse_selspec(char *select_spec)
 
 	selspec *spec;
 	int num_plus;
-	char *p;
+	const char *p;
 
 	char *tok;
 	char *endp = NULL;
@@ -4020,10 +4017,9 @@ parse_selspec(char *select_spec)
 	int i;
 	int n = 0;
 
-	if (select_spec == NULL)
-		return NULL;
+	const char *select_spec = sspec.c_str();
 
-	if ((spec = new_selspec()) == NULL)
+	if ((spec = new selspec()) == NULL)
 		return NULL;
 
 	for (num_plus = 0, p = select_spec; *p != '\0'; p++) {
@@ -4034,7 +4030,7 @@ parse_selspec(char *select_spec)
 	/* num_plus + 2: 1 for the initial chunk 1 for the NULL ptr */
 	if ((spec->chunks = static_cast<chunk **>(calloc(num_plus + 2, sizeof(chunk *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
-		free_selspec(spec);
+		delete spec;
 	}
 
 	specbuf = string_dup(select_spec);
@@ -4061,15 +4057,14 @@ parse_selspec(char *select_spec)
 				if (req == NULL)
 					invalid = 1;
 				else  {
-						if (strcmp(req->name, "ncpus") == 0) {
-							/* Given: -l select=nchunk1:ncpus=Y + nchunk2:ncpus=Z +... */
-							/* Then: # of cpus = (nchunk1 * Y) + (nchunk2 * Z) + ... */
-							num_cpus += (num_chunks * req->amount);
-						}
-					if (!invalid && (req->type.is_boolean || conf.res_to_check == NULL ||
-						is_string_in_arr(conf.res_to_check, kv[i].kv_keyw))) {
-						if (!resdef_exists_in_array(spec->defs, req->def))
-							add_resdef_to_array(&(spec->defs), req->def);
+					if (strcmp(req->name, "ncpus") == 0) {
+						/* Given: -l select=nchunk1:ncpus=Y + nchunk2:ncpus=Z +... */
+						/* Then: # of cpus = (nchunk1 * Y) + (nchunk2 * Z) + ... */
+						num_cpus += (num_chunks * req->amount);
+					}
+					const auto& rtc = conf.res_to_check;
+					if (!invalid && (req->type.is_boolean || rtc.empty() || rtc.find(kv[i].kv_keyw) != rtc.end())) {
+						spec->defs.insert(req->def);
 						if (req_head == NULL)
 							req_end = req_head = req;
 						else {
@@ -4111,7 +4106,7 @@ parse_selspec(char *select_spec)
 	free(kv);
 
 	if (invalid) {
-		free_selspec(spec);
+		delete spec;
 		if (tmpptr != NULL)
 			free(tmpptr);
 
@@ -4141,7 +4136,7 @@ int compare_chunk(chunk *c1, chunk *c2) {
 
 	if (c1->num_chunks != c2->num_chunks)
 		return 0;
-	if(compare_resource_req_list(c1->req, c2->req, NULL) == 0)
+	if(compare_resource_req_list(c1->req, c2->req, conf.resdef_to_check) == 0)
 		return 0;
 
 	return 1;
@@ -4240,7 +4235,7 @@ create_execvnode(nspec **ns)
 		end_of_chunk = ns[i]->end_of_chunk;
 
 		req = ns[i]->resreq;
-		while (req  != NULL) {
+		while (req != NULL) {
 			if (req->type.is_consumable) {
 				if (pbs_strcat(&buf, &bufsize, ":") == NULL)
 					return NULL;
@@ -4255,7 +4250,7 @@ create_execvnode(nspec **ns)
 				if (pbs_strcat(&buf, &bufsize, buf2) == NULL)
 					return NULL;
 			}
-			else if (ns[i]->go_provision && strcmp(req->name, "aoe") ==0) {
+			else if (ns[i]->go_provision && strcmp(req->name, "aoe") == 0) {
 				strcpy(buf2, ":aoe=");
 				if (pbs_strcat(&buf, &bufsize, buf2) == NULL)
 					return NULL;
@@ -4293,7 +4288,7 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 	char *excvndup;
 	char *node_name;
 	int num_el;
-	struct key_value_pair *kv;
+	struct key_value_pair *kv = NULL;
 
 	nspec **nspec_arr;
 	node_info *ninfo;
@@ -4507,12 +4502,11 @@ node_state_to_str(node_info *ninfo)
 nspec **
 combine_nspec_array(nspec **nspec_arr)
 {
-	int i, j, k;
-	resource_req *req_i;
-	resource_req *req_j;
+	int i, k;
 	int cnt;
 	nspec **new_nspec_arr;
 	nspec *ns;
+	std::unordered_map<int, nspec *> nspec_umap;
 
 	if (nspec_arr == NULL)
 		return NULL;
@@ -4524,48 +4518,38 @@ combine_nspec_array(nspec **nspec_arr)
 		return NULL;
 	}
 
+	k = 0;
 	for (i = 0; nspec_arr[i] != NULL; i++) {
-		int found = 0;
-		ns = NULL;
-		for (k = 0; new_nspec_arr[k] != NULL; k++)
-			if (new_nspec_arr[k]->ninfo == nspec_arr[i]->ninfo) {
-				found = 1;
-				break;
+		auto numap = nspec_umap.find(nspec_arr[i]->ninfo->rank);
+		if (numap == nspec_umap.end()) {
+			new_nspec_arr[k++] = ns = new_nspec();
+			if (ns == NULL) {
+				free_nspecs(new_nspec_arr);
+				return NULL;
 			}
-		if (found)
-			continue;
+			nspec_umap[nspec_arr[i]->ninfo->rank] = ns;
 
-		new_nspec_arr[k] = ns = new_nspec();
-		if (ns == NULL) {
-			free_nspecs(new_nspec_arr);
-			return NULL;
-		}
-
-		ns->end_of_chunk = 1;
-		ns->ninfo = nspec_arr[i]->ninfo;
-		ns->resreq = dup_resource_req_list(nspec_arr[i]->resreq);
-
-		for (j = i + 1; nspec_arr[j] != NULL; j++) {
-			if (nspec_arr[i]->resreq != NULL &&
-			    nspec_arr[i]->ninfo == nspec_arr[j]->ninfo) {
-
-				for (req_j = nspec_arr[j]->resreq; req_j != NULL; req_j = req_j->next) {
-					req_i = find_resource_req(ns->resreq, req_j->def);
-					if (req_i != NULL) {
-						/* we assume that if the resource is a boolean or a string
-						 * the value is either the same, or doesn't exist
-						 * so we don't need to do validity checking
-						 */
-						if (req_j->type.is_consumable)
-							req_i->amount += req_j->amount;
-						else if (req_j->type.is_string && req_i->res_str == NULL)
-							req_i->res_str = string_dup(req_j->res_str);
-					} else { /* nspec_arr[j] has a resource nspec_arr[i] does not */
-						resource_req *tmpreq;
-						tmpreq = dup_resource_req(req_j);
-						tmpreq->next = ns->resreq;
-						ns->resreq = tmpreq;
-					}
+			ns->end_of_chunk = 1;
+			ns->ninfo = nspec_arr[i]->ninfo;
+			ns->resreq = dup_resource_req_list(nspec_arr[i]->resreq);
+		} else {
+			ns = numap->second;
+			for (auto req_j = nspec_arr[i]->resreq; req_j != NULL; req_j = req_j->next) {
+				auto req_i = find_resource_req(ns->resreq, req_j->def);
+				if (req_i != NULL) {
+					/* we assume that if the resource is a boolean or a string
+					 * the value is either the same, or doesn't exist
+					 * so we don't need to do validity checking
+					 */
+					if (req_j->type.is_consumable)
+						req_i->amount += req_j->amount;
+					else if (req_j->type.is_string && req_i->res_str == NULL)
+						req_i->res_str = string_dup(req_j->res_str);
+				} else { /* nspec_arr[j] has a resource nspec_arr[i] does not */
+					resource_req *tmpreq;
+					tmpreq = dup_resource_req(req_j);
+					tmpreq->next = ns->resreq;
+					ns->resreq = tmpreq;
 				}
 			}
 		}
@@ -4587,9 +4571,10 @@ combine_nspec_array(nspec **nspec_arr)
 node_info **
 create_node_array_from_nspec(nspec **nspec_arr)
 {
+	std::unordered_map<std::string, node_info *> node_umap;
 	node_info **ninfo_arr;
+	int j = 0;
 	int count;
-	int i, j;
 
 	if (nspec_arr == NULL)
 		return NULL;
@@ -4601,22 +4586,17 @@ create_node_array_from_nspec(nspec **nspec_arr)
 		return NULL;
 	}
 
-	/* make ninfo_arr a searchable array */
-	ninfo_arr[0] = NULL;
-
-	for (i = 0, j = 0; nspec_arr[i] != NULL; i++) {
-		if (find_node_by_rank(ninfo_arr, nspec_arr[i]->ninfo->rank) == NULL) {
-			ninfo_arr[j] = nspec_arr[i]->ninfo;
-			j++;
-		}
+	for (int i = 0; nspec_arr[i] != NULL; i++) {
+		if (node_umap.find(nspec_arr[i]->ninfo->name) == node_umap.end())
+			node_umap[nspec_arr[i]->ninfo->name] = nspec_arr[i]->ninfo;
 	}
 
-	ninfo_arr[j] = NULL;
+	for (const auto& numap : node_umap)
+		ninfo_arr[j++] = numap.second;
 
 	return ninfo_arr;
 }
-
-/**
+	/**
  * @brief
  *	reorder the nodes for the avoid_provision or smp_cluster_dist policies
  *	or when the reservation is being altered without changing the source
@@ -4990,7 +4970,7 @@ can_fit_on_vnode(resource_req *req, node_info **ninfo_arr)
 
 		if (is_vnode_eligible_chunk(req, ninfo_arr[i], NULL, dumperr)) {
 			if (check_avail_resources(ninfo_arr[i]->res, req,
-				UNSET_RES_ZERO, NULL, INSUFFICIENT_RESOURCE, NULL))
+				UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, NULL))
 				return 1;
 		}
 	}

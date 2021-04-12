@@ -58,17 +58,14 @@
  * @param[in]	has_runjob_hook	- does server have a runjob hook?
  * @param[in]	jobid	-	id of the job to run
  * @param[in]	execvnode	-	the execvnode to run the job on
- * @param[in]	svr_id_node	-	server id of the first node in execvnode
  * @param[in]	svr_id_job -	server id of the job
  *
  * @return	int
  * @retval	return value of the runjob call
  */
 int
-send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char *execvnode,
- 	     char *svr_id_node, char *svr_id_job)
+send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char *execvnode, char *svr_id_job)
 {
-	char extend[PBS_MAXHOSTNAME + 6];
  	int job_owner_sd;
 
 	if (jobid.empty() || execvnode == NULL)
@@ -76,16 +73,12 @@ send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char
 
 	job_owner_sd = get_svr_inst_fd(virtual_sd, svr_id_job);
 
-	extend[0] = '\0';
- 	if (svr_id_node && svr_id_job && strcmp(svr_id_node, svr_id_job) != 0)
- 		snprintf(extend, sizeof(extend), "%s=%s", SERVER_IDENTIFIER, svr_id_node);
-
 	if (sc_attrs.runjob_mode == RJ_EXECJOB_HOOK)
-		return pbs_runjob(job_owner_sd, const_cast<char *>(jobid.c_str()), execvnode, extend);
+		return pbs_runjob(job_owner_sd, const_cast<char *>(jobid.c_str()), execvnode, NULL);
 	else if (((sc_attrs.runjob_mode == RJ_RUNJOB_HOOK) && has_runjob_hook))
-		return pbs_asyrunjob_ack(job_owner_sd, const_cast<char *>(jobid.c_str()), execvnode, extend);
+		return pbs_asyrunjob_ack(job_owner_sd, const_cast<char *>(jobid.c_str()), execvnode, NULL);
 	else
-		return pbs_asyrunjob(job_owner_sd, const_cast<char *>(jobid.c_str()), execvnode, extend);
+		return pbs_asyrunjob(job_owner_sd, const_cast<char *>(jobid.c_str()), execvnode, NULL);
 }
 
 /**
@@ -179,4 +172,24 @@ send_sigjob(int virtual_sd, resource_resv *resresv, const char *signal, char *ex
 {
 	return pbs_sigjob(get_svr_inst_fd(virtual_sd, resresv->svr_inst_id),
 			  const_cast<char *>(resresv->name.c_str()), const_cast<char *>(signal), extend);
+}
+
+/**
+ * @brief	Wrapper for pbs_confirmresv
+ *
+ * @param[in]	virtual_sd - virtual sd for the cluster
+ * @param[in]	resv - resource_resv for the resv to send confirmation to
+ * @param[in] 	location - string of vnodes/resources to be allocated to the resv.
+ * @param[in] 	start - start time of reservation if non-zero
+ * @param[in] 	extend - extend data for pbs_confirmresv
+ *
+ * @return	int
+ * @retval	0	Success
+ * @retval	!0	error
+ */
+int
+send_confirmresv(int virtual_sd, resource_resv *resv, const char *location, unsigned long start, const char *extend)
+{
+	return pbs_confirmresv(get_svr_inst_fd(virtual_sd, resv->svr_inst_id),
+		const_cast<char *>(resv->name.c_str()), const_cast<char *>(location), start, const_cast<char *>(extend));	
 }

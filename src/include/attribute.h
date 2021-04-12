@@ -162,7 +162,7 @@ enum attr_type {
 
 union attr_val {	      /* the attribute value	*/
 	long		      at_long;	/* long integer */
-	Long		      at_ll;	/* largest long integer */
+	long long		      at_ll;	/* largest long integer */
 	char		      at_char;	/* single character */
 	char 		     *at_str;	/* char string  */
 	struct array_strings *at_arst;	/* array of strings */
@@ -332,6 +332,7 @@ extern void attr_atomic_kill(attribute *temp, attribute_def *pdef, int);
 extern void attr_atomic_copy(attribute *old, attribute *nattr, attribute_def *pdef, int limit);
 
 extern int copy_svrattrl_list(pbs_list_head *from_phead, pbs_list_head *to_head);
+extern int convert_attrl_to_svrattrl(struct attrl *from_list, pbs_list_head *to_head);
 extern int  compare_svrattrl_list(pbs_list_head *list1, pbs_list_head *list2);
 extern svrattrl *find_svrattrl_list_entry(pbs_list_head *phead, char *name,
 	char *resc);
@@ -597,7 +598,7 @@ extern int action_resc_resv(attribute *pattr, void *pobject, int actmode);
 /* Functions used to save and recover the attributes from the database */
 extern int encode_single_attr_db(attribute_def *padef, attribute *pattr, pbs_db_attr_list_t *db_attr_list);
 extern int encode_attr_db(attribute_def *padef, attribute *pattr, int numattr,  pbs_db_attr_list_t *db_attr_list, int all);
-extern int decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list,
+extern int decode_attr_db(void *parent, pbs_list_head *attr_list,
 	void *padef_idx, attribute_def *padef, attribute *pattr, int limit, int unknown);
 
 extern int is_attr(int, char *, int);
@@ -612,6 +613,7 @@ extern void *cr_attrdef_idx(attribute_def *adef, int limit);
 int set_attr_generic(attribute *pattr, attribute_def *pdef, char *value, char *rescn, enum batch_op op);
 int set_attr_with_attr(attribute_def *pdef, attribute *oattr, attribute *nattr, enum batch_op op);
 void set_attr_l(attribute *pattr, long value, enum batch_op op);
+void set_attr_ll(attribute *pattr, long long value, enum batch_op op);
 void set_attr_c(attribute *pattr, char value, enum batch_op op);
 void set_attr_b(attribute *pattr, long val, enum batch_op op);
 void set_attr_short(attribute *pattr, short value, enum batch_op op);
@@ -622,6 +624,7 @@ void post_attr_set(attribute *attr);
 /* Attr getters */
 char get_attr_c(const attribute *pattr);
 long get_attr_l(const attribute *pattr);
+long long get_attr_ll(const attribute *pattr);
 char *get_attr_str(const attribute *pattr);
 struct array_strings *get_attr_arst(const attribute *pattr);
 int is_attr_set(const attribute *pattr);

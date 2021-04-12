@@ -167,7 +167,7 @@ PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend
 	}
 
 	/* get the status reply */
-	return (PBSD_status_get(c, NULL));
+	return (PBSD_status_get(c, NULL, NULL, PROT_TCP));
 }
 
 /**
@@ -398,28 +398,29 @@ end:
  * @brief
  * move_append_bs:
  *	append b to end of a. also remove references of b from its batch status
- * @param[in,out] a - attr list where b needs to be appended
- * @param[in] b - batch status which needs to be appended to a
+ * @param[in] tail_a - pointer to the last element of a
  * @param[in,out] prev_b - previous list element of b for which references needs to be updated
- * @param[in] head_a - head element of list contains a
+ * @param[in] b - batch status which needs to be appended to a
+ * @param[in,out] head_a - reference to head element of list contains a. Reference is updated if a is null
  * @param[in,out] head_b - reference to head element of list contains b. Reference is updated if prev_b is null
  * 
  * @return void
  */
 static void
-move_append_bs(struct batch_status *a, struct batch_status *b, struct batch_status *prev_b, struct batch_status *head_a, struct batch_status **head_b)
+move_append_bs(struct batch_status *tail_a, struct batch_status *prev_b, struct batch_status *b, struct batch_status **head_a, struct batch_status **head_b)
 {
-	if (!a) {
-		for (a = head_a; a->next; a = a->next)
-			;
-		a->next = b;
-		if (prev_b) {
-			prev_b->next = b->next;
-		} else {
-			*head_b = b->next;
-		}
-		b->next = NULL;
-	}
+	if (tail_a)
+		tail_a->next = b;
+	else
+		*head_a = b;
+
+
+	if (prev_b)
+		prev_b->next = b->next;
+	else
+		*head_b = b->next;
+
+	b->next = NULL;
 }
 
 /**
@@ -435,11 +436,14 @@ static void
 aggregate_queue(struct batch_status *sv1, struct batch_status **sv2)
 {
 	struct batch_status *a = NULL;
+	struct batch_status *prev_a = NULL;
 	struct batch_status *b = NULL;
 	struct batch_status *prev_b = NULL;
+	struct batch_status *next_b = NULL;
 
-	for (b = *sv2; b; prev_b = b, b = b->next) {
-		for (a = sv1; a; a = a->next) {
+	for (b = *sv2; b; b = next_b) {
+		next_b = b->next;
+		for (a = sv1; a; prev_a = a, a = a->next) {
 			if (a->name && b->name && !strcmp(a->name, b->name)) {
 				aggr_job_ct(a, b);
 				aggr_resc_ct(a, b);
@@ -448,7 +452,9 @@ aggregate_queue(struct batch_status *sv1, struct batch_status **sv2)
 		}
 
 		if (!a)
-			move_append_bs(a, b, prev_b, sv1, sv2);
+			move_append_bs(prev_a, prev_b, b, &sv1, sv2);
+		else
+			prev_b = b;
 	}
 }
 
@@ -499,6 +505,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 	int start = 0;
 	int ct;
 	struct batch_status *last = NULL;
+	int pbs_errno_clear_cnt = 0;
 
 	if (!svr_conns)
 		return NULL;
@@ -508,18 +515,17 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 	if (pbs_client_thread_init_thread_context() != 0)
 		return NULL;
 
-	if (pbs_verify_attributes(random_srv_conn(svr_conns), cmd, parent_object, MGR_CMD_NONE, (struct attropl *) attrib) != 0)
+	if (pbs_verify_attributes(random_srv_conn(c, svr_conns), cmd, parent_object, MGR_CMD_NONE, (struct attropl *) attrib) != 0)
 		return NULL;
 
-	if (parent_object == MGR_OBJ_JOB) {
-		if ((start = get_job_location_hint(id)) == -1)
-			start = 0;
-		else
-			single_itr = 1;
-	}
+	if (c == svr_conns[0]->sd)
+		single_itr = 1;
+
+	if ((start = get_obj_location_hint(id, parent_object)) == -1)
+		start = 0;
 
 	if (pbs_client_thread_lock_connection(c) != 0)
-		return NULL;
+		goto end;
 
 	for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
 
@@ -551,7 +557,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 		    failed_conn[i])
 			continue;
 
-		if ((next = PBSD_status_get(svr_conns[i]->sd, &last))) {
+		if ((next = PBSD_status_get(svr_conns[i]->sd, &last, NULL, PROT_TCP))) {
 			if (!ret) {
 				ret = next;
 				cur = last;
@@ -572,6 +578,16 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 					cur = last;
 				}
 			}
+		} else if (!single_itr && (pbs_errno == PBSE_UNKQUE || pbs_errno == PBSE_UNKRESVID)) {
+			if (pbs_errno_clear_cnt < (nsvrs - 1)) {
+				/* As resv/resv queue is present only in one of the server-instances, we should consider
+				 * PBSE_UNKQUE/PBSE_UNKRESVID only when all instances raise this error and hence this code
+				 */
+				pbs_errno = PBSE_NONE;
+				pbs_errno_clear_cnt++;
+				continue;
+			} else
+				break;
 		}
 
 		if (single_itr)
@@ -580,11 +596,12 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
-		return NULL;
+		goto end;
 
 	if (rc)
 		pbs_errno = rc;
 
+end:
 	free(failed_conn);
 	return ret;
 }
@@ -614,7 +631,7 @@ PBSD_status_random(int c, int cmd, char *id, struct attrl *attrib, char *extend,
 	if (!svr_conns)
 		return NULL;
 
-	if ((c = random_srv_conn(svr_conns)) < 0)
+	if ((c = random_srv_conn(c, svr_conns)) < 0)
 		return NULL;
 
 	/* initialize the thread context data, if not already initialized */
@@ -641,33 +658,49 @@ PBSD_status_random(int c, int cmd, char *id, struct attrl *attrib, char *extend,
  * @brief
  *	Returns pointer to status record
  *
- * @param[in] c - index into connection table
+ * @param[in] c - connection socket
+ * @param[out] last - last batch status read
+ * @param[out] obj_type - object type
+ * @param[in] prot - protocol type
  *
  * @return returns a pointer to a batch_status structure
  * @retval pointer to batch status on SUCCESS
  * @retval NULL on failure
  */
 struct batch_status *
-PBSD_status_get(int c, struct batch_status **last)
+PBSD_status_get(int c, struct batch_status **last, int *obj_type, int prot)
 {
 	struct batch_status *rbsp = NULL;
 	struct batch_reply  *reply;
+	int rc;
 
 	/* read reply from stream into presentation element */
 
-	reply = PBSD_rdrpy(c);
+	if (prot == PROT_TCP)
+		reply = PBSD_rdrpy(c);
+	else
+		reply = PBSD_rdrpy_sock(c, &rc, prot);
+	
 	if (reply == NULL) {
-		pbs_errno = PBSE_PROTOCOL;
+		if (pbs_errno == PBSE_NONE)
+			pbs_errno = PBSE_PROTOCOL;
+		goto end;
 	} else if (reply->brp_choice != BATCH_REPLY_CHOICE_NULL  &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Status) {
-		pbs_errno = PBSE_PROTOCOL;
+		if (pbs_errno == PBSE_NONE)
+			pbs_errno = PBSE_PROTOCOL;
+		goto end;
 	} else if (get_conn_errno(c) == 0) {
 		rbsp = reply->brp_un.brp_statc;
 		reply->brp_un.brp_statc = NULL;
 	}
 	if (last)
 		*last = reply ? reply->last : NULL;
+	if (obj_type)
+		*obj_type = reply->brp_type;
+
+end:
 	PBSD_FreeReply(reply);
 	return rbsp;
 }

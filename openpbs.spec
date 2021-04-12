@@ -474,8 +474,10 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{_sysconfdir}/profile.d/ptl.sh
 %if %{defined have_systemd}
 %attr(644, root, root) %{_unitdir}/pbs.service
+%attr(644, root, root) %{pbs_prefix}/libexec/pbs_reload
 %else
 %exclude %{_unitdir}/pbs.service
+%exclude %{pbs_prefix}/libexec/pbs_reload
 %endif
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo

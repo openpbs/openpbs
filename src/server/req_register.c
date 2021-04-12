@@ -133,7 +133,6 @@ extern char *msg_job_moved;
 extern char *msg_depend_runone;
 extern char *msg_histdepend;
 extern char *msg_historyjobid;
-extern char  log_buffer[];
 
 
 #define DEPEND_ADD	1

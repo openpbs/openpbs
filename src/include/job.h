@@ -46,6 +46,8 @@ extern "C" {
 #include "list_link.h"
 #include "attribute.h"
 #include "range.h"
+#include "Long.h"
+
 /*
  * job.h - structure definations for job objects
  *
@@ -355,7 +357,7 @@ typedef struct ajinfo {
  */
 
 struct jbdscrd {
-	struct	mominfo *jdcd_mom;	/* ptr to Mom */
+	struct	machine_info *jdcd_mom;	/* ptr to Mom */
 	int		 jdcd_state;	/* 0 - waiting on her */
 };
 #define JDCD_WAITING 0	/* still waiting to hear from this Mom */
@@ -795,6 +797,7 @@ task_find	(job		*pjob,
  * 0x100000 bit set. Refer SPM229744
  */
 #define JOB_SVFLG_AdmSuspd 0x200000 /* Job is suspended for maintenance */
+#define JOB_SVFLG_RescUpdt_Rqd 0x400000 /* Broadcast of rsc usage is required */
 
 #define MAIL_NONE  (int)'n'
 #define MAIL_ABORT (int)'a'
@@ -969,6 +972,7 @@ task_find	(job		*pjob,
 #define JOB_EXEC_KILL_MEM -27 /* job exec failed due to exceeding mem */
 #define JOB_EXEC_KILL_CPUT -28 /* job exec failed due to exceeding cput */
 #define JOB_EXEC_KILL_WALLTIME -29 /* job exec failed due to exceeding walltime */
+#define JOB_EXEC_JOINJOB -30 /* Job exec failed due to join job error */
 
 /*
  * Fake "random" number added onto the end of the staging
@@ -1032,12 +1036,14 @@ char *get_jattr_str(const job *pjob, int attr_idx);
 struct array_strings *get_jattr_arst(const job *pjob, int attr_idx);
 pbs_list_head get_jattr_list(const job *pjob, int attr_idx);
 long get_jattr_long(const job *pjob, int attr_idx);
+long long get_jattr_ll(const job *pjob, int attr_idx);
 svrattrl *get_jattr_usr_encoded(const job *pjob, int attr_idx);
 svrattrl *get_jattr_priv_encoded(const job *pjob, int attr_idx);
 void set_job_state(job *pjob, char val);
 void set_job_substate(job *pjob, long val);
 int set_jattr_str_slim(job *pjob, int attr_idx, char *val, char *rscn);
 int set_jattr_l_slim(job *pjob, int attr_idx, long val, enum batch_op op);
+int set_jattr_ll_slim(job *pjob, int attr_idx, long long val, enum batch_op op);
 int set_jattr_b_slim(job *pjob, int attr_idx, long val, enum batch_op op);
 int set_jattr_c_slim(job *pjob, int attr_idx, char val, enum batch_op op);
 int set_jattr_generic(job *pjob, int attr_idx, char *val, char *rscn, enum batch_op op);

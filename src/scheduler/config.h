@@ -168,9 +168,6 @@
 /* deprecated */
 #define PARSE_PREEMPT_STARVING "preempt_starving"
 #define PARSE_PREEMPT_FAIRSHARE "preempt_fairshare"
-#define PARSE_ASSIGN_SSINODES "assign_ssinodes"
-#define PARSE_CPUS_PER_SSINODE "cpus_per_ssinode"
-#define PARSE_MEM_PER_SSINODE "mem_per_ssinode"
 #define PARSE_STRICT_FIFO "strict_fifo"
 
 

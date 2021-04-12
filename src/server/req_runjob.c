@@ -280,39 +280,6 @@ call_to_process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len
 
 /**
  * @brief
- * 	get_dest - Get destination from extend field
- *
- * @param[in] extend - extend field of runjob
- *
- * @return string
- * @retval destination server identifier. This has to be freed by the caller.
- * @retval NULL failure
- */
-char *
-get_dest(char *extend)
-{
-	int i;
-	char **arr;
-	char *eq;
-	char *dest = NULL;
-
-	if ((arr = break_comma_list(extend)) == NULL)
-		return NULL;
-
-	for (i = 0; arr[i]; i++) {
-		if (strstr(arr[i], SERVER_IDENTIFIER)) {
-			if ((eq = strchr(arr[i], '=')))
-				dest = strdup(eq + 1);
-			break;
-		}
-	}
-
-	free_str_array(arr);
-	return dest;
-}
-
-/**
- * @brief
  * 	need_to_run_elsewhere - Check whether this request needs to run in another server.
  *
  * @param[in] preq - pointer to batch request structure
@@ -320,29 +287,27 @@ get_dest(char *extend)
  * @return string
  * @retval char * - request needs to run in another server.
  * 		The value indicates destination
- * 		which need to be freed by the caller.
- * @retval NULL - request can be executed by self
+ * @retval NULL - self can proceed with the request
  */
 char *
 need_to_run_elsewhere(struct batch_request *preq)
 {
-	char *destination;
-	char *pc;
+	char *vname;
+	pbs_node *pnode;
+	char *svr_id = NULL;
 
-	if (!preq->rq_extend)
-		return NULL;
+	vname = get_first_vnode(preq->rq_ind.rq_run.rq_destin);
+	pnode = find_nodebyname(vname);
 
-	destination = get_dest(preq->rq_extend);
-	if ((pc = strchr(destination, ':')) != NULL)
-		*pc = '\0';
-	if (!is_same_host(destination, pbs_server_name) ||
-	    (pc && (atoi(pc + 1) != pbs_server_port_dis))) {
-		if (pc)
-			*pc = ':';
-		return destination;
+	if (!pnode) {
+		if ((pnode = find_alien_node(vname)))
+			svr_id = get_nattr_str(pnode, ND_ATR_server_inst_id);
+		else
+			send_nodestat_req();
 	}
 
-	return NULL;
+	free(vname);
+	return svr_id;
 }
 
 /**
@@ -421,8 +386,10 @@ req_runjob(struct batch_request *preq)
 		return; /* note, req_reject already called */
 
 	if ((dest = need_to_run_elsewhere(preq))) {
+		update_msvr_stat(1, NUM_MOVE_RUN);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
+			   jid, "Moving job to server %s in order to run", dest);
 		move_and_runjob(preq, parent, dest);
-		free(dest);
 		return;
 	}
 
@@ -840,7 +807,6 @@ clear_exec_on_run_fail(job *jobp)
 		free_jattr(jobp, JOB_ATR_exec_host);
 		free_jattr(jobp, JOB_ATR_exec_host2);
 		free_jattr(jobp, JOB_ATR_exec_vnode);
-		free_jattr(jobp, JOB_ATR_pset);
 		jobp->ji_qs.ji_destin[0] = '\0';
 	}
 }
@@ -895,7 +861,6 @@ post_stagein(struct work_task *pwt)
 			free_jattr(pjob, JOB_ATR_exec_host);
 			free_jattr(pjob, JOB_ATR_exec_host2);
 			free_jattr(pjob, JOB_ATR_exec_vnode);
-			free_jattr(pjob, JOB_ATR_pset);
 
 			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
 				/* for subjob, "wait" the parent array */
@@ -1117,7 +1082,6 @@ svr_startjob(job *pjob, struct batch_request *preq)
 				free_jattr(pjob, JOB_ATR_exec_host);
 				free_jattr(pjob, JOB_ATR_exec_host2);
 				free_jattr(pjob, JOB_ATR_exec_vnode);
-				free_jattr(pjob, JOB_ATR_pset);
 			}
 		}
 
@@ -1517,6 +1481,8 @@ post_sendmom(struct work_task *pwt)
 		case PBSE_HOOK_REJECT_DELETEJOB:
 			r = SEND_JOB_HOOK_REJECT_DELETEJOB;
 			break;
+		case PBSE_SISCOMM:
+			send_nodestat_req();
 		default:
 			r = SEND_JOB_FATAL;
 			break;
@@ -1936,7 +1902,6 @@ assign_hosts(job  *pjob, char *given, int set_exec_vnode)
 				free_jattr(pjob, JOB_ATR_exec_host);
 				free_jattr(pjob, JOB_ATR_exec_host2);
 				free_jattr(pjob, JOB_ATR_exec_vnode);
-				free_jattr(pjob, JOB_ATR_pset);
 				return (PBSE_BADHOST);
 			}
 		}
