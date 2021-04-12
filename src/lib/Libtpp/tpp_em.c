@@ -1083,6 +1083,7 @@ tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 
 	/* if no more data, clear all notifications */
 	if (cmd == NULL) {
+		mbox->mbox_size = 0;
 #ifdef HAVE_SYS_EVENTFD_H
 		read(mbox->mbox_eventfd, &u, sizeof(uint64_t));
 #else
@@ -1091,7 +1092,7 @@ tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 	} else {
 		/* reduce from mbox size during read */
 		mbox->mbox_size -= cmd->sz;
-#ifdef DEBUG
+#ifdef TPPDEBUG
 		if ((mbox->max_size != -1) && (cmd->sz > 0)) {
 			TPP_DBPRT("Mbox %s, after reading %d size = %d", mbox->mbox_name, cmd->sz, mbox->mbox_size);
 		}
@@ -1150,7 +1151,6 @@ tpp_mbox_clear(tpp_mbox_t *mbox, tpp_que_elem_t **n, unsigned int tfd, short *cm
 		cmd = TPP_QUE_DATA(*n);
 		if (cmd && cmd->tfd == tfd) {
 			*n = tpp_que_del_elem(&mbox->mbox_queue, *n);
-			mbox->mbox_size -= cmd->sz;
 			if (cmdval)
 				*cmdval = cmd->cmdval;
 			if (data)
@@ -1160,6 +1160,7 @@ tpp_mbox_clear(tpp_mbox_t *mbox, tpp_que_elem_t **n, unsigned int tfd, short *cm
 			break;
 		}
 	}
+	mbox->mbox_size = 0;
 
 	tpp_unlock(&mbox->mbox_mutex);
 
@@ -1211,14 +1212,6 @@ tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, char cmdval, void *data, int s
 	/* add the cmd to the threads queue */
 	tpp_lock(&mbox->mbox_mutex);
 
-	if ((mbox->max_size != -1) && (sz + mbox->mbox_size > mbox->max_size)) {
-		tpp_unlock(&mbox->mbox_mutex);
-		free(cmd);
-		tpp_log(LOG_CRIT, __func__, "mbox size limit reached for mbox=%s", mbox->mbox_name);
-		errno = EWOULDBLOCK;
-		return -2;
-	}
-
 	if (tpp_enque(&mbox->mbox_queue, cmd) == NULL) {
 		tpp_unlock(&mbox->mbox_mutex);
 		free(cmd);
@@ -1229,7 +1222,7 @@ tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, char cmdval, void *data, int s
 	/* add to the size to global size during enque */
 	mbox->mbox_size += sz;
 
-#ifdef DEBUG
+#ifdef TPPDEBUG
 	if ((mbox->max_size != -1) && (sz > 0)) {
 		TPP_DBPRT("Mbox %s, after adding %d  size = %d",  mbox->mbox_name, sz, mbox->mbox_size);
 	}
