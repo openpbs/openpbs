@@ -461,9 +461,8 @@ stop_pbs() {
 					if [ -z $msvr_host ]; then
 						msvr_host="$(hostname -s)"
 					fi
-					export PBS_SERVER_INSTANCES="${msvr_host}:${PBS_BATCH_SERVICE_PORT}"
 				fi
-				${PBS_EXEC}/bin/qterm -t quick
+				PBS_SERVER_INSTANCES="${msvr_host}:${PBS_BATCH_SERVICE_PORT}" ${PBS_EXEC}/bin/qterm -t quick
 				echo "PBS server - was pid: ${pbs_server_pid}"
 			elif [ ${is_secondary} -eq 1 ]; then
 				echo "This is secondary server, killing process."
