@@ -154,7 +154,7 @@ class TestResvConfirmHook(TestFunctional):
         msg = 'Hook;Server@%s;Reservation ID - %s' % (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, interval=1, max_attempts=10)
 
-    @tags('hooks') #TODO: May not be needed.  Determine if reconfirm happens after server restart.
+    @tags('hooks') 
     def test_server_down_case_1(self):
         """
         Testcase to submit and confirm an advance reservation, turn the server
@@ -185,7 +185,7 @@ class TestResvConfirmHook(TestFunctional):
 
     @tags('hooks')
     @timeout(300)
-    def test_server_down_case_2(self): #TODO: May not be needed
+    def test_server_down_case_2(self):
         """
         Testcase to submit and confirm an advance reservation, turn the
         server off, wait for the reservation duration to finish, turn the
@@ -214,7 +214,7 @@ class TestResvConfirmHook(TestFunctional):
 
     @tags('hooks')
     @timeout(30)
-    def test_begin_advance_resv(self): #TODO: May not be needed (confirm doesn't need full completion)
+    def test_begin_advance_resv(self):
         """
         Testcase to submit and confirm an advance reservation, wait for it
         to begin and verify the reservation confirm hook.
@@ -312,8 +312,6 @@ class TestResvConfirmHook(TestFunctional):
               self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30,
                               existence=False)
-
-    #TODO: add a case where standing reservation is degraded and reconfirmed after first run
 
     @tags('hooks')
     def test_unconfirmed_resv_with_node(self):

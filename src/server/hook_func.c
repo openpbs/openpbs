@@ -3787,7 +3787,6 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 		head_ptr = &svr_resvsub_hooks;
 	} else if (preq->rq_type == PBS_BATCH_ModifyResv) {
 		hook_event = HOOK_EVENT_MODIFYRESV;
-		// TODO: verify that this is the right pointer
 		req_ptr.rq_manage = (struct rq_quejob *)&preq->rq_ind.rq_modify;
 		head_ptr = &svr_modifyresv_hooks;
 	} else if (preq->rq_type == PBS_BATCH_ModifyJob) {
@@ -4722,7 +4721,6 @@ recreate_request(struct batch_request *preq)
 			pbs_python_set_hook_debug_output_fp(fp_debug);
 		}
 	}
-	// TODO: Add setup for modify resv
 	hook_output_param_init(&req_params);
 	if (preq->rq_type == PBS_BATCH_QueueJob) {
 		req_params.rq_job = (struct rq_quejob *)&preq->rq_ind.rq_queuejob;
