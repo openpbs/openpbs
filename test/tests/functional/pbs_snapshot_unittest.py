@@ -950,7 +950,8 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
                         "scheduler/qmgr_lsched.out", "node/pbsnodes_va.out",
                         "reservation/pbs_rstat_f.out", "job/qstat_f.out",
                         "hook/qmgr_lpbshook.out", "server_priv/resourcedef",
-                        "pbs.conf", "pbs_snapshot.log", "ctime"]
+                        "pbs.conf", "pbs_snapshot.log", "ctime",
+                        "job/qstat_tf.out"]
         target_files = [os.path.join(snap_dir, f) for f in target_files]
         sched_priv_dir = os.path.join(snap_dir, "sched_priv")
         for (root, dirs, files) in os.walk(snap_dir):
