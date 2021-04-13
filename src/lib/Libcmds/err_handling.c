@@ -62,8 +62,8 @@ show_svr_inst_fail(int fd, char *client)
 		svr_conns = get_conn_svr_instances(fd);
 		for (i = 0; svr_conns[i]; i++) {
 			if (svr_conns[i]->state != SVR_CONN_STATE_UP)
-				fprintf(stderr, "%s: cannot connect to server %s (errno=%d)\n",
-					client, pbs_conf.psi[i].name, pbs_errno);
+				fprintf(stderr, "%s: cannot connect to server %s runs on port %d (errno=%d)\n",
+					client, pbs_conf.psi[i].name, pbs_conf.psi[i].port, pbs_errno);
 		}
 	}
 }

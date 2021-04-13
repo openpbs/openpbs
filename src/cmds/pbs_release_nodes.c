@@ -169,7 +169,7 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 				"pbs_release_nodes: cannot connect to server %s (errno=%d)\n",
 							pbs_server, pbs_errno);
 			break;
-		} else
+		} else if (pbs_errno)
 			show_svr_inst_fail(connect, argv[0]);
 		
 

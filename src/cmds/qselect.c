@@ -564,7 +564,7 @@ main(int argc, char **argv, char **envp) /* qselect */
 		CS_close_app();
 
 		exit(pbs_errno);
-	} else
+	} else if (pbs_errno)
 		show_svr_inst_fail(connect, argv[0]);
 
 	if (extendopts[0] == '\0')

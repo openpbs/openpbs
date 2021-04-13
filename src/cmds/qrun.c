@@ -177,8 +177,8 @@ execute(char *job, char *server, char *location)
 
 cnt:
 	if ((ct = cnt2server(server)) > 0) {
-
-		show_svr_inst_fail(ct, "qrun");
+		if (pbs_errno)
+			show_svr_inst_fail(ct, "qrun");
 		if (async)
 			err = pbs_asyrunjob(ct, job, location, NULL);
 		else

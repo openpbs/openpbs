@@ -566,6 +566,7 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 	int fd = -1;
 	svr_conns_list_t *new_conns = create_conn_svr_instances();
 	svr_conn_t **svr_conns;
+	int last_err;
 
 	if (new_conns == NULL)
 		return -1;
@@ -601,8 +602,11 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 				new_conns->cfd = vfd;
 			}
 		}
+		if (pbs_errno != PBSE_NONE)
+			last_err = pbs_errno;
 	}
 
+	pbs_errno = last_err;
 	return new_conns->cfd;
 
 err:

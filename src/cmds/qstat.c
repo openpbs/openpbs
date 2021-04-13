@@ -2929,7 +2929,7 @@ job_no_args:
 #endif /* localmod 071 */
 					any_failed = conn;
 					break;
-				} else
+				} else if (pbs_errno)
 					show_svr_inst_fail(conn, "qstat");
 
 				if (strcmp(pbs_server, server_old) != 0) {
@@ -3114,7 +3114,7 @@ que_no_args:
 #endif /* localmod 071 */
 					any_failed = conn;
 					break;
-				} else
+				} else if (pbs_errno)
 					show_svr_inst_fail(conn, argv[0]);
 				
 				p_status = pbs_statque(conn, queue_name_out, NULL, NULL);
@@ -3164,7 +3164,7 @@ svr_no_args:
 #endif /* localmod 071 */
 					any_failed = conn;
 					break;
-				} else
+				} else if (pbs_errno)
 					show_svr_inst_fail(conn, argv[0]);
 				
 				p_status = pbs_statserver(conn, NULL, NULL);

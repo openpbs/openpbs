@@ -196,7 +196,7 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 	if (connect <= 0) {
 		fprintf(stderr, "Couldn't connect to cluster: %s\n", clusterid);
 		return pbs_errno;
-	} else
+	} else if (pbs_errno)
 		show_svr_inst_fail(connect, "qdel");
 	
 
