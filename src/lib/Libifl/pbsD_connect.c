@@ -566,7 +566,7 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 	int fd = -1;
 	svr_conns_list_t *new_conns = create_conn_svr_instances();
 	svr_conn_t **svr_conns;
-	int last_err;
+	int last_err = PBSE_NONE;
 
 	if (new_conns == NULL)
 		return -1;
@@ -1360,7 +1360,7 @@ multi_svr_op(int fd)
 {
 	svr_conn_t **conns = get_conn_svr_instances(fd);
 
-	if (conns == NULL || get_num_servers() == 1 || fd == conns[0]->sd)
+	if (conns == NULL || NSVR == 1 || fd == conns[0]->sd)
 		return FALSE;
 
 	return TRUE;

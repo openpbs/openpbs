@@ -51,7 +51,7 @@
 
 /**
  * @brief
- *	send move job request
+ *	send move job request (for single instance connection)
  *
  * @param[in] c - connection handler
  * @param[in] jobid - job identifier
@@ -63,7 +63,6 @@
  * @retval      !0      error
  *
  */
-
 static int
 __pbs_movejob_inner(int c, char *jobid, char *destin, char *extend)
 {
@@ -126,7 +125,6 @@ __pbs_movejob_inner(int c, char *jobid, char *destin, char *extend)
  * @retval      !0      error
  *
  */
-
 int
 __pbs_movejob(int c, char *jobid, char *destin, char *extend)
 {

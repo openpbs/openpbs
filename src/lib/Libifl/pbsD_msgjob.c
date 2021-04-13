@@ -55,6 +55,7 @@
 /**
  * @brief
  *	-send the MessageJob request and get the reply.
+ *	(for single instance connection)
  *
  * @param[in] c - socket descriptor
  * @param[in] jobid - job id
@@ -67,7 +68,6 @@
  * @retval	!0	error
  *
  */
-
 static int
 __pbs_msgjob_inner(int c, char *jobid, int fileopt, char *msg, char *extend)
 {
@@ -128,7 +128,6 @@ __pbs_msgjob_inner(int c, char *jobid, int fileopt, char *msg, char *extend)
  * @retval	!0	error
  *
  */
-
 int
 __pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend)
 {
@@ -247,6 +246,7 @@ pbs_py_spawn(int c, char *jobid, char **argv, char **envp)
  * 	-pbs_relnodesjob - release a set of sister nodes or vnodes,
  * 	or all sister nodes or vnodes assigned to the specified PBS
  * 	batch job.
+ * 	works with single instance connection.
  *
  * @param[in] c 	communication handle
  * @param[in] jobid  job identifier

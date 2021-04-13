@@ -54,7 +54,7 @@
 
 /**
  * @brief
- *	-send rerun batch request
+ *	-send rerun batch request (for single instance connection.)
  *
  * @param[in] c - connection handler
  * @param[in] jobid - job identifier
@@ -65,7 +65,6 @@
  * @retval      !0      error
  *
  */
-
 static int
 PBSD_rerunjob(int c, char *jobid, char *extend)
 {

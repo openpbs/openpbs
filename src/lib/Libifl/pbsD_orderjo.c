@@ -52,7 +52,7 @@
 
 /**
  * @brief
- *	-send order job batch request
+ *	-send order job batch request (for single instance connection)
  *
  * @param[in] c - connection handler
  * @param[in] job1 - job identifier
@@ -64,7 +64,6 @@
  * @retval      !0      error
  *
  */
-
 static int
 __pbs_orderjob_inner(int c, char *job1, char *job2, char *extend)
 {
@@ -127,7 +126,6 @@ __pbs_orderjob_inner(int c, char *job1, char *job2, char *extend)
  * @retval      !0      error
  *
  */
-
 int
 __pbs_orderjob(int c, char *job1, char *job2, char *extend)
 {
