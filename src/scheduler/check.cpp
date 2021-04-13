@@ -1651,7 +1651,7 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 		}
 
 		/* Handle server local scheduling for multi-server setup */
-		if (resresv->svr_inst_id != NULL) {
+		if (pbs_conf.pbs_num_servers > 1 && resresv->svr_inst_id != NULL) {
 			if (sinfo->svr_to_psets.find(resresv->svr_inst_id) != sinfo->svr_to_psets.end()) {
 				msvr_pset[0] = sinfo->svr_to_psets[resresv->svr_inst_id];
 
