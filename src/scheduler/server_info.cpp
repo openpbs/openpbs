@@ -3119,14 +3119,15 @@ set_resource(schd_resource *res, const char *val, enum resource_fields field)
 	if (res == NULL || val == NULL)
 		return 0;
 
-	if (res->def != NULL)
-		rdef = res->def;
-	else {
-		rdef = find_resdef(res->name);
-		res->def = rdef;
-	}
+	rdef = find_resdef(res->name);
+	res->def = rdef;
+
 	if (rdef != NULL)
 		res->type = rdef->type;
+	else {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESC, LOG_WARNING, res->name, "Can't find resource definition");
+		return 0;
+	}
 
 	if (field == RF_AVAIL) {
 		/* if this resource is being re-set, lets free the memory we previously
@@ -3163,12 +3164,16 @@ set_resource(schd_resource *res, const char *val, enum resource_fields field)
 			res->avail = res_to_num(val, NULL);
 			if (res->avail == SCHD_INFINITY_RES) {
 				/* Verify that this is a string type resource */
-				if (!res->def->type.is_string)
+				if (!res->def->type.is_string) {
+					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESC, LOG_WARNING, res->name, "Invalid value for consumable resource");
 					return 0;
+				}
 			}
 			res->str_avail = break_comma_list(const_cast<char *>(val));
-			if (res->str_avail == NULL)
+			if (res->str_avail == NULL) {
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESC, LOG_WARNING, res->name, "Invalid value: %s", val);
 				return 0;
+			}
 		}
 	} else if (field == RF_ASSN) {
 		/* clear previously allocated memory in the case of a reassignment */
