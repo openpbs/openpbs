@@ -571,7 +571,7 @@ close_servers(void)
 static void
 connect_svrpool()
 {
-	uint i;
+	int i;
 	svr_conn_t **svr_conns_primary = NULL;
 	svr_conn_t **svr_conns_secondary = NULL;
 
