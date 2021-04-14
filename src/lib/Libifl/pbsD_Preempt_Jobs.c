@@ -163,7 +163,7 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	if (!svr_connections)
 		return NULL;
 
-	p_replies = calloc(NSVR, sizeof(preempt_job_info *));
+	p_replies = calloc(get_num_servers(), sizeof(preempt_job_info *));
 	if (p_replies == NULL) {
 		pbs_errno = PBSE_SYSTEM;
 		goto err;
@@ -187,7 +187,7 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	/* With multi-server, jobs are sharded across multiple servers.
 	 * So, send the request to all the active servers and collate their replies
 	 */
-	for (i = 0; i < NSVR; i++) {
+	for (i = 0; i < get_num_servers(); i++) {
 		if (preempt_jobs_send(svr_connections[i]->sd, preempt_jobs_list) != 0)
 			goto err;
 	}
@@ -206,7 +206,7 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	 * 	- Using the AVL tree avoids the cost of N strcmps otherwise needed to find the jobid
 	 *  in the first array
 	 */
-	for (i = 0; i < NSVR; last_count = count, i++) {
+	for (i = 0; i < get_num_servers(); last_count = count, i++) {
 		if ((p_replies[i] = preempt_jobs_recv(svr_connections[i]->sd, &count)) == NULL)
 			goto err;
 		if (last_count != -1 && count != last_count) {
@@ -217,7 +217,7 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 
 	/* Find jobs which couldn't be found on the first server and store them in AVL tree */
 	for (i = 0; i < count; i++) {
-		if (p_replies[retidx][i].order[0] == 'D' && NSVR > 1) {
+		if (p_replies[retidx][i].order[0] == 'D' && get_num_servers() > 1) {
 			int *data = malloc(sizeof(int));
 			if (data == NULL) {
 				pbs_errno = PBSE_SYSTEM;
@@ -229,8 +229,8 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	}
 	ret = p_replies[retidx];
 
-	if (missing_jobs != NULL && NSVR > 1) {
-		for (i = 1; i < NSVR; i++) {	/* Starting from 1 as retidx == 0 */
+	if (missing_jobs != NULL && get_num_servers() > 1) {
+		for (i = 1; i < get_num_servers(); i++) {	/* Starting from 1 as retidx == 0 */
 			int j;
 
 			if (p_replies[i] == NULL)
@@ -261,7 +261,7 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 		goto err;
 
 	/* Free up all the other lists */
-	for (i = 1; i < NSVR; i++) {
+	for (i = 1; i < get_num_servers(); i++) {
 		free(p_replies[i]);
 	}
 	free(p_replies);
@@ -271,7 +271,7 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 
 err:
 	if (p_replies != NULL) {
-		for (i = 0; i < NSVR; i++) {
+		for (i = 0; i < get_num_servers(); i++) {
 			free(p_replies[i]);
 		}
 		free(p_replies);

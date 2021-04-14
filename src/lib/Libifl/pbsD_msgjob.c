@@ -134,6 +134,7 @@ __pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend)
 	int i;
 	int rc = 0;
 	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int nsvr = get_num_servers();
 	int start = 0;
 	int ct;
 
@@ -153,7 +154,7 @@ __pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend)
 		if ((start = get_obj_location_hint(jobid, MGR_OBJ_JOB)) == -1)
 		    start = 0;
 
-		for (i = start, ct = 0; ct < NSVR; i = (i + 1) % NSVR, ct++) {
+		for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
 
 			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
 				continue;
@@ -319,6 +320,7 @@ pbs_relnodesjob(int c, char *jobid, char *node_list, char *extend)
 	int i;
 	int rc = 0;
 	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int nsvr = get_num_servers();
 	int start = 0;
 	int ct;
 
@@ -387,7 +389,7 @@ pbs_relnodesjob(int c, char *jobid, char *node_list, char *extend)
 		if ((start = get_obj_location_hint(jobid, MGR_OBJ_JOB)) == -1)
 		    start = 0;
 
-		for (i = start, ct = 0; ct < NSVR; i = (i + 1) % NSVR, ct++) {
+		for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
 
 			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
 				continue;

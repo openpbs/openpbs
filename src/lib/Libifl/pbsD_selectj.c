@@ -208,7 +208,7 @@ __pbs_selectjob(int c, struct attropl *attrib, char *extend)
 	if (!svr_conns)
 		return NULL;
 
-	failed_conn = calloc(NSVR, sizeof(int));
+	failed_conn = calloc(get_num_servers(), sizeof(int));
 
 	if (pbs_client_thread_init_thread_context() != 0)
 		return NULL;

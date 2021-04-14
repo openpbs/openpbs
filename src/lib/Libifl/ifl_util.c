@@ -180,7 +180,7 @@ get_obj_location_hint(char *obj_id, int obj_type)
 
 	svridx = strtol(ptr_idx, &endptr, 10);
 
-	if (*endptr != '\0' || svridx >= NSVR)
+	if (*endptr != '\0' || svridx >= get_num_servers())
 		svridx = -1;
 
 	if (ptr)

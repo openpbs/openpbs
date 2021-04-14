@@ -539,7 +539,7 @@ part_of_cluster(char *svrhost, uint port, svr_conn_t **svr_conns)
 	if (is_same_host(svrhost, pbs_default()) && port == pbs_conf.batch_service_port)
 		return true;
 
-	for (i = 0; i < NSVR; i++) {
+	for (i = 0; i < get_num_servers(); i++) {
 		if (is_same_host(svrhost, pbs_conf.psi[i].name) &&
 		    port == pbs_conf.psi[i].port)
 			return true;
@@ -584,7 +584,7 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 	}
 
 	/* Try to connect to all servers in the cluster */
-	for (i = 0; i < NSVR; i++) {
+	for (i = 0; i < get_num_servers(); i++) {
 		svr_conns[i] = add_instance(pbs_conf.psi[i].name, pbs_conf.psi[i].port);
 		if (!svr_conns[i])
 			goto err;
@@ -657,7 +657,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 		return -1;
 	}
 
-	if (NSVR == 1 && pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {	
+	if (get_num_servers() == 1 && pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {	
 		/* failover configuered ...   */	
 		if (is_same_host(server, pbs_conf.pbs_primary)) {	
 			have_alt = 1;	
@@ -694,7 +694,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 			break; 
 	}
 	
-	if (NSVR > 1)
+	if (get_num_servers() > 1)
 		return sock;
 	
 	if (i >= (have_alt+1) && sock == -1) {
@@ -1234,7 +1234,7 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
 	if (svr_conns_secondary == NULL)
 		return -1;
 
-	for (i = 0; i < NSVR; i++) {
+	for (i = 0; i < get_num_servers(); i++) {
 		if (svr_conns_primary[i]->sd < 0 ||
 		    send_register_sched(svr_conns_primary[i]->sd, sched_id) != 0)
 			return -1;
@@ -1304,7 +1304,7 @@ server_name_to_fd(int c, char *svrname)
 		pbs_errno = PBSE_NOCONNECTS;
 		return -1;
 	}
-	for (i = 0; i < NSVR; i++) {
+	for (i = 0; i < get_num_servers(); i++) {
 		if (strcmp(conns[i]->name, svrname) == 0)
 			return conns[i]->sd;
 	}
@@ -1360,7 +1360,7 @@ multi_svr_op(int fd)
 {
 	svr_conn_t **conns = get_conn_svr_instances(fd);
 
-	if (conns == NULL || NSVR == 1 || fd == conns[0]->sd)
+	if (conns == NULL || get_num_servers() == 1 || fd == conns[0]->sd)
 		return FALSE;
 
 	return TRUE;

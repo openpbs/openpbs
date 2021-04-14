@@ -138,7 +138,6 @@ pthread_mutex_t * get_conn_mutex(int);
 #define SVR_CONN_STATE_DOWN 0
 #define SVR_CONN_STATE_UP 1
 
-#define NSVR pbs_conf.pbs_num_servers
 int get_num_servers(void);
 
 /* max number of preempt orderings */
