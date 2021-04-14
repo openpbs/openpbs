@@ -235,6 +235,9 @@ get_script(FILE *file, char *script, char *prefix)
 	char *in;
 	char *s_in = NULL;
 	int s_len = 0;
+	char *extend;
+	char *extend_in = NULL;
+	int extend_len;
 	static char tmp_template[] = "pbsscrptXXXXXX";
 	int fds;
 
@@ -258,8 +261,21 @@ get_script(FILE *file, char *script, char *prefix)
 		return (4);
 	}
 
-	while ((in = pbs_fgets_extend(&s_in, &s_len, file)) != NULL) {
+	while ((in = pbs_fgets(&s_in, &s_len, file)) != NULL) {
 		if (!exec && ((sopt = pbs_ispbsdir(s_in, prefix)) != NULL)) {
+			/* Check if this is a directive line that should be extended */
+			extend_len = pbs_extendable_line(in);
+			if (extend_len >= 0) {
+				in[extend_len] = '\0'; /* remove the backslash (\) */
+				extend = pbs_fgets_extend(&extend_in, &extend_len, file);
+				if (extend != NULL) {
+					if (pbs_strcat(&s_in, &s_len, extend) == NULL)
+						return (5);
+				}
+				in = s_in;
+				sopt = pbs_ispbsdir(s_in, prefix);
+			}
+
 			/*
 			 * Setting options from the job script will not overwrite
 			 * options set on the command line. CMDLINE-1 means

@@ -81,3 +81,31 @@ class TestQsubScript(TestFunctional):
             job_output_file = job_status[0]['Output_Path'].split(':')[1]
         rc = self.du.cmp(fileA=fn, fileB=job_output_file, runas=TEST_USER)
         self.assertEqual(rc, 0, 'cmp of job files failed')
+
+    def test_qsub_line_extensions(self):
+        """
+        This test case ensures that only #PBS directive lines are treated
+        as candidates for line extension
+        """
+        script = """#!/bin/sh
+        #PBS -m n
+        # This is a test comment that shouldn't be extended \\
+        cat $0
+        """
+
+        fn = self.du.create_temp_file(body=script, asuser=TEST_USER)
+        cmd = [self.qsub_cmd, fn]
+        rv = self.du.run_cmd(self.server.hostname,
+                             cmd=cmd,
+                             runas=TEST_USER,
+                             cwd=self.sub_dir)
+        self.assertEqual(rv['rc'], 0, 'qsub failed')
+        jid = rv['out'][0]
+        self.logger.info("Job ID: %s" % jid)
+
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
+        job_status = self.server.status(JOB, id=jid, extend='x')
+        if job_status:
+            job_output_file = job_status[0]['Output_Path'].split(':')[1]
+        rc = self.du.cmp(fileA=fn, fileB=job_output_file, runas=TEST_USER)
+        self.assertEqual(rc, 0, 'cmp of job files failed')
