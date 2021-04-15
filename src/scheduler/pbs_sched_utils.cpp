@@ -574,7 +574,6 @@ connect_svrpool()
 	int i;
 	svr_conn_t **svr_conns_primary = NULL;
 	svr_conn_t **svr_conns_secondary = NULL;
-	int num_conf_svrs = get_num_servers();
 
 	while (1) {
 		/* pbs_connect() will return a connection handle for all servers
@@ -613,7 +612,7 @@ connect_svrpool()
 			}
 		}
 
-		if (i != num_conf_svrs) {
+		if (i != get_num_servers()) {
 			/* If we reached here means one of the servers is down or not connected
 			 * we should go to the top of the loop again and call pbs_connect
 			 * Also wait for 2s for not to burn too much CPU

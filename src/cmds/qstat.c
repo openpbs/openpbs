@@ -2929,8 +2929,8 @@ job_no_args:
 #endif /* localmod 071 */
 					any_failed = conn;
 					break;
-				}
-				show_svr_inst_fail(conn, "qstat");
+				} else if (pbs_errno)
+					show_svr_inst_fail(conn, "qstat");
 
 				if (strcmp(pbs_server, server_old) != 0) {
 					/* changing to a different server */
@@ -3114,7 +3114,9 @@ que_no_args:
 #endif /* localmod 071 */
 					any_failed = conn;
 					break;
-				}
+				} else if (pbs_errno)
+					show_svr_inst_fail(conn, argv[0]);
+				
 				p_status = pbs_statque(conn, queue_name_out, NULL, NULL);
 				if (p_status == NULL) {
 					if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {
@@ -3162,7 +3164,9 @@ svr_no_args:
 #endif /* localmod 071 */
 					any_failed = conn;
 					break;
-				}
+				} else if (pbs_errno)
+					show_svr_inst_fail(conn, argv[0]);
+				
 				p_status = pbs_statserver(conn, NULL, NULL);
 				if (p_status == NULL) {
 					if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {

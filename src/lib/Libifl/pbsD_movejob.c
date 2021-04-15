@@ -49,10 +49,9 @@
 #include "dis.h"
 #include "pbs_ecl.h"
 
-
 /**
  * @brief
- *	send move job request
+ *	send move job request (for single instance connection)
  *
  * @param[in] c - connection handler
  * @param[in] jobid - job identifier
@@ -64,22 +63,11 @@
  * @retval      !0      error
  *
  */
-
-int
-__pbs_movejob(int c, char *jobid, char *destin, char *extend)
+static int
+__pbs_movejob_inner(int c, char *jobid, char *destin, char *extend)
 {
 	int		    rc;
 	struct batch_reply *reply;
-
-
-	if ((jobid == NULL) || (*jobid == '\0'))
-		return (pbs_errno = PBSE_IVALREQ);
-	if (destin == NULL)
-		destin = "";
-
-	/* initialize the thread context data, if not already initialized */
-	if (pbs_client_thread_init_thread_context() != 0)
-		return pbs_errno;
 
 	/* lock pthread mutex here for this connection */
 	/* blocking call, waits for mutex release */
@@ -121,4 +109,65 @@ __pbs_movejob(int c, char *jobid, char *destin, char *extend)
 		return pbs_errno;
 
 	return rc;
+}
+
+/**
+ * @brief
+ *	send move job request
+ *
+ * @param[in] c - connection handler
+ * @param[in] jobid - job identifier
+ * @param[in] destin - job moved to
+ * @param[in] extend - string to encode req
+ *
+ * @return      int
+ * @retval      0       success
+ * @retval      !0      error
+ *
+ */
+int
+__pbs_movejob(int c, char *jobid, char *destin, char *extend)
+{
+	int i;
+	int rc = 0;
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int nsvr = get_num_servers();
+	int start = 0;
+	int ct;
+
+
+	if ((jobid == NULL) || (*jobid == '\0'))
+		return (pbs_errno = PBSE_IVALREQ);
+	if (destin == NULL)
+		destin = "";
+
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return pbs_errno;
+
+	if (svr_conns) {
+		/* For a single server cluster, instance fd and cluster fd are the same */
+		if (svr_conns[0]->sd == c)
+			return __pbs_movejob_inner(c, jobid, destin, extend);
+
+		if ((start = get_obj_location_hint(jobid, MGR_OBJ_JOB)) == -1)
+		    start = 0;
+
+		for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
+
+			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
+				continue;
+
+			rc = __pbs_movejob_inner(svr_conns[i]->sd, jobid, destin, extend);
+
+			/* break the loop for sharded objects */
+			if (rc == PBSE_NONE || pbs_errno != PBSE_UNKJOBID)
+				break;
+		}
+
+		return rc;
+	}
+
+	/* Not a cluster fd. Treat it as an instance fd */
+	return __pbs_movejob_inner(c, jobid, destin, extend);
 }

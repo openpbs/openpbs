@@ -499,18 +499,18 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 	struct batch_status *next = NULL;
 	struct batch_status *cur = NULL;
 	svr_conn_t **svr_conns = get_conn_svr_instances(c);
-	int nsvrs = get_num_servers();
 	int *failed_conn;
 	int single_itr = 0;
 	int start = 0;
 	int ct;
 	struct batch_status *last = NULL;
 	int pbs_errno_clear_cnt = 0;
+	int nsvr = get_num_servers();
 
 	if (!svr_conns)
 		return NULL;
 
-	failed_conn = calloc(nsvrs, sizeof(int));
+	failed_conn = calloc(nsvr, sizeof(int));
 
 	if (pbs_client_thread_init_thread_context() != 0)
 		return NULL;
@@ -527,7 +527,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 	if (pbs_client_thread_lock_connection(c) != 0)
 		goto end;
 
-	for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+	for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
 
 		if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP) {
 			rc = PBSE_NOSERVER;
@@ -550,7 +550,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 			break;
 	}
 
-	for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+	for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
 
 		if (!svr_conns[i] ||
 		    svr_conns[i]->state != SVR_CONN_STATE_UP ||
@@ -579,7 +579,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 				}
 			}
 		} else if (!single_itr && (pbs_errno == PBSE_UNKQUE || pbs_errno == PBSE_UNKRESVID)) {
-			if (pbs_errno_clear_cnt < (nsvrs - 1)) {
+			if (pbs_errno_clear_cnt < (nsvr - 1)) {
 				/* As resv/resv queue is present only in one of the server-instances, we should consider
 				 * PBSE_UNKQUE/PBSE_UNKRESVID only when all instances raise this error and hence this code
 				 */

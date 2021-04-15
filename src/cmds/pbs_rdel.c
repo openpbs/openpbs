@@ -120,14 +120,15 @@ main(int argc, char **argv, char **envp)
 			any_failed = 1;
 			continue;
 		}
-		connect = cnt2server(server_out);
 
+		connect = cnt2server(server_out);
 		if (connect <= 0) {
 			fprintf(stderr, "pbs_rdel: cannot connect to server %s (errno=%d)\n",
 				pbs_server, pbs_errno);
 			any_failed = pbs_errno;
 			continue;
-		}
+		} else if (pbs_errno)
+			show_svr_inst_fail(connect, argv[0]);
 
 		stat = pbs_delresv(connect, resv_id_out, dest_queue);
 		if (stat) {
