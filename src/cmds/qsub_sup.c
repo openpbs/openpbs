@@ -236,8 +236,9 @@ get_script(FILE *file, char *script, char *prefix)
 	char *s_in = NULL;
 	int s_len = 0;
 	char *extend;
-	char *extend_in = NULL;
+	char *extend_in;
 	int extend_len;
+	int extend_loc;
 	static char tmp_template[] = "pbsscrptXXXXXX";
 	int fds;
 
@@ -264,16 +265,19 @@ get_script(FILE *file, char *script, char *prefix)
 	while ((in = pbs_fgets(&s_in, &s_len, file)) != NULL) {
 		if (!exec && ((sopt = pbs_ispbsdir(s_in, prefix)) != NULL)) {
 			/* Check if this is a directive line that should be extended */
-			extend_len = pbs_extendable_line(in);
-			if (extend_len >= 0) {
-				in[extend_len] = '\0'; /* remove the backslash (\) */
+			extend_loc = pbs_extendable_line(in);
+			if (extend_loc >= 0) {
+				in[extend_loc] = '\0'; /* remove the backslash (\) */
+				extend_in = NULL;
+				extend_len = 0;
 				extend = pbs_fgets_extend(&extend_in, &extend_len, file);
 				if (extend != NULL) {
 					if (pbs_strcat(&s_in, &s_len, extend) == NULL)
 						return (5);
+					in = s_in;
+					sopt = pbs_ispbsdir(s_in, prefix);
+					free(extend);
 				}
-				in = s_in;
-				sopt = pbs_ispbsdir(s_in, prefix);
 			}
 
 			/*
