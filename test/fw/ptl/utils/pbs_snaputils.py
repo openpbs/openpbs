@@ -52,6 +52,7 @@ import time
 import platform
 from subprocess import STDOUT
 from pathlib import Path
+from multiprocessing import Process
 
 from ptl.lib.pbs_ifl_mock import *
 from ptl.lib.pbs_testlib import (SCHED, BatchUtils, Scheduler, Server,
@@ -348,14 +349,13 @@ class ObfuscateSnapshot(object):
         """
         Helper function to anonymize
 
-        :param attrs_obf - list of attributes to obfuscate
-        :type attrs_obf - list
+        :param attrs_obf - set of attributes to obfuscate
+        :type attrs_obf - set
         :param file_path - path of acct log file
         :type file_path - str
         """
-        fout = self.du.create_temp_file()
-
-        with open(file_path, "r") as fd, open(fout, "w") as fdout:
+        newcontent = []
+        with open(file_path, "r") as fd:
             for record in fd:
                 # accounting log format is
                 # %Y/%m/%d %H:%M:%S;<Key>;<Id>;<key1=val1> <key2=val2> ...
@@ -363,7 +363,7 @@ class ObfuscateSnapshot(object):
                 if record_list is None or len(record_list) < 4:
                     continue
                 if record_list[1] in ("A", "L"):
-                    fdout.write(record)
+                    newcontent.append(record)
                     continue
                 content_list = shlex.split(record_list[3].strip())
 
@@ -402,9 +402,10 @@ class ObfuscateSnapshot(object):
                 if not skip_record:
                     record = ";".join(record_list[:3]) + ";" + \
                         " ".join(["=".join(n) for n in kvl_list])
-                    fdout.write(record + "\n")
+                    newcontent.append(record + "\n")
 
-        shutil.move(fout, file_path)
+        with open(file_path, "w") as fd:
+            fd.write("".join(newcontent))
 
     def obfuscate_acct_logs(self, snap_dir, sudo_val):
         """
@@ -420,13 +421,33 @@ class ObfuscateSnapshot(object):
         # Some accounting record attributes are named differently
         acct_extras = ["user", "requestor", "group", "account"]
         attrs_to_obf += acct_extras
+        attrs_to_obf = set(attrs_to_obf)
 
         acct_path = os.path.join(snap_dir, "server_priv", "accounting")
         if not os.path.isdir(acct_path):
             return
         acct_fpaths = self.du.listdir(path=acct_path, sudo=sudo_val)
-        for acct_fpath in acct_fpaths:
-            self._obfuscate_acct_file(attrs_to_obf, acct_fpath)
+
+        # Limit the number of cores used to 10
+        ncpus = os.cpu_count()
+        ncpus = min(ncpus, 10)
+        nfiles = len(acct_fpaths)
+        i = 0
+        while True:
+            if i >= nfiles:
+                break
+            plist = []
+            for _ in range(ncpus):
+                acct_fpath = acct_fpaths[i]
+                p = Process(target=self._obfuscate_acct_file, args=(attrs_to_obf, acct_fpath))
+                p.start()
+                plist.append(p)
+                i += 1
+                if i >= nfiles:
+                    break
+            for p in plist:
+                p.join()
+
         if self.num_bad_acct_records > 0:
             self.logger.info("Total bad records found: " +
                              str(self.num_bad_acct_records))
@@ -440,12 +461,13 @@ class ObfuscateSnapshot(object):
         :param sudo - sudo True/False?
         :type bool
 
-        :return fpath - possibly updated path to the obfuscated file
+        :return str - possibly updated path to the obfuscated file
         """
         fout = self.du.create_temp_file()
         pathobj = Path(fpath)
         fname = pathobj.name
         fparent = pathobj.parent
+        newfpath = fpath
         with open(fpath, "r", encoding="latin-1") as fd, \
                 open(fout, "w") as fdout:
             alltext = fd.read()
@@ -454,16 +476,16 @@ class ObfuscateSnapshot(object):
                 alltext = re.sub(r'\b' + key + r'\b', val, alltext)
                 if key in fname:
                     fname = fname.replace(key, val)
-                    fpath = os.path.join(fparent, fname)
+                    newfpath = os.path.join(fparent, fname)
             # Remove the attr values from vals_to_del list
             for val in self.vals_to_del:
                 alltext = alltext.replace(val, "")
             fdout.write(alltext)
 
         self.du.rm(path=fpath, sudo=sudo)
-        shutil.move(fout, fpath)
+        shutil.move(fout, newfpath)
 
-        return fpath
+        return newfpath
 
     def obfuscate_snapshot(self, snap_dir, map_file, sudo_val):
         """
@@ -524,8 +546,10 @@ class ObfuscateSnapshot(object):
         mom_logs = os.path.join(snap_dir, MOM_LOGS_PATH)
         comm_logs = os.path.join(snap_dir, COMM_LOGS_PATH)
         db_logs = os.path.join(snap_dir, PG_LOGS_PATH)
+        topology = os.path.join(snap_dir, SVR_PRIV_PATH, "topology")
         sched_logs = []
-        for dirname in self.du.listdir(path=snap_dir, sudo=sudo_val):
+        for dirname in self.du.listdir(path=snap_dir, sudo=sudo_val,
+                                       fullpath=False):
             if dirname.startswith(DFLT_SCHED_LOGS_PATH):
                 dirpath = os.path.join(snap_dir, str(dirname))
                 sched_logs.append(dirpath)
@@ -564,7 +588,8 @@ class ObfuscateSnapshot(object):
             with open(fpath, "w") as fd:
                 fd.write(str(content))
 
-        dirs_to_del = [svr_logs, mom_logs, comm_logs, db_logs] + sched_logs
+        dirs_to_del = [svr_logs, mom_logs, comm_logs, db_logs, topology]
+        dirs_to_del += sched_logs
         for dirpath in dirs_to_del:
             self.du.rm(path=dirpath, recursive=True, force=True)
 
