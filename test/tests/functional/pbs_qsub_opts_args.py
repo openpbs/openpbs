@@ -86,6 +86,54 @@ class TestQsubOptionsArguments(TestFunctional):
                 "ERROR in submitting a job with future time: %s" %
                 err.msg[0])
 
+    def jobdir_shared_body(self, location):
+        """
+        Test submission of job with sandbox=PRIVATE,
+        and moms have $jobdir_root set to shared.
+        """
+        self.remove_jobdir = True
+        momA = self.moms.values()[0]
+        momB = self.moms.values()[1]
+
+        loglevel = {'$logevent': 4095}
+        momB.add_config(loglevel)
+        c = {'$jobdir_root': '%s shared' % location}
+        for mom in [momA, momB]:
+            mom.add_config(c)
+            mom.restart()
+
+        a = {'Resource_List.select': '2:ncpus=1',
+             'Resource_List.place': 'scatter',
+             ATTR_sandbox: 'PRIVATE',
+             }
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        attribs = self.server.status(JOB, id=jid)
+        jobdir = attribs[0]['jobdir']
+        self.jobdir.append(jobdir)
+        relpath = os.path.join(
+            self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_release_nodes')
+
+        rel_cmd = [relpath, '-j', jid, momB.shortname]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd=rel_cmd,
+                                     runas=TEST_USER)
+        self.assertEqual(ret['rc'], 0)
+        # sister mom has preserved the file
+        errmsg = "sister mom deleted jobdir %s" % jobdir
+        rc = self.du.isdir(hostname=momB.shortname, path=jobdir,
+                           sudo=True)
+        self.assertTrue(rc, errmsg)
+        msg = "shared jobdir %s to be removed by primary mom" % jobdir
+        momB.log_match(msg)
+        self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
+        # primary mom has deleted the file
+        errmsg = "MS mom preserved jobdir %s" % jobdir
+        rc = self.du.isdir(hostname=momA.shortname, path=jobdir,
+                           sudo=True)
+        self.assertFalse(rc, errmsg)
+
     def test_qsub_with_script_with_long_TMPDIR(self):
         """
         submit a job with a script and with long path in TMPDIR
@@ -199,45 +247,13 @@ bhtiusabsdlg' % (os.environ['HOME'])
         Test submission of job with sandbox=PRIVATE,
         and moms have $jobdir_root set to shared.
         """
-        self.remove_jobdir = True
-        momA = self.moms.values()[0]
-        momB = self.moms.values()[1]
+        self.jobdir_shared_body(self.jobdir_root)
 
-        loglevel = {'$logevent': 4095}
-        momB.add_config(loglevel)
-        c = {'$jobdir_root': '%s shared' % self.jobdir_root}
-        for mom in [momA, momB]:
-            mom.add_config(c)
-            mom.restart()
-
-        a = {'Resource_List.select': '2:ncpus=1',
-             'Resource_List.place': 'scatter',
-             ATTR_sandbox: 'PRIVATE',
-             }
-        j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(10)
-        jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        attribs = self.server.status(JOB, id=jid)
-        jobdir = attribs[0]['jobdir']
-        self.jobdir.append(jobdir)
-        relpath = os.path.join(
-            self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_release_nodes')
-
-        rel_cmd = [relpath, '-j', jid, momB.shortname]
-        ret = self.server.du.run_cmd(self.server.hostname, cmd=rel_cmd,
-                                     runas=TEST_USER)
-        self.assertEqual(ret['rc'], 0)
-        # sister mom has preserved the file
-        errmsg = "sister mom deleted jobdir %s" % jobdir
-        rc = self.du.isdir(hostname=momB.shortname, path=jobdir,
-                           sudo=True)
-        self.assertTrue(rc, errmsg)
-        msg = "shared jobdir %s to be removed by primary mom" % jobdir
-        momB.log_match(msg)
-        self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
-        # primary mom has deleted the file
-        errmsg = "MS mom preserved jobdir %s" % jobdir
-        rc = self.du.isdir(hostname=momA.shortname, path=jobdir,
-                           sudo=True)
-        self.assertFalse(rc, errmsg)
+    @requirements(num_moms=2)
+    def test_qsub_sandbox_private_jobdir_default_shared(self):
+        """
+        Test submission of job with sandbox=PRIVATE,
+        and moms have $jobdir_root set to shared,
+        with location set to <default>.
+        """
+        self.jobdir_shared_body("<default>")

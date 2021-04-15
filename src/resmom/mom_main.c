@@ -2811,7 +2811,7 @@ set_jobdir_root(char *value)
 	}
 
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-	if (verify_dir(cleaned_value, 1, 1, 0, 1)) {
+	if ((strcmp(cleaned_value, JOBDIR_DEFAULT) != 0) && (verify_dir(cleaned_value, 1, 1, 0, 1))) {
 		free(cleaned_value);
 		return HANDLER_FAIL;
 	}
