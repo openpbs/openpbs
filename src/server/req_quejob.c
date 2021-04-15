@@ -1395,7 +1395,7 @@ req_jobscript(struct batch_request *preq)
 #else /* server - server - server - server */
 	/* add the script to the job */
 	size = get_bytes_from_attr(&attr_jobscript_max_size);
-	if (preq->rq_ind.rq_jobfile.rq_size > size){
+	if (pj->ji_qs.ji_un.ji_newt.ji_scriptsz + preq->rq_ind.rq_jobfile.rq_size > size){
 		job_purge(pj);
 		req_reject(PBSE_JOBSCRIPTMAXSIZE, 0, preq);
 		return;
