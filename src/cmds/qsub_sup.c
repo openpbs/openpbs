@@ -236,8 +236,8 @@ get_script(FILE *file, char *script, char *prefix)
 	char *s_in = NULL;
 	int s_len = 0;
 	char *extend;
-	char *extend_in;
-	int extend_len;
+	char *extend_in = NULL;
+	int extend_len = 0;
 	int extend_loc;
 	static char tmp_template[] = "pbsscrptXXXXXX";
 	int fds;
@@ -268,15 +268,12 @@ get_script(FILE *file, char *script, char *prefix)
 			extend_loc = pbs_extendable_line(in);
 			if (extend_loc >= 0) {
 				in[extend_loc] = '\0'; /* remove the backslash (\) */
-				extend_in = NULL;
-				extend_len = 0;
 				extend = pbs_fgets_extend(&extend_in, &extend_len, file);
 				if (extend != NULL) {
 					if (pbs_strcat(&s_in, &s_len, extend) == NULL)
 						return (5);
 					in = s_in;
 					sopt = pbs_ispbsdir(s_in, prefix);
-					free(extend);
 				}
 			}
 
@@ -287,6 +284,9 @@ get_script(FILE *file, char *script, char *prefix)
 			 */
 			if (do_dir(sopt, CMDLINE - 1, retmsg, MAXPATHLEN) != 0) {
 				fprintf(stderr, "%s", retmsg);
+				if (extend_in != NULL) {
+					free(extend_in);
+				}
 				free(s_in);
 				return (-1);
 			}
@@ -298,11 +298,17 @@ get_script(FILE *file, char *script, char *prefix)
 			fprintf(stderr, "qsub: error writing copy of script, %s\n",
 				tmp_name);
 			fclose(TMP_FILE);
+			if (extend_in != NULL) {
+				free(extend_in);
+			}
 			free(s_in);
 			return (3);
 		}
 	}
 
+	if (extend_in != NULL) {
+		free(extend_in);
+	}
 	free(s_in);
 	if (fclose(TMP_FILE) != 0) {
 		perror(" qsub: copy of script to tmp failed on close");
