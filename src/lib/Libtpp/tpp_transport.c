@@ -972,7 +972,7 @@ tpp_post_cmd(int tfd, char cmd, tpp_packet_t *pkt)
 		/* data associated that needs to be sent out, put directly into target mbox */
 		/* write to worker threads send pipe */
 		rc = tpp_mbox_post(&conn->send_mbox, tfd, cmd, (void*) pkt, pkt->totlen);
-		if (rc == -2) {
+		if (rc != 0) {
 			tpp_unlock_rwlock(&cons_array_lock);
 			return rc;
 		}
@@ -1857,6 +1857,10 @@ handle_incoming_data(phy_conn_t *conn)
  *  add a deffered action, so that it can be checked later
  *
  * @param[in] conn - The physical connection
+ * 
+ * @return Error code
+ * @retval 0 - Success
+ * @retval -1 - Failure
  *
  * @par Side Effects:
  *	None
@@ -1867,8 +1871,6 @@ handle_incoming_data(phy_conn_t *conn)
 static short
 add_pkt(phy_conn_t *conn)
 {
-	short rc = 0;
-	short mod_rc = 0;
 	int avl_len;
 	int pkt_len;
 
@@ -1884,42 +1886,21 @@ add_pkt(phy_conn_t *conn)
 		if (avl_len == pkt_len) {
 			/* we got a full packet */
 			if (the_pkt_handler) {
-				rc = the_pkt_handler(conn->sock_fd, conn->scratch.data, pkt_len, conn->ctx, conn->extra);
-				if (rc != 0) {
-					if (rc == -1) {
-						/* upper layer rejected data, disconnect */
-						handle_disconnect(conn);
-						return rc;
-					} else if (rc == -2) {
-						conn->ev_mask &= ~EM_IN; /* reciever buffer full, must wait, remove EM_IN */
-						tpp_log(LOG_INFO, __func__, "tfd=%d, Receive buffer full, will wait", conn->sock_fd);
-						enque_deferred_event(conn->td, -1, TPP_CMD_READ, 0);
-						mod_rc = tpp_em_mod_fd(conn->td->em_context, conn->sock_fd, conn->ev_mask);
-					}
-				} else {
-					if ((conn->ev_mask & EM_IN) == 0) {
-						/* packet added successfully, add EM_IN back */
-						conn->ev_mask |= EM_IN;
-						tpp_log(LOG_INFO, __func__, "tfd=%d, Receive buffer ok, continuing", conn->sock_fd);
-						mod_rc = tpp_em_mod_fd(conn->td->em_context, conn->sock_fd, conn->ev_mask);
-					}
-				}
-				if (mod_rc != 0) {
-					tpp_log(LOG_ERR, __func__, "Multiplexing failed");
-					rc = mod_rc;
+				if (the_pkt_handler(conn->sock_fd, conn->scratch.data, pkt_len, conn->ctx, conn->extra) != 0) {
+					/* upper layer rejected data, disconnect */
+					handle_disconnect(conn);
+					return -1;
 				}
 			}
 
-			if (rc == 0) {
-			   /*
-				* no need to memmove or coalesce the data, since we would have read
-				* just enough for a packet, so, just reset pointers
-				*/
-				conn->scratch.pos = conn->scratch.data;
-			}
+			/*
+			* no need to memmove or coalesce the data, since we would have read
+			* just enough for a packet, so, just reset pointers
+			*/
+			conn->scratch.pos = conn->scratch.data;
 		}
 	}
-	return rc;
+	return 0;
 }
 
 /**
