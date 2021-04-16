@@ -439,7 +439,8 @@ class ObfuscateSnapshot(object):
             plist = []
             for _ in range(ncpus):
                 acct_fpath = acct_fpaths[i]
-                p = Process(target=self._obfuscate_acct_file, args=(attrs_to_obf, acct_fpath))
+                p = Process(target=self._obfuscate_acct_file,
+                            args=(attrs_to_obf, acct_fpath))
                 p.start()
                 plist.append(p)
                 i += 1
