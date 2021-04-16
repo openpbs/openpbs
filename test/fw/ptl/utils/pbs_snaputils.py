@@ -566,7 +566,8 @@ class ObfuscateSnapshot(object):
                               "simply be deleted")
         jobspath = os.path.join(snap_dir, MOM_PRIV_PATH, "jobs")
         jbcontent = {}
-        jbfilelist = self.du.listdir(path=jobspath, sudo=sudo_val)
+        jbfilelist = self.du.listdir(path=jobspath, sudo=sudo_val,
+                                     fullpath=False)
         if jbfilelist is not None:
             for name in jbfilelist:
                 if name.endswith(".JB"):
