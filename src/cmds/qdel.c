@@ -173,7 +173,7 @@ get_mail_suppress_count(int connect)
  * @retval pbs_errno
  */
 static int
-delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail, char *warg)
+delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail, char *warg, int wargsz)
 {
 	int connect;
 	int mails; /* number of emails we can send */
@@ -198,7 +198,6 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 		return pbs_errno;
 	} else if (pbs_errno)
 		show_svr_inst_fail(connect, "qdel");
-	
 
 	/* retrieve default: suppress_email from server: default_qdel_arguments */
 	mails = dfltmail;
@@ -227,8 +226,7 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 		* current warg1 "nomail" should be at start
 		*/
 		strcat(warg1, warg);
-		pbs_strncpy(warg, warg1, sizeof(warg));
-
+		pbs_strncpy(warg, warg1, wargsz);
 		p_delstatus = pbs_deljoblist(connect, &jobids[numofjobs], (numids - numofjobs), warg);
 		any_failed_local = process_deljobstat(clusterid, &p_delstatus, &rmtsvr_jobid_list);
 		pbs_delstatfree(p_delstatus);
@@ -406,7 +404,7 @@ char **envp;
 	}
 	for (iter_list = jobsbycluster; iter_list != NULL; iter_list = iter_list->next) {
 		any_failed_local = delete_jobs_for_cluster(iter_list->svrname, iter_list->jobids,
-						     iter_list->total_jobs, dfltmail, warg);
+						     iter_list->total_jobs, dfltmail, warg, sizeof(warg));
 	}
 	free_svrjobidlist(jobsbycluster, 1);
 	if (any_failed_local)
