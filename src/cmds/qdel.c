@@ -198,7 +198,6 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 		return pbs_errno;
 	} else if (pbs_errno)
 		show_svr_inst_fail(connect, "qdel");
-	
 
 	/* retrieve default: suppress_email from server: default_qdel_arguments */
 	mails = dfltmail;
@@ -227,7 +226,7 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 		* current warg1 "nomail" should be at start
 		*/
 		strcat(warg1, warg);
-		pbs_strncpy(warg, warg1, sizeof(warg));
+		pbs_strncpy(warg, warg1, MAX_TIME_DELAY_LEN + 1);	/* size of warg is MAX_TIME_DELAY_LEN + 1 */
 
 		p_delstatus = pbs_deljoblist(connect, &jobids[numofjobs], (numids - numofjobs), warg);
 		any_failed_local = process_deljobstat(clusterid, &p_delstatus, &rmtsvr_jobid_list);
