@@ -127,7 +127,7 @@ resource_resv *next_job(status *policy, server_info *sinfo, int flag);
 int find_runnable_resresv_ind(resource_resv **resresv_arr, int start_index);
 
 /*
- *	find_non_normal_job_ind - find the index of the next runnable express,preempted,starving job
+ *	find_non_normal_job_ind - find the index of the next runnable express,preempted
  */
 int find_non_normal_job_ind(resource_resv **resresv_arr, int start_index);
 

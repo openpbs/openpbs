@@ -88,7 +88,6 @@ const char *preempt_prio_names[] = {
 	"fairshare",
 	"queue_softlimits",
 	"server_softlimits",
-	"starving_jobs",
 	"express_queue",
 };
 static long ecl_pbs_max_licenses = PBS_MAX_LICENSING_LICENSES;

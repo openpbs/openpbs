@@ -169,13 +169,6 @@ int dedtime_conflict(resource_resv *resresv);
  */
 enum sched_error_code check_ded_time_boundary(resource_resv *job);
 
-
-/*
- *      check_starvation - if there are starving job, don't allow jobs to run
- *                         which conflict with the starving job (i.e. backfill)
- */
-int check_backfill(resource_resv *resresv, server_info *sinfo);
-
 /*
  *      check_prime_queue - Check primetime status of the queue.  If the queue
  *                          is a primetime queue and it is primetime or if the

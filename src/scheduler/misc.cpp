@@ -260,7 +260,7 @@ res_to_num(const char *res_str, struct resource_type *type)
 
 		if (type != NULL) {
 			type->is_consumable = 1;
-			if (is_size  )
+			if (is_size)
 				type->is_size = 1;
 			else if (is_time)
 				type->is_time = 1;

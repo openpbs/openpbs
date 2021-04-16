@@ -98,8 +98,6 @@ class Scheduler(PBSService):
     sched_dflt_config = {
         "backfill": "true        ALL",
         "backfill_prime": "false ALL",
-        "help_starving_jobs": "true     ALL",
-        "max_starve": "24:00:00",
         "strict_ordering": "false ALL",
         "provision_policy": "\"aggressive_provision\"",
         "preempt_order": "\"SCR\"",
@@ -123,14 +121,12 @@ class Scheduler(PBSService):
     }
 
     sched_config_options = ["node_group_key",
-                            "dont_preempt_starving",
+
                             "fairshare_enforce_no_shares",
                             "strict_ordering",
                             "resource_unset_infinite",
                             "unknown_shares",
                             "dedicated_prefix",
-                            "help_starving_jobs",
-                            "max_starve",
                             "sort_queues",
                             "backfill",
                             "primetime_prefix",
@@ -148,9 +144,7 @@ class Scheduler(PBSService):
                             "preempt_checkpoint",
                             "preempt_requeue",
                             "preemptive_sched",
-                            "dont_preempt_starving",
                             "node_group_key",
-                            "dont_preempt_starving",
                             "fairshare_enforce_no_shares",
                             "strict_ordering",
                             "resource_unset_infinite",
@@ -162,8 +156,6 @@ class Scheduler(PBSService):
                             "update_comments",
                             "sort_by",
                             "key",
-                            "preempt_starving",
-                            "preempt_fairshare",
                             "assign_ssinodes",
                             "cpus_per_ssinode",
                             "mem_per_ssinode",

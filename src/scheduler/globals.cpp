@@ -108,7 +108,6 @@ const struct enum_conv preempt_prio_info[] =
 	{ PREEMPT_OVER_FS_LIMIT, "fairshare" },
 	{ PREEMPT_OVER_QUEUE_LIMIT, "queue_softlimits" },
 	{ PREEMPT_OVER_SERVER_LIMIT, "server_softlimits" },
-	{ PREEMPT_STARVING, "starving_jobs" },
 	{ PREEMPT_EXPRESS, "express_queue" },
 	{ PREEMPT_ERR, "" },			/* no corresponding config file value */
 	{ PREEMPT_HIGH, "" }
