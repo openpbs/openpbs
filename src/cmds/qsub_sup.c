@@ -284,9 +284,7 @@ get_script(FILE *file, char *script, char *prefix)
 			 */
 			if (do_dir(sopt, CMDLINE - 1, retmsg, MAXPATHLEN) != 0) {
 				fprintf(stderr, "%s", retmsg);
-				if (extend_in != NULL) {
-					free(extend_in);
-				}
+				free(extend_in);
 				free(s_in);
 				return (-1);
 			}
@@ -298,17 +296,13 @@ get_script(FILE *file, char *script, char *prefix)
 			fprintf(stderr, "qsub: error writing copy of script, %s\n",
 				tmp_name);
 			fclose(TMP_FILE);
-			if (extend_in != NULL) {
-				free(extend_in);
-			}
+			free(extend_in);
 			free(s_in);
 			return (3);
 		}
 	}
 
-	if (extend_in != NULL) {
-		free(extend_in);
-	}
+	free(extend_in);
 	free(s_in);
 	if (fclose(TMP_FILE) != 0) {
 		perror(" qsub: copy of script to tmp failed on close");
