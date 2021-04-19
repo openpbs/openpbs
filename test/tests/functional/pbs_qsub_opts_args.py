@@ -254,6 +254,6 @@ bhtiusabsdlg' % (os.environ['HOME'])
         """
         Test submission of job with sandbox=PRIVATE,
         and moms have $jobdir_root set to shared,
-        with location set to <default>.
+        with location set to default.
         """
-        self.jobdir_shared_body("<default>")
+        self.jobdir_shared_body("default")
