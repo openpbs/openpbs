@@ -101,10 +101,10 @@ Usage: pbs_snapshot -o <path to existing output directory> [OPTION]
     --obfuscate                       obfuscates sensitive data
     --with-sudo                       Uses sudo to capture privileged data
     --version                         print version number and exit
-    --obf-snap                        path to existing snapshot directory to obfuscate
+    --obf-snap                        path to existing snapshot to obfuscate
 """
-
     print(msg)
+
 
 def create_snapshot_tar(snappath):
     """
@@ -125,6 +125,7 @@ def create_snapshot_tar(snappath):
 
     return outtar
 
+
 def get_snapshot_from_tar(logger, tarpath):
     """
     Extract the snapshot from tarfile given
@@ -134,20 +135,22 @@ def get_snapshot_from_tar(logger, tarpath):
 
     :return tuple of (string path to extracted snapshot, True/False),
         True: if the extraction was a success
-        False: if there was already a snapshot by the name of the snapshot being extracted, so
-            the tar was not untar'd
+        False: if there was already a snapshot by the name of the one
+            being extracted, so the tar was not untar'd
     """
     parentdir = Path(tarpath).parent
     tar = tarfile.open(tarpath)
     main_snap = tar.getnames()[0].split(os.sep, 1)[0]
     main_snap = os.path.join(os.path.abspath(parentdir), main_snap)
     if os.path.isdir(main_snap):
-        logger.error("Existing snapshot %s found, cannot extract tar" % main_snap)
+        logger.error("Existing snapshot %s found, cannot extract tar" %
+                     main_snap)
         tar.close()
         return (main_snap, False)
     tar.extractall(path=parentdir)
     tar.close()
     return (main_snap, True)
+
 
 def remotesnap_thread(logger, host):
     """
@@ -228,6 +231,7 @@ def obfuscate_snapshot_wrapper(snap_name, map_file=None, sudo_val=False):
         map_file = os.path.join(snappath.parent, "obfuscate.map")
     obj = ObfuscateSnapshot()
     obj.obfuscate_snapshot(snap_name, map_file, sudo_val)
+
 
 def capture_local_snap(sudo_val):
     """
@@ -343,7 +347,7 @@ if __name__ == '__main__':
         sys.exit(1)
     elif not os.path.isdir(out_dir):
         sys.stderr.write("-o path should exist,"
-                        " this is where the snapshot is captured")
+                         " this is where the snapshot is captured")
         usage()
         sys.exit(1)
 
@@ -383,10 +387,11 @@ if __name__ == '__main__':
         obfout = obf_snap + "_obf"
         if os.path.isfile(obfout + ".tgz"):
             ptl_logger.error("%s.tgz already exists, "
-            "delete it to create a new obfuscated snapshot tar" % obfout)
+                             "delete it to create a new obfuscated snapshot" %
+                             obfout)
             if istar:
                 # If input was a tar file, then we'd have extracted it
-                # So, delete the directory that was extracted from the input tar
+                # So, delete the dir that was extracted from the input tar
                 du.rm(path=obf_snap, force=True, recursive=True)
             sys.exit(1)
         du.run_copy(src=obf_snap, dest=obfout, recursive=True)
