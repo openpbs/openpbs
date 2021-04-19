@@ -961,6 +961,7 @@ for jj in e.job_list.keys():
         a = {'Resource_List.select': '5:ncpus=1',
              'Resource_List.place': 'scatter'}
         j.set_attributes(a)
+        j.set_sleep_time("300")
         jid2 = self.server.submit(j)
 
         # Wait for 10s approx for hook to get executed
