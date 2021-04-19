@@ -165,9 +165,23 @@ prepare_path(char *path_in, char *path_out)
 				}
 			}
 			if (*c != ':')
-				return 1;
-			/* Advance past the colon */
-			c++;
+			{
+				if (*c == '/') {
+					/* There's a colon in the path */ 
+					host_given = NULL;
+					host_name[0] = '\0';
+					for (c = path_in; *c; c++) {
+						if (isspace(*c) == 0)
+							break;
+					}
+				}
+				else
+					return 1;
+			}
+			else {
+				/* Advance past the colon */
+				c++;
+			}
 		}
 	}
 
