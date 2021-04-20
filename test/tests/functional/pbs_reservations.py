@@ -776,6 +776,9 @@ class TestReservations(TestFunctional):
         vnode_val = None
         if self.mom.is_cpuset_mom():
             vnode_val = '1:ncpus=1:vnode=' + self.server.status(NODE)[1]['id']
+            select_val = vnode_val
+        else:
+            select_val = '1:ncpus=1'
 
         now = int(time.time())
         # Submit a job but do not specify walltime, scheduler will consider
@@ -788,11 +791,6 @@ class TestReservations(TestFunctional):
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-
-        if self.mom.is_cpuset_mom():
-            select_val = vnode_val
-        else:
-            select_val = '1:ncpus=1'
 
         # Submit a reservation that will start after the job starts running
         rid1 = self.submit_reservation(user=TEST_USER,
