@@ -789,9 +789,14 @@ class TestReservations(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
+        if self.mom.is_cpuset_mom():
+            select_val = vnode_val
+        else:
+            select_val = '1:ncpus=1'
+
         # Submit a reservation that will start after the job starts running
         rid1 = self.submit_reservation(user=TEST_USER,
-                                       select='1:ncpus=1',
+                                       select=select_val,
                                        start=now + 360,
                                        end=now + 3600)
 
