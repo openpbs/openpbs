@@ -695,7 +695,8 @@ class MoM(PBSService):
         Return True if bash version on mom is greater than or equal to 4.2.46
         """
         cmd = ['echo', '${BASH_VERSION%%[^0-9.]*}']
-        ret = self.du.run_cmd(self.hostname, cmd=cmd, sudo=True, as_script=True)
+        ret = self.du.run_cmd(self.hostname, cmd=cmd, sudo=True,
+                              as_script=True)
         req_bash_version = "4.2.46"
         mom_bash_version = ret['out'][0]
         if mom_bash_version >= req_bash_version:

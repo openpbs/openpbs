@@ -168,12 +168,14 @@ def runOnlyOnLinux(function):
     function.__run_only_on_linux__ = True
     return function
 
+
 def checkMomBashVersion(function):
     """
     Decorator to skip a test if bash version is less than 4.2.46
     """
     function.__check_mom_bash_version__ = True
     return function
+
 
 def requirements(*args, **kwargs):
     """
