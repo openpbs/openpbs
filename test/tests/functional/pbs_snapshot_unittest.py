@@ -230,7 +230,7 @@ class TestPBSSnapshot(TestFunctional):
 
     def check_snap_obfuscated(self, snap_dir, real_values):
         """
-        Helper function to check that a snapshot doesn't contain any sensitive values
+        Check that a snapshot doesn't contain any sensitive values
 
         :param snap_dir: path to the snapshot dir
         :type str
@@ -1032,7 +1032,7 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         self.du.rm(path=snap_obf, force=True, recursive=True)
         self.du.rm(path=snap_dir, force=True, recursive=True)
 
-        # Now, do obfuscate using the tar file directly instead of the snapshot dir
+        # Now, obfuscate using the tar directly instead of the snapshot dir
         self.du.rm(path=snap_obf_tar, force=True)
         (_, snap_obf) = self.take_snapshot(obf_snap=snap_tar)
         self.check_snap_obfuscated(snap_obf, real_values)
