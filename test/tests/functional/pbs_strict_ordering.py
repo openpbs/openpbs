@@ -245,7 +245,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
 
         rv = self.scheduler.set_sched_config(
             {'round_robin': 'false all', 'by_queue': 'false all',
-             'strict_ordering': 'true all' })
+             'strict_ordering': 'true all'})
         self.assertTrue(rv)
 
         a = {'backfill_depth': 0}

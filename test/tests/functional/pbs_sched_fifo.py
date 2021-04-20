@@ -53,7 +53,7 @@ class TestSchedFifo(TestFunctional):
 
         # Configure sched for FIFO
         self.scheduler.set_sched_config({'strict_ordering': 'True',
-                                         'by_queue': 'False' })
+                                         'by_queue': 'False'})
 
         # Create a new queue to test FIFO
         queue_attrib = {ATTR_qtype: 'execution',
