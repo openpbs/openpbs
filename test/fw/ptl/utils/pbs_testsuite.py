@@ -1531,6 +1531,9 @@ class PBSTestSuite(unittest.TestCase):
             mom.signal('-HUP')
         if not mom.isUp():
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
+        # give mom enough time to network sync with the server on cpuset system
+        if enabled_cpuset:
+            time.sleep(4)
         a = {'state': 'free'}
         self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         if enabled_cpuset:
