@@ -3892,21 +3892,8 @@ event.accept()
         self.moms_list[0].log_match(
             "Job;%s;Cannot resize the job" % (jid),
             starttime=stime, interval=2, n='ALL')
-        # Check the exec_vnode after job is in substate 42
-        self.server.expect(JOB, {ATTR_substate: '42'}, id=jid)
-        # Check for the pruned exec_vnode due to release_nodes() in launch hook
-        self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
-        job_stat = self.server.status(JOB, id=jid)
-        execvnode2 = job_stat[0]['exec_vnode']
-        self.logger.info("pruned exec_vnode: %s" % execvnode2)
-        pruned_vnodes = execvnode2.split('+')
-        # Check that the pruned exec_vnode has one less than initial value
-        self.assertEqual(len(pruned_vnodes) + 1, len(initial_vnodes))
-        # Check that the exec_vnode got pruned
-        self.moms_list[1].log_match("Job;%s;pruned from exec_vnode=%s" % (
-            jid, execvnode1), starttime=stime, n='ALL')
-        self.moms_list[1].log_match("Job;%s;pruned to exec_vnode=%s" % (
-            jid, execvnode2), starttime=stime, n='ALL')
+        # Check that job is in substate 20 (Held due to reruns)
+        self.server.expect(JOB, {ATTR_substate: '20'}, id=jid)
         # Check that MS saw that the sister mom failed to update the job
         # This message is on MS mom[1] but mentions sismom mom[0]
         self.moms_list[1].log_match(
@@ -3963,20 +3950,8 @@ event.accept()
         self.moms_list[1].log_match(
             "Job;%s;Cannot resize the job" % (jid),
             starttime=stime, interval=2, n='ALL')
-        # Check the exec_vnode after job is in substate 42
-        self.server.expect(JOB, {ATTR_substate: '42'}, id=jid)
-        self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
-        job_stat = self.server.status(JOB, id=jid)
-        execvnode2 = job_stat[0]['exec_vnode']
-        self.logger.info("pruned exec_vnode: %s" % execvnode2)
-        pruned_vnodes = execvnode2.split('+')
-        # Check that the pruned exec_vnode has one less than initial value
-        self.assertEqual(len(pruned_vnodes) + 1, len(initial_vnodes))
-        # Check that the exec_vnode got pruned
-        self.moms_list[1].log_match("Job;%s;pruned from exec_vnode=%s" % (
-            jid, execvnode1), starttime=stime, n='ALL')
-        self.moms_list[1].log_match("Job;%s;pruned to exec_vnode=%s" % (
-            jid, execvnode2), starttime=stime, n='ALL')
+        # Check the exec_vnode after job is in substate 20 (Held due to reruns)
+        self.server.expect(JOB, {ATTR_substate: '20'}, id=jid)
         # Because of resize hook reject Mom failed to update the job.
         # Check that job got requeued
         self.server.log_match("Job;%s;Job requeued" % (jid), starttime=stime)
