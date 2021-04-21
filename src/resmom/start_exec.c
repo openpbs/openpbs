@@ -762,7 +762,7 @@ jobdirname(char *sequence, char *homedir)
 	 **	sprintf(dir, "%s/%s.%s", pbs_jobdir_root, sequence, unique);
 	 */
 
-	if (pbs_jobdir_root[0] != '\0') {
+	if ((pbs_jobdir_root[0] != '\0') && (strcmp(pbs_jobdir_root, JOBDIR_DEFAULT) != 0)) {
 		sprintf(dir, "%s/pbs.%s.%s", pbs_jobdir_root, sequence, FAKE_RANDOM);
 	} else if ((homedir != NULL) && (*homedir != '\0')) {
 		/*
@@ -997,7 +997,7 @@ mkjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid)
 {
 	int	rc;
 
-	if (pbs_jobdir_root[0] != '\0') {
+	if ((pbs_jobdir_root[0] != '\0') && (strcmp(pbs_jobdir_root, JOBDIR_DEFAULT) != 0)) {
 
 		/* making the directory as root in a secure root owned dir */
 
