@@ -847,8 +847,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			update_deletejob_stat(pjob->ji_qs.ji_jobid, preq, PBSE_SYSTEM);
 			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 				req_reject(PBSE_SYSTEM, 0, preq);
-		}
-		if (preq->rq_type == PBS_BATCH_DeleteJobList) {
+		} else if (preq->rq_type == PBS_BATCH_DeleteJobList) {
 			/* let the caller know that the deljoblist request needs to be suspended */
 			suspenddelete = true;
 		}
