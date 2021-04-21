@@ -600,6 +600,13 @@ req_deletejob(struct batch_request *preq)
 						job_purge(pjob);
 					} else {
 						dup_br_for_subjob(preq, pjob, req_deletejob2);
+						if (suspenddelete) {
+							preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
+							preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i;
+							--preq->rq_refct;
+							preply->brp_un.brp_deletejoblist.tot_arr_jobs--;
+							return;
+						}
 						del_parent = 0;
 					}
 				} else {
@@ -702,8 +709,15 @@ req_deletejob(struct batch_request *preq)
 					if (check_job_state(pjob, JOB_STATE_LTR_EXPIRED)) {
 						log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, msg_job_history_delete, preq->rq_user, preq->rq_host);
 						job_purge(pjob);
-					} else
+					} else {
 						dup_br_for_subjob(preq, pjob, req_deletejob2);
+						if (suspenddelete) {
+							preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
+							preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i;
+							--preq->rq_refct;
+							return;
+						}
+					}
 				} else {
 					/* Queued, Waiting, Held, just set to expired */
 					if (sjst != JOB_STATE_LTR_EXPIRED) {
