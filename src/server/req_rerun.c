@@ -75,7 +75,7 @@
 
 
 /* Private Function local to this file */
-static void req_rerunjob2(struct batch_request *preq, job *pjob);
+static int req_rerunjob2(struct batch_request *preq, job *pjob);
 
 /* Global Data Items: */
 
@@ -369,8 +369,12 @@ timeout_rerun_request(struct work_task *pwt)
  *
  *  @param[in,out]	preq	-	Job Request
  *  @param[in,out]	pjob	-	ptr to the subjob
+ *
+ * @return int
+ * @retval 0 for Success
+ * @retval 1 for Error
  */
-static void
+static int
 req_rerunjob2(struct batch_request *preq, job *pjob)
 {
 	long	force = 0;
@@ -390,7 +394,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_NORERUN, PREEMPT_METHOD_REQUEUE, pjob);
 		req_reject(PBSE_NORERUN, 0, preq);
-		return;
+		return 0;
 	}
 
 	/* the job must be running */
@@ -400,7 +404,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_REQUEUE, pjob);
 
 		req_reject(PBSE_BADSTATE, 0, preq);
-		return;
+		return 0;
 	}
 	/* a node failure tolerant job could be waiting for healthy nodes
 	 * and it would have a JOB_SUBSTATE_PRERUN substate.
@@ -410,7 +414,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_REQUEUE, pjob);
 		req_reject(PBSE_BADSTATE, 0, preq);
-		return;
+		return 0;
 	}
 
 	/* ask MOM to kill off the job */
@@ -445,7 +449,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		if (pdep != NULL)
 			depend_runone_release_all(pjob);
 		reply_ack(preq);
-		return;
+		return 0;
 
 	}
 
@@ -453,7 +457,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(rc, PREEMPT_METHOD_REQUEUE, pjob);
 		req_reject(rc, 0, preq);
-		return;
+		return 0;
 	}
 
 	/* So job has run and is to be rerun (not restarted) */
@@ -498,4 +502,5 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 			conn->cn_authen |= PBS_NET_CONN_NOTIMEOUT;
 	}
 
+	return 0;
 }

@@ -210,7 +210,7 @@ extern void eval_chkpnt(job *pjob, attribute *queckp);
 #ifdef _BATCH_REQUEST_H
 extern int svr_startjob(job *, struct batch_request *);
 extern int svr_authorize_jobreq(struct batch_request *, job *);
-extern void dup_br_for_subjob(struct batch_request *, job *, void (*)(struct batch_request *, job *));
+extern int dup_br_for_subjob(struct batch_request *, job *, int (*)(struct batch_request *, job *));
 extern void set_old_nodes(job *);
 extern int send_job_exec_update_to_mom(job *, char *, int, struct batch_request *);
 extern int free_sister_vnodes(job *, char *, char *, char *, int, struct batch_request *);

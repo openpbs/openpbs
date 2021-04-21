@@ -79,7 +79,7 @@
 /* Private Function local to this file */
 
 void post_signal_req(struct work_task *);
-static void req_signaljob2(struct batch_request *preq, job *pjob);
+static int req_signaljob2(struct batch_request *preq, job *pjob);
 void set_admin_suspend(job *pjob, int set_remove_nstate);
 int create_resreleased (job *pjob);
 
@@ -249,8 +249,12 @@ req_signaljob(struct batch_request *preq)
  *		This request sends (via MOM) a signal to a running job.
  *
  * @param[in]	preq	-	Signal Job Request
+ *
+ * @return int
+ * @retval 0 for Success
+ * @retval 1 for Error
  */
-static void
+static int
 req_signaljob2(struct batch_request *preq, job *pjob)
 {
 	int rc;
@@ -262,12 +266,12 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 	if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING) ||
 		(check_job_state(pjob, JOB_STATE_LTR_RUNNING) && check_job_substate(pjob, JOB_SUBSTATE_PROVISION))) {
 		req_reject(PBSE_BADSTATE, 0, preq);
-		return;
+		return 0;
 	}
 	if ((strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0 && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_AdmSuspd)) ||
 		(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0 && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_AdmSuspd))) {
 		req_reject(PBSE_WRONG_RESUME, 0, preq);
-		return;
+		return 0;
 	}
 
 	if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0 || strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0)
@@ -302,7 +306,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 							/* if resume fails,need to free resources */
 						} else {
 							req_reject(rc, 0, preq);
-							return;
+							return 0;
 						}
 					}
 					if (is_jattr_set(pjob, JOB_ATR_exec_vnode_deallocated)) {
@@ -332,12 +336,12 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 						log_err(-1, __func__, log_buffer);
 					}
 					reply_send(preq);
-					return;
+					return 0;
 				}
 			} else {
 				/* Job can be resumed only on suspended state */
 				req_reject(PBSE_BADSTATE, 0, preq);
-				return;
+				return 0;
 			}
 		}
 	}
@@ -354,6 +358,8 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 			rel_resc(pjob);
 		req_reject(rc, 0, preq);	/* unable to get to MOM */
 	}
+
+	return 0;
 
 	/* After MOM acts and replies to us, we pick up in post_signal_req() */
 }
