@@ -107,7 +107,7 @@ class TestQsubOptionsArguments(TestFunctional):
              ATTR_sandbox: 'PRIVATE',
              }
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(10)
+        j.set_sleep_time(30)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         attribs = self.server.status(JOB, id=jid)
