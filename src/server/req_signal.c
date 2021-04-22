@@ -266,12 +266,12 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 	if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING) ||
 		(check_job_state(pjob, JOB_STATE_LTR_RUNNING) && check_job_substate(pjob, JOB_SUBSTATE_PROVISION))) {
 		req_reject(PBSE_BADSTATE, 0, preq);
-		return 0;
+		return 1;
 	}
 	if ((strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0 && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_AdmSuspd)) ||
 		(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0 && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_AdmSuspd))) {
 		req_reject(PBSE_WRONG_RESUME, 0, preq);
-		return 0;
+		return 1;
 	}
 
 	if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0 || strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0)
@@ -306,7 +306,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 							/* if resume fails,need to free resources */
 						} else {
 							req_reject(rc, 0, preq);
-							return 0;
+							return 1;
 						}
 					}
 					if (is_jattr_set(pjob, JOB_ATR_exec_vnode_deallocated)) {
@@ -341,7 +341,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 			} else {
 				/* Job can be resumed only on suspended state */
 				req_reject(PBSE_BADSTATE, 0, preq);
-				return 0;
+				return 1;
 			}
 		}
 	}
@@ -357,6 +357,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 		if (resume)
 			rel_resc(pjob);
 		req_reject(rc, 0, preq);	/* unable to get to MOM */
+		return 1;
 	}
 
 	return 0;

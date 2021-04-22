@@ -394,7 +394,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_NORERUN, PREEMPT_METHOD_REQUEUE, pjob);
 		req_reject(PBSE_NORERUN, 0, preq);
-		return 0;
+		return 1;
 	}
 
 	/* the job must be running */
@@ -404,7 +404,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_REQUEUE, pjob);
 
 		req_reject(PBSE_BADSTATE, 0, preq);
-		return 0;
+		return 1;
 	}
 	/* a node failure tolerant job could be waiting for healthy nodes
 	 * and it would have a JOB_SUBSTATE_PRERUN substate.
@@ -414,7 +414,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_REQUEUE, pjob);
 		req_reject(PBSE_BADSTATE, 0, preq);
-		return 0;
+		return 1;
 	}
 
 	/* ask MOM to kill off the job */
@@ -457,7 +457,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(rc, PREEMPT_METHOD_REQUEUE, pjob);
 		req_reject(rc, 0, preq);
-		return 0;
+		return 1;
 	}
 
 	/* So job has run and is to be rerun (not restarted) */

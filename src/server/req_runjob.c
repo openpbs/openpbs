@@ -723,14 +723,14 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		if (job_save_db(pjob)) {
 			free_nodes(pjob);
 			req_reject(PBSE_SAVE_ERR, 0, preq);
-			return 0;
+			return 1;
 		}
 	}
 
 	if (prov_rc) { /* problem with the request */
 		free_nodes(pjob);
 		req_reject(prov_rc, 0, preq);
-		return 0;
+		return 1;
 	} else if (need_prov == 1) { /* prov required and request is fine */
 		/* allocate resources right away */
 		set_resc_assigned((void *)pjob, 0,  INCR);
@@ -754,7 +754,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		/* Neither the run request nor the job specified an execvnode. */
 		free_nodes(pjob);
 		req_reject(PBSE_IVALREQ, 0, preq);
-		return 0;
+		return 1;
 	}
 	sprintf(log_buffer, msg_manager, msg_jobrun, preq->rq_user, preq->rq_host);
 	strcat(log_buffer, " on exec_vnode ");
@@ -777,6 +777,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		free_nodes(pjob);
 		if (preq)
 			req_reject(rc, 0, preq);
+		return 1;
 	}
 
 	return 0;
