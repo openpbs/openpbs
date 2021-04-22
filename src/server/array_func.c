@@ -807,7 +807,7 @@ create_subjob(job *parent, char *newjid, int *rc)
  *		For any other request types, be sure to add another switch case below
  *		(matching request type).
  * @return int
- * @retval return value of the callback function
+ * @retval return value of the callback function (0 for success, 1 for error)
  */
 int
 dup_br_for_subjob(struct batch_request *opreq, job *pjob, int (*func)(struct batch_request *, job *))
