@@ -3001,7 +3001,7 @@ class CgroupUtils(object):
                 prefix = subsys + '.2MB.'
             elif subsys == 'memsw':
                 prefix = 'memory.' + subsys + '.'
-            elif subsys in ['freezer', 'systemd']:
+            elif subsys in ['systemd', 'perf_event']:
                 prefix = ''
             else:
                 prefix = subsys + '.'
@@ -3018,7 +3018,9 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         paths = {}
         subsys_to_discover = {'blkio', 'cpu', 'cpuacct', 'cpuset', 'devices',
-                              'freezer', 'hugetlb', 'pids', 'memory'}
+                              'freezer', 'hugetlb', 'memory', 'net_cls',
+                              'net_prio', 'perf_event', 'pids', 'rdma',
+                              'systemd'}
         subsys_to_skip = set()
 
         # First deal with the ones with paths set in the configuration file
@@ -3404,6 +3406,13 @@ class CgroupUtils(object):
         defaults['cgroup']['hugetlb']['reserve_percent'] = 0
         defaults['cgroup']['hugetlb']['reserve_amount'] = '0MB'
         defaults['cgroup']['hugetlb']['vnode_hidden_mb'] = 1
+
+        # These are unmanaged -- if enabled only creation/removal
+        # and filling in 'tasks' are currently performed
+        defaults['cgroup']['blkio'] = {}
+        defaults['cgroup']['blkio']['enabled'] = False
+        defaults['cgroup']['freezer'] = {}
+        defaults['cgroup']['freezer']['enabled'] = False
         defaults['cgroup']['net_cls'] = {}
         defaults['cgroup']['net_cls']['enabled'] = False
         defaults['cgroup']['net_prio'] = {}
@@ -3412,10 +3421,8 @@ class CgroupUtils(object):
         defaults['cgroup']['perf_event']['enabled'] = False
         defaults['cgroup']['pids'] = {}
         defaults['cgroup']['pids']['enabled'] = False
-        defaults['cgroup']['freezer'] = {}
-        defaults['cgroup']['freezer']['enabled'] = False
-        defaults['cgroup']['blkio'] = {}
-        defaults['cgroup']['blkio']['enabled'] = False
+        defaults['cgroup']['rdma'] = {}
+        defaults['cgroup']['rdma']['enabled'] = False
 
         # Identify the config file and read in the data
         config_file = ''
@@ -3683,7 +3690,9 @@ class CgroupUtils(object):
                    % (mem_avail, vmem_avail, hpmem_avail))
 
         for key in self.paths:
-            if key in ('blkio', 'cpu', 'cpuacct', 'freezer', 'systemd'):
+            if key in ('blkio', 'cpu', 'cpuacct', 'freezer',
+                        'net_cls', 'net_prio', 'perf_event',
+                        'pids', 'rdma', 'systemd'):
                 continue
             if not self.enabled(key):
                 continue
@@ -3768,12 +3777,8 @@ class CgroupUtils(object):
                                            '= %s'
                                            % (caller_name(), jobid, key,
                                               assigned[jobid][key]['list']))
-                elif key == 'pids':
-                    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: subsystem %s' %
-                               (caller_name(), key))
-                elif key == 'systemd':
-                    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: subsystem %s' %
-                               (caller_name(), key))
+                # Note: unmanaged but known subsystems should be filtered
+                # at the top of the loop body
                 else:
                     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Unknown subsystem %s' %
                                (caller_name(), key))
@@ -3799,6 +3804,8 @@ class CgroupUtils(object):
             # if we get a non-str type then convert
             # before calling splitlines
             # should not happen since we pass universal_newlines True
+            # Note: some versions prepend "Version=", other versions
+            # add a more precise version in parentheses after a space
             out_split = stringified_output(out).splitlines()
             ver = int(re.sub(r'Version=\D*(\d+)', r'\1',
                              out_split[0].split()[0]))
