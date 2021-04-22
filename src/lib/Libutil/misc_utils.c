@@ -406,6 +406,40 @@ pbs_fgets(char **pbuf, int *pbuf_size, FILE *fp)
 }
 
 /**
+ * @brief
+ * 	Helper function for pbs_fgets_extend() and callers to determine if string requires extending
+ *
+ * @param[in] buf - line to check for extendable ending
+ *
+ * @return int
+ * @retval offset to extendable location, -1 if not extendable
+ */
+int
+pbs_extendable_line(char *buf)
+{
+	int len = 0;
+
+	if (buf == NULL)
+		return 0;
+
+	len = strlen(buf);
+
+	/* we have two options:
+	 * 1) We extend: string ends in a '\' and 0 or more whitespace
+	 * 2) we do not extend: Not #1
+	 * In the case of #1, we want the string to end just before the '\'
+	 * In the case of #2 we want to leave the string alone.
+	 */
+	while (len > 0 && isspace(buf[len-1]))
+		len--;
+
+	if (len > 0 && buf[len - 1] == '\\')
+		return len - 1;
+	else /* We're at the end of a non-extended line */
+		return -1;
+}
+
+/**
  * @brief get a line from a file pointed at by fp.  The line can be extended
  *	  onto the next line if it ends in a backslash (\).  If the string is
  *	  extended, the lines will be combined and the backslash will be
@@ -453,20 +487,10 @@ pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp)
 			return NULL;
 
 		buf = *pbuf;
-		len = strlen(buf);
-
-		/* we have two options:
-		 * 1) We extend: string ends in a '\' and 0 or more whitespace
-		 * 2) we do not extend: Not #1
-		 * In the case of #1, we want the string to end just before the '\'
-		 * In the case of #2 we want to leave the string alone.
-		 */
-		while (len > 0 && isspace(buf[len-1]))
-			len--;
-
-		if (len > 0 && buf[len - 1] == '\\')
-			buf[len - 1] = '\0'; /* remove the backslash (\) */
-		else /* We're at the end of a non-extended line */
+		len = pbs_extendable_line(buf);
+		if (len >= 0)
+			buf[len] = '\0'; /* remove the backslash (\) */
+		else
 			break;
 	}
 
