@@ -1857,6 +1857,54 @@ class Wrappers(PBSService):
 
         return objid
 
+    def submit_resv(self, offset, duration, select='1:ncpus=1', rrule='',
+                    times=False, conf=None):
+        """
+        Helper function to submit an advance/a standing reservation.
+        :param int offset: Time in seconds from time this is called to set the
+                       advance reservation's start time.
+        :param int duration: Duration in seconds of advance reservation
+        :param str select: Select statement for reservation placement.
+                           Default: "1:ncpus=1"
+        :param str rrule: Recurrence rule.  Default is an empty string.
+        :param boolean times: If true, return a tuple of reservation id, start
+                              time and end time of created reservation.
+                              Otherwise return just the reservation id.
+                              Default: False
+        :param conf: Configuration for test case for PBS_TZID information.
+        :return The reservation id if times is false.  Otherwise a tuple of
+                reservation id, start time and end time of the reservation.
+
+        """
+        start_time = int(time.time()) + offset
+        end_time = start_time + duration
+
+        attrs = {
+            'reserve_start': start_time,
+            'reserve_end': end_time,
+            'Resource_List.select': select
+        }
+
+        if rrule:
+            if conf is None:
+                self.logger.info('conf not set. Falling back to Asia/Kolkata')
+                tzone = 'Asia/Kolkata'
+            elif 'PBS_TZID' in conf:
+                tzone = conf['PBS_TZID']
+            elif 'PBS_TZID' in os.environ:
+                tzone = os.environ['PBS_TZID']
+            else:
+                self.logger.info('Missing timezone, using Asia/Kolkata')
+                tzone = 'Asia/Kolkata'
+            attrs[ATTR_resv_rrule] = rrule
+            attrs[ATTR_resv_timezone] = tzone
+
+        rid = self.submit(Reservation(TEST_USER, attrs))
+
+        if times:
+            return rid, start_time, end_time
+        return rid
+
     def deljob(self, id=None, extend=None, runas=None, wait=False,
                logerr=True, attr_W=None):
         """

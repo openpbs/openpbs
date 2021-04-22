@@ -92,34 +92,6 @@ if e.type == pbs.RESV_BEGIN:
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
-    def submit_resv(self, offset, duration, select='1:ncpus=1', rrule=''):
-        """
-        Helper function to submit an advance/a standing reservation.
-        """
-        start_time = int(time.time()) + offset
-        end_time = start_time + duration
-
-        attrs = {
-            'reserve_start': start_time,
-            'reserve_end': end_time,
-            'Resource_List.select': select
-        }
-
-        if rrule:
-            if 'PBS_TZID' in self.conf:
-                tzone = self.conf['PBS_TZID']
-            elif 'PBS_TZID' in os.environ:
-                tzone = os.environ['PBS_TZID']
-            else:
-                self.logger.info('Missing timezone, using Asia/Kolkata')
-                tzone = 'Asia/Kolkata'
-            attrs[ATTR_resv_rrule] = rrule
-            attrs[ATTR_resv_timezone] = tzone
-
-        rid = self.server.submit(Reservation(TEST_USER, attrs))
-
-        return rid
-
     @tags('hooks')
     def test_delete_advance_resv(self):
         """
@@ -131,7 +103,7 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -152,7 +124,7 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -179,7 +151,7 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 300
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -209,7 +181,7 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -237,7 +209,7 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -250,7 +222,6 @@ if e.type == pbs.RESV_BEGIN:
               (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
-    
     @tags('hooks')
     def test_set_attrs(self):
         """
@@ -275,7 +246,7 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -302,7 +273,8 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2')
+        rid = self.server.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2',
+                                      conf=self.conf)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -327,7 +299,6 @@ if e.type == pbs.RESV_BEGIN:
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30,
                               existence=False)
 
-    
     @tags('hooks')
     @timeout(300)
     def test_begin_resv_occurrences(self):
@@ -342,7 +313,8 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2')
+        rid = self.server.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2',
+                                      conf=self.conf)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -371,7 +343,7 @@ if e.type == pbs.RESV_BEGIN:
                          ' standing reservation')
 
     @tags('hooks')
-    @timeout(300) #can delete? 
+    @timeout(300)
     def test_delete_resv_occurrence_with_jobs(self):
         """
         Testcase to submit and confirm a standing reservation for two
@@ -385,7 +357,8 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2')
+        rid = self.server.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2',
+                                      conf=self.conf)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -421,7 +394,7 @@ if e.type == pbs.RESV_BEGIN:
               self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
-    @tags('hooks') 
+    @tags('hooks')
     def test_unconfirmed_resv_with_node(self):
         """
         Testcase to set the node attributes such that the number of ncpus is 1,
@@ -437,12 +410,12 @@ if e.type == pbs.RESV_BEGIN:
                             id=self.mom.shortname)
         offset = 10
         duration = 10
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
 
-        new_rid = self.submit_resv(offset, duration)
+        new_rid = self.server.submit_resv(offset, duration)
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
               (self.server.shortname, new_rid)
@@ -464,7 +437,7 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         self.logger.info('wait for 30 seconds till the reservation begins ')
         time.sleep(30)
@@ -492,7 +465,7 @@ if e.type == pbs.RESV_BEGIN:
 
         duration = 30
         offset = 10
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
         attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
@@ -535,7 +508,7 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
         attrs['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')

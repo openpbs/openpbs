@@ -68,36 +68,6 @@ class TestModifyResvHook(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
-    def submit_resv(self, offset, duration, select='1:ncpus=1', rrule='', times=False):
-        """
-        Helper function to submit an advance/a standing reservation.
-        """
-        start_time = int(time.time()) + offset
-        end_time = start_time + duration
-
-        attrs = {
-            'reserve_start': start_time,
-            'reserve_end': end_time,
-            'Resource_List.select': select
-        }
-
-        if rrule:
-            if 'PBS_TZID' in self.conf:
-                tzone = self.conf['PBS_TZID']
-            elif 'PBS_TZID' in os.environ:
-                tzone = os.environ['PBS_TZID']
-            else:
-                self.logger.info('Missing timezone, using Asia/Kolkata')
-                tzone = 'Asia/Kolkata'
-            attrs[ATTR_resv_rrule] = rrule
-            attrs[ATTR_resv_timezone] = tzone
-
-        rid = self.server.submit(Reservation(TEST_USER, attrs))
-
-        if times:
-            return rid, start_time, end_time
-        return rid
-
     def alter_a_reservation(self, r, start, end, shift=0,
                             alter_s=False, alter_e=False,
                             whichMessage=1, confirm=True, check_log=True,
@@ -339,7 +309,7 @@ class TestModifyResvHook(TestFunctional):
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -353,7 +323,7 @@ class TestModifyResvHook(TestFunctional):
     def test_server_down_case_1(self):
         """
         Testcase to submit and confirm an advance reservation, turn the server
-        off, attempt to modify the reservation, turn the server on, delete the 
+        off, attempt to modify the reservation, turn the server on, delete the
         reservation after start and verify the modifyresv hook didn't run.
         """
         self.server.import_hook(self.hook_name,
@@ -362,7 +332,7 @@ class TestModifyResvHook(TestFunctional):
         offset = 10
         duration = 300
         shift = 30
-        rid, start, end = self.submit_resv(offset, duration, times=True)
+        rid, start, end = self.server.submit_resv(offset, duration, times=True)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -392,11 +362,11 @@ class TestModifyResvHook(TestFunctional):
         offset = 10
         duration = 30
         shift = 10
-        rid, start, end = self.submit_resv(offset, duration, times=True)
+        rid, start, end = self.server.submit_resv(offset, duration, times=True)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
-        
+
         self.alter_a_reservation(rid, start, end, shift, alter_s=True, alter_e=True)
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
               (self.server.shortname, rid)
@@ -405,7 +375,7 @@ class TestModifyResvHook(TestFunctional):
         attrs['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
         self.server.expect(RESV, attrs, id=rid, offset=10)
         # Don't need to wait.  Let teardown clear the reservation
-    
+
     @tags('hooks')
     def test_set_attrs(self):
         """
@@ -438,7 +408,7 @@ class TestModifyResvHook(TestFunctional):
         offset = 10
         duration = 30
         shift = 10
-        rid, start, end = self.submit_resv(offset, duration, times=True)
+        rid, start, end = self.server.submit_resv(offset, duration, times=True)
         self.alter_a_reservation(rid, start, end, shift, alter_s=True, alter_e=True)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -469,9 +439,9 @@ class TestModifyResvHook(TestFunctional):
         duration = 30
         shift = 10
 
-        rid, start, end = self.submit_resv(offset, duration, times=True)
+        rid, start, end = self.server.submit_resv(offset, duration, times=True)
         self.logger.info(f"rid={rid} start={start} end={end}")
-        self.alter_a_reservation(rid, start, end, shift, alter_s=True, alter_e=True, 
+        self.alter_a_reservation(rid, start, end, shift, alter_s=True, alter_e=True,
                                  check_log=False, sched_down=True)
 
         time.sleep(5)
@@ -515,7 +485,7 @@ class TestModifyResvHook(TestFunctional):
         offset = 10
         duration = 30
         shift = 10
-        rid, start, end = self.submit_resv(offset, duration, times=True)
+        rid, start, end = self.server.submit_resv(offset, duration, times=True)
         self.alter_a_reservation(rid, start, end, shift, alter_s=True, alter_e=True)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}

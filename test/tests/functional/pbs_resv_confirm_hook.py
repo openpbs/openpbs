@@ -78,34 +78,6 @@ class TestResvConfirmHook(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
-    def submit_resv(self, offset, duration, select='1:ncpus=1', rrule=''):
-        """
-        Helper function to submit an advance/a standing reservation.
-        """
-        start_time = int(time.time()) + offset
-        end_time = start_time + duration
-
-        attrs = {
-            'reserve_start': start_time,
-            'reserve_end': end_time,
-            'Resource_List.select': select
-        }
-
-        if rrule:
-            if 'PBS_TZID' in self.conf:
-                tzone = self.conf['PBS_TZID']
-            elif 'PBS_TZID' in os.environ:
-                tzone = os.environ['PBS_TZID']
-            else:
-                self.logger.info('Missing timezone, using Asia/Kolkata')
-                tzone = 'Asia/Kolkata'
-            attrs[ATTR_resv_rrule] = rrule
-            attrs[ATTR_resv_timezone] = tzone
-
-        rid = self.server.submit(Reservation(TEST_USER, attrs))
-
-        return rid
-
     @tags('hooks')
     def test_delete_advance_resv(self):
         """
@@ -117,7 +89,7 @@ class TestResvConfirmHook(TestFunctional):
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -138,7 +110,7 @@ class TestResvConfirmHook(TestFunctional):
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -154,7 +126,7 @@ class TestResvConfirmHook(TestFunctional):
         msg = 'Hook;Server@%s;Reservation ID - %s' % (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, interval=1, max_attempts=10)
 
-    @tags('hooks') 
+    @tags('hooks')
     def test_server_down_case_1(self):
         """
         Testcase to submit and confirm an advance reservation, turn the server
@@ -166,7 +138,7 @@ class TestResvConfirmHook(TestFunctional):
 
         offset = 10
         duration = 300
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -196,7 +168,7 @@ class TestResvConfirmHook(TestFunctional):
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -224,7 +196,7 @@ class TestResvConfirmHook(TestFunctional):
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -261,7 +233,7 @@ class TestResvConfirmHook(TestFunctional):
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -288,7 +260,8 @@ class TestResvConfirmHook(TestFunctional):
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2')
+        rid = self.server.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2',
+                                      conf=self.conf)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
@@ -329,12 +302,12 @@ class TestResvConfirmHook(TestFunctional):
                             id=self.mom.shortname)
         offset = 10
         duration = 10
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
 
-        new_rid = self.submit_resv(offset, duration)
+        new_rid = self.server.submit_resv(offset, duration)
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
               (self.server.shortname, new_rid)
@@ -356,7 +329,7 @@ class TestResvConfirmHook(TestFunctional):
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
 
         self.logger.info('wait for 30 seconds till the reservation begins ')
         time.sleep(30)
@@ -401,7 +374,7 @@ class TestResvConfirmHook(TestFunctional):
 
         offset = 10
         duration = 30
-        rid = self.submit_resv(offset, duration)
+        rid = self.server.submit_resv(offset, duration)
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
         attrs['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
