@@ -136,7 +136,7 @@ class TestMultiNodeJobsRestart(TestFunctional):
         j.set_attributes({'Resource_List.select': '2',
                           'Resource_List.place': 'scatter'})
         j.create_script(script)
-        start_time= time.time()
+        start_time = time.time()
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
