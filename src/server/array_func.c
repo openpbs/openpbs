@@ -816,7 +816,7 @@ dup_br_for_subjob(struct batch_request *opreq, job *pjob, int (*func)(struct bat
 
 	npreq = alloc_br(opreq->rq_type);
 	if (npreq == NULL)
-		return 0;
+		return 1;
 
 	npreq->rq_perm    = opreq->rq_perm;
 	npreq->rq_fromsvr = opreq->rq_fromsvr;
@@ -859,7 +859,7 @@ dup_br_for_subjob(struct batch_request *opreq, job *pjob, int (*func)(struct bat
 		default:
 			delete_link(&npreq->rq_link);
 			free(npreq);
-			return 0;
+			return 1;
 	}
 
 	npreq->rq_parentbr = opreq;
