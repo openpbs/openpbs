@@ -2702,7 +2702,7 @@ if %s e.job.in_ms_mom():
 
         a = {
             'Resource_List.select':
-            '1:ncpus=1:mem=300mb:vmem=320mb:host=%s' % self.hosts_list[0],
+            '1:ncpus=1:mem=400mb:vmem=420mb:host=%s' % self.hosts_list[0],
             ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job1)
@@ -5147,7 +5147,7 @@ sleep 300
         # First job -- request vmem and no pvmem,
         # RLIMIT_AS shoud be unlimited
         a = {'Resource_List.select':
-             '1:ncpus=0:mem=300mb:vmem=300mb:vnode=%s'
+             '1:ncpus=0:mem=400mb:vmem=400mb:vnode=%s'
              % self.mom.shortname}
 
         j = Job(TEST_USER, attrs=a)
@@ -5173,7 +5173,7 @@ sleep 300
 
         # Second job -- see if pvmem still works
         # RLIMIT_AS should correspond to pvmem
-        a['Resource_List.pvmem'] = '300mb'
+        a['Resource_List.pvmem'] = '400mb'
         j = Job(TEST_USER, attrs=a)
         j.create_script("#!/bin/bash\nulimit -v")
         jid = self.server.submit(j)
@@ -5193,9 +5193,9 @@ sleep 300
         job_out = '\n'.join(result['out'])
         self.logger.info("job_out=%s" % job_out)
         # ulimit reports kb, not bytes
-        self.assertTrue(str(300 * 1024) in job_out)
-        self.logger.info("Job that requests 300mb pvmem "
-                         "correctly has 300mb RLIMIT_AS")
+        self.assertTrue(str(400 * 1024) in job_out)
+        self.logger.info("Job that requests 400mb pvmem "
+                         "correctly has 400mb RLIMIT_AS")
 
     def test_cgroup_mount_paths(self):
         """
