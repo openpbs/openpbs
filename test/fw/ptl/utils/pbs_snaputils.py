@@ -433,9 +433,7 @@ class ObfuscateSnapshot(object):
         ncpus = min(ncpus, 10)
         nfiles = len(acct_fpaths)
         i = 0
-        while True:
-            if i >= nfiles:
-                break
+        while i < nfiles:
             plist = []
             for _ in range(ncpus):
                 acct_fpath = acct_fpaths[i]
