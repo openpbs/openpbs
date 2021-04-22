@@ -3691,8 +3691,8 @@ class CgroupUtils(object):
 
         for key in self.paths:
             if key in ('blkio', 'cpu', 'cpuacct', 'freezer',
-                        'net_cls', 'net_prio', 'perf_event',
-                        'pids', 'rdma', 'systemd'):
+                       'net_cls', 'net_prio', 'perf_event',
+                       'pids', 'rdma', 'systemd'):
                 continue
             if not self.enabled(key):
                 continue
