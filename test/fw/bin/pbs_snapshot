@@ -139,16 +139,15 @@ def get_snapshot_from_tar(logger, tarpath):
             being extracted, so the tar was not untar'd
     """
     parentdir = Path(tarpath).parent
-    tar = tarfile.open(tarpath)
-    main_snap = tar.getnames()[0].split(os.sep, 1)[0]
-    main_snap = os.path.join(os.path.abspath(parentdir), main_snap)
-    if os.path.isdir(main_snap):
-        logger.error("Existing snapshot %s found, cannot extract tar" %
-                     main_snap)
-        tar.close()
-        return (main_snap, False)
-    tar.extractall(path=parentdir)
-    tar.close()
+    with tarfile.open(tarpath) as tar:
+        main_snap = tar.getnames()[0].split(os.sep, 1)[0]
+        main_snap = os.path.join(os.path.abspath(parentdir), main_snap)
+        if os.path.isdir(main_snap):
+            logger.error("Existing snapshot %s found, cannot extract tar" %
+                        main_snap)
+            return (main_snap, False)
+        tar.extractall(path=parentdir)
+
     return (main_snap, True)
 
 
@@ -461,10 +460,10 @@ if __name__ == '__main__':
         # Capture snapshot of a remote host
         remotesnap_thread(ptl_logger, primary_host)
         p_snappath = os.path.join(out_dir, primary_host + "_snapshot.tgz")
-        tar = tarfile.open(p_snappath)
-        main_snap = tar.getnames()[0].split(os.sep, 1)[0]
-        main_snap = os.path.join(os.path.abspath(out_dir), main_snap)
-        tar.close()
+        with tarfile.open(p_snappath) as tar:
+            main_snap = tar.getnames()[0].split(os.sep, 1)[0]
+            main_snap = os.path.join(os.path.abspath(out_dir), main_snap)
+
         outtar = main_snap + ".tgz"
 
         # remotesnap_thread named the tar as <hostname>_snapshot.tgz
