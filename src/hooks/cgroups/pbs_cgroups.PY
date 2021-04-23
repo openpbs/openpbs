@@ -1374,7 +1374,7 @@ class HookUtils(object):
                                'deleting cpuset cgroup')
 
         # Configure the cgroup
-        cgroup.configure_job(event.job.id, jobutil.assigned_resources,
+        cgroup.configure_job(event.job, jobutil.assigned_resources,
                              node, cgroup, event.type)
         # Write out the assigned resources
         cgroup.write_cgroup_assigned_resources(event.job.id)
