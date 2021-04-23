@@ -3758,7 +3758,8 @@ class CgroupUtils(object):
             # before calling splitlines
             # should not happen since we pass universal_newlines True
             out_split = stringified_output(out).splitlines()
-            ver = int(re.sub(r'Version=\D*(\d+)', r'\1', out_split[0]))
+            ver = int(re.sub(r'Version=\D*(\d+)', r'\1',
+                             out_split[0].split()[0]))
         except Exception:
             # Note we also get here if we can't decode an int version
             return 0
