@@ -261,11 +261,11 @@ bhtiusabsdlg' % (os.environ['HOME'])
     @runOnlyOnLinux
     def test_qsub_with_options_o_e_with_colon(self):
         """
-        Test submission of job with output and error 
+        Test submission of job with output and error
         paths with a colon
         """
         self.server.manager(MGR_CMD_SET, SERVER,
-                {'job_history_enable': 'true'})
+                            {'job_history_enable': 'true'})
         tmp_dir = self.du.create_temp_dir(asuser=TEST_USER)
         err_file = os.path.join(tmp_dir, 'err:or_file')
         out_file = os.path.join(tmp_dir, 'out:put_file')
@@ -274,5 +274,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         j.set_sleep_time(1)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'F'}, extend='x', id=jid)
-        self.assertTrue(os.path.isfile(err_file), "The error file was not found")
-        self.assertTrue(os.path.isfile(out_file), "The output file was not found")
+        self.assertTrue(os.path.isfile(err_file),
+                        "The error file was not found")
+        self.assertTrue(os.path.isfile(out_file),
+                        "The output file was not found")
