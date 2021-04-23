@@ -181,7 +181,7 @@ parse_config(const char *fname)
 	int i;
 
 	/* resource type for validity checking */
-	struct resource_type type = {0};
+	struct resource_type type;
 
 	struct config tmpconf;
 
@@ -467,6 +467,12 @@ parse_config(const char *fname)
 
 					if (tok != NULL) {
 						si.res_name = tok;
+						auto f = allres.find(tok);
+						if (f != allres.end())
+							si.def = f->second;
+						else
+							si.def = NULL;
+
 						tok = strtok(NULL, DELIM);
 						if (tok != NULL) {
 							if (!strcmp(tok, "high") || !strcmp(tok, "HIGH") ||
@@ -503,6 +509,12 @@ parse_config(const char *fname)
 
 					if (tok != NULL) {
 						si.res_name = tok;
+						auto f = allres.find(tok);
+						if (f != allres.end())
+							si.def = f->second;
+						else
+							si.def = NULL;
+
 						tok = strtok(NULL, DELIM);
 						if (tok != NULL) {
 							if (!strcmp(tok, "high") || !strcmp(tok, "HIGH") ||

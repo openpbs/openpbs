@@ -167,20 +167,24 @@ class TestCgroupsHook(TestFunctional):
         else return false
         """
         if not mem_path:
+            self.logger.info("memory controller not enabled on this host")
             return 'false'
         # List all files and check if memsw files exists
         if self.du.isfile(hostname=host,
                           path=mem_path + os.path.sep
                           + "memory.memsw.usage_in_bytes"):
-            self.logger.info("memsw is enabled on this host")
+            self.logger.info("memsw swap accounting is enabled on this host")
             return 'true'
-        return 'false'
+        else:
+            self.logger.info("memsw swap accounting not enabled on this host")
+            return 'false'
 
     def setUp(self):
 
         self.hook_name = 'pbs_cgroups'
         # Cleanup previous pbs_cgroup hook so as to not interfere with test
-        c_hook = self.server.filter(HOOK, {'enabled': True}, id=self.hook_name)
+        c_hook = self.server.filter(HOOK,
+                                    {'enabled': True}, id=self.hook_name)
         if c_hook:
             self.server.manager(MGR_CMD_DELETE, HOOK, id=self.hook_name)
 
@@ -368,7 +372,6 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
         self.eatmem_job1 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
-            'timeout -s KILL 60 sync\n' \
             'sleep 10\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
@@ -389,7 +392,6 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
         self.eatmem_job2 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
-            'timeout -s KILL 60 sync\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
             'python2_path=`which python2 2>/dev/null`\n' \
@@ -415,7 +417,6 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
         self.eatmem_job3 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
-            'timeout -s KILL 60 sync\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
             'python2_path=`which python2 2>/dev/null`\n' \
@@ -766,6 +767,56 @@ sleep 300
             "reserve_amount"  : "45MB",
             "exclude_hosts"   : [],
             "exclude_vntypes" : [%s]
+        }
+    }
+}
+"""
+        self.cfg3b = """{
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : [],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : %s,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : true,
+    "cgroup":
+    {
+        "cpuacct":
+        {
+            "enabled"         : true,
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "cpuset":
+        {
+            "enabled"         : true,
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "devices":
+        {
+            "enabled"         : false
+        },
+        "hugetlb":
+        {
+            "enabled"         : false
+        },
+        "memory":
+        {
+            "enabled"         : true,
+            "default"         : "96MB",
+            "reserve_amount"  : "50MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : [],
+            "swappiness"      : 0
+        },
+        "memsw":
+        {
+            "enabled"         : false,
+            "default"         : "96MB",
+            "reserve_amount"  : "45MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
         }
     }
 }
@@ -1344,6 +1395,7 @@ sleep 300
     "online_offlined_nodes" : true,
     "use_hyperthreads"      : false,
     "ncpus_are_cores"       : false,
+    "manage_rlimit_as"      : true,
     "cgroup" : {
         "cpuacct" : {
             "enabled"            : true,
@@ -1814,7 +1866,10 @@ if %s e.job.in_ms_mom():
         # Wait for output to flush
         time.sleep(2)
         output = self.du.cat(hostname=host, filename=filename, sudo=True)
-        return output['out']
+        if output['rc'] == 0:
+            return output['out']
+        else:
+            return []
 
     def get_hostname(self, host):
         """
@@ -1867,10 +1922,11 @@ if %s e.job.in_ms_mom():
         self.load_config(a)
         for m in self.moms.values():
             m.restart()
+
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -1895,10 +1951,11 @@ if %s e.job.in_ms_mom():
             self.logger.info('Skipping the second part of this test '
                              'since hostB also has same vntype value')
             return
+
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.sleep15_job)
+        j1.create_script(self.sleep100_job)
         jid2 = self.server.submit(j1)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -1920,10 +1977,11 @@ if %s e.job.in_ms_mom():
                                       self.mem, self.swapctl))
         for m in self.moms.values():
             m.restart()
+
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -1939,10 +1997,12 @@ if %s e.job.in_ms_mom():
         self.moms_list[0].log_match('%s is in the excluded host list: [%s]' %
                                     (host, log), starttime=stime,
                                     n='ALL')
+        self.server.delete(jid, wait=True)
+
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid2 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -1969,10 +2029,11 @@ if %s e.job.in_ms_mom():
                                       '"' + self.vntypename[0] + '"'))
         for m in self.moms.values():
             m.restart()
+
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s'
              % self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -1991,10 +2052,11 @@ if %s e.job.in_ms_mom():
             self.logger.info('Skipping the second part of this test '
                              'since hostB also has same vntype value')
             return
+
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.sleep15_job)
+        j1.create_script(self.sleep100_job)
         jid2 = self.server.submit(j1)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -2133,7 +2195,7 @@ if %s e.job.in_ms_mom():
              '1:ncpus=1:mem=300mb:host=%s' % self.hosts_list[0],
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2171,7 +2233,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2390,12 +2452,12 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.sleep15_job)
+        j1.create_script(self.sleep100_job)
         jid1 = self.server.submit(j1)
         b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'b'}
         j2 = Job(TEST_USER, attrs=b)
-        j2.create_script(self.sleep15_job)
+        j2.create_script(self.sleep100_job)
         jid2 = self.server.submit(j2)
         a = {'job_state': 'R'}
         # Make sure they are both running
@@ -2510,13 +2572,14 @@ if %s e.job.in_ms_mom():
     def test_cgroup_enforce_memory(self):
         """
         Test to verify that the job is killed when it tries to
-        use more memory then it requested
+        use more memory than it requested
         """
-        if not self.paths[self.hosts_list[0]]['memory']:
+        if not self.paths[self.hosts_list[0]]['memory'] or not self.mem:
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP5'
-        self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
-                                      self.swapctl, ''))
+
+        self.load_config(self.cfg3b % ('false'))
+
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -2537,11 +2600,14 @@ if %s e.job.in_ms_mom():
     def test_cgroup_enforce_memsw(self):
         """
         Test to verify that the job is killed when it tries to
-        use more vmem then it requested
+        use more vmem than it requested
         """
         if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
         # run the test if swap space is available
+        if not self.mem or not self.swapctl:
+            self.skipTest('Test requires memory controller with memsw'
+                          'swap accounting enabled')
         if have_swap() == 0:
             self.skipTest('no swap space available on the local host')
         # Get the grandparent directory
@@ -2549,12 +2615,15 @@ if %s e.job.in_ms_mom():
         fn = os.path.join(fn, 'memory.memsw.limit_in_bytes')
         if not self.is_file(fn, self.hosts_list[0]):
             self.skipTest('vmem resource not present on node')
-        name = 'CGROUP6'
+
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
+
+        name = 'CGROUP6'
         # Make sure output file is gone, otherwise wait and read
         # may pick up stale copy of earlier test
         self.du.rm(runas=TEST_USER, path='~/' + name + '.*', as_script=True)
+
         a = {
             'Resource_List.select':
             '1:ncpus=1:mem=300mb:vmem=320mb:host=%s' % self.hosts_list[0],
@@ -2566,13 +2635,30 @@ if %s e.job.in_ms_mom():
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
         filename = j.attributes[ATTR_o]
-        self.tempfile.append(filename)
         ehost = j.attributes['exec_host']
         tmp_file = filename.split(':')[1]
         tmp_host = ehost.split('/')[0]
         tmp_out = self.wait_and_read_file(filename=tmp_file, host=tmp_host)
-        self.assertTrue('MemoryError' in tmp_out,
-                        'MemoryError not present in output')
+        self.tempfile.append(tmp_file)
+        success = False
+        foundstr = ''
+        if tmp_out == []:
+            success = False
+        else:
+            joined_out = '\n'.join(tmp_out)
+            if 'Cgroup memsw limit exceeded' in joined_out:
+                success = True
+                foundstr = 'Cgroup memsw limit exceeded'
+            elif 'Cgroup mem limit exceeded' in joined_out:
+                success = True
+                foundstr = 'Cgroup mem limit exceeded'
+            elif 'MemoryError' in joined_out:
+                success = True
+                foundstr = 'MemoryError'
+        self.assertTrue(success, 'No Cgroup memory/memsw limit exceeded '
+                        'or MemoryError found in joined stdout/stderr')
+        self.logger.info('Joined stdout/stderr contained expected string: '
+                         + foundstr)
 
     def cgroup_offline_node(self, name, vnpernuma=False):
         """
@@ -2580,6 +2666,13 @@ if %s e.job.in_ms_mom():
         verify that the node is offlined when it can't clean up the cgroup
         and brought back online once the cgroup is cleaned up.
         """
+
+        # Make sure job history is enabled to see when job is gone
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.assertEqual(rc, 0)
+        self.server.expect(SERVER, {'job_history_enable': 'True'})
+
         if 'freezer' not in self.paths[self.hosts_list[0]]:
             self.skipTest('Freezer cgroup is not mounted')
         # Get the grandparent directory
@@ -2596,10 +2689,14 @@ if %s e.job.in_ms_mom():
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, ATTR_o, jid)
+        job_status = self.server.status(JOB, id=jid)
         filename = j.attributes[ATTR_o]
         tmp_file = filename.split(':')[1]
         self.tempfile.append(tmp_file)
+        self.logger.info("Added %s to temp files to clean up"
+                         % tmp_file)
+        self.logger.info("Job session ID is apparently %s"
+                         % str(j.attributes['session_id']))
         # Query the pids in the cgroup
         jdir = self.get_cgroup_job_dir('cpuset', jid, self.hosts_list[0])
         tasks_file = os.path.join(jdir, 'tasks')
@@ -2610,32 +2707,37 @@ if %s e.job.in_ms_mom():
             self.skipTest('pbs_cgroups_hook: only one task in cgroup')
         self.logger.info('Tasks: %s' % tasks)
         self.assertTrue(tasks, 'No tasks in cpuset cgroup for job')
-        # Make dir in freezer subsystem
-        fdir_pbs = os.path.join(fdir, 'PtlPbs')
+        # Make dir in freezer subsystem under directory where we
+        # have delegate control from systemd
+        fdir_pbs = os.path.join(fdir, 'pbs_jobs.service', 'PtlPbs')
         if not self.du.isdir(fdir_pbs):
             self.du.mkdir(hostname=self.hosts_list[0], path=fdir_pbs,
                           mode=0o755, sudo=True)
-        # Write a PID into the tasks file for the freezer cgroup
+        # Write PIDs into the tasks file for the freezer cgroup
+        # All except the top job process -- it remains thawed to
+        # let the job exit
         task_file = os.path.join(fdir_pbs, 'tasks')
-        success = False
-        for pid in reversed(tasks[1:]):
-            fn = self.du.create_temp_file(
-                hostname=self.hosts_list[0], body=pid)
-            self.tempfile.append(fn)
-            ret = self.du.run_copy(hosts=self.hosts_list[0], src=fn,
-                                   dest=task_file, sudo=True,
-                                   uid='root', gid='root',
-                                   mode=0o644)
-            if ret['rc'] == 0:
-                success = True
-                break
-            self.logger.info('Failed to copy %s to %s on %s' %
-                             (fn, task_file, self.hosts_list[0]))
-            self.logger.info('rc = %d', ret['rc'])
-            self.logger.info('stdout = %s', ret['out'])
-            self.logger.info('stderr = %s', ret['err'])
+        success = True
+        body = ''
+        for pidstr in tasks:
+            if pidstr.strip() == j.attributes['session_id']:
+                self.logger.info('Skipping top job process ' + pidstr)
+            else:
+                cmd = ['echo ' + pidstr + ' >>' + task_file]
+                ret = self.du.run_cmd(hosts=self.hosts_list[0],
+                                      cmd=cmd,
+                                      sudo=True,
+                                      as_script=True)
+                if ret['rc'] != 0:
+                    success = False
+                    self.logger.info('Failed to put %s into %s on %s' %
+                                     (pidstr, task_file, self.hosts_list[0]))
+                    self.logger.info('rc = %d', ret['rc'])
+                    self.logger.info('stdout = %s', ret['out'])
+                    self.logger.info('stderr = %s', ret['err'])
         if not success:
             self.skipTest('pbs_cgroups_hook: Failed to copy freezer tasks')
+
         # Freeze the cgroup
         freezer_file = os.path.join(fdir_pbs, 'freezer.state')
         state = 'FROZEN'
@@ -2649,8 +2751,28 @@ if %s e.job.in_ms_mom():
             self.skipTest('pbs_cgroups_hook: Failed to copy '
                           'freezer state FROZEN')
 
-        # Make sure the kernel knows about the freeze on MoM
-        time.sleep(1)
+        confirmed_frozen = False
+
+        for count in range(30):
+            ret = self.du.cat(hostname=self.hosts_list[0],
+                              filename=freezer_file,
+                              sudo=True)
+            if ret['rc'] != 0:
+                self.logger.info("Cannot confirm freezer state"
+                                 "sleeping 30 seconds instead")
+                time.sleep(30)
+                break
+            if ret['out'][0] == 'FROZEN':
+                self.logger.info("job processes reported as FROZEN")
+                confirmed_frozen = True
+                break
+            else:
+                self.logger.info("freezer state reported as "
+                                 + ret['out'][0])
+                time.sleep(1)
+
+        if not confirmed_frozen:
+            self.logger.info("Freezer did not work; skip test after cleanup")
 
         # Catch any exception so we can thaw the cgroup or the jobs
         # will remain frozen and impact subsequent tests
@@ -2663,14 +2785,20 @@ if %s e.job.in_ms_mom():
             passed = False
             self.logger.info('Job could not be deleted')
 
-        # The cgroup hook should fail to clean up the cgroups
-        # because of the freeze, and offline node
-        try:
-            self.server.expect(NODE, {'state': (MATCH_RE, 'offline')},
-                               id=self.nodes_list[0], offset=10, interval=3)
-        except Exception as exc:
-            passed = False
-            self.logger.info('Node never went offline')
+        if confirmed_frozen:
+            # The cgroup hook should fail to clean up the cgroups
+            # because of the freeze, and offline node
+            # Note that when vnode per numa node is enabled, this
+            # will take longer: the execjob_epilogue will first mark
+            # the per-socket vnode offline, but only the exechost_periodic
+            # will mark the natural node offline
+            try:
+                self.server.expect(NODE, {'state': (MATCH_RE, 'offline')},
+                                   id=self.nodes_list[0], offset=10,
+                                   interval=3)
+            except Exception as exc:
+                passed = False
+                self.logger.info('Node never went offline')
 
         # Thaw the cgroup
         state = 'THAWED'
@@ -2680,21 +2808,94 @@ if %s e.job.in_ms_mom():
                                dest=freezer_file, sudo=True,
                                uid='root', gid='root',
                                mode=0o644)
+
         if ret['rc'] != 0:
-            self.skipTest('pbs_cgroups_hook: Failed to copy '
-                          'freezer state THAWED')
-        time.sleep(3)
+            # Skip the test at the end when this happens,
+            # but still attempt to clean up!
+            confirmed_frozen = False
+
+        # First confirm the processes were thawed
+        for count in range(30):
+            ret = self.du.cat(hostname=self.hosts_list[0],
+                              filename=freezer_file,
+                              sudo=True)
+            if ret['rc'] != 0:
+                self.logger.info("Cannot confirm freezer state"
+                                 "sleeping 30 seconds instead")
+                time.sleep(30)
+                break
+            if ret['out'][0] == 'THAWED':
+                self.logger.info("job processes reported as THAWED")
+                break
+            else:
+                self.logger.info("freezer state reported as "
+                                 + ret['out'][0])
+                time.sleep(1)
+
+        # once the freezer is thawed, all the processes should receive
+        # the cgroup hook's kill signal and disappear;
+        # confirm they're gone before deleting freezer
+        freezer_tasks = os.path.join(fdir_pbs, 'tasks')
+        for count in range(30):
+            ret = self.du.cat(hostname=self.hosts_list[0],
+                              filename=freezer_tasks,
+                              sudo=True)
+            if ret['rc'] != 0:
+                self.logger.info("Cannot confirm freezer tasks"
+                                 "sleeping 30 seconds instead")
+                time.sleep(30)
+                break
+            if ret['out'] == [] or ret['out'][0] == '':
+                self.logger.info("Processes in thawed freezer are gone")
+                break
+            else:
+                self.logger.info("tasks still in thawed freezer: "
+                                 + str(ret['out']))
+                time.sleep(1)
+
         cmd = ["rmdir", fdir_pbs]
         self.logger.info("Removing %s" % fdir_pbs)
         self.du.run_cmd(cmd=cmd, sudo=True)
         # Due to orphaned jobs node is not coming back to free state
         # workaround is to recreate the nodes. Orphaned jobs will
         # get cleaned up in tearDown hence not doing it here
-        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
+
+        # try deleting the job once more, to ensure that the node isn't
+        # busy
+        try:
+            self.server.delete(id=jid)
+        except Exception as exc:
+            pass
+
+        bs = {'job_state': 'F'}
+        self.server.expect(JOB, bs, jid, extend='x', offset=1)
+
+        # since the job delete action was purposefully bent out of shape,
+        # node state might stay busy for some time
+        # retry until it works -- this is for the sanity of the next
+        # test
+        for count in range(30):
+            try:
+                self.server.manager(MGR_CMD_DELETE, NODE, None, "")
+                self.logger.info('Managed to delete nodes')
+                break
+            except Exception:
+                self.logger.info('Failed to delete nodes (still busy?)')
+                time.sleep(1)
+
         for host in self.hosts_list:
-            self.server.manager(MGR_CMD_CREATE, NODE, id=host)
+            try:
+                self.server.manager(MGR_CMD_CREATE, NODE, id=host)
+            except Exception:
+                # the delete might have failed and then the create will,
+                # but still confirm the node goes back to free state
+                pass
             self.server.expect(NODE, {'state': 'free'},
                                id=host, interval=3)
+
+        if not confirmed_frozen:
+            self.skipTest('Could not confirm freeze/thaw worked')
+
         return passed
 
     def test_cgroup_offline_node(self):
@@ -2736,7 +2937,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -2756,7 +2957,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid2 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -2777,7 +2978,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -2796,7 +2997,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid2 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -3021,7 +3222,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '2:ncpus=1:mem=100mb',
              'Resource_List.place': 'scatter'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3085,34 +3286,58 @@ if %s e.job.in_ms_mom():
         if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
 
-        vn_attrs = {ATTR_rescavail + '.ncpus': 1,
-                    ATTR_rescavail + '.mem': '500mb'}
-        self.load_config(self.cfg4 % (self.mem, self.swapctl))
+        # vnode_per_numa_node enabled, so we get per-socket vnodes
+        self.load_config(self.cfg3
+                         % ('', 'true', '', self.mem, '', self.swapctl, ''))
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
-                           id=self.nodes_list[0])
-        self.moms.values()[0].create_vnodes(vn_attrs, 2)
-        self.server.expect(NODE, {ATTR_NODE_state: 'free'},
-                           id=self.nodes_list[0])
-        a = {'Resource_List.select': '1:ncpus=1:mem=500mb'}
+                           id=self.hosts_list[0]+'[0]')
+        socket1_found = False
+        nodestat = self.server.status(NODE)
+        total_kb = 0
+        for node in nodestat:
+            if (self.mom.shortname + '[') not in node['id']:
+                self.logger.info('Skipping vnode %s' % node['id'])
+            else:
+                if node['id'] == self.mom.shortname + '[0]':
+                    self.logger.info('Found socket 0, vnode %s'
+                                     % node['id'])
+                if node['id'] == self.mom.shortname + '[1]':
+                    socket1_found = True
+                    self.logger.info('Found socket 1, vnode %s '
+                                     '(multi socket!)'
+                                     % node['id'])
+                # PbsTypeSize value is in kb
+                node_kb = PbsTypeSize(node['resources_available.mem']).value
+                self.logger.info('Vnode %s memory: %skb'
+                                 % (node['id'], node_kb))
+                total_kb += node_kb
+        total_mb = int(total_kb / 1024)
+        self.logger.info("Total memory on first MoM: %smb" % total_mb)
+        if not socket1_found:
+            self.skipTest('Test requires more than one NUMA node '
+                          '(i.e. "socket") on first host')
+        memreq_mb = total_mb - 2
+        a = {'Resource_List.select':
+             '1:ncpus=1:host=%s:mem=%smb'
+             % (self.mom.shortname, str(memreq_mb))}
         j1 = Job(TEST_USER, attrs=a)
         j1.create_script('date')
         jid1 = self.server.submit(j1)
+        # Job should finish and thus dequeued
         self.server.expect(JOB, 'queue', id=jid1, op=UNSET,
                            interval=1, offset=1)
-        a = {'Resource_List.select': '1:ncpus=1:mem=1000mb'}
-        j2 = Job(TEST_USER, attrs=a)
-        j2.create_script('date')
-        jid2 = self.server.submit(j2)
-        self.server.expect(JOB, 'queue', id=jid2, op=UNSET,
-                           interval=1, offset=1)
-        a = {'Resource_List.select': '1:ncpus=1:mem=40gb'}
+        a = {'Resource_List.select':
+             '1:ncpus=1:host=%s:mem=%smb'
+             % (self.mom.shortname, str(memreq_mb + 1024))}
         j3 = Job(TEST_USER, attrs=a)
         j3.create_script('date')
         jid3 = self.server.submit(j3)
+        # Will either start with "Can Never Run" or "Not Running"
+        # Don't match only one
         a = {'job_state': 'Q',
              'comment':
              (MATCH_RE,
-              '.*Can Never Run: Insufficient amount of resource: mem.*')}
+              '.*: Insufficient amount of resource: mem.*')}
         self.server.expect(JOB, a, attrop=PTL_AND, id=jid3, offset=10,
                            interval=1)
 
@@ -3188,7 +3413,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3202,6 +3427,8 @@ if %s e.job.in_ms_mom():
         self.assertEqual(result['rc'], 0)
         value_mem_fences = result['out'][0]
         self.logger.info("value with mem_fences: %s" % value_mem_fences)
+        self.server.delete(jid, wait=True)
+
         # Now try with mem_fences set to false
         self.load_config(self.cfg5 % ('false', '', 'false', 'false',
                                       'false', self.mem, self.swapctl))
@@ -3210,7 +3437,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3233,6 +3460,7 @@ if %s e.job.in_ms_mom():
         """
         if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
+
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'false', self.mem, self.swapctl))
         self.server.expect(NODE, {'state': 'free'},
@@ -3240,7 +3468,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3259,6 +3487,8 @@ if %s e.job.in_ms_mom():
                              filename=fn, sudo=True)
         self.assertEqual(result['rc'], 0)
         self.assertEqual(result['out'][0], '0')
+        self.server.delete(jid, wait=True)
+
         self.load_config(self.cfg5 % ('false', '', 'true', 'true',
                                       'false', self.mem, self.swapctl))
         self.server.expect(NODE, {'state': 'free'},
@@ -3266,7 +3496,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3347,6 +3577,7 @@ if %s e.job.in_ms_mom():
         """
         if not self.paths[self.hosts_list[0]]['memory']:
             self.skipTest('Test requires memory subystem mounted')
+
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'false', self.mem, self.swapctl))
         nid = self.nodes_list[0]
@@ -3355,7 +3586,7 @@ if %s e.job.in_ms_mom():
         hostn = self.hosts_list[0]
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % hostn}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3371,13 +3602,15 @@ if %s e.job.in_ms_mom():
         result = self.du.cat(hostname=hostn, filename=fn, sudo=True)
         self.assertEqual(result['rc'], 0)
         self.assertEqual(result['out'][0], '0')
+        self.server.delete(jid, wait=True)
+
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'true', self.mem, self.swapctl))
         self.server.expect(NODE, {'state': 'free'}, id=nid,
                            interval=3, offset=10)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % hostn}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3532,7 +3765,8 @@ event.accept()
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        # Here a short job is OK, since we are waiting for it to end
+        j.create_script(self.sleep30_job)
         time.sleep(2)
         presubmit = int(time.time())
         time.sleep(2)
@@ -3830,7 +4064,7 @@ event.accept()
              '1:ncpus=1:host=%s+1:ncpus=1:host=%s+1:ncpus=1:host=%s' %
              (self.hosts_list[0], self.hosts_list[1], self.hosts_list[2])}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R', 'substate': '41'}
         self.server.expect(JOB, a, jid)
@@ -3872,7 +4106,7 @@ event.accept()
         a = {'Resource_List.select': '3:ncpus=1:mem=100mb',
              'Resource_List.place': 'scatter'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3914,7 +4148,7 @@ event.accept()
         select_spec = "%d:ncpus=%d" % (vnodes_count, cpus_per_vnode)
         a = {'Resource_List.select': select_spec, ATTR_N: name + 'a'}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.sleep15_job)
+        j1.create_script(self.sleep100_job)
         jid1 = self.server.submit(j1)
         a = {'job_state': 'R'}
         # Make sure job is running
@@ -4164,7 +4398,7 @@ sleep 300
              "ncpus=%d" % ncpus_req,
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4261,7 +4495,7 @@ sleep 300
              "ncpus=%d" % ncpus_req,
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4349,7 +4583,7 @@ sleep 300
         a = {'Resource_List.select': 'ncpus=0',
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4439,7 +4673,7 @@ sleep 300
         a = {'Resource_List.select': 'ncpus=0',
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4535,7 +4769,7 @@ sleep 300
         self.mom.add_config(c)
         a = {'Resource_List.select': 'ncpus=1:mem=100mb'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep100_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -4562,7 +4796,7 @@ sleep 300
         """
         if not self.mem:
             self.skipTest('Test requires memory subystem mounted')
-        if not self.swapctl:
+        if self.swapctl != 'true':
             self.skipTest('Test requires memsw accounting enabled')
         self.server.remove_resource('cgswap')
         self.server.add_resource('cgswap', 'size', 'nh')
@@ -4709,11 +4943,12 @@ sleep 300
         """
         if not self.mem:
             self.skipTest('Test requires memory subystem mounted')
-        if not self.swapctl:
+        if self.swapctl != 'true':
             self.skipTest('Test requires memsw accounting enabled')
 
         self.load_config(self.cfg16
                          % enforce_flags)
+
         a = {'Resource_List.select':
              '1:ncpus=1:vnode=%s'
              % self.mom.shortname}
@@ -4756,10 +4991,10 @@ sleep 300
         except Exception:
             # None will be seen as a failure, nothing to do
             pass
-        self.logger.info("total available memsw: %d"
-                         % vmem_avail_in_bytes)
         self.assertTrue(vmem_avail_in_bytes is not None,
                         "Unable to read total memsw available")
+        self.logger.info("total available memsw: %d"
+                         % vmem_avail_in_bytes)
 
         # Get job physical mem limit
         mem_limit = os.path.join(mem_base, str(jid),
@@ -4772,10 +5007,10 @@ sleep 300
         except Exception:
             # None will be seen as a failure, nothing to do
             pass
-        self.logger.info("job mem limit: %d"
-                         % mem_limit_in_bytes)
         self.assertTrue(mem_limit_in_bytes is not None,
                         "Unable to read job mem limit")
+        self.logger.info("job mem limit: %d"
+                         % mem_limit_in_bytes)
 
         # Get job phys+swap mem limit
         vmem_limit = os.path.join(mem_base, str(jid),
@@ -4788,10 +5023,10 @@ sleep 300
         except Exception:
             # None will be seen as a failure, nothing to do
             pass
-        self.logger.info("job memsw limit: %d"
-                         % vmem_limit_in_bytes)
         self.assertTrue(vmem_limit_in_bytes is not None,
                         "Unable to read job memsw limit")
+        self.logger.info("job memsw limit: %d"
+                         % vmem_limit_in_bytes)
 
         # Check results correspond to enforcement flags and job placement
         swap_avail = vmem_avail_in_bytes - mem_avail_in_bytes
@@ -4862,6 +5097,73 @@ sleep 300
         self.test_cgroup_enforce_default(enforce_flags=('true', 'true'),
                                          exclhost=True)
 
+    def test_manage_rlimit_as(self):
+        if not self.mem:
+            self.skipTest('Test requires memory subystem mounted')
+        if self.swapctl != 'true':
+            self.skipTest('Test requires memsw accounting enabled')
+
+        # Make sure job history is enabled to see when job has ended
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.assertEqual(rc, 0)
+        self.server.expect(SERVER, {'job_history_enable': 'True'})
+
+        self.load_config(self.cfg16 % ('true', 'true'))
+
+        # First job -- request vmem and no pvmem,
+        # RLIMIT_AS shoud be unlimited
+        a = {'Resource_List.select':
+             '1:ncpus=0:mem=300mb:vmem=300mb:vnode=%s'
+             % self.mom.shortname}
+
+        j = Job(TEST_USER, attrs=a)
+        j.create_script("#!/bin/bash\nulimit -v")
+        jid = self.server.submit(j)
+        bs = {'job_state': 'F'}
+        self.server.expect(JOB, bs, jid, extend='x', offset=1)
+
+        thisjob = self.server.status(JOB, id=jid, extend='x')
+        try:
+            job_output_file = thisjob[0]['Output_Path'].split(':')[1]
+        except Exception:
+            self.assertTrue(False, "Could not determine job output path")
+        result = self.du.cat(hostname=self.server.hostname,
+                             filename=job_output_file,
+                             sudo=True)
+        self.assertTrue('out' in result, "Nothing in job output file?")
+        job_out = '\n'.join(result['out'])
+        self.logger.info("job_out=%s" % job_out)
+        self.assertTrue('unlimited' in job_out)
+        self.logger.info("Job that requests vmem "
+                         "but no pvmem correctly has unlimited RLIMIT_AS")
+
+        # Second job -- see if pvmem still works
+        # RLIMIT_AS should correspond to pvmem
+        a['Resource_List.pvmem'] = '300mb'
+        j = Job(TEST_USER, attrs=a)
+        j.create_script("#!/bin/bash\nulimit -v")
+        jid = self.server.submit(j)
+        bs = {'job_state': 'F'}
+        self.server.expect(JOB, bs, jid, extend='x', offset=1)
+
+        thisjob = self.server.status(JOB, id=jid, extend='x')
+        try:
+            job_output_file = thisjob[0]['Output_Path'].split(':')[1]
+        except Exception:
+            self.assertTrue(False, "Could not determine job output path")
+
+        result = self.du.cat(hostname=self.server.hostname,
+                             filename=job_output_file,
+                             sudo=True)
+        self.assertTrue('out' in result, "Nothing in job output file?")
+        job_out = '\n'.join(result['out'])
+        self.logger.info("job_out=%s" % job_out)
+        # ulimit reports kb, not bytes
+        self.assertTrue(str(300 * 1024) in job_out)
+        self.logger.info("Job that requests 300mb pvmem "
+                         "correctly has 300mb RLIMIT_AS")
+
     def tearDown(self):
         TestFunctional.tearDown(self)
         mom_checks = True
@@ -4881,33 +5183,101 @@ sleep 300
         self.du.rm(hostname=self.serverA, path=self.tempfile, force=True,
                    recursive=True, sudo=True)
         # Cleanup frozen jobs
+        # Thaw ALL freezers found
+        # If directory starts with a number (i.e. a job)
+        # kill processes in the freezers and remove them
+
         if 'freezer' in self.paths[self.hosts_list[0]]:
+            # Find freezers to thaw
             self.logger.info('Cleaning up frozen jobs ****')
             fdir = self.paths[self.hosts_list[0]]['freezer']
-            if os.path.isdir(fdir):
-                self.logger.info('freezer directory present')
-                fpath = os.path.join(fdir, 'PtlPbs')
-                if os.path.isdir(fpath):
-                    jid = glob.glob(os.path.join(fpath, '*', ''))
-                    self.logger.info('found jobs %s' % jid)
-                    if jid:
-                        for files in jid:
-                            self.logger.info('*** found jobdir %s' % files)
-                            jpath = os.path.join(fpath, files)
-                            freezer_file = os.path.join(jpath, 'freezer.state')
-                            # Thaw the cgroup
-                            state = 'THAWED'
-                            fn = self.du.create_temp_file(
-                                hostname=self.hosts_list[0], body=state)
-                            self.du.run_copy(hosts=self.hosts_list[0], src=fn,
-                                             dest=freezer_file, sudo=True,
-                                             uid='root', gid='root',
-                                             mode=0o644)
-                            self.du.rm(hostname=self.hosts_list[0], path=fn)
-                            cmd = ['rmdir', jpath]
-                            self.logger.info('deleting jobdir %s' % cmd)
-                            self.du.run_cmd(cmd=cmd, sudo=True)
-                        self.du.rm(hostname=self.hosts_list[0], path=fpath)
+            freezer_states = \
+                glob.glob(os.path.join(fdir, '*', '*', '*', 'freezer.state'))
+            freezer_states += \
+                glob.glob(os.path.join(fdir, '*', '*', 'freezer.state'))
+            freezer_states += \
+                glob.glob(os.path.join(fdir, '*', 'freezer.state'))
+            self.logger.info('*** found freezer states %s'
+                             % str(freezer_states))
+
+            for freezer_state in freezer_states:
+                # thaw the freezer
+                self.logger.info('Thawing ' + freezer_state)
+                state = 'THAWED'
+                fn = self.du.create_temp_file(
+                     hostname=self.hosts_list[0], body=state)
+                self.du.run_copy(hosts=self.hosts_list[0], src=fn,
+                                 dest=freezer_state, sudo=True,
+                                 uid='root', gid='root',
+                                 mode=0o644)
+                # Confirm it's thawed
+                for count in range(30):
+                    ret = self.du.cat(hostname=self.hosts_list[0],
+                                      filename=freezer_state,
+                                      sudo=True)
+                    if ret['rc'] != 0:
+                        self.logger.info("Cannot confirm freezer state"
+                                         "sleeping 30 seconds instead")
+                        time.sleep(30)
+                        break
+                    if ret['out'][0] == 'THAWED':
+                        self.logger.info("freezer processes reported as"
+                                         " THAWED")
+                        break
+                    else:
+                        self.logger.info("freezer state reported as "
+                                         + ret['out'][0])
+                        time.sleep(1)
+
+                freezer_basename = os.path.basename(
+                    os.path.dirname(freezer_state))
+                jobid = None
+                try:
+                    jobid = int(freezer_basename.split('.')[0])
+                except Exception:
+                    # not a job directory
+                    pass
+                if jobid is not None:
+                    self.logger.info("Apparently found job freezer for job %s"
+                                     % freezer_basename)
+                    freezer_tasks = os.path.join(
+                        os.path.dirname(freezer_state), "tasks")
+
+                    # Kill tasks before trying to rmdir freezer
+                    ret = self.du.cat(hostname=self.hosts_list[0],
+                                      filename=freezer_tasks,
+                                      sudo=True)
+                    if ret['rc'] == 0:
+                        for taskstr in ret['out']:
+                            self.logger.info("trying to kill %s on %s"
+                                             % (taskstr,
+                                                self.hosts_list[0]))
+                            self.du.run_cmd(self.hosts_list[0],
+                                            ['kill', '-9'] + [taskstr],
+                                            sudo=True)
+                    for count in range(30):
+                        ret = self.du.cat(hostname=self.hosts_list[0],
+                                          filename=freezer_tasks,
+                                          sudo=True)
+                        if ret['rc'] != 0:
+                            self.logger.info("Cannot confirm freezer tasks; "
+                                             "sleeping 30 seconds instead")
+                            time.sleep(30)
+                            break
+                        if ret['out'] == [] or ret['out'][0] == '':
+                            self.logger.info("Processes in thawed freezer"
+                                             " are gone")
+                            break
+                        else:
+                            self.logger.info("tasks still in thawed freezer: "
+                                             + str(ret['out']))
+                            time.sleep(1)
+
+                    cmd = ["rmdir", os.path.dirname(freezer_state)]
+                    self.logger.info("Executing %s" % ' '.join(cmd))
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=cmd, sudo=True)
+
         # Remove the jobdir if any under other cgroups
         cgroup_subsys = ('systemd', 'cpu', 'cpuacct', 'cpuset', 'devices',
                          'memory', 'hugetlb', 'perf_event', 'freezer',
@@ -4918,11 +5288,55 @@ sleep 300
                 self.logger.info('Looking for orphaned jobdir in %s' % subsys)
                 cdir = self.paths[self.hosts_list[0]][subsys]
                 if os.path.isdir(cdir):
+                    self.logger.info("Inspecting " + cdir)
                     cpath = self.find_main_cpath(cdir)
+                    # not always immediately under main path
                     if cpath is not None and os.path.isdir(cpath):
-                        for jdir in glob.glob(os.path.join(cpath, '*', '')):
+                        tasks_files = (
+                            glob.glob(os.path.join(cpath,
+                                                   '*', '*', 'tasks'))
+                            + glob.glob(os.path.join(cpath,
+                                                     '*', 'tasks')))
+                        if tasks_files != []:
+                            self.logger.info("Tasks files found in %s: %s"
+                                             % (cpath, tasks_files))
+                        for tasks_file in tasks_files:
+                            jdir = os.path.dirname(tasks_file)
                             if not os.path.isdir(jdir):
                                 continue
                             self.logger.info('deleting jobdir %s' % jdir)
+
+                            # Kill tasks before trying to rmdir freezer
+                            cgroup_tasks = os.path.join(jdir, 'tasks')
+                            ret = self.du.cat(hostname=self.hosts_list[0],
+                                              filename=cgroup_tasks,
+                                              sudo=True)
+                            if ret['rc'] == 0:
+                                for taskstr in ret['out']:
+                                    self.logger.info("trying to kill %s on %s"
+                                                     % (taskstr,
+                                                        self.hosts_list[0]))
+                                    self.du.run_cmd(self.hosts_list[0],
+                                                    ['kill', '-9'] + [taskstr],
+                                                    sudo=True)
+                            for count in range(30):
+                                ret = self.du.cat(hostname=self.hosts_list[0],
+                                                  filename=cgroup_tasks,
+                                                  sudo=True)
+                                if ret['rc'] != 0:
+                                    self.logger.info("Cannot confirm "
+                                                     "cgroup tasks; sleeping "
+                                                     "30 seconds instead")
+                                    time.sleep(30)
+                                    break
+                                if ret['out'] == [] or ret['out'][0] == '':
+                                    self.logger.info("Processes in cgroup "
+                                                     "are gone")
+                                    break
+                                else:
+                                    self.logger.info("tasks still in cgroup: "
+                                                     + str(ret['out']))
+                                    time.sleep(1)
+
                             cmd2 = ['rmdir', jdir]
                             self.du.run_cmd(cmd=cmd2, sudo=True)

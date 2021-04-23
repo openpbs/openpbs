@@ -331,7 +331,6 @@ handle_resv(char *resv_id, char *server, int how)
 	struct batch_status *server_attrs;
 
 	pbs_sd = cnt2server(server);
-
 	if (pbs_sd < 0) {
 		fprintf(stderr, "pbs_rstat: cannot connect to server (errno=%d)\n",
 			pbs_errno);

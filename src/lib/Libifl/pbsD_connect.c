@@ -532,7 +532,6 @@ static bool
 part_of_cluster(char *svrhost, uint port, svr_conn_t **svr_conns)
 {
 	int i;
-	int nsvrs = get_num_servers();
 
 	if (!svrhost)
 		return true;
@@ -540,7 +539,7 @@ part_of_cluster(char *svrhost, uint port, svr_conn_t **svr_conns)
 	if (is_same_host(svrhost, pbs_default()) && port == pbs_conf.batch_service_port)
 		return true;
 
-	for (i = 0; i < nsvrs; i++) {
+	for (i = 0; i < get_num_servers(); i++) {
 		if (is_same_host(svrhost, pbs_conf.psi[i].name) &&
 		    port == pbs_conf.psi[i].port)
 			return true;
@@ -567,7 +566,7 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 	int fd = -1;
 	svr_conns_list_t *new_conns = create_conn_svr_instances();
 	svr_conn_t **svr_conns;
-	int nsvrs = get_num_servers();
+	int last_err = PBSE_NONE;
 
 	if (new_conns == NULL)
 		return -1;
@@ -585,7 +584,7 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 	}
 
 	/* Try to connect to all servers in the cluster */
-	for (i = 0; i < nsvrs; i++) {
+	for (i = 0; i < get_num_servers(); i++) {
 		svr_conns[i] = add_instance(pbs_conf.psi[i].name, pbs_conf.psi[i].port);
 		if (!svr_conns[i])
 			goto err;
@@ -603,8 +602,11 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 				new_conns->cfd = vfd;
 			}
 		}
+		if (pbs_errno != PBSE_NONE)
+			last_err = pbs_errno;
 	}
 
+	pbs_errno = last_err;
 	return new_conns->cfd;
 
 err:
@@ -634,7 +636,6 @@ __pbs_connect_extend(char *server, char *extend_data)
 	unsigned int server_port;
 	char	*altservers[2];
 	int	have_alt = 0;
-	int	nsvrs;
 	int	sock = -1;
 	int	i;
 	int	f;
@@ -656,9 +657,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 		return -1;
 	}
 
-	nsvrs = get_num_servers();
-
-	if (nsvrs == 1 && pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {	
+	if (get_num_servers() == 1 && pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {	
 		/* failover configuered ...   */	
 		if (is_same_host(server, pbs_conf.pbs_primary)) {	
 			have_alt = 1;	
@@ -695,7 +694,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 			break; 
 	}
 	
-	if (nsvrs > 1)
+	if (get_num_servers() > 1)
 		return sock;
 	
 	if (i >= (have_alt+1) && sock == -1) {
@@ -1360,9 +1359,8 @@ int
 multi_svr_op(int fd)
 {
 	svr_conn_t **conns = get_conn_svr_instances(fd);
-	int num_svrs = get_num_servers();
 
-	if (conns == NULL || num_svrs == 1 || fd == conns[0]->sd)
+	if (conns == NULL || get_num_servers() == 1 || fd == conns[0]->sd)
 		return FALSE;
 
 	return TRUE;

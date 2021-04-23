@@ -344,7 +344,13 @@ def size_as_int(value):
     """
     Convert a size string to an integer representation of size in bytes
     """
-    return int(convert_size(value).rstrip(string.ascii_lowercase))
+    in_bytes = convert_size(value, units='b')
+    if in_bytes is not None:
+        return int(convert_size(value).rstrip(string.ascii_lowercase))
+    else:
+        pbs.logmsg(pbs.EVENT_ERROR, "size_as_int: Value %s "
+                   "does not convert to int, returning None" % value)
+        return None
 
 
 #
@@ -1172,6 +1178,54 @@ class HookUtils(object):
                            'Error removing file: %s' % (filename))
         return True
 
+    def manage_rlimit_as(self, job):
+        """
+        Sets rlimit_as according to pvmem (if present)
+        if pvmem is not present, sets it to unlimited
+        (since we know vmem specifies memory+swap usage limit,
+         not address space limit)
+        """
+        import resource
+        rlimit_as = None
+        parent_pid = os.getppid()
+        if 'pvmem' in job.Resource_List and job.Resource_List['pvmem']:
+            rlimit_as = size_as_int(job.Resource_List['pvmem'])
+        else:
+            rlimit_as = resource.RLIM_INFINITY
+
+        prlimit_command = None
+        if hasattr(resource, 'prlimit'):
+            # No need to call command -- Python has direct support
+            prlimit_command = ''
+            pbs.logmsg(pbs.EVENT_DEBUG3,
+                       'Calling resource.prlimit(%s, resource.RLIMIT_AS, %s)'
+                       % (parent_pid, str((rlimit_as, rlimit_as))))
+            resource.prlimit(parent_pid, resource.RLIMIT_AS,
+                             (rlimit_as, rlimit_as))
+        elif os.path.isfile('/usr/bin/prlimit'):
+            prlimit_command = '/usr/bin/prlimit'
+        elif os.path.isfile('/bin/prlimit'):
+            prlimit_command = '/bin/prlimit'
+
+        if prlimit_command is None:
+            pbs.logmsg(pbs.EVENT_DEBUG, "cannot set rlimit_as for task: "
+                       "prlimit command not found")
+        elif prlimit_command != '':
+            cmd = [prlimit_command,
+                   '--as=' + str(rlimit_as) + ':' + str(rlimit_as),
+                   '--pid=' + str(parent_pid)]
+            pbs.logmsg(pbs.EVENT_DEBUG3, 'Running: ' + ' '.join(cmd))
+            try:
+                # Try running the prlimit command
+                process = subprocess.Popen(cmd, shell=False,
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+                out = process.communicate()[0]
+            except Exception:
+                pbs.logmsg(pbs.EVENT_ERROR,
+                           'Found but to failed to execute: %s' %
+                           ' '.join(cmd))
+
     def _execjob_launch_handler(self, event, cgroup, jobutil):
         """
         Handler for execjob_launch events.
@@ -1192,6 +1246,13 @@ class HookUtils(object):
                        (cgroup.assigned_resources))
             if "gpu" in node.devices:
                 cgroup.setup_job_devices_env(node.devices['gpu'])
+
+        # If vmem was requested, set per process address space limit
+        # or clear the one MoM has set,
+        # if possible (requires prlimit support)
+        if (cgroup.cfg['manage_rlimit_as']
+                and cgroup.cfg['cgroup']['memsw']['enabled']):
+            self.manage_rlimit_as(pbs.event().job)
         return True
 
     def _exechost_periodic_handler(self, event, cgroup, jobutil):
@@ -2161,8 +2222,15 @@ class NodeUtils(object):
                        caller_name())
         cpuinfo['physical_cpus'] = int(cpuinfo['logical_cpus']
                                        // cpuinfo['hyperthreads_per_core'])
-        pbs.logmsg(pbs.EVENT_DEBUG4, '%s returning: %s' %
-                   (caller_name(), cpuinfo))
+        wanted_keys = ['physical_cpus', 'logical_cpus','hyperthreads_per_core',
+                       'hyperthreads']
+        cpuinfo_short = dict((k, cpuinfo[k])
+                             for k in wanted_keys if k in cpuinfo)
+        pbs.logmsg(pbs.EVENT_DEBUG4, "%s returning: %s"
+                   % (caller_name(), cpuinfo_short))
+        if 0 in cpuinfo['cpu']:
+            pbs.logmsg(pbs.EVENT_DEBUG4, "%s For CPU 0: cpuinfo['cpu'][0]: %s"
+                       % (caller_name(), cpuinfo['cpu'][0]))
         return cpuinfo
 
     def gather_jobs_on_node(self, cgroup):
@@ -2804,6 +2872,29 @@ class CgroupUtils(object):
         else:
             self.subsystems = self._target_subsystems()
 
+        # Check if memsw is enabled despite lack of kernel support
+        # if so disable memsw
+        if 'memsw' in self.subsystems:
+            memsw_limit_file = (self.paths['memsw']
+                                + 'limit_in_bytes')
+            if not os.path.isfile(memsw_limit_file):
+                pbs.logmsg(pbs.EVENT_ERROR,
+                           'CONFIG ERROR: CF enables memsw '
+                           'but %s is missing'
+                           % memsw_limit_file)
+                pbs.logmsg(pbs.EVENT_ERROR,
+                           'CONFIG ERROR: kernel swapaccount parameter is 0, '
+                           'disabling memsw subsystem')
+                pbs.logmsg(pbs.EVENT_ERROR,
+                           'CONFIG ERROR: to fix this, either add '
+                           'swapaccount=1 to kernel command line '
+                           'or disable memsw')
+                self.cfg['cgroup']['memsw']['enabled'] = False
+                self.subsystems.remove('memsw')
+                pbs.logmsg(pbs.EVENT_DEBUG4,
+                           'remaining enabled subsystems: '
+                           + repr(self.subsystems))
+
         # Return now if nothing is enabled
         if not self.subsystems:
             pbs.logmsg(pbs.EVENT_DEBUG2, '%s: No cgroups enabled' %
@@ -2854,13 +2945,23 @@ class CgroupUtils(object):
         Write a message to the job stderr file
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
+        filename = None
         try:
-            filename = job.stderr_file()
+            if str(job.Join_Path) == 'oe':
+                # If we write in stderr we might do it after the join!
+                # so write in stdout instead
+                filename = job.stdout_file()
+            else:
+                filename = job.stderr_file()
+            pbs.logmsg(pbs.EVENT_DEBUG4, "Message to be written to %s: %s"
+                       % (str(filename), msg.strip()))
             if filename is None:
                 return
             with open(filename, 'a') as desc:
                 desc.write(msg)
         except Exception:
+            # tough luck for user, but not fatal to system
+            # Note: sometimes normal (e.g. interactive jobs)
             pass
 
     def _target_subsystems(self):
@@ -3218,6 +3319,7 @@ class CgroupUtils(object):
         defaults['job_setup_timeout'] = 30
         defaults['placement_type'] = 'load_balanced'
         defaults['propagate_vntype_to_server'] = True
+        defaults['manage_rlimit_as'] = True
         defaults['cgroup'] = {}
         defaults['cgroup']['cpu'] = {}
         defaults['cgroup']['cpu']['enabled'] = False
@@ -3537,7 +3639,7 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         assigned = {}
 
-        # Get totals available for all jobs to compare with later        
+        # Get totals available for all jobs to compare with later
         mem_avail = None
         filename = self._cgroup_path('memory', 'limit_in_bytes')
         if filename and os.path.isfile(filename):
@@ -3585,56 +3687,64 @@ class CgroupUtils(object):
                         assigned[jobid][key]['mems'] = \
                             expand_list(desc.readline())
                 elif key == 'memory':
-                    with open(self._cgroup_path(key, 'limit_in_bytes',
-                                                jobid)) as desc:
-                        assigned[jobid][key]['limit_in_bytes'] = \
-                            int(desc.readline())
-                    if assigned[jobid][key]['limit_in_bytes'] == mem_avail:
-                        # not explicitly assigned, 'unlimited' raised default
-                        assigned[jobid][key]['limit_in_bytes'] = 0
-                    with open(self._cgroup_path(key, 'soft_limit_in_bytes',
-                                                jobid)) as desc:
-                        assigned[jobid][key]['soft_limit_in_bytes'] = \
-                            int(desc.readline())
-                    if (assigned[jobid][key]['soft_limit_in_bytes']
-                            == mem_avail):
-                        # not explicitly assigned, 'unlimited' raised default
-                        assigned[jobid][key]['soft_limit_in_bytes'] = 0
-                elif key == 'memsw':
-                    filename = self._cgroup_path('memsw', 'limit_in_bytes',
-                                                 jobid)
+                    filename = self._cgroup_path(key, 'limit_in_bytes', jobid)
                     if filename and os.path.isfile(filename):
                         with open(filename) as desc:
-                            assigned[jobid]['memsw']['limit_in_bytes'] = \
+                            assigned[jobid][key]['limit_in_bytes'] = \
                                 int(desc.readline())
-                    if assigned[jobid][key]['limit_in_bytes'] == vmem_avail:
-                        # not explicitly assigned, 'unlimited' raised default
-                        assigned[jobid][key]['limit_in_bytes'] = 0
+                        if assigned[jobid][key]['limit_in_bytes'] == mem_avail:
+                            # not explicitly assigned, 'unlimited' raised dflt
+                            assigned[jobid][key]['limit_in_bytes'] = 0
+                    filename = self._cgroup_path(key,
+                                                 'soft_limit_in_bytes', jobid)
+                    if filename and os.path.isfile(filename):
+                        with open(filename) as desc:
+                            assigned[jobid][key]['soft_limit_in_bytes'] = \
+                                int(desc.readline())
+                        if (assigned[jobid][key]['soft_limit_in_bytes']
+                                == mem_avail):
+                            # not explicitly assigned, 'unlimited' raised dflt
+                            assigned[jobid][key]['soft_limit_in_bytes'] = 0
+                elif key == 'memsw':
+                    filename = self._cgroup_path(key, 'limit_in_bytes', jobid)
+                    if filename and os.path.isfile(filename):
+                        with open(filename) as desc:
+                            assigned[jobid][key]['limit_in_bytes'] = \
+                                int(desc.readline())
+                        if (assigned[jobid][key]['limit_in_bytes']
+                                == vmem_avail):
+                            # not explicitly assigned, 'unlimited' raised dflt
+                            assigned[jobid][key]['limit_in_bytes'] = 0
                     else:
                         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: No such file: %s' %
                                    (caller_name(), filename))
                 elif key == 'hugetlb':
-                    with open(self._cgroup_path(key, 'limit_in_bytes',
-                                                jobid)) as desc:
-                        assigned[jobid][key]['limit_in_bytes'] = \
-                            int(desc.readline())
-                    if assigned[jobid][key]['limit_in_bytes'] == hpmem_avail:
-                        # not explicitly assigned, 'unlimited' raised default
-                        assigned[jobid][key]['limit_in_bytes'] = 0
+                    filename = self._cgroup_path(key, 'limit_in_bytes', jobid)
+                    if filename and os.path.isfile(filename):
+                        with open(filename) as desc:
+                            assigned[jobid][key]['limit_in_bytes'] = \
+                                int(desc.readline())
+                        if (assigned[jobid][key]['limit_in_bytes']
+                                == hpmem_avail):
+                            # not explicitly assigned, 'unlimited' raised dflt
+                            assigned[jobid][key]['limit_in_bytes'] = 0
                 elif key == 'devices':
                     path = self._cgroup_path(key, 'list', jobid)
                     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Devices path is %s' %
                                (caller_name(), path))
-                    with open(path) as desc:
-                        assigned[jobid][key]['list'] = []
-                        for line in desc:
-                            pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Appending %s' %
-                                       (caller_name(), line))
-                            assigned[jobid][key]['list'].append(line)
-                            pbs.logmsg(pbs.EVENT_DEBUG4,
-                                       '%s: assigned[%s][%s][list] = %s' %
-                                       (caller_name(), jobid, key,
-                                        assigned[jobid][key]['list']))
+                    if path and os.path.isfile(path):
+                        with open(path) as desc:
+                            assigned[jobid][key]['list'] = []
+                            for line in desc:
+                                pbs.logmsg(pbs.EVENT_DEBUG4, '%s: '
+                                           'Appending %s'
+                                           % (caller_name(), line))
+                                assigned[jobid][key]['list'].append(line)
+                                pbs.logmsg(pbs.EVENT_DEBUG4,
+                                           '%s: assigned[%s][%s][list] '
+                                           '= %s'
+                                           % (caller_name(), jobid, key,
+                                              assigned[jobid][key]['list']))
                 elif key == 'pids':
                     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: subsystem %s' %
                                (caller_name(), key))
@@ -4358,8 +4468,13 @@ class CgroupUtils(object):
                 myname = 'socket %d' % socket
                 req = requested
             pbs.logmsg(pbs.EVENT_DEBUG4, 'Current target is %s' % myname)
-            new = self._assign_resources(req, available[socket],
-                                         [socket], node)
+            new = None
+            if socket in available:
+                new = self._assign_resources(req, available[socket],
+                                             [socket], node)
+            else:
+                pbs.logmsg(pbs.EVENT_ERROR, 'Attempt to allocate resources '
+                           'on non-existing socket #' + str(socket))
             if new:
                 new['cpuset.mems'].append(socket)
                 # Add the memory-only NUMA nodes
@@ -4715,7 +4830,7 @@ class CgroupUtils(object):
                                 and pbs.event().job.in_ms_mom()):
                             self.write_to_stderr(pbs.event().job,
                                                  "Cgroup mem limit "
-                                                 "exceeded: %s" % (err_msg))
+                                                 "exceeded: %s\n" % (err_msg))
             elif subsys == 'memsw':
                 max_vmem = self._get_max_memsw_usage(jobid)
                 if max_vmem is None:
@@ -4735,7 +4850,7 @@ class CgroupUtils(object):
                     if vmem_failcnt > 0:
                         err_msg = self._get_error_msg(jobid)
                         pbs.logjobmsg(jobid,
-                                      'Cgroup memsw limit exceeded: %s' %
+                                      'Cgroup memsw limit exceeded: %s\n' %
                                       (err_msg))
                         if (pbs.event().type == pbs.EXECJOB_EPILOGUE
                                 and pbs.event().job.in_ms_mom()):
@@ -4832,6 +4947,7 @@ class CgroupUtils(object):
         """
         Determine the cgroup limits and configure the cgroups
         """
+        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         jobid = job.id
 
         # Get available totals for mem, vmem and hpmem from parent cgroup
@@ -4853,14 +4969,17 @@ class CgroupUtils(object):
         if filename and os.path.isfile(filename):
             with open(filename) as desc:
                 hpmem_avail = int(desc.readline())
+
+        # Sanity check vmem_avail >= mem_avail
+        # -- unnecessary by construction in exechost_startup
+        # but memsw may be disabled or swap accounting disabled
+        if vmem_avail < mem_avail:
+            vmem_avail = mem_avail
+
         pbs.logmsg(pbs.EVENT_DEBUG4, "configure_job:"
                    " total host avail mem=%s vmem=%s hpmem=%s"
                    % (mem_avail, vmem_avail, hpmem_avail))
 
-        # Sanity check vmem_avail > mem_avail unnecessary
-        # -- by construction in exechost_startup
-
-        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         mem_enabled = 'memory' in self.subsystems
         vmem_enabled = 'memsw' in self.subsystems
         if mem_enabled or vmem_enabled:
@@ -4875,8 +4994,9 @@ class CgroupUtils(object):
             vmem_requested = None
             if 'vmem' in hostresc:
                 vmem_requested = convert_size(hostresc['vmem'], 'kb')
-            vmem_default = None
-            if vmem_enabled and self.default('memsw') is not None:
+            vmem_default = 0
+            if (vmem_enabled and (self.default('memsw') is not None)
+                    and (vmem_avail > mem_avail)):
                 vmem_default = size_as_int(self.default('memsw'))
                 if vmem_default > (vmem_avail - mem_avail):
                     vmem_default = vmem_avail - mem_avail
@@ -4907,7 +5027,10 @@ class CgroupUtils(object):
                 else:
                     mem_limit = str(mem_default)
             # Determine the vmem limit
-            if vmem_requested is not None:
+            if not vmem_enabled:
+                # set as equal, but will not be used to set cgroup limit
+                vmem_limit = mem_limit
+            elif vmem_requested is not None:
                 # vmem requested may not exceed available
                 if size_as_int(vmem_requested) > vmem_avail:
                     raise JobValueError(
@@ -4921,15 +5044,17 @@ class CgroupUtils(object):
                                        ['enforce_default']
                         or (self.cfg['cgroup']['memsw']
                                     ['exclhost_ignore_default']
-                            and "place" in job.Resource_List
+                            and 'place' in job.Resource_List
                             and 'exclhost'
                                 in repr(job.Resource_List['place']))):
-
                     vmem_limit = str(vmem_avail)
                 else:
                     vmem_limit = str(min(vmem_avail,
                                          size_as_int(mem_limit)
                                          + vmem_default))
+            pbs.logmsg(pbs.EVENT_DEBUG4,
+                       "Limits computed from requests/defaults: "
+                       "mem: %s vmem: %s" % (mem_limit, vmem_limit))
             # Ensure vmem is at least as large as mem
             if size_as_int(vmem_limit) < size_as_int(mem_limit):
                 vmem_limit = mem_limit
@@ -4987,6 +5112,7 @@ class CgroupUtils(object):
                                'scheduler configuration file' %
                                caller_name())
                     hostresc['vmem'] = pbs.size(vmem_limit)
+
         # Initialize hpmem variables
         hpmem_default = None
         hpmem_limit = None
@@ -5666,6 +5792,16 @@ class CgroupUtils(object):
             if job_start < 0:
                 continue
             return kill_line
+
+        # Found nothing -- more recent kernels have different messages
+        for line in out_split:
+            start = line.find('oom-kill')
+            kill_line = line[start:]
+            job_start = line.find(jobid)
+            if job_start < 0:
+                continue
+            return kill_line
+
         return ''
 
     def write_job_env_file(self, jobid, env_list):

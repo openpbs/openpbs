@@ -87,7 +87,7 @@ struct schd_error;
 struct np_cache;
 struct chunk;
 class selspec;
-struct resdef;
+class resdef;
 struct event_list;
 struct status;
 struct fairshare_head;
@@ -121,7 +121,6 @@ typedef struct place place;
 typedef struct schd_error schd_error;
 typedef struct np_cache np_cache;
 typedef struct chunk chunk;
-typedef struct resdef resdef;
 typedef struct timed_event timed_event;
 typedef struct event_list event_list;
 typedef struct fairshare_head fairshare_head;
@@ -823,8 +822,9 @@ class resource_resv
 	~resource_resv();
 };
 
-struct resource_type
+class resource_type
 {
+	public:
 	/* non consumable - used for selection only (e.g. arch) */
 	bool is_non_consumable:1;
 	bool is_string:1;
@@ -837,12 +837,13 @@ struct resource_type
 	bool is_float:1;
 	bool is_size:1;	/* all sizes are converted into kb */
 	bool is_time:1;
+	resource_type();
 };
 
 struct schd_resource
 {
 	const char *name;			/* name of the resource - reference to the definition name */
-	struct resource_type type;	/* resource type */
+	resource_type type;	/* resource type */
 
 	char *orig_str_avail;		/* original resources_available string */
 
@@ -861,8 +862,8 @@ struct schd_resource
 
 struct resource_req
 {
-	char *name;			/* name of the resource - reference to the definition name */
-	struct resource_type type;	/* resource type information */
+	const char *name;			/* name of the resource - reference to the definition name */
+	resource_type type;	/* resource type information */
 
 	sch_resource_t amount;		/* numeric value of resource */
 	char *res_str;			/* string value of resource */
@@ -870,11 +871,13 @@ struct resource_req
 	struct resource_req *next;	/* next resource_req in list */
 };
 
-struct resdef
+class resdef
 {
-	char *name;			/* name of resource */
-	struct resource_type type;	/* resource type */
-	unsigned int flags;		/* resource flags (see pbs_ifl.h) */
+	public:
+	const std::string name;	/* name of resource */
+	resource_type type;	/* resource type */
+	unsigned int flags;	/* resource flags (see pbs_ifl.h) */
+	resdef(char *rname, unsigned int rflags, resource_type rtype) : name(rname), type(rtype), flags(rflags) {}
 };
 
 class prev_job_info
@@ -901,7 +904,7 @@ struct counts
 
 struct resource_count
 {
-	char *name;		    /* resource name */
+	const char *name;		    /* resource name */
 	resdef *def;		    /* definition of resource */
 	sch_resource_t amount;	    /* amount of resource used */
 	int soft_limit_preempt_bit; /* Place to store preempt bit if resource of an entity is over limits */
@@ -1084,7 +1087,7 @@ struct peer_queue
 	const std::string remote_queue;
 	const std::string remote_server;
 	int peer_sd;
-	peer_queue(const char *lqueue, const char *rqueue, const char *rserver): local_queue(lqueue), remote_queue(rqueue), remote_server(rserver) {}
+	peer_queue(const char *lqueue, const char *rqueue, const char *rserver): local_queue(lqueue), remote_queue(rqueue), remote_server(rserver) {peer_sd = -1;}
 };
 
 struct nspec

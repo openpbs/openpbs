@@ -159,7 +159,8 @@ cnt:
 				pbs_server, pbs_errno);
 			any_failed = pbs_errno;
 			continue;
-		}
+		} else if (pbs_errno)
+			show_svr_inst_fail(connect, argv[0]);
 
 		stat = pbs_rlsjob(connect, job_id_out, hold_type, NULL);
 		if (stat && (pbs_errno != PBSE_UNKJOBID)) {

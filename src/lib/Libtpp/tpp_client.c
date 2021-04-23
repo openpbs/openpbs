@@ -2324,7 +2324,6 @@ leaf_next_event_expiry(time_t now)
  * @return Error code
  * @retval 0 - Success
  * @retval -1 - Failure
- * @retval -2 - App mbox full
  *
  * @par Side Effects:
  *	None
@@ -2376,10 +2375,8 @@ send_pkt_to_app(stream_t *strm, unsigned char type, void *data, int sz, int totl
 	if (rc != 0) {
 		if (obj)
 			tpp_free_pkt(obj);
-		if (rc == -1)
-			tpp_log(LOG_CRIT, __func__, "Error writing to app mbox");
-		else if (rc == -2)
-			tpp_log(LOG_CRIT, __func__, "App mbox is full");
+
+		tpp_log(LOG_CRIT, __func__, "Error writing to app mbox");
 	}
 	return rc;
 }

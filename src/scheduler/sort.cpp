@@ -167,15 +167,15 @@ cmp_placement_sets(const void *v1, const void *v2)
 	np1 = *((node_partition **) v1);
 	np2 = *((node_partition **) v2);
 
-	ncpus1 = find_resource(np1->res, getallres(RES_NCPUS));
-	ncpus2 = find_resource(np2->res, getallres(RES_NCPUS));
+	ncpus1 = find_resource(np1->res, allres["ncpus"]);
+	ncpus2 = find_resource(np2->res, allres["ncpus"]);
 
 	if (ncpus1 != NULL && ncpus2 != NULL)
 		rc = cmpres(ncpus1->avail, ncpus2->avail);
 
 	if (!rc) {
-		mem1 = find_resource(np1->res, getallres(RES_MEM));
-		mem2 = find_resource(np2->res, getallres(RES_MEM));
+		mem1 = find_resource(np1->res, allres["mem"]);
+		mem2 = find_resource(np2->res, allres["mem"]);
 
 		if (mem1 != NULL && mem2 != NULL)
 			rc = cmpres(mem1->avail, mem2->avail);
@@ -1032,8 +1032,8 @@ cmp_node_host(const void *v1, const void *v2)
 	n1 = (node_info **) v1;
 	n2 = (node_info **) v2;
 
-	res1 = find_resource((*n1)->res, getallres(RES_HOST));
-	res2 = find_resource((*n2)->res, getallres(RES_HOST));
+	res1 = find_resource((*n1)->res, allres["host"]);
+	res2 = find_resource((*n2)->res, allres["host"]);
 
 	if (res1 != NULL && res2 != NULL)
 		rc = strcmp(res1->orig_str_avail, res2->orig_str_avail);

@@ -680,12 +680,13 @@ gen_svr_inst_id(void)
 	if (svr_inst_id == NULL) {
 		unsigned int svr_inst_port;
 		char svr_inst_name[PBS_MAXHOSTNAME + 1];
+		char svr_inst_fname[PBS_MAXHOSTNAME + 1];
 
 		if (gethostname(svr_inst_name, PBS_MAXHOSTNAME) == 0)
-			get_fullhostname(svr_inst_name, svr_inst_name, PBS_MAXHOSTNAME);
+			get_fullhostname(svr_inst_name, svr_inst_fname, PBS_MAXHOSTNAME);
 
 		svr_inst_port = pbs_conf.batch_service_port;
-		pbs_asprintf(&svr_inst_id, "%s:%d", svr_inst_name, svr_inst_port);
+		pbs_asprintf(&svr_inst_id, "%s:%d", svr_inst_fname, svr_inst_port);
 	}
 
 	return svr_inst_id;
@@ -703,6 +704,8 @@ gen_svr_inst_id(void)
 int
 get_server_index(void)
 {
+	if (svridx == -1)
+		init_msi();
 	return svridx;
 }
 

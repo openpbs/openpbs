@@ -606,7 +606,7 @@ calc_used_walltime(resource_resv *resresv)
 		return 0;
 
 	if (resresv->is_job && resresv->job !=NULL) {
-		used = find_resource_req(resresv->job->resused, getallres(RES_WALLTIME));
+		used = find_resource_req(resresv->job->resused, allres["walltime"]);
 
 		/* If we can't find the used structure, we will just assume no usage */
 		if (used == NULL)
@@ -1383,10 +1383,10 @@ res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
 	resource_req req = {0};
 	const char *unknown[] = {"unknown", NULL};
 
-        if (buf == NULL)
-          return const_cast<char *>("");
+	if (buf == NULL)
+		return const_cast<char *>("");
 
-        buf[0] = '\0';
+	buf[0] = '\0';
 
 	if (def == NULL)
 		return const_cast<char *>("");
@@ -1395,7 +1395,7 @@ res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
 		case RF_REQUEST:
 			req.amount = amount;
 			req.def = def;
-			req.name = def->name;
+			req.name = def->name.c_str();
 			req.type = def->type;
 			req.res_str = const_cast<char *>("unknown");
 			return res_to_str_re(((void*) &req), fld, &buf, &bufsize, NOEXPAND);
@@ -1405,7 +1405,7 @@ res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
 			res.avail = amount;
 			res.assigned = amount;
 			res.def = def;
-			res.name = def->name;
+			res.name = def->name.c_str();
 			res.type = def->type;
 			res.orig_str_avail = const_cast<char *>("unknown");
 			res.str_avail = const_cast<char **>(unknown);
@@ -1465,7 +1465,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 
 	char localbuf[1024];
 	char *ret;
-	struct resource_type rtype = {0};
+	resource_type rtype;
 
 	if (buf == NULL || bufsize == NULL)
 		return const_cast<char *>("");

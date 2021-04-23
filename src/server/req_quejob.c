@@ -1134,8 +1134,8 @@ req_quejob(struct batch_request *preq)
 					(int)(sizeof(hook_msg) - 2), hook_buf);
 			}
 
-			reply_text(preq, hook_errcode, hook_msg);
 			job_purge(pj);
+			reply_text(preq, hook_errcode, hook_msg);
 			return;
 	}
 #endif

@@ -483,9 +483,9 @@ schedule(int sd, const sched_cmd *cmd)
 		case SCH_SCHEDULE_FIRST:
 			/*
 			 * on the first cycle after the server restarts custom resources
-			 * may have been added.  Dump what we have so we'll requery them.
+			 * may have been added.
 			 */
-			reset_global_resource_ptrs();
+			update_resource_defs(sd);
 
 			/* Get config from the qmgr sched object */
 			if (!set_validate_sched_attrs(sd))
@@ -506,11 +506,11 @@ schedule(int sd, const sched_cmd *cmd)
 		case SCH_CONFIGURE:
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
 				  "reconfigure", "Scheduler is reconfiguring");
-			reset_global_resource_ptrs();
-
 			/* Get config from sched_priv/ files */
 			if (schedinit(-1) != 0)
 				return 0;
+
+			update_resource_defs(sd);
 
 			/* Get config from the qmgr sched object */
 			if (!set_validate_sched_attrs(sd))
@@ -747,7 +747,6 @@ get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 {
 	int i;
 	sched_cmd cmd;
-	int nsvrs = get_num_servers();
 	svr_conn_t **svr_conns = get_conn_svr_instances(clust_secondary_sock);
 	if (svr_conns == NULL) {
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
@@ -771,7 +770,7 @@ get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 
 		if (cmd.cmd == SCH_SCHEDULE_RESTART_CYCLE) {
 			*high_prior_cmd = cmd;
-			if (i == nsvrs - 1)  {
+			if (i == get_num_servers() - 1)  {
 				/* We need to return only after checking all servers. This way even if multiple
 				 * servers send SCH_SCHEDULE_RESTART_CYCLE we only have to consider one such request
 				 */
@@ -790,6 +789,7 @@ get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 			}
 		}
 	}
+
 	return 0;
 }
 
@@ -2227,7 +2227,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 	int queues_finished = 0;
 	int queue_index_size = 0;
 	int j = 0;
-	int ind;
+	int ind = -1;
 
 	if ((policy == NULL) || (sinfo == NULL))
 		return NULL;

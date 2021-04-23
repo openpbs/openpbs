@@ -672,6 +672,9 @@ pbsd_init(int type)
 		return (-1);
 	}
 
+	/* Initialize server instsances before loading jobs/resv */
+	init_msi();
+
 	/* Open and read in node list if one exists */
 	if ((rc = setup_nodes()) == -1) {
 		/* log_buffer set in setup_nodes */
@@ -691,9 +694,6 @@ pbsd_init(int type)
 	 * This is used for standing reservations user of libical */
 	sprintf(zone_dir, "%s%s", pbs_conf.pbs_exec_path, ICAL_ZONEINFO_DIR);
 	set_ical_zoneinfo(zone_dir);
-
-	/* Initialize server instsances before loading jobs/resv */
-	init_msi();
 
 	/* load reservations */
 	if ((resvs_idx = pbs_idx_create(0, 0)) == NULL) {

@@ -59,13 +59,12 @@ EXTRA_PROGRAMS = \
 	chk_tree \
 	rstester
 
-
 common_cflags = \
 	-I$(top_srcdir)/src/include \
 	@KRB5_CFLAGS@
 
 common_libs = \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
+	$(top_builddir)/src/lib/Libpbs/libpbs.la \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \

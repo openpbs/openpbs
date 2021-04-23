@@ -2616,3 +2616,104 @@ create_subjob_id(char *parent_jid, int sjidx)
 	*pcb = '[';
 	return jid;
 }
+
+
+/**
+ * @brief
+ * 		read attributes from file descriptor of a job file
+ *
+ * @param[in]	fd	-	file descriptor
+ * @param[out]	errbuf	-	buffer to return messages for any errors
+ *
+ * @return	svrattrl *
+ * @retval	svrattrl object for the attribute read
+ * @retval	NULL for error
+ */
+static svrattrl *
+read_attr(int fd, char **errbuf)
+{
+	int amt;
+	int i;
+	svrattrl *pal;
+	svrattrl tempal;
+
+	i = read(fd, (char *)&tempal, sizeof(tempal));
+	if (i != sizeof(tempal)) {
+		if (errbuf != NULL)
+			sprintf(*errbuf, "bad read of attribute");
+		return NULL;
+	}
+	if (tempal.al_tsize == ENDATTRIBUTES)
+		return NULL;
+
+	pal = (svrattrl *) malloc(tempal.al_tsize);
+	if (pal == NULL) {
+		if (errbuf != NULL)
+			sprintf(*errbuf, "malloc failed");
+		return NULL;
+	}
+	*pal = tempal;
+
+	/* read in the actual attribute data */
+
+	amt = pal->al_tsize - sizeof(svrattrl);
+	i = read(fd, (char *)pal + sizeof(svrattrl), amt);
+	if (i != amt) {
+		if (errbuf != NULL)
+			sprintf(*errbuf, "short read of attribute");
+		return NULL;
+	}
+	pal->al_name = (char *)pal + sizeof(svrattrl);
+	if (pal->al_rescln)
+		pal->al_resc = pal->al_name + pal->al_nameln;
+	else
+		pal->al_resc = NULL;
+	if (pal->al_valln)
+		pal->al_value = pal->al_name + pal->al_nameln + pal->al_rescln;
+	else
+		pal->al_value = NULL;
+
+	return pal;
+}
+
+/**
+ * @brief	Read all job attribute values from a job file
+ *
+ * @param[in]	fd - fd of job file
+ * @param[out]	state - return pointer to state value
+ * @param[out]	substate - return pointer for substate value
+ * @param[out]	errbuf	-	buffer to return messages for any errors
+ *
+ * @return	svrattrl*
+ * @retval	list of attributes read from a job file
+ * @retval	NULL for error
+ */
+svrattrl *
+read_all_attrs_from_jbfile(int fd, char **state, char **substate, char **errbuf)
+{
+	svrattrl *pal = NULL;
+	svrattrl *pali = NULL;
+
+	while ((pali = read_attr(fd, errbuf)) != NULL) {
+		if (pal == NULL) {
+			pal = pali;
+			(&pal->al_link)->ll_struct = (void *)(&pal->al_link);
+			(&pal->al_link)->ll_next = NULL;
+			(&pal->al_link)->ll_prior = NULL;
+		} else {
+			pbs_list_link *head = &pal->al_link;
+			pbs_list_link *newp = &pali->al_link;
+			newp->ll_prior = NULL;
+			newp->ll_next  = head;
+			newp->ll_struct = pali;
+			pal = pali;
+		}
+		/* Check if the attribute read is state/substate and store it separately */
+		if (state && strcmp(pali->al_name, ATTR_state) == 0)
+			*state = pali->al_value;
+		else if (substate && strcmp(pali->al_name, ATTR_substate) == 0)
+			*substate = pali->al_value;
+	}
+
+	return pal;
+}
