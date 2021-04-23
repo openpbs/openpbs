@@ -608,9 +608,14 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def check_mom_bash_version(cls):
-        if cls.mom.check_mom_bash_version():
+        skip_test = False
+        for mom in cls.moms.values():
+            if mom.check_mom_bash_version():
+                skip_test = True
+                msg = 'capability supported only for bash version >= 4.2.46'
+                break
+        if not skip_test:
             return
-        msg = 'capability supported only for bash version >= 4.2.46'
         if cls.__dict__.get('__check_mom_bash_version__', False):
             # skip all test cases in this test suite
             for test_item in cls.test_dict.values():
