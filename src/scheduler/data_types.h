@@ -1167,7 +1167,6 @@ struct config
 	std::unordered_set<std::string> res_to_check;		/* the resources schedule on */
 	std::unordered_set<resdef *> resdef_to_check;		/* the res to schedule on in def form */
 	std::unordered_set<std::string> ignore_res;		/* resources - unset implies infinite */
-	time_t max_starve;			/* starving threshold */
 	/* order to preempt jobs */
 	std::vector<sort_info> prime_node_sort;	/* node sorting primetime */
 	std::vector<sort_info> non_prime_node_sort;	/* node sorting non primetime */

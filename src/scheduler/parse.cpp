@@ -121,7 +121,6 @@ config::config()
 	max_preempt_attempts = SCHD_INFINITY;					/* max num of preempt attempts per cyc*/
 	max_jobs_to_check = SCHD_INFINITY;			/* max number of jobs to check in cyc*/
 	fairshare_decay_factor = .5;		/* decay factor used when decaying fairshare tree */
-	max_starve = 0;
 #ifdef NAS
 	/* localmod 034 */
 	max_borrow = 0;			/* job share borrowing limit */
@@ -314,11 +313,6 @@ parse_config(const char *fname)
 					}
 				}
 				else if (!strcmp(config_name, PARSE_MAX_STARVE)) {
-					tmpconf.max_starve = res_to_num(config_value, &type);
-					if (!type.is_time) {
-						snprintf(errbuf, sizeof(errbuf), "Invalid time %s", config_value);
-						error = true;
-					}
 					obsolete[0] = config_name;
 					obsolete[1] = "use eligible_time in job_sort_formula";
 				} else if (!strcmp(config_name, PARSE_HALF_LIFE) || !strcmp(config_name, PARSE_FAIRSHARE_DECAY_TIME)) {
