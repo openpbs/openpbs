@@ -1060,12 +1060,6 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 				set_schd_error_codes(err, NOT_RUN, STRICT_ORDERING);
 				update_jobs_cant_run(sd, sinfo->jobs, NULL, err, START_WITH_JOB);
 			}
-			else if (!policy->backfill && policy->help_starving_jobs &&
-				njob->job->is_starving) {
-				set_schd_error_codes(err, NOT_RUN, ERR_SPECIAL);
-				set_schd_error_arg(err, SPECMSG, "Job would conflict with starving job");
-				update_jobs_cant_run(sd, sinfo->jobs, NULL, err, START_WITH_JOB);
-			}
 			else if (policy->backfill && policy->strict_ordering && qinfo->backfill_depth == 0) {
 				set_schd_error_codes(err, NOT_RUN, STRICT_ORDERING);
 				update_jobs_cant_run(sd, qinfo->jobs, NULL, err, START_WITH_JOB);
@@ -1834,9 +1828,6 @@ should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resr
 	if (policy->strict_ordering)
 		return 1;
 
-	if (policy->help_starving_jobs && resresv->job->is_starving)
-		return 1;
-
 	return 0;
 }
 
@@ -2122,9 +2113,9 @@ find_runnable_resresv_ind(resource_resv **resresv_arr, int start_index)
 
 /**
  * @brief
- *		find the index of the next runnable express,preempted,starving job.
+ *		find the index of the next runnable express,preempted.
  * @par
- * 		ASSUMPTION: express jobs will be sorted to the front of the list, followed by preempted jobs, followed by starving jobs
+ * 		ASSUMPTION: express jobs will be sorted to the front of the list, followed by preempted jobs
  *
  * @param[in]	jobs	-	the array of jobs
  * @param[in]	start_index	the index to start from
@@ -2142,8 +2133,7 @@ find_non_normal_job_ind(resource_resv **jobs, int start_index) {
 
 	for (i = start_index; jobs[i] != NULL; i++) {
 		if (jobs[i]->job != NULL) {
-			if ((jobs[i]->job->preempt_status & PREEMPT_TO_BIT(PREEMPT_EXPRESS)) ||
-			(jobs[i]->job->is_preempted) || (jobs[i]->job->is_starving)) {
+			if ((jobs[i]->job->preempt_status & PREEMPT_TO_BIT(PREEMPT_EXPRESS)) || (jobs[i]->job->is_preempted)) {
 				if (!jobs[i]->can_not_run)
 					return i;
 			} else if (jobs[i]->job->preempt_status & PREEMPT_TO_BIT(PREEMPT_NORMAL))
@@ -2216,8 +2206,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 	 * 2. jobs in reservation
 	 * 3. High priority preempting jobs
 	 * 4. Preempted jobs
-	 * 5. Starving jobs
-	 * 6. Normal jobs
+	 * 5. Normal jobs
 	 */
 	static int skip = SKIP_NOTHING;
 	static int sort_status = MAY_RESORT_JOBS; /* to decide whether to sort jobs or not */

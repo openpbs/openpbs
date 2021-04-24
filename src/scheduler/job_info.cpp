@@ -76,8 +76,6 @@
  * 	make_ineligible()
  * 	update_accruetype()
  * 	getaoename()
- * 	job_starving()
- * 	mark_job_starving()
  * 	update_estimated_attrs()
  * 	check_preempt_targets_for_none()
  * 	is_finished_job()
@@ -568,7 +566,6 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		long duration;
 		time_t start;
 		time_t end;
-		long starve_num;
 
 		if ((resresv = query_job(cur_job, sinfo, err)) == NULL) {
 			data->error = 1;
@@ -817,10 +814,6 @@ query_jobs_chunk(th_data_query_jinfo *data)
 #ifdef NAS /* localmod 034 */
 		site_set_job_share(resresv);
 #endif /* localmod 034 */
-
-		starve_num = job_starving(policy, resresv);
-		if (starve_num)
-			mark_job_starving(resresv, starve_num);
 
 		/* Don't consider a job not in a queued state as runnable */
 		if (!in_runnable_state(resresv))
@@ -1447,7 +1440,6 @@ new_job_info()
 	jinfo->can_not_preempt = 0;
 	jinfo->topjob_ineligible = 0;
 
-	jinfo->is_starving = 0;
 	jinfo->is_array = 0;
 	jinfo->is_subjob = 0;
 
@@ -2740,7 +2732,6 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->is_expired = ojinfo->is_expired;
 	njinfo->is_suspended = ojinfo->is_suspended;
 	njinfo->is_susp_sched = ojinfo->is_susp_sched;
-	njinfo->is_starving = ojinfo->is_starving;
 	njinfo->is_array = ojinfo->is_array;
 	njinfo->is_subjob = ojinfo->is_subjob;
 	njinfo->can_not_preempt = ojinfo->can_not_preempt;
@@ -3841,11 +3832,8 @@ set_preempt_prio(resource_resv *job, queue_info *qinfo, server_info *sinfo)
 		qinfo->priority >= sc_attrs.preempt_queue_prio)
 		jinfo->preempt_status |= PREEMPT_TO_BIT(PREEMPT_EXPRESS);
 
-	if (conf.preempt_fairshare && over_fs_usage(jinfo->ginfo))
+	if (over_fs_usage(jinfo->ginfo))
 		jinfo->preempt_status |= PREEMPT_TO_BIT(PREEMPT_OVER_FS_LIMIT);
-
-	if (jinfo->is_starving && conf.preempt_starving)
-		jinfo->preempt_status |= PREEMPT_TO_BIT(PREEMPT_STARVING);
 
 	if ((rc = check_soft_limits(sinfo, qinfo, job)) != 0) {
 		if ((rc & PREEMPT_TO_BIT(PREEMPT_ERR)) != 0) {
@@ -4570,117 +4558,6 @@ geteoename(selspec *select)
 		return string_dup(req->res_str);
 
 	return NULL;
-}
-
-/**
- * @brief
- * 		returns if a job is starving, and if the job is
- *		       starving, it returns a notion of how starving the
- *		       job is.  The higher the number, the more starving.
- *
- * @param[in]	policy	-	policy info
- * @param[in]	sjob	-	the job to check if it's starving
- *
- * @return	starving number
- * @retval	0	: if not starving
- #ifdef NAS
- * @param[in,out]	sjob	-	the job to check, NAS_pri will be updated
- #endif
- *
- */
-long
-job_starving(status *policy, resource_resv *sjob)
-{
-	long starve_num = 0;
-	time_t etime = 0;
-	time_t stime = 0;
-	time_t max_starve;
-
-	if (policy == NULL || sjob == NULL)
-		return 0;
-
-	if (!sjob->is_job || sjob->job ==NULL)
-		return 0;
-
-#ifndef NAS /* localmod 045 */
-	if (policy->help_starving_jobs) {
-#endif /* localmod 045 */
-		/* Running jobs which were starving when they were run continue
-		 * to be starving for their life.  It is possible to have starving
-		 * jobs preempt lower priority jobs.  If running job was no longer
-		 * starving, other starving jobs would preempt it in a subsequent cycle
-		 */
-		max_starve = conf.max_starve;
-#ifdef NAS
-		/* localmod 046 */
-		max_starve = sjob->job->queue->max_starve;
-		/* localmod 045 */
-		if (max_starve == 0)
-			max_starve = conf.max_starve;
-		/* Large-enough setting for max_starve->never starve */
-		if (max_starve < Q_SITE_STARVE_NEVER)
-#endif
-		if (in_runnable_state(sjob) || sjob->job->is_running) {
-			if (sjob->job->queue->is_ok_to_run &&
-				sjob->job->resv_id ==NULL) {
-
-				if (sjob->server->eligible_time_enable ==1) {
-					if (max_starve < sjob->job->eligible_time)
-						starve_num = sjob->job->eligible_time;
-				}
-				else {
-					if (sjob->job->etime == UNSPECIFIED)
-						etime = sjob->qtime;
-					else
-						etime = sjob->job->etime;
-
-					if (sjob->job->is_running)
-						stime = sjob->job->stime;
-					else
-						stime = sjob->server->server_time;
-
-					if (etime + max_starve < stime) {
-						if (policy->help_starving_jobs) {
-							starve_num = sjob->server->server_time +
-								stime - etime - max_starve;
-						}
-					}
-				}
-#ifdef NAS /* localmod 045 */
-				/* localmod 116 */
-				site_set_NAS_pri(sjob->job, max_starve, starve_num);
-#endif
-			}
-		}
-#ifndef NAS /* localmod 045 */
-	}
-#endif /* localmod 045 */
-	return starve_num;
-}
-
-/**
- *	@brief
- *		mark a job starving and handle setting all the
- *			    approprate elements and bits which go with it.
- *
- * @param[in]	sjob	-	the starving job
- * @param[in]	sch_priority	-	the sch_priority of the starving job
- *
- * @return nothing
- */
-void
-mark_job_starving(resource_resv *sjob, long sch_priority)
-{
-	if (sjob == NULL || sjob->job == NULL)
-		return;
-
-	sjob->job->is_starving = 1;
-	sjob->sch_priority = sch_priority;
-	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-		sjob->name, (sjob->job->is_running ? "Job was starving when it ran" : "Job is starving"));
-
-	if (conf.dont_preempt_starving)
-		sjob->job->can_not_preempt = 1;
 }
 
 /**

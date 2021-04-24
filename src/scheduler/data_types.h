@@ -316,7 +316,6 @@ struct status
 	bool strict_fifo:1;		/* deprecated */
 	bool strict_ordering:1;
 	bool fair_share:1;
-	bool help_starving_jobs:1;
 	bool backfill:1;
 	bool sort_nodes:1;
 	bool backfill_prime:1;
@@ -566,7 +565,6 @@ struct job_info
 	bool can_requeue:1;	/* this job can be requeued */
 	bool can_suspend:1;	/* this job can be suspended */
 
-	bool is_starving:1;		/* job has waited passed starvation time */
 	bool is_array:1;		/* is the job a job array object */
 	bool is_subjob:1;		/* is a subjob of a job array */
 
@@ -1124,8 +1122,6 @@ struct config
 	bool non_prime_so:1;
 	bool prime_fs:1;		/* fair share */
 	bool non_prime_fs:1;
-	bool prime_hsv:1;		/* help starving jobs */
-	bool non_prime_hsv:1;
 	bool prime_bf:1;		/* back filling */
 	bool non_prime_bf:1;
 	bool prime_sn:1;		/* sort nodes by priority */
@@ -1136,9 +1132,6 @@ struct config
 	bool non_prime_pre:1;
 	bool update_comments:1;	/* should we update comments or not */
 	bool prime_exempt_anytime_queues:1; /* backfill affects anytime queues */
-	bool preempt_starving:1;	/* once jobs become starving, it can preempt */
-	bool preempt_fairshare:1; /* normal jobs can preempt over usage jobs */
-	bool dont_preempt_starving:1; /* don't preempt staving jobs */
 	bool enforce_no_shares:1;	/* jobs with 0 shares don't run */
 	bool node_sort_unused:1;	/* node sorting by unused/assigned is used */
 	bool resv_conf_ignore:1;	/* if we want to ignore dedicated time when confirming reservations.  Move to enum if ever expanded */
@@ -1174,7 +1167,6 @@ struct config
 	std::unordered_set<std::string> res_to_check;		/* the resources schedule on */
 	std::unordered_set<resdef *> resdef_to_check;		/* the res to schedule on in def form */
 	std::unordered_set<std::string> ignore_res;		/* resources - unset implies infinite */
-	time_t max_starve;			/* starving threshold */
 	/* order to preempt jobs */
 	std::vector<sort_info> prime_node_sort;	/* node sorting primetime */
 	std::vector<sort_info> non_prime_node_sort;	/* node sorting non primetime */
