@@ -1092,11 +1092,6 @@ tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 	} else {
 		/* reduce from mbox size during read */
 		mbox->mbox_size -= cmd->sz;
-#ifdef TPPDEBUG
-		if ((mbox->max_size != -1) && (cmd->sz > 0)) {
-			TPP_DBPRT("Mbox %s, after reading %d size = %d", mbox->mbox_name, cmd->sz, mbox->mbox_size);
-		}
-#endif
 	}
 
 	tpp_unlock(&mbox->mbox_mutex);
@@ -1221,12 +1216,6 @@ tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, char cmdval, void *data, int s
 	
 	/* add to the size to global size during enque */
 	mbox->mbox_size += sz;
-
-#ifdef TPPDEBUG
-	if ((mbox->max_size != -1) && (sz > 0)) {
-		TPP_DBPRT("Mbox %s, after adding %d  size = %d",  mbox->mbox_name, sz, mbox->mbox_size);
-	}
-#endif
 
 	tpp_unlock(&mbox->mbox_mutex);
 
