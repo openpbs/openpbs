@@ -1367,7 +1367,7 @@ sleep 300
             "default"            : "256MB",
             "reserve_percent"    : 0,
             "swappiness"         : 0,
-            "reserve_amount"     : "2GB",
+            "reserve_amount"     : "1GB",
             "enforce_default"    : true,
             "exclhost_ignore_default" : true
         },
@@ -1436,7 +1436,7 @@ sleep 300
             "default"            : "100MB",
             "reserve_percent"    : 0,
             "swappiness"         : 0,
-            "reserve_amount"     : "2GB",
+            "reserve_amount"     : "1GB",
             "enforce_default"    : %s,
             "exclhost_ignore_default" : true
         },
