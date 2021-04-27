@@ -60,6 +60,8 @@
 #include "resource_resv.h"
 #include "multi_threading.h"
 
+extern sigset_t allsigs;
+
 /**
  * @brief	create the thread id key & set it for the main thread
  *
@@ -237,8 +239,8 @@ worker(void *tid)
 	pthread_setspecific(th_id_key, tid);
 	ntid = *(int *)tid;
 
-	/* Block HUPs, if we ever unblock this, we'll need to modify 'restart()' to handle MT */
-	sigemptyset(&set);
+	/* Add HUP to the list of signals to block, if we ever unblock this, we'll need to modify 'restart()' to handle MT */
+	set = allsigs;
 	sigaddset(&set, SIGHUP);
 
 	if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0) {
