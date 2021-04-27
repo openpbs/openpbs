@@ -3887,13 +3887,10 @@ event.accept()
         job_stat = self.server.status(JOB, id=jid)
         execvnode1 = job_stat[0]['exec_vnode']
         self.logger.info("initial exec_vnode: %s" % execvnode1)
-        initial_vnodes = execvnode1.split('+')
         # Check the exec_resize hook reject message in sister mom logs
         self.moms_list[0].log_match(
             "Job;%s;Cannot resize the job" % (jid),
             starttime=stime, interval=2, n='ALL')
-        # Check that job is in substate 20 (Held due to reruns)
-        self.server.expect(JOB, {ATTR_substate: '20'}, id=jid)
         # Check that MS saw that the sister mom failed to update the job
         # This message is on MS mom[1] but mentions sismom mom[0]
         self.moms_list[1].log_match(
@@ -3945,13 +3942,10 @@ event.accept()
         job_stat = self.server.status(JOB, id=jid)
         execvnode1 = job_stat[0]['exec_vnode']
         self.logger.info("initial exec_vnode: %s" % execvnode1)
-        initial_vnodes = execvnode1.split('+')
         # Check the exec_resize hook reject message in MS log
         self.moms_list[1].log_match(
             "Job;%s;Cannot resize the job" % (jid),
             starttime=stime, interval=2, n='ALL')
-        # Check the exec_vnode after job is in substate 20 (Held due to reruns)
-        self.server.expect(JOB, {ATTR_substate: '20'}, id=jid)
         # Because of resize hook reject Mom failed to update the job.
         # Check that job got requeued
         self.server.log_match("Job;%s;Job requeued" % (jid), starttime=stime)
