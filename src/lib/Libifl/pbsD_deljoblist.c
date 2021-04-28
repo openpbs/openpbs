@@ -489,6 +489,8 @@ static struct batch_deljob_status *
 PBSD_deljoblist(int c, int function, char **jobids, int numjids, char *extend)
 {
 	int i;
+	struct batch_deljob_status *last;
+	struct batch_deljob_status *ret;
 	svr_jobid_list_t *svr_itr = NULL;
 	struct batch_deljob_status *retlist = NULL;
 	svr_jobid_list_t *svr_jobid_list_hd = NULL;
@@ -533,7 +535,6 @@ PBSD_deljoblist(int c, int function, char **jobids, int numjids, char *extend)
 		if (pbs_client_thread_lock_connection(svr_itr->svr_fd) != 0)
 			goto err;
 		for (i = 0; i < svr_itr->total_jobs; i = i + numjids) {
-			struct batch_deljob_status *ret;
 
 			numjids = NUM_JOBS_IN_A_BATCH;
 			numjids = ((i + numjids) <= svr_itr->total_jobs) ? numjids : (svr_itr->total_jobs - i);
@@ -566,8 +567,6 @@ PBSD_deljoblist(int c, int function, char **jobids, int numjids, char *extend)
 					}
 				}
 				if (ret != NULL) {
-					struct batch_deljob_status *last;
-
 					for (last = ret; last->next != NULL; last = last->next)
 						;
 
@@ -584,13 +583,14 @@ PBSD_deljoblist(int c, int function, char **jobids, int numjids, char *extend)
 
 	/* Handle the broadcast list if set */
 	if (bcastjids != NULL) {
-		struct batch_deljob_status *templist = NULL;
 
-		templist = broadcast_deljob(c, function, bcastjids, nbcastids, extend);
+		ret = broadcast_deljob(c, function, bcastjids, nbcastids, extend);
 		/* Add the jobs not found to the list of existing failed deletions */
-		if (templist != NULL) {
-			templist->next = retlist;
-			retlist = templist;
+		if (ret != NULL) {
+			for (last = ret; last->next; last = last->next)
+				;
+			last->next = retlist;
+			retlist = ret;
 		}
 	}
 	free_string_array(bcastjids);
