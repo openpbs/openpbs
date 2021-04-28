@@ -725,6 +725,18 @@ tpp_bld_pkt(tpp_packet_t *pkt, void *data, int len, int dup, void **dup_data)
 	return pkt;
 }
 
+/**
+ * @brief
+ *	Free a chunk
+ *
+ * @param[in] - chunk - Ptr to the chunk to be freed.
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
 void
 tpp_free_chunk(tpp_chunk_t *chunk)
 {
@@ -2474,7 +2486,8 @@ print_packet_hdr(const char *fnc, void *data, int len)
 		tpp_data_pkt_hdr_t *dhdr = (tpp_data_pkt_hdr_t *) data;
 
 		strncpy(buff, tpp_netaddr(&dhdr->src_addr), sizeof(buff));
-		tpp_log(LOG_CRIT, __func__, "%s: src_host=%s, dest_host=%s, len=%d, src_sd=%d, dest_sd=%d, src_magic=%d", str_types[type - 1], buff, tpp_netaddr(&dhdr->dest_addr), len,
+		tpp_log(LOG_CRIT, __func__, "%s: src_host=%s, dest_host=%s, len=%d, data_len=%d, src_sd=%d, dest_sd=%d, src_magic=%d", 
+			str_types[type - 1], buff, tpp_netaddr(&dhdr->dest_addr), len + sizeof(tpp_data_pkt_hdr_t), len,
 			ntohl(dhdr->src_sd), (ntohl(dhdr->dest_sd) == UNINITIALIZED_INT) ? -1 : ntohl(dhdr->dest_sd), ntohl(dhdr->src_magic));
 
 	} else {
