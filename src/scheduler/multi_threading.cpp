@@ -238,7 +238,7 @@ worker(void *tid)
 	ntid = *(int *)tid;
 
 	/* Add HUP to the list of signals to block, if we ever unblock this, we'll need to modify 'restart()' to handle MT */
-	pthread_sigmask(SIG_BLOCK, NULL, &set);
+	sigemptyset(&set);
 	sigaddset(&set, SIGHUP);
 
 	if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0) {
