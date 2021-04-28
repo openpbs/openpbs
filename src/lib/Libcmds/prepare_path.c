@@ -164,8 +164,7 @@ prepare_path(char *path_in, char *path_out)
 					break;
 				}
 			}
-			if (*c != ':')
-			{
+			if (*c != ':') {
 				if (*c == '/') {
 					/* There's a colon in the path */ 
 					host_given = NULL;
@@ -177,8 +176,7 @@ prepare_path(char *path_in, char *path_out)
 				}
 				else
 					return 1;
-			}
-			else {
+			} else {
 				/* Advance past the colon */
 				c++;
 			}
