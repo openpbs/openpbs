@@ -173,8 +173,7 @@ prepare_path(char *path_in, char *path_out)
 						if (isspace(*c) == 0)
 							break;
 					}
-				}
-				else
+				} else
 					return 1;
 			} else {
 				/* Advance past the colon */
