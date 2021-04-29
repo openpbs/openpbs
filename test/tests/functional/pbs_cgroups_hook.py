@@ -5203,29 +5203,23 @@ sleep 300
         but also if it can be overrided in the config file
         """
 
-        if (self.paths[self.hosts_list[0]]['cpuset']
-                != '/sys/fs/cgroup/cpuset'):
-            self.skipTest('Test requires main "cpuset" ctrlr mount '
-                          'under /sys/fs/cgroup')
         if self.du.isdir(self.hosts_list[0], '/dev/tstc'):
-            self.skipTest('Test requires /dev/tstcs not to exist')
+            self.skipTest('Test requires /dev/tstc not to exist')
         if self.du.isdir(self.hosts_list[0], '/dev/tstm'):
             self.skipTest('Test requires /dev/tstm not to exist')
 
         self.load_config(self.cfg17)
 
-        self.du.run_cmd(self.hosts_list[0],
-                        ['mkdir', '/dev/tstm'],
-                        sudo=True)
+        self.du.mkdir(hostname=self.hosts_list[0],
+                      path='/dev/tstm', mode=0o0755, sudo=True)
         self.du.run_cmd(self.hosts_list[0],
                         ['mount', '-t', 'cgroup', '-o',
                          'rw,nosuid,nodev,noexec,relatime,seclabel,memory',
                          'cgroup', '/dev/tstm'],
                         sudo=True)
 
-        self.du.run_cmd(self.hosts_list[0],
-                        ['mkdir', '/dev/tstc'],
-                        sudo=True)
+        self.du.mkdir(hostname=self.hosts_list[0],
+                      path='/dev/tstc', mode=0o0755, sudo=True)
         self.du.run_cmd(self.hosts_list[0],
                         ['mount', '-t', 'cgroup', '-o',
                          'rw,nosuid,nodev,noexec,relatime,seclabel,cpuset',
