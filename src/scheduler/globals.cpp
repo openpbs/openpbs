@@ -199,3 +199,6 @@ std::vector<prev_job_info> last_running;
 
 /* fairshare tree */
 fairshare_head *fstree;
+
+/* Specifies whether scheduler is operating in partition tolerance mode or not */
+bool part_tolerance = false;

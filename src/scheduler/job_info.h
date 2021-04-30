@@ -93,6 +93,8 @@ preempt_job_info *send_preempt_jobs(int virtual_sd, char **preempt_jobs_list);
 
 int send_sigjob(int virtual_sd, resource_resv *resresv, const char *signal, char *extend);
 
+struct batch_status *send_selstat(int virtual_fd, struct attropl *attrib, struct attrl *rattrib, char *extend);
+
 
 /*
  *

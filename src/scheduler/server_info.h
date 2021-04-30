@@ -469,4 +469,6 @@ node_info **dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nno
 
 status *dup_status(status *ost);
 
+struct batch_status *send_statserver(int virtual_fd, struct attrl *attrib, char *extend);
+
 #endif	/* _SERVER_INFO_H */

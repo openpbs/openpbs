@@ -146,10 +146,8 @@ int get_num_servers(void);
 typedef struct svr_conn {
 	int sd;                      /* File descriptor for the open socket */
 	int state;                   /* Connection state */
-	time_t last_used_time;       /* Last used time for the connection */
 	char name[PBS_MAXSERVERNAME + 1];  /* server name */
 	int port;                    /* server port */
-	int from_sched;              /* flag to indicate whether this conn is from sched or not */
 } svr_conn_t;
 
 typedef struct svr_conns_list {
@@ -414,6 +412,9 @@ int get_server_fd_from_jid(int c, char *jobid);
 int multi_svr_op(int fd);
 int get_job_svr_inst_id(int c, char *job_id);
 
+int pbs_register_sched_single_msvr(const char *sched_id, int primary_conn_id, int secondary_conn_id);
+void pbs_connect_single_msvr(svr_conn_t *conn);
+int pbs_disconnect_single_msvr(svr_conn_t *svr_conn);
 #ifdef __cplusplus
 }
 #endif

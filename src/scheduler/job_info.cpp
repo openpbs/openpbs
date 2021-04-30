@@ -997,7 +997,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	}
 
 	/* get jobs from PBS server */
-	if ((jobs = pbs_selstat(pbs_sd, &opl, attrib, const_cast<char *>("S"))) == NULL) {
+	if ((jobs = send_selstat(pbs_sd, &opl, attrib, const_cast<char *>("S"))) == NULL) {
 		if (pbs_errno > 0) {
 			errmsg = pbs_geterrmsg(pbs_sd);
 			if (errmsg == NULL)

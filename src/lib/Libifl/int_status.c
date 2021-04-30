@@ -552,9 +552,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 
 	for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
 
-		if (!svr_conns[i] ||
-		    svr_conns[i]->state != SVR_CONN_STATE_UP ||
-		    failed_conn[i])
+		if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP || failed_conn[i])
 			continue;
 
 		if ((next = PBSD_status_get(svr_conns[i]->sd, &last, NULL, PROT_TCP))) {
@@ -603,6 +601,9 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 
 end:
 	free(failed_conn);
+
+	if (ret && pbs_errno == PBSE_NONODES)	/* one of the servers didn't report any vnodes */
+		pbs_errno = PBSE_NONE;
 	return ret;
 }
 
