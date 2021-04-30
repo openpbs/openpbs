@@ -723,6 +723,8 @@ pbs_db_password(void *conn, char *userid, char *password, char *olduser)
 		/* alter user ${user} SUPERUSER ENCRYPTED PASSWORD '${passwd}' */
 		sprintf(sqlbuff, "alter user \"%s\" SUPERUSER ENCRYPTED PASSWORD '%s'", olduser, pquoted);
 	}
+	free(pquoted);
+
 	if (db_execute_str(conn, sqlbuff) == -1)
 		return -1;
 	if (change_user) {
