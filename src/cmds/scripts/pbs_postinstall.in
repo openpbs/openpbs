@@ -577,19 +577,7 @@ create_home() {
 			touch "$momconfig"
 			chmod 0644 "$momconfig"
 		fi
-		grep "^\$clienthost.*${PBS_SERVER}" "$momconfig" >/dev/null
-		if [ $? -ne 0 ] ; then
-			echo "\$clienthost $PBS_SERVER" >> $momconfig
-			if [ "${PBS_SERVER}" = 'CHANGE_THIS_TO_PBS_SERVER_HOSTNAME' ]; then
-				echo "***"
-				echo "*** ======="
-				echo "*** NOTICE:"
-				echo "*** ======="
-				echo "*** The clienthost entry for the server must be manually"
-				echo "*** modified in $momconfig"
-				echo "*** Update this value before starting PBS."
-			fi
-		fi
+		
 		if is_cray_xt; then
 			grep "^\$vnodedef_additive" "$momconfig" >/dev/null
 			if [ $? -ne 0 ] ; then
