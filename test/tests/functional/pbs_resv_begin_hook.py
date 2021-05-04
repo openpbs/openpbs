@@ -181,6 +181,7 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
+        wait_time = offset + duration + 5
         rid = self.server.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -188,8 +189,8 @@ if e.type == pbs.RESV_BEGIN:
 
         self.server.stop()
 
-        self.logger.info('wait for 30 seconds till the reservation would end')
-        time.sleep(30)
+        self.logger.info('wait for %s seconds till the reservation would end' % (wait_time))
+        time.sleep(wait_time)
 
         self.server.start()
 

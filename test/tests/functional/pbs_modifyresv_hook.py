@@ -154,21 +154,21 @@ class TestModifyResvHook(TestFunctional):
         msg_rw = 'Reservation modify Hook - check rw Authorized_Groups'
         msg_ro = 'Reservation modify Hook - ctime is read-only.'
 
-        hook_script = textwrap.dedent(f"""\
+        hook_script = textwrap.dedent("""\
             import pbs
             e = pbs.event()
             r = e.resv
-            pbs.logmsg(pbs.LOG_DEBUG, 'Reservation modify Hook name - %s' % e.hook_name)
+            pbs.logmsg(pbs.LOG_DEBUG, 'Reservation modify Hook name - %%s' %% e.hook_name)
             if e.type == pbs.MODIFYRESV:
                 vo = r.Authorized_Groups
                 r.Authorized_Groups = None
                 r.Authorized_Groups = vo
-                pbs.logmsg(pbs.LOG_DEBUG, "{msg_rw}")
+                pbs.logmsg(pbs.LOG_DEBUG, "%s")
                 try:
                     r.ctime = None
                 except pbs.v1._exc_types.BadAttributeValueError:
-                    pbs.logmsg(pbs.LOG_DEBUG, "{msg_ro}")
-        """)
+                    pbs.logmsg(pbs.LOG_DEBUG, "%s")
+        """ % (msg_rw, msg_ro))
 
 
         self.logger.info(hook_script)
@@ -186,7 +186,7 @@ class TestModifyResvHook(TestFunctional):
         time.sleep(15)
 
         self.server.delete(rid)
-        msg = f"Reservation modify Hook name - {self.hook_name}"
+        msg = "Reservation modify Hook name - %s" % (self.hook_name)
         self.server.log_match(msg, tail=True, max_attempts=30, interval=2)
         self.server.log_match(msg_rw, tail=True, max_attempts=30, interval=2)
         self.server.log_match(msg_ro, tail=True, max_attempts=30, interval=2)
@@ -209,7 +209,7 @@ class TestModifyResvHook(TestFunctional):
         shift = 10
 
         rid, start, end = self.server.submit_resv(offset, duration, times=True)
-        self.logger.info(f"rid={rid} start={start} end={end}")
+        self.logger.info("rid=%s start=%s end=%s", rid, start, end)
         self.server.alter_a_reservation(rid, start, end, shift, alter_s=True, alter_e=True,
                                  check_log=False, sched_down=True)
 
