@@ -103,14 +103,14 @@ class TestDshUtils(TestSelf):
         else:
             py = self.du.which(host, 'python3')
             c = '"import os;s = os.stat(\'' + path + '\');'
-            c += 'print((s.st_uid,s.st_gid,s.st_mode))"'
+            c += 'print(s.st_uid,s.st_gid,s.st_mode)"'
             cmd = [py, '-c', c]
             runas = self.du.get_current_user()
             ret = self.du.run_cmd(host, cmd, sudo=True, runas=runas)
             self.assertEqual(ret['rc'], 0)
             res = ret['out'][0]
             u, g, m = [int(v) for v in
-                       res.replace('(', '').replace(')', '').split(', ')]
+                       res.split(' ')]
 
         self.assertEqual(oct(m & 0o777), oct(mode))
         if user is not None:
@@ -124,6 +124,10 @@ class TestDshUtils(TestSelf):
         """
         Test creating a directory as user
         """
+
+        # create a directory with permissions
+        tmpdir = self.du.create_temp_dir(mode=0o750)
+        self.check_access(tmpdir, mode=0o750)
 
         # check default configurations
         tmpdir = self.du.create_temp_dir()
@@ -162,6 +166,10 @@ class TestDshUtils(TestSelf):
         # check default configurations
         tmpdir = self.du.create_temp_dir(remote)
         self.check_access(tmpdir, user=getpass.getuser(), host=remote)
+
+        # create a directory with permissions
+        tmpdir = self.du.create_temp_dir(remote, mode=0o750)
+        self.check_access(tmpdir, mode=0o750, host=remote)
 
         # create a directory as a specific user
         tmpdir = self.du.create_temp_dir(remote, asuser=TEST_USER2)

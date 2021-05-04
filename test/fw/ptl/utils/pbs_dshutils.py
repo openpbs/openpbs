@@ -142,7 +142,6 @@ class DshUtils(object):
     sudo_cmd = DFLT_SUDO_CMD
     copy_cmd = DFLT_COPY_CMD
     tmpfilelist = []
-    tmpdirlist = []
 
     def __init__(self):
 
@@ -321,7 +320,6 @@ class DshUtils(object):
 
         if hostname is None:
             hostname = socket.gethostname()
-
         if hostname in self._h2c:
             return self._h2c[hostname]
 
@@ -2114,14 +2112,15 @@ class DshUtils(object):
                 self.run_copy(hostname, src=tmpdir, dest=tmpdir,
                               recursive=True, uid=uid, gid=gid,
                               level=level)
-                self.chmod(hostname, path=tmpdir, mode=mode, runas=asuser)
             else:
                 # copy temp dir created on localhost to remote as current user
                 self.run_copy(hostname, src=tmpdir, dest=tmpdir,
-                              level=level, preserve_permission=True,
+                              level=level, preserve_permission=False,
                               recursive=True, uid=uid, gid=gid)
+            self.chmod(hostname, path=tmpdir, mode=mode, runas=asuser)
             # remove local temp dir
             os.rmdir(tmpdir)
+            return tmpdir
         elif asuser is not None:
             # since we need to create as differnt user than current user
             # create a temp dir just to get temp dir name with absolute path
@@ -2133,9 +2132,9 @@ class DshUtils(object):
             self.chmod(hostname, path=tmpdir2, mode=mode, runas=asuser)
             # remove original temp dir
             os.rmdir(tmpdir)
-            self.tmpdirlist.append(tmpdir2)
             return tmpdir2
-        self.tmpdirlist.append(tmpdir)
+        # Its a local directory and user name is not provided
+        self.chmod(path=tmpdir, mode=mode)
         return tmpdir
 
     def parse_strace(self, lines):
