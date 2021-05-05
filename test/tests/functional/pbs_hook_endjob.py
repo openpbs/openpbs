@@ -400,7 +400,7 @@ class TestHookEndJob(TestFunctional):
         Start a single job, issue a force rerun, and verify that the end job
         hook is executed for both runs.
         """
-        def endjob_rerun_single_job():
+        def endjob_force_rerun_single_job():
             self.job_submit()
             self.job_verify_started()
             self.job_requeue(force=True)
@@ -409,7 +409,7 @@ class TestHookEndJob(TestFunctional):
             self.job_verify_started()
             self.job_verify_ended()
 
-        self.run_test_func(endjob_rerun_single_job)
+        self.run_test_func(endjob_force_rerun_single_job)
 
     def test_hook_endjob_rerun_single_job_no_mom(self):
         """
@@ -430,9 +430,60 @@ class TestHookEndJob(TestFunctional):
 
         self.run_test_func(endjob_rerun_single_job_no_mom)
 
+    def test_hook_endjob_force_rerun_single_job_no_mom(self):
+        """
+        Start a single job, issue a force rerun after disabling the MOM, then
+        enable the MOM again, verifying that the end job hook is executed for
+        both runs.
+        """
+        def endjob_force_rerun_single_job_no_mom():
+            self.job_submit()
+            self.job_verify_started()
+            self.mom.stop()
+            self.job_requeue(force=True)
+            self.job_verify_queued()
+            self.check_log_for_endjob_hook_messages()
+            self.mom.start()
+            self.job_verify_started()
+            self.job_verify_ended()
+
+        self.run_test_func(endjob_force_rerun_single_job_no_mom)
+
+    def test_hook_endjob_rerun_and_delete_single_job(self):
+        """
+        Start a single job, issue a rerun and immediately delete it.  Verify
+        that the end job hook is only executed once.
+        """
+        def endjob_rerun_and_delete_single_job():
+            self.job_submit()
+            self.job_verify_started()
+            self.job_requeue()
+            self.job_verify_queued()
+            self.check_log_for_endjob_hook_messages()
+            self.job_delete()
+            self.job_verify_ended()
+
+        self.run_test_func(endjob_rerun_and_delete_single_job)
+
+    def test_hook_endjob_rerun_and_force_delete_single_job(self):
+        """
+        Start a single job, issue a rerun and immediately force delete it.
+        Verify that the end job hook is only executed once.
+        """
+        def endjob_rerun_and_force_delete_single_job():
+            self.job_submit()
+            self.job_verify_started()
+            self.job_requeue()
+            self.job_verify_queued()
+            self.check_log_for_endjob_hook_messages()
+            self.job_delete(force=True)
+            self.job_verify_ended()
+
+        self.run_test_func(endjob_rerun_and_force_delete_single_job)
+
     def test_hook_endjob_rerun_array_job(self):
         """
-        Start a array job, issue a rerun, and verify that the end job hook is
+        Start an array job, issue a rerun, and verify that the end job hook is
         executed for all subjob on both runs and only once for the array job.
         """
         def endjob_rerun_array_job():
@@ -448,11 +499,11 @@ class TestHookEndJob(TestFunctional):
 
     def test_hook_endjob_force_rerun_array_job(self):
         """
-        Start a array job, issue a force rerun, and verify that the end job
+        Start an array job, issue a force rerun, and verify that the end job
         hook is executed for all subjob on both runs and only once for the
         array job.
         """
-        def endjob_rerun_array_job():
+        def endjob_force_rerun_array_job():
             self.job_array_submit()
             self.job_array_verify_started()
             self.job_array_requeue(force=True)
@@ -461,7 +512,63 @@ class TestHookEndJob(TestFunctional):
             self.job_array_verify_started()
             self.job_array_verify_ended()
 
-        self.run_test_func(endjob_rerun_array_job)
+        self.run_test_func(endjob_force_rerun_array_job)
+
+    def test_hook_endjob_rerun_array_job_no_mom(self):
+        """
+        Start an array job, issue a rerun after disabling the MOM, then enable
+        the MOM again, verifying that the end job hook is executed for both
+        runs.
+        """
+        def endjob_rerun_array_job_no_mom():
+            self.job_array_submit()
+            self.job_array_verify_started()
+            self.mom.stop()
+            self.job_array_requeue()
+            self.job_array_verify_queued()
+            self.check_log_for_endjob_hook_messages()
+            self.mom.start()
+            self.job_array_verify_started()
+            self.job_array_verify_ended()
+
+        self.run_test_func(endjob_rerun_array_job_no_mom)
+
+    def test_hook_endjob_force_rerun_array_job_no_mom(self):
+        """
+        Start an array job, issue a force rerun after disabling the MOM, then
+        enable the MOM again, verifying that the end job hook is executed for
+        both runs.
+        """
+        def endjob_force_rerun_array_job_no_mom():
+            self.job_array_submit()
+            self.job_array_verify_started()
+            self.mom.stop()
+            self.job_array_requeue(force=True)
+            self.job_array_verify_queued()
+            self.check_log_for_endjob_hook_messages()
+            self.mom.start()
+            self.job_array_verify_started()
+            self.job_array_verify_ended()
+
+        self.run_test_func(endjob_force_rerun_array_job_no_mom)
+
+    def test_hook_endjob_rerun_and_delete_array_job(self):
+        """
+        Start an array job, issue a rerun and immediately delete it. Verify
+        that the end job hook is only executed once for each subjob and the
+        job array.
+        """
+        # TODO: implement
+        pass
+
+    def test_hook_endjob_rerun_and_force_delete_array_job(self):
+        """
+        Start an array job, issue a rerun and immediately force delete it.
+        Verify that the end job hook is only executed once for each subjob and
+        the job array.
+        """
+        # TODO: implement
+        pass
 
     def test_hook_endjob_delete_running_single_job(self):
         """
@@ -509,7 +616,7 @@ class TestHookEndJob(TestFunctional):
         Run a single job, but force delete before completion after disabling
         the MOM. Verify that the end job hook is executed.
         """
-        def endjob_delete_running_single_job_no_mom():
+        def endjob_force_delete_running_single_job_no_mom():
             a = {ATTR_r: 'n'}
             self.job_submit(job_sleep_time=self.job_time_qdel, job_attrs=a)
             self.job_verify_started()
@@ -517,7 +624,7 @@ class TestHookEndJob(TestFunctional):
             self.job_delete(force=True)
             self.job_verify_ended()
 
-        self.run_test_func(endjob_delete_running_single_job_no_mom)
+        self.run_test_func(endjob_force_delete_running_single_job_no_mom)
 
     def test_hook_endjob_delete_running_array_job(self):
         """
@@ -532,6 +639,50 @@ class TestHookEndJob(TestFunctional):
             self.job_array_verify_ended()
 
         self.run_test_func(endjob_delete_running_array_job)
+
+    def test_hook_endjob_force_delete_running_array_job(self):
+        """
+        Run an array job, where all jobs get started but also force deleted
+        before completion.  Verify that the end job hook is executed for all
+        subjobs and the array job.
+        """
+        def endjob_delete_running_array_job():
+            self.job_array_submit(job_sleep_time=self.job_time_qdel)
+            self.job_array_verify_started()
+            self.job_array_delete(force=True)
+            self.job_array_verify_ended()
+
+        self.run_test_func(endjob_delete_running_array_job)
+
+    def test_hook_endjob_delete_running_array_job_no_mom(self):
+        """
+        Run an array job, but delete it after disabling the MOM and before the
+        subjobs complete MOM. Verify that the end job hook is executed for all
+        subjobs and the array job.
+        """
+        def endjob_delete_running_array_job_no_mom():
+            self.job_array_submit(job_sleep_time=self.job_time_qdel)
+            self.job_array_verify_started()
+            self.mom.stop()
+            self.job_array_delete()
+            self.job_array_verify_ended()
+
+        self.run_test_func(endjob_delete_running_array_job_no_mom)
+
+    def test_hook_endjob_force_delete_running_array_job_no_mom(self):
+        """
+        Run an array job, but force delete it after disabling the MOM and
+        before the subjobs complete MOM. Verify that the end job hook is
+        executed for all subjobs and the array job.
+        """
+        def endjob_force_delete_running_array_job_no_mom():
+            self.job_array_submit(job_sleep_time=self.job_time_qdel)
+            self.job_array_verify_started()
+            self.mom.stop()
+            self.job_array_delete(force=True)
+            self.job_array_verify_ended()
+
+        self.run_test_func(endjob_force_delete_running_array_job_no_mom)
 
     def test_hook_endjob_delete_partial_running_array_job(self):
         """
@@ -552,7 +703,9 @@ class TestHookEndJob(TestFunctional):
 
     def test_hook_endjob_delete_subjobs_from_running_array_job(self):
         """
-        By creating an import hook, it executes a job hook.
+        Run an array job, where all jobs get started but a subset of the
+        subjobs are deleted before completion.  Verify that the end job hook
+        is executed for all subjobs and the array job.
         """
         def endjob_delete_subjobs_from_running_array_job():
             self.job_array_submit(job_sleep_time=self.job_time_qdel)
@@ -563,14 +716,42 @@ class TestHookEndJob(TestFunctional):
 
         self.run_test_func(endjob_delete_subjobs_from_running_array_job)
 
+    def test_hook_endjob_delete_subjobs_from_partial_running_array_job(self):
+        """
+        Run an array job, where on the first two jobs get started but all
+        subjobs are deleted before completion.  Verify that the end job hook
+        is executed for the started subjobs and the array job.
+        """
+        def endjob_delete_subjobs_from_partial_running_array_job():
+            self.job_array_submit(
+                subjob_count=6,
+                job_sleep_time=self.job_time_qdel,
+                subjob_ncpus=int(self.node_cpu_count/2))
+            self.job_array_verify_started(num_subjobs=2)
+            # delete subjobs in the reverse order so as to prevent additional
+            # subjobs from starting
+            for jid in self.subjob_ids[::-1]:
+                self.job_delete(jid)
+            self.job_array_verify_ended()
+
+        self.run_test_func(endjob_delete_subjobs_from_partial_running_array_job)
+
     def test_hook_endjob_delete_unstarted_single_job(self):
         # TODO: add code and description, or remove
+        # endjob hook should not be called
+        pass
+
+    def test_hook_endjob_force_delete_unstarted_single_job(self):
+        # TODO: add code and description, or remove
+        # endjob hook should not be called
         pass
 
     def test_hook_endjob_delete_unstarted_array_job(self):
         # TODO: add code and description, or remove
+        # endjob hook should not be called
         pass
 
-    def test_hook_endjob_force_delete_array_job(self):
-        # TODO: write code
+    def test_hook_endjob_force_delete_unstarted_array_job(self):
+        # TODO: add code and description, or remove
+        # endjob hook should not be called
         pass
