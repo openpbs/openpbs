@@ -146,7 +146,7 @@ pbs_submit_with_cred(int c, struct attropl  *attrib, char *script,
  * @param[in] c - communication handle
  * @param[in] attrib - ponter to attr list
  * @param[in] script - job script
- * @param[in] destination - host where job submitted
+ * @param[in] dest - host where job submitted
  * @param[in] extend - buffer to hold cred info
  *
  * @return      string
@@ -155,7 +155,7 @@ pbs_submit_with_cred(int c, struct attropl  *attrib, char *script,
  *
  */
 char *
-__pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, char *extend)
+__pbs_submit(int c, struct attropl  *attrib, char *script, char *dest, char *extend)
 {
 	struct attropl *pal;
 	char *return_jobid = NULL;
@@ -166,7 +166,10 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 	char *lextend = NULL;
 	int msvr = multi_svr_op(c);
 	svr_conn_t **svr_conns = get_conn_svr_instances(c);
-	int random_svr_conn = random_srv_conn(c, svr_conns);
+	int nsvr = get_num_servers();
+	int start = rand_num() % nsvr;
+	int ct;
+	int i;
 
 	/* initialize the thread context data, if not already initialized */
 	if ((pbs_errno = pbs_client_thread_init_thread_context()) != 0)
@@ -179,7 +182,7 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 	}
 
 	/* first verify the attributes, if verification is enabled */
-	if (pbs_verify_attributes(random_svr_conn, PBS_BATCH_QueueJob, MGR_OBJ_JOB, MGR_CMD_NONE, attrib) != 0)
+	if (pbs_verify_attributes(random_srv_conn(c, svr_conns), PBS_BATCH_QueueJob, MGR_OBJ_JOB, MGR_CMD_NONE, attrib) != 0)
 		goto error; /* pbs_errno is already set in this case */
 
 	/* lock pthread mutex here for this connection */
@@ -218,23 +221,37 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 			extend = EXTEND_OPT_IMPLICIT_COMMIT;
 	}	
 
-	c = random_svr_conn;	
-	if (msvr && destination) {
+	if (msvr && IS_EMPTY(dest)) {
 		/* Reached here means job is submitted to non default queue */
-		int start;
 
 		/* Since this could be a reservation queue and reservation queues are not shared,
 		 * we try to find out which server this queue resides on
 		 */
-		if ((start = get_obj_location_hint(destination, MGR_OBJ_RESV)) != -1)
-			c = svr_conns[start]->sd;
+		if ((start = get_obj_location_hint(dest, MGR_OBJ_RESV)) == -1)
+			start = 0;
 	}
 	
-	/* Queue job with null string for job id */
-	return_jobid = PBSD_queuejob(c, "", destination, attrib, extend, PROT_TCP, NULL, &commit_done);
-	if (return_jobid == NULL)
+	/* Queue job with null string for job id
+	* attempt again with other instances if we get a queued limit error.
+	*/
+	for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
+
+		if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP) {
+			rc = PBSE_NOSERVER;
+			continue;
+		}
+
+		c = svr_conns[i]->sd;
+		return_jobid = PBSD_queuejob(c, "", dest, attrib, extend, PROT_TCP, NULL, &commit_done);
+		if (return_jobid)
+			break;
+		else if (IS_EMPTY(dest) || (pbs_errno != PBSE_MAXQUED && pbs_errno != PBSE_ENTLIMCT && pbs_errno != PBSE_ENTLIMRESC))
+				goto error;
+	}
+
+	if (!return_jobid)
 		goto error;
-	
+
 	if (commit_done)
 		goto done;
 
