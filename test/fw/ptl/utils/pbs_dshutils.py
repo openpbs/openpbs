@@ -2099,7 +2099,7 @@ class DshUtils(object):
             dirname = str(dirname)
             self.run_copy(hostname, src=tmpdir, dest=dirname, runas=asuser,
                           recursive=True, gid=gid, uid=uid,
-                          level=level)
+                          level=level, preserve_permission=False)
             self.chmod(hostname, path=dirname, mode=mode, runas=asuser)
 
             tmpdir = dirname + tmpdir[4:]

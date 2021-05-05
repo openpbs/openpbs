@@ -601,7 +601,7 @@ class TestServerDynRes(TestFunctional):
         self.scheduler.add_resource('foo')
 
         scr_body = ['echo "10"', 'exit 0']
-        home_dir = os.path.expanduser('~%s' % (self.scheduler.user))
+        home_dir = os.path.expanduser('~')
         fp = self.scheduler.add_server_dyn_res("foo", scr_body,
                                                dirname=home_dir,
                                                validate=False)
@@ -620,16 +620,18 @@ class TestServerDynRes(TestFunctional):
 
         # give write permission to user only
         self.du.chmod(path=fp, mode=0o744, sudo=True)
-        self.check_access_log(fp, exist=False)
+        if os.getuid() != 0:
+            self.check_access_log(fp, exist=True)
+        else:
+            self.check_access_log(fp, exist=False)
 
         # Create script in a directory which has more open privileges
         # This should make loading of this file fail in all cases
-        # Create the dirctory name with a space in it, to make sure PBS parses
+        # Create the directory name with a space in it, to make sure PBS parses
         # it correctly.
         dir_temp = self.du.create_temp_dir(mode=0o766,
                                            dirname=home_dir,
-                                           suffix=' tmp',
-                                           sudo=True)
+                                           suffix=' tmp')
         self.du.chmod(path=dir_temp, mode=0o766, sudo=True)
         self.du.chown(path=dir_temp, sudo=True, uid=self.scheduler.user)
         fp = self.scheduler.add_server_dyn_res("foo", scr_body,
