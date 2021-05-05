@@ -2106,17 +2106,9 @@ class DshUtils(object):
 
         # if temp dir to be created on remote host
         if not self.is_localhost(hostname):
-            if asuser is not None:
-                # copy temp dir created on local host to remote host
-                # as different user
-                self.run_copy(hostname, src=tmpdir, dest=tmpdir,
-                              recursive=True, uid=uid, gid=gid,
-                              level=level)
-            else:
-                # copy temp dir created on localhost to remote as current user
-                self.run_copy(hostname, src=tmpdir, dest=tmpdir,
-                              level=level, preserve_permission=False,
-                              recursive=True, uid=uid, gid=gid)
+            self.run_copy(hostname, src=tmpdir, dest=tmpdir,
+                          level=level, preserve_permission=False,
+                          recursive=True, uid=uid, gid=gid)
             self.chmod(hostname, path=tmpdir, mode=mode, runas=asuser)
             # remove local temp dir
             os.rmdir(tmpdir)
