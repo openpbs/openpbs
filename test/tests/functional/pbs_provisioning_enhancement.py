@@ -132,7 +132,6 @@ e.reject()
         Test application provisioning
         """
         j = Job(TEST_USER1)
-        j.set_sleep_time(5)
         j.set_attributes({'Resource_List.select': '1:aoe=App1'})
         jid = self.server.submit(j)
 
@@ -156,7 +155,6 @@ e.reject()
         """
 
         j = Job(TEST_USER1)
-        j.set_sleep_time(10)
         j.set_attributes({'Resource_List.select': '1:aoe=osimage1'})
         jid = self.server.submit(j)
 
@@ -187,7 +185,6 @@ e.reject()
         j = Job(TEST_USER1)
         j.set_attributes({'Resource_List.select':
                           '1:ncpus=1:aoe=App1+1:ncpus=12'})
-        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
@@ -211,7 +208,6 @@ e.reject()
         """
         a = {'Resource_List.select': '1:aoe=osimage1+1:ncpus=12'}
         j = Job(TEST_USER1, a)
-        j.set_sleep_time(10)
         jid = self.server.submit(j)
         self.server.expect(JOB, ATTR_execvnode, id=jid, op=SET)
         nodes = j.get_vnodes(j.exec_vnode)
@@ -238,7 +234,6 @@ e.reject()
         # and no single node have all the requested resource.
 
         j = Job(TEST_USER1)
-        j.set_sleep_time(5)
         j.set_attributes({"Resource_List.aoe": "App1",
                           "Resource_List.ncpus": 12})
         jid = self.server.submit(j)
@@ -275,7 +270,6 @@ e.reject()
 
         j = Job(TEST_USER1)
         j.set_attributes(a1)
-        j.set_sleep_time(5)
         jid = None
         try:
             jid = self.server.submit(j)

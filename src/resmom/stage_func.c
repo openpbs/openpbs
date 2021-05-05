@@ -1215,14 +1215,15 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
 	if (check_shared &&
 	    (pbs_jobdir_root[0] != '\0') &&
 	    pbs_jobdir_root_shared &&
-	    (strncmp(pbs_jobdir_root, jobdir, strlen(pbs_jobdir_root)) == 0)) {
+	    ((strcmp(pbs_jobdir_root, JOBDIR_DEFAULT) == 0) ||
+	     (strncmp(pbs_jobdir_root, jobdir, strlen(pbs_jobdir_root)) == 0))) {
 		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid?jobid:"", "shared jobdir %s to be removed by primary mom", jobdir);
 
 		return;
 	}
 
 #ifndef WIN32
-	if (pbs_jobdir_root[0] == '\0') {
+	if ((pbs_jobdir_root[0] == '\0') || (strcmp(pbs_jobdir_root, JOBDIR_DEFAULT) == 0)) {
 		/* In user's home, need to be user */
 		/* The rest must be done as the User */
 		if (impersonate_user(uid, gid) == -1)
@@ -1233,7 +1234,7 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
 	/* Hello, is any body there? */
 	if (stat(jobdir, &sb) == -1) {
 #ifndef WIN32
-		if (pbs_jobdir_root[0] == '\0') {
+		if ((pbs_jobdir_root[0] == '\0') || (strcmp(pbs_jobdir_root, JOBDIR_DEFAULT) == 0)) {
 			/* oops, have to go back to being root */
 			revert_from_user();
 		}
@@ -1268,7 +1269,7 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
 
 	if (strncmp(nameptr, "pbs.", 4) != 0) {
 #ifndef WIN32
-		if (pbs_jobdir_root[0] == '\0')
+		if ((pbs_jobdir_root[0] == '\0') || (strcmp(pbs_jobdir_root, JOBDIR_DEFAULT) == 0))
 			revert_from_user();
 #endif
 		sprintf(log_buffer, "%s is not a staging and execution directory", jobdir);
@@ -1307,7 +1308,7 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
 	pid = fork();
 	if (pid != 0) {	/* parent or error */
 		int err = errno;
-		if (pbs_jobdir_root[0] == '\0')
+		if ((pbs_jobdir_root[0] == '\0') || (strcmp(pbs_jobdir_root, JOBDIR_DEFAULT) == 0))
 			revert_from_user();
 
 		if (pid < 0)

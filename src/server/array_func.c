@@ -839,15 +839,17 @@ create_subjob(job *parent, char *newjid, int *rc)
  *		PBS_Batch_Rerun, and PBS_Batch_RunJob subjob requests.
  *		For any other request types, be sure to add another switch case below
  *		(matching request type).
+ * @return int
+ * @retval return value of the callback function (0 for success, 1 for error)
  */
-void
-dup_br_for_subjob(struct batch_request *opreq, job *pjob, void (*func)(struct batch_request *, job *))
+int
+dup_br_for_subjob(struct batch_request *opreq, job *pjob, int (*func)(struct batch_request *, job *))
 {
 	struct batch_request  *npreq;
 
 	npreq = alloc_br(opreq->rq_type);
 	if (npreq == NULL)
-		return;
+		return 1;
 
 	npreq->rq_perm    = opreq->rq_perm;
 	npreq->rq_fromsvr = opreq->rq_fromsvr;
@@ -890,11 +892,11 @@ dup_br_for_subjob(struct batch_request *opreq, job *pjob, void (*func)(struct ba
 		default:
 			delete_link(&npreq->rq_link);
 			free(npreq);
-			return;
+			return 1;
 	}
 
 	npreq->rq_parentbr = opreq;
 	opreq->rq_refct++;
 
-	func(npreq, pjob);
+	return func(npreq, pjob);
 }

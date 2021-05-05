@@ -50,6 +50,7 @@ import tarfile
 
 from getopt import GetoptError
 from threading import Thread
+from pathlib import Path
 
 from ptl.lib.pbs_testlib import PtlConfig
 from ptl.utils.pbs_snaputils import PBSSnapUtils, ObfuscateSnapshot
@@ -100,9 +101,54 @@ Usage: pbs_snapshot -o <path to existing output directory> [OPTION]
     --obfuscate                       obfuscates sensitive data
     --with-sudo                       Uses sudo to capture privileged data
     --version                         print version number and exit
+    --obf-snap                        path to existing snapshot to obfuscate
 """
-
     print(msg)
+
+
+def create_snapshot_tar(snappath):
+    """
+    Create a compressed tar for the snapshot given
+    Warning: Deletes the snapshot directory after creating its tar
+
+    snappath: path to snapshot to compress and tar
+    type: str
+
+    return: str - path to the compressed tar file
+    """
+    outtar = snappath + ".tgz"
+    with tarfile.open(outtar, "w:gz") as tar:
+        tar.add(snappath, arcname=os.path.basename(snappath))
+
+    # Delete the snapshot directory itself
+    du.rm(path=snappath, recursive=True, force=True)
+
+    return outtar
+
+
+def get_snapshot_from_tar(logger, tarpath):
+    """
+    Extract the snapshot from tarfile given
+
+    :tarpath - path to the tar
+    :type - str
+
+    :return tuple of (string path to extracted snapshot, True/False),
+        True: if the extraction was a success
+        False: if there was already a snapshot by the name of the one
+            being extracted, so the tar was not untar'd
+    """
+    parentdir = Path(tarpath).parent
+    with tarfile.open(tarpath) as tar:
+        main_snap = tar.getnames()[0].split(os.sep, 1)[0]
+        main_snap = os.path.join(os.path.abspath(parentdir), main_snap)
+        if os.path.isdir(main_snap):
+            logger.error("Existing snapshot %s found, cannot extract tar" %
+                         main_snap)
+            return (main_snap, False)
+        tar.extractall(path=parentdir)
+
+    return (main_snap, True)
 
 
 def remotesnap_thread(logger, host):
@@ -174,6 +220,18 @@ def remotesnap_thread(logger, host):
     du.rm(hostname=host, path=snap_home, recursive=True, force=True)
 
 
+def obfuscate_snapshot_wrapper(snap_name, map_file=None, sudo_val=False):
+    if map_file is None:
+        snappath = Path(snap_name)
+        if snappath is None:
+            sys.stderr.write("snapshot path not found")
+            usage()
+            sys.exit(1)
+        map_file = os.path.join(snappath.parent, "obfuscate.map")
+    obj = ObfuscateSnapshot()
+    obj.obfuscate_snapshot(snap_name, map_file, sudo_val)
+
+
 def capture_local_snap(sudo_val):
     """
     Helper method to capture snapshot of the local host
@@ -195,16 +253,10 @@ def capture_local_snap(sudo_val):
         snap_name = snap_utils.capture_all()
 
     if obfuscate:
-        obj = ObfuscateSnapshot()
-        obj.obfuscate_snapshot(snap_name, map_file, sudo_val)
+        obfuscate_snapshot_wrapper(snap_name, map_file, sudo_val)
         if additional_hosts is None:
             # Now create the tar
-            outtar = snap_name + ".tgz"
-            with tarfile.open(outtar, "w:gz") as tar:
-                tar.add(snap_name, arcname=os.path.basename(snap_name))
-            # Delete the snapshot directory itself
-            du.rm(path=snap_name, recursive=True, force=True)
-            snap_name = outtar
+            snap_name = create_snapshot_tar(snap_name)
 
     return snap_name
 
@@ -224,6 +276,7 @@ if __name__ == '__main__':
     with_sudo = False
     du = DshUtils()
     basic = False
+    obf_snap = None
 
     PtlConfig()
 
@@ -232,7 +285,7 @@ if __name__ == '__main__':
         sopt = "d:H:l:o:h"
         lopt = ["basic", "accounting-logs=", "daemon-logs=", "help",
                 "additional-hosts=", "map=", "obfuscate", "with-sudo",
-                "version"]
+                "version", "obf-snap="]
         opts, args = getopt.getopt(sys.argv[1:], sopt, lopt)
     except GetoptError:
         usage()
@@ -273,12 +326,20 @@ if __name__ == '__main__':
         elif o == "--version":
             print(ptl.__version__)
             sys.exit(0)
+        elif o == "--obf-snap":
+            obf_snap = val
         else:
             sys.stderr.write("Unrecognized option")
             usage()
             sys.exit(1)
 
-    # -o is a mandatory option, so make sure that it was provided
+    if obf_snap:
+        obfuscate = True
+        path = Path(obf_snap)
+        if path:
+            out_dir = str(path.parent)
+
+    # Check that parent of snapshot directory exists
     if out_dir is None:
         sys.stderr.write("-o option not provided")
         usage()
@@ -288,14 +349,6 @@ if __name__ == '__main__':
                          " this is where the snapshot is captured")
         usage()
         sys.exit(1)
-
-    if not basic:
-        # Capture 5 days of daemon logs and 30 days of accounting logs
-        # by default
-        if daemon_logs is None:
-            daemon_logs = 5
-        if acct_logs is None:
-            acct_logs = 30
 
     fmt = '%(asctime)-15s %(levelname)-8s %(message)s'
     level_int = CliUtils.get_logging_level(log_level)
@@ -315,6 +368,48 @@ if __name__ == '__main__':
         out_abspath = os.path.abspath(out_dir)
         if map_file is None:
             map_file = os.path.join(out_abspath, "obfuscate.map")
+
+    # Obfuscate an existing snapshot
+    if obf_snap:
+        istar = False
+        if os.path.isfile(obf_snap):
+            if tarfile.is_tarfile(obf_snap):
+                istar = True
+                obf_snap, ret = get_snapshot_from_tar(ptl_logger, obf_snap)
+                if ret is False:
+                    sys.exit(1)
+            else:
+                ptl_logger.error("Path is not a valid snapshot")
+                sys.exit(1)
+
+        # The obfuscated snapshot will be at path: <obf_snap>_obf
+        obfout = obf_snap + "_obf"
+        if os.path.isfile(obfout + ".tgz"):
+            ptl_logger.error("%s.tgz already exists, "
+                             "delete it to create a new obfuscated snapshot" %
+                             obfout)
+            if istar:
+                # If input was a tar file, then we'd have extracted it
+                # So, delete the dir that was extracted from the input tar
+                du.rm(path=obf_snap, force=True, recursive=True)
+            sys.exit(1)
+        du.run_copy(src=obf_snap, dest=obfout, recursive=True)
+        obfuscate_snapshot_wrapper(obfout, map_file, with_sudo)
+        # Create the tar
+        obfout = create_snapshot_tar(obfout)
+        if istar:
+            du.rm(path=obf_snap, force=True, recursive=True)
+
+        print("Obfuscated snapshot at: " + str(obfout))
+        sys.exit(0)
+
+    if not basic:
+        # Capture 5 days of daemon logs and 30 days of accounting logs
+        # by default
+        if daemon_logs is None:
+            daemon_logs = 5
+        if acct_logs is None:
+            acct_logs = 30
 
     if additional_hosts is not None:
         # Capture snapshot of remote hosts in addition to the main host
@@ -345,11 +440,8 @@ if __name__ == '__main__':
             # We need to copy additional hosts' snapshosts in
             # the main snapshot, so un-tar the snapshot
             p_snappath = os.path.join(out_dir, primary_host + "_snapshot.tgz")
-            tar = tarfile.open(p_snappath)
-            main_snap = tar.getnames()[0].split(os.sep, 1)[0]
-            main_snap = os.path.join(os.path.abspath(out_dir), main_snap)
-            tar.extractall(path=out_dir)
-            tar.close()
+            main_snap, _ = get_snapshot_from_tar(ptl_logger, p_snappath)
+
             # Delete the tar file
             du.rm(path=p_snappath, force=True)
 
@@ -363,20 +455,15 @@ if __name__ == '__main__':
                 du.rm(path=host_snappath, force=True)
 
         # Finally, create a tar of the whole snapshot
-        outtar = main_snap + ".tgz"
-        with tarfile.open(outtar, "w:gz") as tar:
-            tar.add(main_snap, arcname=os.path.basename(main_snap))
-
-        # Delete the snapshot directory itself
-        du.rm(path=main_snap, recursive=True, force=True)
+        outtar = create_snapshot_tar(main_snap)
     elif not du.is_localhost(primary_host):
         # Capture snapshot of a remote host
         remotesnap_thread(ptl_logger, primary_host)
         p_snappath = os.path.join(out_dir, primary_host + "_snapshot.tgz")
-        tar = tarfile.open(p_snappath)
-        main_snap = tar.getnames()[0].split(os.sep, 1)[0]
-        main_snap = os.path.join(os.path.abspath(out_dir), main_snap)
-        tar.close()
+        with tarfile.open(p_snappath) as tar:
+            main_snap = tar.getnames()[0].split(os.sep, 1)[0]
+            main_snap = os.path.join(os.path.abspath(out_dir), main_snap)
+
         outtar = main_snap + ".tgz"
 
         # remotesnap_thread named the tar as <hostname>_snapshot.tgz

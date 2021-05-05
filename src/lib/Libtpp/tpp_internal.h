@@ -139,7 +139,7 @@ typedef struct {
 typedef struct {
 	pbs_list_link chunk_link;
 	char *data;	/* pointer to the data buffer */
-	int len;	/* length of the data buffer */
+	size_t len;	/* length of the data buffer */
 	char *pos;	/* current position - till which data is consumed */
 } tpp_chunk_t;
 
@@ -150,12 +150,12 @@ typedef struct {
 typedef struct {
 	pbs_list_head chunks;
 	tpp_chunk_t *curr_chunk;
-	int totlen;
+	size_t totlen;
 	int ref_count;	/* number of accessors */
 } tpp_packet_t;
 
 typedef struct {
-	int ntotlen;
+	unsigned int ntotlen;
 	char type;
 } tpp_encrypt_hdr_t;
 
@@ -163,7 +163,7 @@ typedef struct {
  * The authenticate packet header structure
  */
 typedef struct {
-	int ntotlen;
+	unsigned int ntotlen;
 	unsigned char type;
 	unsigned int for_encrypt;
 	char auth_method[MAXAUTHNAME + 1];
@@ -175,7 +175,7 @@ typedef struct {
  * The Join packet header structure
  */
 typedef struct {
-	int ntotlen;
+	unsigned int ntotlen;
 	unsigned char type;         /* type packet, JOIN, LEAVE etc */
 	unsigned char hop;          /* hop count */
 	unsigned char node_type;    /* node type - leaf or router */
@@ -188,7 +188,7 @@ typedef struct {
  * The Leave packet header structure
  */
 typedef struct {
-	int ntotlen;
+	unsigned int ntotlen;
 	unsigned char type;      /* type packet, JOIN, LEAVE etc */
 	unsigned char hop;
 	unsigned char ecode;
@@ -200,7 +200,7 @@ typedef struct {
  * The control packet header structure, MSG, NOROUTE etc
  */
 typedef struct {
-	int ntotlen;
+	unsigned int ntotlen;
 	unsigned char type;
 	unsigned char code;        /* NOROUTE, UPDATE, ERROR */
 	unsigned char error_num;   /* error_num in case of NOROUTE, ERRORs */
@@ -213,7 +213,7 @@ typedef struct {
  * The data packet header structure
  */
 typedef struct {
-	int ntotlen;
+	unsigned int ntotlen;
 	unsigned char type;        /* type of the packet - TPP_DATA, JOIN etc */	
 
 	unsigned int src_magic;    /* magic id of source stream */
@@ -231,7 +231,7 @@ typedef struct {
  * The multicast packet header structure
  */
 typedef struct {
-	int ntotlen;
+	unsigned int ntotlen;
 	unsigned char type;       /* type of packet - TPP_MCAST_DATA */
 	unsigned char hop;        /* hop count */
 	unsigned int num_streams; /* number of member streams */

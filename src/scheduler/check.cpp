@@ -955,7 +955,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 #ifdef NAS /* localmod 036 */
 			{
 				if (resresv->job->resv->resv->is_standing) {
-					resource_req *req = find_resource_req(resresv->resreq, getallres(RES_MIN_WALLTIME));
+					resource_req *req = find_resource_req(resresv->resreq, allres["min_walltime"];
 
 					if (req != NULL) {
 						int resv_time_left = calc_time_left(resresv->job->resv, 0);
@@ -1169,7 +1169,7 @@ match_resource(schd_resource *res, resource_req *resreq, unsigned int flags, enu
 				/* Set arg2 for vnode/host resource. In case of preemption, arg2 is used to cull
 				 * the list of running jobs
 				 */
-				if ((res->def == getallres(RES_HOST)) || (res->def == getallres(RES_VNODE)))
+				if (res->def == allres["host"] || (res->def == allres["vnode"]))
 					set_schd_error_arg(err, ARG2, requested);
 			}
 		}
@@ -1650,19 +1650,24 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 				ninfo_arr = qinfo->nodes;
 		}
 
-		/* Handle multi-server psets */
-		if (resresv->svr_inst_id != NULL &&
-		    sinfo->svr_to_psets.find(resresv->svr_inst_id) != sinfo->svr_to_psets.end()) {
-			msvr_pset[0] = sinfo->svr_to_psets[resresv->svr_inst_id];
+		/* Handle server local scheduling for multi-server setup */
+		if (pbs_conf.pbs_num_servers > 1 && resresv->svr_inst_id != NULL) {
+			if (sinfo->svr_to_psets.find(resresv->svr_inst_id) != sinfo->svr_to_psets.end()) {
+				msvr_pset[0] = sinfo->svr_to_psets[resresv->svr_inst_id];
 
-			/* Restrict job arrays and reservations to owner server */
-			if (resresv->is_resv || resresv->job->is_array)
-				msvr_pset[1] = NULL;
-			else {	/* If owner's nodes don't work, use all */
-				msvr_pset[1] = sinfo->allpart;
-				msvr_pset[2] = NULL;
+				/* Restrict job arrays and reservations to owner server */
+				if (resresv->is_resv || resresv->job->is_array)
+					msvr_pset[1] = NULL;
+				else { /* If owner's nodes don't work, use all */
+					msvr_pset[1] = sinfo->allpart;
+					msvr_pset[2] = NULL;
+				}
+				nodepart = msvr_pset;
+			} else if (resresv->is_resv || resresv->job->is_array) {
+				/* No nodes associated with owner server, so reject the job array/reservation */
+				set_schd_error_codes(err, NOT_RUN, NO_NODE_RESOURCES);
+				return NULL;
 			}
-			nodepart = msvr_pset;
 		}
 	}
 

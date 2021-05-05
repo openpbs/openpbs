@@ -183,7 +183,9 @@ cnt:
 				pbs_server, pbs_errno);
 			any_failed = pbs_errno;
 			continue;
-		}
+		} else if (pbs_errno)
+			show_svr_inst_fail(connect, argv[0]);
+		
 
 		stat = pbs_holdjob(connect, job_id_out, hold_type, NULL);
 		if (stat && (err_list = pbs_get_attributes_in_error(connect)))

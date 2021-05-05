@@ -1435,12 +1435,13 @@ class SmokeTest(PBSTestSuite):
         """
 
         scr = []
-        scr += ['echo "This is a very long line, it will exceed 20 bytes"']
+        for i in range(2048):
+            scr += ['echo "This is a very long line, it will exceed 20 bytes"']
 
         j = Job()
         j.create_script(scr)
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'jobscript_max_size': 10})
+        self.server.manager(MGR_CMD_SET, SERVER, {'jobscript_max_size': 65537})
         try:
             self.server.submit(j)
         except PbsSubmitError as e:

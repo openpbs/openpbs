@@ -951,6 +951,7 @@ for jj in e.job_list.keys():
             overwrite=True)
 
         a = {'Resource_List.select': '3:ncpus=1',
+             'Resource_List.walltime': 300,
              'Resource_List.place': 'scatter'}
         j = Job(TEST_USER)
         j.set_attributes(a)
@@ -960,6 +961,7 @@ for jj in e.job_list.keys():
         a = {'Resource_List.select': '5:ncpus=1',
              'Resource_List.place': 'scatter'}
         j.set_attributes(a)
+        j.set_sleep_time("300")
         jid2 = self.server.submit(j)
 
         # Wait for 10s approx for hook to get executed
@@ -1324,11 +1326,10 @@ else:
 
         # Submit a job
         a = {'Resource_List.select': '3:ncpus=1',
-             'Resource_List.walltime': 20,
+             'Resource_List.walltime': 40,
              'Resource_List.place': "scatter"}
         j = Job(TEST_USER)
         j.set_attributes(a)
-        j.set_sleep_time("20")
         jid = self.server.submit(j)
 
         # Verify job is running

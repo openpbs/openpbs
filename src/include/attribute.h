@@ -96,6 +96,7 @@ extern "C" {
 #define RESC_USED_BUF_SIZE 2048
 
 #define MAX_STR_INT 40
+#define ENDATTRIBUTES -711
 
 /*
  * The following structure, svrattrl is used to hold the external form of

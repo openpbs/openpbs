@@ -290,29 +290,6 @@ char * getaoename(selspec *select);
  */
 char * geteoename(selspec *select);
 
-/**
- *	job_starving - returns if a job is starving, and if the job is
- *		       starving, it returns a notion of how starving the
- *		       job is.  The higher the number, the more starving.
- *
- *	  \param sjob - the job to check if it's starving
- *
- *	\return starving number or 0 if not starving
- *
- */
-long job_starving(status *policy, resource_resv *sjob);
-
-/*
- *	mark_job_starving - mark a job starving and handle setting all the
- *			    approprate elements and bits which go with it.
- *
- *	  sjob - the starving job
- *	  sch_priority - the sch_priority of the starving job
- *
- *	return nothing
- */
-void mark_job_starving(resource_resv *sjob, long sch_priority);
-
 /*
  *
  *	update_estimated_attrs - updated the estimated.start_time and

@@ -97,7 +97,7 @@ main_sched_loop_bare(int sd, server_info *sinfo)
 			if (node->is_job_busy)
 				continue;
 
-			ncpures = find_resource(node->res, getallres(RES_NCPUS));
+			ncpures = find_resource(node->res, allres["ncpus"]);
 			if (ncpures == NULL)
 				continue;
 
@@ -189,10 +189,10 @@ schedule_bare(int sd, const sched_cmd *cmd)
 
 	case SCH_SCHEDULE_FIRST:
 		/*
-			 * on the first cycle after the server restarts custom resources
-			 * may have been added.  Dump what we have so we'll requery them.
-			 */
-		reset_global_resource_ptrs();
+		 * on the first cycle after the server restarts custom resources
+		 * may have been added.  Dump what we have so we'll requery them.
+		 */
+		update_resource_defs(sd);
 
 		/* Get config from the qmgr sched object */
 		if (!set_validate_sched_attrs(sd))
@@ -213,7 +213,7 @@ schedule_bare(int sd, const sched_cmd *cmd)
 	case SCH_CONFIGURE:
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
 			  "reconfigure", "Scheduler is reconfiguring");
-		reset_global_resource_ptrs();
+		update_resource_defs(sd);
 
 		/* Get config from sched_priv/ files */
 		if (schedinit(-1) != 0)

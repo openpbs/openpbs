@@ -105,6 +105,9 @@ char **glob_argv;
 char usage[] = "[-d home][-L logfile][-p file][-I schedname][-n][-N][-c clientsfile][-t num threads]";
 struct sockaddr_in saddr;
 sigset_t allsigs;
+sigset_t oldsigs;
+
+int sigstoblock[] = {SIGHUP, SIGINT, SIGTERM, SIGUSR1};
 
 /* if we received a sigpipe, this probably means the server went away. */
 
@@ -574,7 +577,6 @@ connect_svrpool()
 	int i;
 	svr_conn_t **svr_conns_primary = NULL;
 	svr_conn_t **svr_conns_secondary = NULL;
-	int num_conf_svrs = get_num_servers();
 
 	while (1) {
 		/* pbs_connect() will return a connection handle for all servers
@@ -613,7 +615,7 @@ connect_svrpool()
 			}
 		}
 
-		if (i != num_conf_svrs) {
+		if (i != get_num_servers()) {
 			/* If we reached here means one of the servers is down or not connected
 			 * we should go to the top of the loop again and call pbs_connect
 			 * Also wait for 2s for not to burn too much CPU
@@ -1048,10 +1050,11 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 		exit(1);
 	}
 	act.sa_flags = 0;
-	sigaddset(&allsigs, SIGHUP);  /* remember to block these */
-	sigaddset(&allsigs, SIGINT);  /* during critical sections */
-	sigaddset(&allsigs, SIGTERM); /* so we don't get confused */
-	sigaddset(&allsigs, SIGUSR1);
+
+	/* remember to block these during critical sections so we don't get confused */
+	for (auto &sig: sigstoblock) {
+		sigaddset(&allsigs, sig);
+	}
 	act.sa_mask = allsigs;
 
 	act.sa_handler = restart; /* do a restart on SIGHUP */
@@ -1139,6 +1142,9 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 	/*
 	 *  Local initialization stuff
 	 */
+	/* Set the signal mask temporarily for thread initialization */
+	if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)
+		log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
 	if (schedinit(nthreads)) {
 		(void) sprintf(log_buffer,
 			       "local initialization failed, terminating");
@@ -1146,6 +1152,8 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 			   __func__, log_buffer);
 		exit(1);
 	}
+	if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
+		log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 
 	sprintf(log_buffer, "Out of memory");
 
@@ -1219,7 +1227,6 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 static int
 schedule_wrapper(sched_cmd *cmd, int opt_no_restart)
 {
-	sigset_t oldsigs;
 	time_t now;
 
 #ifdef PBS_UNDOLR_ENABLED

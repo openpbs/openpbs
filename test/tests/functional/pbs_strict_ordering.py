@@ -58,8 +58,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
 
         rv = self.scheduler.set_sched_config(
             {'round_robin': 'false all', 'by_queue': 'false all',
-             'strict_ordering': 'true all',
-             'help_starving_jobs': 'false all'})
+             'strict_ordering': 'true all'})
         self.assertTrue(rv)
 
         a = {'backfill_depth': 0}
@@ -168,8 +167,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
 
         rv = self.scheduler.set_sched_config(
             {'round_robin': 'false all', 'by_queue': 'false all',
-             'strict_ordering': 'true all',
-             'help_starving_jobs': 'false all'})
+             'strict_ordering': 'true all'})
         self.assertTrue(rv)
 
         a = {'backfill_depth': 0}
@@ -247,8 +245,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
 
         rv = self.scheduler.set_sched_config(
             {'round_robin': 'false all', 'by_queue': 'false all',
-             'strict_ordering': 'true all',
-             'help_starving_jobs': 'false all'})
+             'strict_ordering': 'true all'})
         self.assertTrue(rv)
 
         a = {'backfill_depth': 0}

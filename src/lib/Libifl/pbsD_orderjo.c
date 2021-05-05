@@ -52,7 +52,7 @@
 
 /**
  * @brief
- *	-send order job batch request
+ *	-send order job batch request (for single instance connection)
  *
  * @param[in] c - connection handler
  * @param[in] job1 - job identifier
@@ -64,21 +64,11 @@
  * @retval      !0      error
  *
  */
-
-int
-__pbs_orderjob(int c, char *job1, char *job2, char *extend)
+static int
+__pbs_orderjob_inner(int c, char *job1, char *job2, char *extend)
 {
 	struct batch_reply *reply;
 	int rc;
-
-
-	if ((job1 == NULL) || (*job1 == '\0') ||
-		(job2 == NULL) || (*job2 == '\0'))
-		return (pbs_errno = PBSE_IVALREQ);
-
-	/* initialize the thread context data, if not already initialized */
-	if (pbs_client_thread_init_thread_context() != 0)
-		return pbs_errno;
 
 	/* lock pthread mutex here for this connection */
 	/* blocking call, waits for mutex release */
@@ -119,4 +109,64 @@ __pbs_orderjob(int c, char *job1, char *job2, char *extend)
 		return pbs_errno;
 
 	return rc;
+}
+
+
+/**
+ * @brief
+ *	-send order job batch request
+ *
+ * @param[in] c - connection handler
+ * @param[in] job1 - job identifier
+ * @param[in] job2 - job identifier
+ * @param[in] extend - string to encode req
+ *
+ * @return      int
+ * @retval      0       success
+ * @retval      !0      error
+ *
+ */
+int
+__pbs_orderjob(int c, char *job1, char *job2, char *extend)
+{
+	int i;
+	int rc = 0;
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int nsvr = get_num_servers();
+	int start = 0;
+	int ct;
+
+	if ((job1 == NULL) || (*job1 == '\0') ||
+		(job2 == NULL) || (*job2 == '\0'))
+		return (pbs_errno = PBSE_IVALREQ);
+
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return pbs_errno;
+
+	if (svr_conns) {
+		/* For a single server cluster, instance fd and cluster fd are the same */
+		if (svr_conns[0]->sd == c)
+			return __pbs_orderjob_inner(c, job1, job2, extend);
+
+		if ((start = get_obj_location_hint(job1, MGR_OBJ_JOB)) == -1)
+		    start = 0;
+
+		for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
+
+			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
+				continue;
+
+			rc = __pbs_orderjob_inner(svr_conns[i]->sd, job1, job2, extend);
+
+			/* break the loop for sharded objects */
+			if (rc == PBSE_NONE || pbs_errno != PBSE_UNKJOBID)
+				break;
+		}
+
+		return rc;
+	}
+
+	/* Not a cluster fd. Treat it as an instance fd */
+	return __pbs_orderjob_inner(c, job1, job2, extend);
 }

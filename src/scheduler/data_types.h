@@ -87,7 +87,7 @@ struct schd_error;
 struct np_cache;
 struct chunk;
 class selspec;
-struct resdef;
+class resdef;
 struct event_list;
 struct status;
 struct fairshare_head;
@@ -121,7 +121,6 @@ typedef struct place place;
 typedef struct schd_error schd_error;
 typedef struct np_cache np_cache;
 typedef struct chunk chunk;
-typedef struct resdef resdef;
 typedef struct timed_event timed_event;
 typedef struct event_list event_list;
 typedef struct fairshare_head fairshare_head;
@@ -317,7 +316,6 @@ struct status
 	bool strict_fifo:1;		/* deprecated */
 	bool strict_ordering:1;
 	bool fair_share:1;
-	bool help_starving_jobs:1;
 	bool backfill:1;
 	bool sort_nodes:1;
 	bool backfill_prime:1;
@@ -567,7 +565,6 @@ struct job_info
 	bool can_requeue:1;	/* this job can be requeued */
 	bool can_suspend:1;	/* this job can be suspended */
 
-	bool is_starving:1;		/* job has waited passed starvation time */
 	bool is_array:1;		/* is the job a job array object */
 	bool is_subjob:1;		/* is a subjob of a job array */
 
@@ -823,8 +820,9 @@ class resource_resv
 	~resource_resv();
 };
 
-struct resource_type
+class resource_type
 {
+	public:
 	/* non consumable - used for selection only (e.g. arch) */
 	bool is_non_consumable:1;
 	bool is_string:1;
@@ -837,12 +835,13 @@ struct resource_type
 	bool is_float:1;
 	bool is_size:1;	/* all sizes are converted into kb */
 	bool is_time:1;
+	resource_type();
 };
 
 struct schd_resource
 {
 	const char *name;			/* name of the resource - reference to the definition name */
-	struct resource_type type;	/* resource type */
+	resource_type type;	/* resource type */
 
 	char *orig_str_avail;		/* original resources_available string */
 
@@ -861,8 +860,8 @@ struct schd_resource
 
 struct resource_req
 {
-	char *name;			/* name of the resource - reference to the definition name */
-	struct resource_type type;	/* resource type information */
+	const char *name;			/* name of the resource - reference to the definition name */
+	resource_type type;	/* resource type information */
 
 	sch_resource_t amount;		/* numeric value of resource */
 	char *res_str;			/* string value of resource */
@@ -870,11 +869,13 @@ struct resource_req
 	struct resource_req *next;	/* next resource_req in list */
 };
 
-struct resdef
+class resdef
 {
-	char *name;			/* name of resource */
-	struct resource_type type;	/* resource type */
-	unsigned int flags;		/* resource flags (see pbs_ifl.h) */
+	public:
+	const std::string name;	/* name of resource */
+	resource_type type;	/* resource type */
+	unsigned int flags;	/* resource flags (see pbs_ifl.h) */
+	resdef(char *rname, unsigned int rflags, resource_type rtype) : name(rname), type(rtype), flags(rflags) {}
 };
 
 class prev_job_info
@@ -901,7 +902,7 @@ struct counts
 
 struct resource_count
 {
-	char *name;		    /* resource name */
+	const char *name;		    /* resource name */
 	resdef *def;		    /* definition of resource */
 	sch_resource_t amount;	    /* amount of resource used */
 	int soft_limit_preempt_bit; /* Place to store preempt bit if resource of an entity is over limits */
@@ -1084,7 +1085,7 @@ struct peer_queue
 	const std::string remote_queue;
 	const std::string remote_server;
 	int peer_sd;
-	peer_queue(const char *lqueue, const char *rqueue, const char *rserver): local_queue(lqueue), remote_queue(rqueue), remote_server(rserver) {}
+	peer_queue(const char *lqueue, const char *rqueue, const char *rserver): local_queue(lqueue), remote_queue(rqueue), remote_server(rserver) {peer_sd = -1;}
 };
 
 struct nspec
@@ -1121,8 +1122,6 @@ struct config
 	bool non_prime_so:1;
 	bool prime_fs:1;		/* fair share */
 	bool non_prime_fs:1;
-	bool prime_hsv:1;		/* help starving jobs */
-	bool non_prime_hsv:1;
 	bool prime_bf:1;		/* back filling */
 	bool non_prime_bf:1;
 	bool prime_sn:1;		/* sort nodes by priority */
@@ -1133,9 +1132,6 @@ struct config
 	bool non_prime_pre:1;
 	bool update_comments:1;	/* should we update comments or not */
 	bool prime_exempt_anytime_queues:1; /* backfill affects anytime queues */
-	bool preempt_starving:1;	/* once jobs become starving, it can preempt */
-	bool preempt_fairshare:1; /* normal jobs can preempt over usage jobs */
-	bool dont_preempt_starving:1; /* don't preempt staving jobs */
 	bool enforce_no_shares:1;	/* jobs with 0 shares don't run */
 	bool node_sort_unused:1;	/* node sorting by unused/assigned is used */
 	bool resv_conf_ignore:1;	/* if we want to ignore dedicated time when confirming reservations.  Move to enum if ever expanded */
@@ -1171,7 +1167,6 @@ struct config
 	std::unordered_set<std::string> res_to_check;		/* the resources schedule on */
 	std::unordered_set<resdef *> resdef_to_check;		/* the res to schedule on in def form */
 	std::unordered_set<std::string> ignore_res;		/* resources - unset implies infinite */
-	time_t max_starve;			/* starving threshold */
 	/* order to preempt jobs */
 	std::vector<sort_info> prime_node_sort;	/* node sorting primetime */
 	std::vector<sort_info> non_prime_node_sort;	/* node sorting non primetime */

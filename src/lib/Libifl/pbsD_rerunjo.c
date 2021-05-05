@@ -54,7 +54,7 @@
 
 /**
  * @brief
- *	-send rerun batch request
+ *	-send rerun batch request (for single instance connection.)
  *
  * @param[in] c - connection handler
  * @param[in] jobid - job identifier
@@ -65,9 +65,8 @@
  * @retval      !0      error
  *
  */
-
-int
-__pbs_rerunjob(int c, char *jobid, char *extend)
+static int
+PBSD_rerunjob(int c, char *jobid, char *extend)
 {
 	int	rc;
 	struct batch_reply *reply;
@@ -131,4 +130,62 @@ __pbs_rerunjob(int c, char *jobid, char *extend)
 		return pbs_errno;
 
 	return rc;
+}
+
+/**
+ * @brief
+ *	-send rerun batch request
+ *
+ * @param[in] c - connection handler
+ * @param[in] jobid - job identifier
+ * @param[in] extend - string to encode req
+ *
+ * @return      int
+ * @retval      0       success
+ * @retval      !0      error
+ *
+ */
+int
+__pbs_rerunjob(int c, char *jobid, char *extend)
+{
+	int rc = 0;
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int nsvr = get_num_servers();
+	int i;
+	int start = 0;
+	int ct;
+
+	if ((jobid == NULL) || (*jobid == '\0'))
+		return (pbs_errno = PBSE_IVALREQ);
+
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return pbs_errno;
+
+	if (svr_conns) {
+		if ((start = get_obj_location_hint(jobid, MGR_OBJ_JOB)) == -1)
+			start = 0;
+
+		for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
+
+			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
+				continue;
+
+			/*
+			* For a single server cluster, instance fd and cluster fd are the same. 
+			* Hence breaking the loop.
+			*/
+			if (svr_conns[i]->sd == c)
+				return PBSD_rerunjob(c, jobid, extend);
+
+			rc = PBSD_rerunjob(svr_conns[i]->sd, jobid, extend);
+			if (rc == 0 || pbs_errno != PBSE_UNKJOBID)
+				break;
+		}
+
+		return pbs_errno;
+	}
+
+	/* Not a cluster fd. Treat it as an instance fd */
+	return PBSD_rerunjob(c, jobid, extend);
 }

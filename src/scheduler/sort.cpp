@@ -68,7 +68,6 @@
  * 	cmp_node_host()
  * 	cmp_aoe()
  * 	cmp_job_preemption_time_asc()
- * 	cmp_starving_jobs()
  * 	sort_jobs()
  * 	swapfunc()
  * 	med3()
@@ -167,15 +166,15 @@ cmp_placement_sets(const void *v1, const void *v2)
 	np1 = *((node_partition **) v1);
 	np2 = *((node_partition **) v2);
 
-	ncpus1 = find_resource(np1->res, getallres(RES_NCPUS));
-	ncpus2 = find_resource(np2->res, getallres(RES_NCPUS));
+	ncpus1 = find_resource(np1->res, allres["ncpus"]);
+	ncpus2 = find_resource(np2->res, allres["ncpus"]);
 
 	if (ncpus1 != NULL && ncpus2 != NULL)
 		rc = cmpres(ncpus1->avail, ncpus2->avail);
 
 	if (!rc) {
-		mem1 = find_resource(np1->res, getallres(RES_MEM));
-		mem2 = find_resource(np2->res, getallres(RES_MEM));
+		mem1 = find_resource(np1->res, allres["mem"]);
+		mem2 = find_resource(np2->res, allres["mem"]);
 
 		if (mem1 != NULL && mem2 != NULL)
 			rc = cmpres(mem1->avail, mem2->avail);
@@ -758,9 +757,8 @@ node_sort_cmp(const void *vp1, const void *vp2, const struct sort_info& si, cons
  *
  *		1. Sort all preemption priority jobs in the front
  *		2. Sort all preempted jobs in ascending order of their preemption time
- *		3. Sort all starving jobs after the high priority jobs
- *		4. Sort jobs according to their fairshare usage.
- *		5. sort by unique rank to stabilize the sort
+ *		3. Sort jobs according to their fairshare usage.
+ *		4. sort by unique rank to stabilize the sort
  *
  * @param[in]	v1	-	resource_resv 1
  * @param[in]	v2	-	resource_resv 2
@@ -800,13 +798,7 @@ cmp_sort(const void *v1, const void *v2)
 		cmp = cmp_job_preemption_time_asc(&r1, &r2);
 		if (cmp != 0)
 			return cmp;
-#ifndef NAS /* localmod 041 */
-		if (r1->is_job && r1->server->policy->help_starving_jobs) {
-			cmp = cmp_starving_jobs(&r1, &r2);
-			if (cmp != 0)
-				return cmp;
-		}
-#endif /* localmod 041 */
+
 		/* sort on the basis of job sort formula */
 		cmp = cmp_job_sort_formula(&r1, &r2);
 		if (cmp != 0)
@@ -1032,8 +1024,8 @@ cmp_node_host(const void *v1, const void *v2)
 	n1 = (node_info **) v1;
 	n2 = (node_info **) v2;
 
-	res1 = find_resource((*n1)->res, getallres(RES_HOST));
-	res2 = find_resource((*n2)->res, getallres(RES_HOST));
+	res1 = find_resource((*n1)->res, allres["host"]);
+	res2 = find_resource((*n2)->res, allres["host"]);
 
 	if (res1 != NULL && res2 != NULL)
 		rc = strcmp(res1->orig_str_avail, res2->orig_str_avail);
@@ -1161,50 +1153,6 @@ cmp_job_preemption_time_asc(const void *j1, const void *j2)
 
 /**
  * @brief
- * 		cmp_starving_jobs - compare based on eligible_time
- *
- * @param[in] j1 - job to compare.
- * @param[in] j2 - job to compare.
- *
- * @return	int
- * @retval -1 : If j1 was starving and j2 is not.
- * @retval  0 : If both are either starving or not starving.
- * @retval  1 : if j2 was starving and j1 is not.
- */
-int
-cmp_starving_jobs(const void *j1, const void *j2)
-{
-	resource_resv *r1 = *(resource_resv**)j1;
-	resource_resv *r2 = *(resource_resv**)j2;
-
-	if (r1 == NULL && r2 == NULL)
-		return 0;
-
-	if (r1 != NULL && r2 == NULL)
-		return -1;
-
-	if (r1 == NULL && r2 != NULL)
-		return 1;
-
-	if (r1->job == NULL || r2->job ==NULL)
-		return 0;
-
-	if (!r1->job->is_starving && !r2->job->is_starving)
-		return 0;
-	else if (!r1->job->is_starving  && r2->job->is_starving)
-		return 1;
-	else if (r1->job->is_starving && !r2->job->is_starving)
-		return -1;
-
-	if (r1->sch_priority > r2->sch_priority)
-		return -1;
-	if (r1->sch_priority < r2->sch_priority)
-		return 1;
-	return 0;
-}
-
-/**
- * @brief
  * cmp_resv_state	- compare reservation state with RESV_BEING_ALTERED.
  *
  * @param[in] r1	- reservation to compare.
@@ -1254,7 +1202,7 @@ sort_jobs(status *policy, server_info *sinfo)
 	int count = 0;
 
 	/** sort jobs in such a way that Higher Priority jobs come on top
-	 * followed by preempted jobs and then starving jobs and normal jobs
+	 * followed by preempted jobs and then normal jobs
 	 */
 	if (policy->fair_share) {
 		/** sort per queue basis and then use these jobs (combined from all the queues)
@@ -1262,7 +1210,7 @@ sort_jobs(status *policy, server_info *sinfo)
 		 */
 		if (policy->by_queue || policy->round_robin) {
 			/* cycle through queues and sort them on the basis of preemption priority,
-			 * preempted jobs, starving jobs and fairshare usage
+			 * preempted jobs, and fairshare usage
 			 */
 			for (; i < sinfo->num_queues; i++) {
 				if (sinfo->queues[i]->sc.total > 0) {

@@ -130,7 +130,7 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 	svr_conn_t **svr_conns = get_conn_svr_instances(c);
 	int start = 0;
 	int ct;
-	int nsvrs = get_num_servers();
+	int nsvr = get_num_servers();
 
 	/* verify the object name if creating a new one */
 	if (command == MGR_CMD_CREATE)
@@ -149,7 +149,7 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 		if ((start = get_obj_location_hint(objname, objtype)) == -1)
 		    start = 0;
 
-		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+		for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
 
 			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
 				continue;
@@ -162,8 +162,9 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 						aoplp,
 						extend);
 
-			if (objtype == MGR_OBJ_JOB || objtype == MGR_OBJ_RESV) {
-				if (rc == PBSE_NONE || (pbs_errno != PBSE_UNKJOBID && pbs_errno != PBSE_UNKRESVID))
+			/* break the loop for sharded objects */
+			if (objtype == MGR_OBJ_JOB || objtype == MGR_OBJ_RESV || objtype == MGR_OBJ_NODE) {
+				if (rc == PBSE_NONE || (pbs_errno != PBSE_UNKJOBID && pbs_errno != PBSE_UNKRESVID && pbs_errno != PBSE_UNKNODE))
 					break;
 			}
 		}

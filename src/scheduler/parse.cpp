@@ -87,8 +87,6 @@ config::config()
 	non_prime_so = 0;
 	prime_fs = 0;
 	non_prime_fs = 0;
-	prime_hsv = 0;
-	non_prime_hsv = 0;
 	prime_bf = 1;
 	non_prime_bf = 1;
 	prime_sn = 0;
@@ -99,9 +97,6 @@ config::config()
 	non_prime_pre = 0;
 	update_comments = 1;
 	prime_exempt_anytime_queues = 0;
-	preempt_starving = 1;
-	preempt_fairshare = 1;
-	dont_preempt_starving = 0;
 	enforce_no_shares = 1;
 	node_sort_unused = 0;
 	resv_conf_ignore = 0;
@@ -126,7 +121,6 @@ config::config()
 	max_preempt_attempts = SCHD_INFINITY;					/* max num of preempt attempts per cyc*/
 	max_jobs_to_check = SCHD_INFINITY;			/* max number of jobs to check in cyc*/
 	fairshare_decay_factor = .5;		/* decay factor used when decaying fairshare tree */
-	max_starve = 0;
 #ifdef NAS
 	/* localmod 034 */
 	max_borrow = 0;			/* job share borrowing limit */
@@ -181,7 +175,7 @@ parse_config(const char *fname)
 	int i;
 
 	/* resource type for validity checking */
-	struct resource_type type = {0};
+	struct resource_type type;
 
 	struct config tmpconf;
 
@@ -277,12 +271,9 @@ parse_config(const char *fname)
 						tmpconf.non_prime_fs = num ? 1 : 0;
 				}
 				else if (!strcmp(config_name, PARSE_HELP_STARVING_JOBS)) {
-					if (prime == PRIME || prime == PT_ALL)
-						tmpconf.prime_hsv = num ? 1 : 0;
-					if (prime == NON_PRIME || prime == PT_ALL)
-						tmpconf.non_prime_hsv = num ? 1 : 0;
-				}
-				else if (!strcmp(config_name, PARSE_BACKFILL)) {
+					obsolete[0] = config_name;
+					obsolete[1] = "use eligible_time in job_sort_formula";
+				} else if (!strcmp(config_name, PARSE_BACKFILL)) {
 					if (prime == PRIME || prime == PT_ALL)
 						tmpconf.prime_bf = num ? 1 : 0;
 					if (prime == NON_PRIME || prime == PT_ALL)
@@ -290,33 +281,22 @@ parse_config(const char *fname)
 
 					obsolete[0] = config_name;
 					obsolete[1] = "server's backfill_depth=0";
-				}
-				else if (!strcmp(config_name, PARSE_SORT_QUEUES)) {
+				} else if (!strcmp(config_name, PARSE_SORT_QUEUES)) {
 					obsolete[0] = config_name;
-				}
-				else if (!strcmp(config_name, PARSE_UPDATE_COMMENTS)) {
+				} else if (!strcmp(config_name, PARSE_UPDATE_COMMENTS)) {
 					tmpconf.update_comments = num ? 1 : 0;
-				}
-				else if (!strcmp(config_name, PARSE_BACKFILL_PRIME)) {
+				} else if (!strcmp(config_name, PARSE_BACKFILL_PRIME)) {
 					if (prime == PRIME || prime == PT_ALL)
 						tmpconf.prime_bp = num ? 1 : 0;
 					if (prime == NON_PRIME || prime == PT_ALL)
 						tmpconf.non_prime_bp = num ? 1 : 0;
-				}
-				else if (!strcmp(config_name, PARSE_PREEMPIVE_SCHED)) {
+				} else if (!strcmp(config_name, PARSE_PREEMPIVE_SCHED)) {
 					if (prime == PRIME || prime == PT_ALL)
 						tmpconf.prime_pre = num ? 1 : 0;
 					if (prime == NON_PRIME || prime == PT_ALL)
 						tmpconf.non_prime_pre = num ? 1 : 0;
-				}
-				else if (!strcmp(config_name, PARSE_PRIME_EXEMPT_ANYTIME_QUEUES))
+				} else if (!strcmp(config_name, PARSE_PRIME_EXEMPT_ANYTIME_QUEUES))
 					tmpconf.prime_exempt_anytime_queues = num ? 1 : 0;
-				else if (!strcmp(config_name, PARSE_PREEMPT_STARVING))
-					tmpconf.preempt_starving = num ? 1 : 0;
-				else if (!strcmp(config_name, PARSE_PREEMPT_FAIRSHARE))
-					tmpconf.preempt_fairshare = num ? 1 : 0;
-				else if (!strcmp(config_name, PARSE_DONT_PREEMPT_STARVING))
-					tmpconf.dont_preempt_starving = num ? 1 : 0;
 				else if (!strcmp(config_name, PARSE_ENFORCE_NO_SHARES))
 					tmpconf.enforce_no_shares = num ? 1 : 0;
 				else if (!strcmp(config_name, PARSE_ALLOW_AOE_CALENDAR))
@@ -333,13 +313,9 @@ parse_config(const char *fname)
 					}
 				}
 				else if (!strcmp(config_name, PARSE_MAX_STARVE)) {
-					tmpconf.max_starve = res_to_num(config_value, &type);
-					if (!type.is_time) {
-						snprintf(errbuf, sizeof(errbuf), "Invalid time %s", config_value);
-						error = true;
-					}
-				}
-				else if (!strcmp(config_name, PARSE_HALF_LIFE) || !strcmp(config_name, PARSE_FAIRSHARE_DECAY_TIME)) {
+					obsolete[0] = config_name;
+					obsolete[1] = "use eligible_time in job_sort_formula";
+				} else if (!strcmp(config_name, PARSE_HALF_LIFE) || !strcmp(config_name, PARSE_FAIRSHARE_DECAY_TIME)) {
 					if(!strcmp(config_name, PARSE_HALF_LIFE)) {
 						obsolete[0] = PARSE_HALF_LIFE;
 						obsolete[1] = PARSE_FAIRSHARE_DECAY_TIME " and " PARSE_FAIRSHARE_DECAY_FACTOR " instead";
@@ -349,8 +325,7 @@ parse_config(const char *fname)
 						snprintf(errbuf, sizeof(errbuf), "Invalid time %s", config_value);
 						error = true;
 					}
-				}
-				else if (!strcmp(config_name, PARSE_UNKNOWN_SHARES))
+				} else if (!strcmp(config_name, PARSE_UNKNOWN_SHARES))
 					tmpconf.unknown_shares = num;
 				else if (!strcmp(config_name, PARSE_FAIRSHARE_DECAY_FACTOR)) {
 					float fnum;
@@ -467,6 +442,12 @@ parse_config(const char *fname)
 
 					if (tok != NULL) {
 						si.res_name = tok;
+						auto f = allres.find(tok);
+						if (f != allres.end())
+							si.def = f->second;
+						else
+							si.def = NULL;
+
 						tok = strtok(NULL, DELIM);
 						if (tok != NULL) {
 							if (!strcmp(tok, "high") || !strcmp(tok, "HIGH") ||
@@ -503,6 +484,12 @@ parse_config(const char *fname)
 
 					if (tok != NULL) {
 						si.res_name = tok;
+						auto f = allres.find(tok);
+						if (f != allres.end())
+							si.def = f->second;
+						else
+							si.def = NULL;
+
 						tok = strtok(NULL, DELIM);
 						if (tok != NULL) {
 							if (!strcmp(tok, "high") || !strcmp(tok, "HIGH") ||

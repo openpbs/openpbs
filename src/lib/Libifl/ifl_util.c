@@ -157,7 +157,6 @@ random_srv_conn(int fd, svr_conn_t **svr_conns)
 int
 get_obj_location_hint(char *obj_id, int obj_type)
 {
-	int nsvrs = get_num_servers();
 	char *ptr = NULL;
 	char *ptr_idx = NULL;
 	int svridx = -1;
@@ -181,7 +180,7 @@ get_obj_location_hint(char *obj_id, int obj_type)
 
 	svridx = strtol(ptr_idx, &endptr, 10);
 
-	if (*endptr != '\0' || svridx >= nsvrs)
+	if (*endptr != '\0' || svridx >= get_num_servers())
 		svridx = -1;
 
 	if (ptr)

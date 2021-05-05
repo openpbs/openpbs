@@ -137,7 +137,6 @@
 #define PARSE_PEER_QUEUE "peer_queue"
 #define PARSE_PEER_TRANSLATION "peer_translation"
 #define PARSE_NODE_GROUP_KEY "node_group_key"
-#define PARSE_DONT_PREEMPT_STARVING "dont_preempt_starving"
 #define PARSE_ENFORCE_NO_SHARES "fairshare_enforce_no_shares"
 #define PARSE_STRICT_ORDERING "strict_ordering"
 #define PARSE_RES_UNSET_INFINITE "resource_unset_infinite"
@@ -166,8 +165,6 @@
 #define PARSE_ALLOW_AOE_CALENDAR "allow_aoe_calendar"
 
 /* deprecated */
-#define PARSE_PREEMPT_STARVING "preempt_starving"
-#define PARSE_PREEMPT_FAIRSHARE "preempt_fairshare"
 #define PARSE_STRICT_FIFO "strict_fifo"
 
 

@@ -235,6 +235,10 @@ get_script(FILE *file, char *script, char *prefix)
 	char *in;
 	char *s_in = NULL;
 	int s_len = 0;
+	char *extend;
+	char *extend_in = NULL;
+	int extend_len = 0;
+	int extend_loc;
 	static char tmp_template[] = "pbsscrptXXXXXX";
 	int fds;
 
@@ -258,16 +262,21 @@ get_script(FILE *file, char *script, char *prefix)
 		return (4);
 	}
 
-	while ((in = pbs_fgets_extend(&s_in, &s_len, file)) != NULL) {
+	while ((in = pbs_fgets(&s_in, &s_len, file)) != NULL) {
 		if (!exec && ((sopt = pbs_ispbsdir(s_in, prefix)) != NULL)) {
-			if (fputs(in, TMP_FILE) < 0) {
-				perror("fputs");
-				fprintf(stderr,
-					"qsub: error writing copy of script, %s\n", tmp_name);
-				fclose(TMP_FILE);
-				free(s_in);
-				return (3);
+			/* Check if this is a directive line that should be extended */
+			extend_loc = pbs_extendable_line(in);
+			if (extend_loc >= 0) {
+				in[extend_loc] = '\0'; /* remove the backslash (\) */
+				extend = pbs_fgets_extend(&extend_in, &extend_len, file);
+				if (extend != NULL) {
+					if (pbs_strcat(&s_in, &s_len, extend) == NULL)
+						return (5);
+					in = s_in;
+					sopt = pbs_ispbsdir(s_in, prefix);
+				}
 			}
+
 			/*
 			 * Setting options from the job script will not overwrite
 			 * options set on the command line. CMDLINE-1 means
@@ -275,6 +284,7 @@ get_script(FILE *file, char *script, char *prefix)
 			 */
 			if (do_dir(sopt, CMDLINE - 1, retmsg, MAXPATHLEN) != 0) {
 				fprintf(stderr, "%s", retmsg);
+				free(extend_in);
 				free(s_in);
 				return (-1);
 			}
@@ -286,11 +296,13 @@ get_script(FILE *file, char *script, char *prefix)
 			fprintf(stderr, "qsub: error writing copy of script, %s\n",
 				tmp_name);
 			fclose(TMP_FILE);
+			free(extend_in);
 			free(s_in);
 			return (3);
 		}
 	}
 
+	free(extend_in);
 	free(s_in);
 	if (fclose(TMP_FILE) != 0) {
 		perror(" qsub: copy of script to tmp failed on close");

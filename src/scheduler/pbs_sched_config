@@ -78,41 +78,9 @@ by_queue: True		non_prime
 #	"less deserving" jobs provided that they do not delay the start time
 #	of the "most deserving" job.
 #
-#       PRIME OPTION
-
-strict_ordering: false	ALL
-
-#### STARVING JOB OPTIONS
-
-#
-# help_starving_jobs
-#
-#	NOTE: The help_starving_jobs option is deprecated and will likely go away in a future release.
-#	      Use job_sort_formula specifying eligible_time to establish equivalent behavior.
-#
-#	When this option is turned on, jobs which have been waiting a long
-#	time are considered to be "starving".  The default amount of time for
-#	a job to wait before it is considered starving is 24 hours, but you can
-#	specify the minimum time in the max_starve scheduler parameter.  Note
-#	that unless you use backfilling, this option can result in significant
-#	idle time while starving jobs wait for resources.
-#
 #	PRIME OPTION
 
-help_starving_jobs:	true	ALL
-
-#
-# max_starve
-#	Maximum  duration before a job is considered starving.
-#
-#  	Examples:
-#  	max_starve: 24:00:00
-#  	This means that jobs waiting/queued for 24 hours will be given higher
-#  	priority to run. NOTE: help_starving_jobs must be enabled.
-#
-#	NO PRIME OPTION
-
-max_starve: 24:00:00
+strict_ordering: false	ALL
 
 #### PRIMETIME OPTIONS:
 
@@ -134,7 +102,7 @@ backfill_prime:	false	ALL
 #
 #	Avoid backfill on queues that are not defined as primetime
 #	or nonprimetime.
-#	NOTE: This is not related to backfill for starving jobs.
+#	NOTE: This is not related to backfill for strict_ordering.
 #
 #	NO PRIME OPTION
 

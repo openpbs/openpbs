@@ -406,6 +406,40 @@ pbs_fgets(char **pbuf, int *pbuf_size, FILE *fp)
 }
 
 /**
+ * @brief
+ * 	Helper function for pbs_fgets_extend() and callers to determine if string requires extending
+ *
+ * @param[in] buf - line to check for extendable ending
+ *
+ * @return int
+ * @retval offset to extendable location, -1 if not extendable
+ */
+int
+pbs_extendable_line(char *buf)
+{
+	int len = 0;
+
+	if (buf == NULL)
+		return 0;
+
+	len = strlen(buf);
+
+	/* we have two options:
+	 * 1) We extend: string ends in a '\' and 0 or more whitespace
+	 * 2) we do not extend: Not #1
+	 * In the case of #1, we want the string to end just before the '\'
+	 * In the case of #2 we want to leave the string alone.
+	 */
+	while (len > 0 && isspace(buf[len-1]))
+		len--;
+
+	if (len > 0 && buf[len - 1] == '\\')
+		return len - 1;
+	else /* We're at the end of a non-extended line */
+		return -1;
+}
+
+/**
  * @brief get a line from a file pointed at by fp.  The line can be extended
  *	  onto the next line if it ends in a backslash (\).  If the string is
  *	  extended, the lines will be combined and the backslash will be
@@ -453,20 +487,10 @@ pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp)
 			return NULL;
 
 		buf = *pbuf;
-		len = strlen(buf);
-
-		/* we have two options:
-		 * 1) We extend: string ends in a '\' and 0 or more whitespace
-		 * 2) we do not extend: Not #1
-		 * In the case of #1, we want the string to end just before the '\'
-		 * In the case of #2 we want to leave the string alone.
-		 */
-		while (len > 0 && isspace(buf[len-1]))
-			len--;
-
-		if (len > 0 && buf[len - 1] == '\\')
-			buf[len - 1] = '\0'; /* remove the backslash (\) */
-		else /* We're at the end of a non-extended line */
+		len = pbs_extendable_line(buf);
+		if (len >= 0)
+			buf[len] = '\0'; /* remove the backslash (\) */
+		else
 			break;
 	}
 
@@ -2615,4 +2639,105 @@ create_subjob_id(char *parent_jid, int sjidx)
 	snprintf(jid, sizeof(jid), "%s[%d]%s", parent_jid, sjidx, pce + 1);
 	*pcb = '[';
 	return jid;
+}
+
+
+/**
+ * @brief
+ * 		read attributes from file descriptor of a job file
+ *
+ * @param[in]	fd	-	file descriptor
+ * @param[out]	errbuf	-	buffer to return messages for any errors
+ *
+ * @return	svrattrl *
+ * @retval	svrattrl object for the attribute read
+ * @retval	NULL for error
+ */
+static svrattrl *
+read_attr(int fd, char **errbuf)
+{
+	int amt;
+	int i;
+	svrattrl *pal;
+	svrattrl tempal;
+
+	i = read(fd, (char *)&tempal, sizeof(tempal));
+	if (i != sizeof(tempal)) {
+		if (errbuf != NULL)
+			sprintf(*errbuf, "bad read of attribute");
+		return NULL;
+	}
+	if (tempal.al_tsize == ENDATTRIBUTES)
+		return NULL;
+
+	pal = (svrattrl *) malloc(tempal.al_tsize);
+	if (pal == NULL) {
+		if (errbuf != NULL)
+			sprintf(*errbuf, "malloc failed");
+		return NULL;
+	}
+	*pal = tempal;
+
+	/* read in the actual attribute data */
+
+	amt = pal->al_tsize - sizeof(svrattrl);
+	i = read(fd, (char *)pal + sizeof(svrattrl), amt);
+	if (i != amt) {
+		if (errbuf != NULL)
+			sprintf(*errbuf, "short read of attribute");
+		return NULL;
+	}
+	pal->al_name = (char *)pal + sizeof(svrattrl);
+	if (pal->al_rescln)
+		pal->al_resc = pal->al_name + pal->al_nameln;
+	else
+		pal->al_resc = NULL;
+	if (pal->al_valln)
+		pal->al_value = pal->al_name + pal->al_nameln + pal->al_rescln;
+	else
+		pal->al_value = NULL;
+
+	return pal;
+}
+
+/**
+ * @brief	Read all job attribute values from a job file
+ *
+ * @param[in]	fd - fd of job file
+ * @param[out]	state - return pointer to state value
+ * @param[out]	substate - return pointer for substate value
+ * @param[out]	errbuf	-	buffer to return messages for any errors
+ *
+ * @return	svrattrl*
+ * @retval	list of attributes read from a job file
+ * @retval	NULL for error
+ */
+svrattrl *
+read_all_attrs_from_jbfile(int fd, char **state, char **substate, char **errbuf)
+{
+	svrattrl *pal = NULL;
+	svrattrl *pali = NULL;
+
+	while ((pali = read_attr(fd, errbuf)) != NULL) {
+		if (pal == NULL) {
+			pal = pali;
+			(&pal->al_link)->ll_struct = (void *)(&pal->al_link);
+			(&pal->al_link)->ll_next = NULL;
+			(&pal->al_link)->ll_prior = NULL;
+		} else {
+			pbs_list_link *head = &pal->al_link;
+			pbs_list_link *newp = &pali->al_link;
+			newp->ll_prior = NULL;
+			newp->ll_next  = head;
+			newp->ll_struct = pali;
+			pal = pali;
+		}
+		/* Check if the attribute read is state/substate and store it separately */
+		if (state && strcmp(pali->al_name, ATTR_state) == 0)
+			*state = pali->al_value;
+		else if (substate && strcmp(pali->al_name, ATTR_substate) == 0)
+			*substate = pali->al_value;
+	}
+
+	return pal;
 }

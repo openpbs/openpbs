@@ -550,7 +550,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 				}
 
 				/* Round memory off to the nearest megabyte */
-				if(res->def == getallres(RES_MEM))
+				if(res->def == allres["mem"])
 					res->avail -= (long) res->avail % 1024;
 #ifdef NAS /* localmod 034 */
 				site_set_node_share(ninfo, res);
@@ -1145,7 +1145,7 @@ find_node_by_host(node_info **ninfo_arr, char *host)
 		return NULL;
 
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
-		res = find_resource(ninfo_arr[i]->res, getallres(RES_HOST));
+		res = find_resource(ninfo_arr[i]->res, allres["host"]);
 		if (res != NULL) {
 			if (compare_res_to_str(res, host, CMP_CASELESS))
 				break;
@@ -1788,7 +1788,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, const char *job_state)
 
 				res->assigned += resreq->amount;
 
-				if (res->def  == getallres(RES_NCPUS)) {
+				if (res->def == allres["ncpus"]) {
 					ncpusres = res;
 				}
 			}
@@ -1814,7 +1814,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, const char *job_state)
 
 	/* if we're a cluster node and we have no cpus available, we're job_busy */
 	if (ncpusres == NULL)
-		ncpusres = find_resource(ninfo->res, getallres(RES_NCPUS));
+		ncpusres = find_resource(ninfo->res, allres["ncpus"]);
 
 	if (ncpusres != NULL) {
 		if (dynamic_avail(ncpusres) == 0)
@@ -3074,7 +3074,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 
 	if (resresv->aoename != NULL) {
 		resresv->is_prov_needed = 1;
-		aoereq = find_resource_req(specreq_noncons, getallres(RES_AOE));
+		aoereq = find_resource_req(specreq_noncons, allres["aoe"]);
 		/* Provisionable node needed only if placement=pack or
 		 * subchunk consists aoe resource request.
 		 */
@@ -4701,10 +4701,10 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 				/* find the vnode of the next host or the end of the list since the
 				 * beginning will definitely be a different host because of our sort
 				 */
-				hostres = find_resource(tmparr[i]->res, getallres(RES_HOST));
+				hostres = find_resource(tmparr[i]->res, allres["host"]);
 				if (hostres != NULL) {
 					for (; i < nsize; i++) {
-						cur_hostres = find_resource(tmparr[i]->res, getallres(RES_HOST));
+						cur_hostres = find_resource(tmparr[i]->res, allres["host"]);
 						if (cur_hostres != NULL) {
 							if (!compare_res_to_str(cur_hostres, hostres->str_avail[0], CMP_CASELESS))
 								break;
@@ -4757,18 +4757,16 @@ ok_break_chunk(resource_resv *resresv, node_info **nodes)
 
 
 	for (i = 0; nodes[i] != NULL; i++) {
-		res = find_resource(nodes[i]->res, getallres(RES_HOST));
+		res = find_resource(nodes[i]->res, allres["host"]);
 		if (res != NULL) {
 			if (hostres == NULL)
 				hostres = res;
 			else {
-				if (match_string_array(hostres->str_avail, res->str_avail)
-					!= SA_FULL_MATCH) {
+				if (match_string_array(hostres->str_avail, res->str_avail) != SA_FULL_MATCH) {
 					break;
 				}
 			}
-		}
-		else {
+		} else {
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_WARNING,
 				nodes[i]->name, "Node has no host resource");
 		}
@@ -4910,7 +4908,7 @@ set_res_on_host(char *res_name, char *res_value,
 
 	for (i = 0; ninfo_arr[i] != NULL && rc; i++) {
 		if (ninfo_arr[i] != exclude) {
-			hostres = find_resource(ninfo_arr[i]->res, getallres(RES_HOST));
+			hostres = find_resource(ninfo_arr[i]->res, allres["host"]);
 
 			if (hostres != NULL) {
 				if (compare_res_to_str(hostres, host, CMP_CASELESS)) {
@@ -5009,7 +5007,7 @@ is_aoe_avail_on_vnode(node_info *ninfo, resource_resv *resresv)
 	if (resresv->aoename == NULL)
 		return 0;
 
-	if ((resp = find_resource(ninfo->res, getallres(RES_AOE))) != NULL)
+	if ((resp = find_resource(ninfo->res, allres["aoe"])) != NULL)
 		return is_string_in_arr(resp->str_avail, resresv->aoename);
 
 	return 0;
@@ -5048,7 +5046,7 @@ is_eoe_avail_on_vnode(node_info *ninfo, resource_resv *resresv)
 	if (resresv->eoename == NULL)
 		return 0;
 
-	if ((resp = find_resource(ninfo->res, getallres(RES_EOE))) != NULL)
+	if ((resp = find_resource(ninfo->res, allres["eoe"])) != NULL)
 		return is_string_in_arr(resp->str_avail, resresv->eoename);
 
 	return 0;

@@ -210,6 +210,7 @@ char *pbs_strcpy(char *dest, const char *src);
  */
 char *pbs_strncpy(char *dest, const char *src, size_t n);
 
+int pbs_extendable_line(char *buf);
 char *pbs_fgets(char **pbuf, int *pbuf_size, FILE *fp);
 char *pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp);
 
@@ -363,7 +364,6 @@ void set_proc_limits(char *, int);
 int get_index_from_jid(char *jid);
 char *get_range_from_jid(char *jid);
 char *create_subjob_id(char *parent_jid, int sjidx);
-
 
 #ifdef  __cplusplus
 }
