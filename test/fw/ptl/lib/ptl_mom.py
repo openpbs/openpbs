@@ -149,16 +149,14 @@ class MoM(PBSService):
                     alps_client = self.du.which(exe='apbasil')
             else:
                 alps_client = "/opt/alps/apbasil.sh"
-            self.dflt_config = {'$clienthost': self.server.hostname,
-                                '$vnodedef_additive': 0,
+            self.dflt_config = {'$vnodedef_additive': 0,
                                 '$alps_client': alps_client,
                                 '$usecp': '*:%s %s' % (usecp, usecp)}
         elif self.platform == 'shasta':
             usecp = os.path.realpath('/lus')
-            self.dflt_config = {'$clienthost': self.server.hostname,
-                                '$usecp': '*:%s %s' % (usecp, usecp)}
+            self.dflt_config = {'$usecp': '*:%s %s' % (usecp, usecp)}
         else:
-            self.dflt_config = {'$clienthost': self.server.hostname}
+            self.dflt_config = {}
         self._is_cpuset_mom = None
 
         # If this is true, the mom will revert to default.
