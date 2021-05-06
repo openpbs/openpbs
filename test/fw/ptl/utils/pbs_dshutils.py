@@ -2120,7 +2120,8 @@ class DshUtils(object):
             os.rmdir(tmpdir2)
             # copy the orginal temp as new temp dir
             self.run_copy(hostname, src=tmpdir, dest=tmpdir2, runas=asuser,
-                          recursive=True, uid=uid, gid=gid, level=level)
+                          recursive=True, uid=uid, gid=gid, level=level,
+                          preserve_permission=False)
             self.chmod(hostname, path=tmpdir2, mode=mode, runas=asuser)
             # remove original temp dir
             os.rmdir(tmpdir)
