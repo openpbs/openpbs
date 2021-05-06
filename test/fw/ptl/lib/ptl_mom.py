@@ -696,7 +696,11 @@ class MoM(PBSService):
         ret = self.du.run_cmd(self.hostname, cmd=cmd, sudo=True,
                               as_script=True)
         req_bash_version = "4.2.46"
-        mom_bash_version = ret['out'][0]
+        if len(ret['out']) > 0:
+            mom_bash_version = ret['out'][0]
+        else:
+            # If it fails to get bash version return True
+            return True
         if mom_bash_version >= req_bash_version:
             return True
         else:
