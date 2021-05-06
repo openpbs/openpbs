@@ -699,7 +699,8 @@ class MoM(PBSService):
         if len(ret['out']) > 0:
             mom_bash_version = ret['out'][0]
         else:
-            # If it fails to get bash version return True
+            # Test case will be skipped when this function returns False,
+            # if it fails to get bash version.
             return True
         if mom_bash_version >= req_bash_version:
             return True
