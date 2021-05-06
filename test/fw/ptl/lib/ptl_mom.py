@@ -52,6 +52,7 @@ import string
 import sys
 import tempfile
 import time
+import pkg_resources
 
 
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
@@ -686,6 +687,20 @@ class MoM(PBSService):
         Returns True if MoM is only Linux
         """
         return True
+
+    def check_mom_bash_version(self):
+        """
+        Return True if bash version on mom is greater than or equal to 4.2.46
+        """
+        cmd = ['echo', '${BASH_VERSION%%[^0-9.]*}']
+        ret = self.du.run_cmd(self.hostname, cmd=cmd, sudo=True,
+                              as_script=True)
+        req_bash_version = "4.2.46"
+        mom_bash_version = ret['out'][0]
+        if mom_bash_version >= req_bash_version:
+            return True
+        else:
+            return False
 
     def is_cpuset_mom(self):
         """
