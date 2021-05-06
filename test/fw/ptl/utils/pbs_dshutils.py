@@ -53,7 +53,7 @@ import traceback
 import inspect
 from subprocess import PIPE, Popen
 
-from ptl.utils.pbs_testusers import PBS_ALL_USERS, PbsUser
+from ptl.utils.pbs_testusers import PBS_ALL_USERS, PbsUser, PbsGroup
 
 DFLT_RSYNC_CMD = ['rsync', '-e', 'ssh', '--progress', '--partial', '-ravz']
 DFLT_COPY_CMD = ['scp', '-p']
@@ -142,7 +142,6 @@ class DshUtils(object):
     sudo_cmd = DFLT_SUDO_CMD
     copy_cmd = DFLT_COPY_CMD
     tmpfilelist = []
-    tmpdirlist = []
 
     def __init__(self):
 
@@ -321,7 +320,6 @@ class DshUtils(object):
 
         if hostname is None:
             hostname = socket.gethostname()
-
         if hostname in self._h2c:
             return self._h2c[hostname]
 
@@ -1561,6 +1559,8 @@ class DshUtils(object):
                            runas=runas, level=level)
         if ret['rc'] == 0:
             if gid is not None:
+                if runas is None:
+                    runas = _u
                 rv = self.chgrp(hostname, path, gid=gid, sudo=sudo,
                                 level=level, recursive=recursive, runas=runas,
                                 logerr=logerr)
@@ -2059,8 +2059,8 @@ class DshUtils(object):
         return tmpfile
 
     def create_temp_dir(self, hostname=None, suffix='', prefix='PtlPbs',
-                        dirname=None, asuser=None, asgroup=None, mode=None,
-                        level=logging.INFOCLI2, sudo=False):
+                        dirname=None, asuser=None, asgroup=None, mode=0o755,
+                        level=logging.INFOCLI2):
         """
         Create a temp dir by calling ``tempfile.mkdtemp``
         :param hostname: the hostname on which to query tempdir from
@@ -2069,60 +2069,65 @@ class DshUtils(object):
         :type suffix: str
         :param prefix: the directory name will begin with this prefix
         :type prefix: str
-        :param dir: the directory will be created in this directory
-        :type dir: str or None
-        :param uid: Optional username or uid of temp directory owner
-        :param gid: Optional group name or gid of temp directory
+        :param dirname: the directory will be created in this directory
+        :type dirname: str or None
+        :param asuser: Optional username of temp directory owner
+        :type asuser: str
+        :param asgroup: Optional group name of temp directory
                     group owner
+        :type asgroup: str
         :param mode: Optional mode bits to assign to the temporary
                      directory
+        :type mode: octal integer
         :param level: logging level, defaults to INFOCLI2
         """
+        current_user_info = self.get_id_info(self.get_current_user())
+        uid = current_user_info['uid']
+        if asuser is not None:
+            uid = PbsUser.get_user(asuser).uid
+        if asgroup is not None:
+            gid = PbsGroup.get_group(asgroup).gid
+        else:
+            gid = None
         # create a temp dir as current user
         tmpdir = tempfile.mkdtemp(suffix, prefix)
+        # By default mkdtemp creates dir according to umask.
+        # To create dir as different user first change the dir
+        # permission to 0755 so that other user has read permission
+        self.chmod(path=tmpdir, mode=0o755)
         if dirname is not None:
             dirname = str(dirname)
             self.run_copy(hostname, src=tmpdir, dest=dirname, runas=asuser,
-                          recursive=True,
-                          preserve_permission=False, level=level, sudo=sudo)
+                          recursive=True, gid=gid, uid=uid,
+                          level=level, preserve_permission=False)
+            self.chmod(hostname, path=dirname, mode=mode, runas=asuser)
+
             tmpdir = dirname + tmpdir[4:]
 
         # if temp dir to be created on remote host
         if not self.is_localhost(hostname):
-            if asuser is not None:
-                # by default mkstemp creates dir with 0600 permission
-                # to create dir as different user first change the dir
-                # permission to 0644 so that other user has read permission
-                self.chmod(path=tmpdir, mode=0o755)
-                # copy temp dir created on local host to remote host
-                # as different user
-                self.run_copy(hostname, src=tmpdir, dest=tmpdir, runas=asuser,
-                              recursive=True,
-                              preserve_permission=False, level=level)
-            else:
-                # copy temp dir created on localhost to remote as current user
-                self.run_copy(hostname, src=tmpdir, dest=tmpdir,
-                              preserve_permission=False, level=level)
+            self.run_copy(hostname, src=tmpdir, dest=tmpdir,
+                          level=level, preserve_permission=False,
+                          recursive=True, uid=uid, gid=gid)
+            self.chmod(hostname, path=tmpdir, mode=mode, runas=asuser)
             # remove local temp dir
             os.rmdir(tmpdir)
-        if asuser is not None:
-            # by default mkdtemp creates dir with 0600 permission
-            # to create dir as different user first change the dir
-            # permission to 0644 so that other user has read permission
-            self.chmod(path=tmpdir, mode=0o755)
+            return tmpdir
+        elif asuser is not None:
             # since we need to create as differnt user than current user
             # create a temp dir just to get temp dir name with absolute path
             tmpdir2 = tempfile.mkdtemp(suffix, prefix, dirname)
             os.rmdir(tmpdir2)
             # copy the orginal temp as new temp dir
             self.run_copy(hostname, src=tmpdir, dest=tmpdir2, runas=asuser,
-                          recursive=True,
-                          preserve_permission=False, level=level)
+                          recursive=True, uid=uid, gid=gid, level=level,
+                          preserve_permission=False)
+            self.chmod(hostname, path=tmpdir2, mode=mode, runas=asuser)
             # remove original temp dir
             os.rmdir(tmpdir)
-            self.tmpdirlist.append(tmpdir2)
             return tmpdir2
-        self.tmpdirlist.append(tmpdir)
+        # Its a local directory and user name is not provided
+        self.chmod(path=tmpdir, mode=mode)
         return tmpdir
 
     def parse_strace(self, lines):

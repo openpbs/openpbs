@@ -57,6 +57,26 @@ class PbsGroup(object):
     :type users: List or None
     """
 
+    @staticmethod
+    def get_group(group):
+        """
+        param: group - groupname
+        type: group - str or int or class object
+        returns PbsGroup class object or None
+        """
+        if isinstance(group, int):
+            for g in PBS_ALL_GROUPS:
+                if g.gid == group:
+                    return g
+        elif isinstance(group, str):
+            for g in PBS_ALL_GROUPS:
+                if g.name == group:
+                    return g
+        elif isinstance(group, PbsGroup):
+            if group in PBS_ALL_GROUPS:
+                return group
+        return None
+
     def __init__(self, name, gid=None, users=None):
         self.name = name
         if gid is not None:
@@ -257,3 +277,5 @@ REQUIRED_USERS = (TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3)
 PBS_ALL_USERS = (PBS_USERS + PBS_OPER_USERS + PBS_MGR_USERS +
                  PBS_DATA_USERS + PBS_ROOT_USERS + PBS_BUILD_USERS +
                  PBS_DAEMON_SERVICE_USERS)
+
+PBS_ALL_GROUPS = (PBS_GROUPS + (ROOT_GRP,))
