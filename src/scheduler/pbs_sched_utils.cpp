@@ -686,7 +686,7 @@ reconnect_servers()
 
 	close_servers();
 	connect_svrpool();
-	
+
 	pthread_mutex_unlock(&cleanup_lock);
 }
 
@@ -776,7 +776,11 @@ wait_for_cmds()
 				if (err != 1) {
 					/* if memory error ignore, else reconnect server */
 					if (err != -2) {
+						if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)
+							log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
 						reconnect_servers();
+						if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
+							log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 					}
 				} else
 					hascmd = 1;
@@ -1152,10 +1156,6 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 			   __func__, log_buffer);
 		exit(1);
 	}
-	if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
-		log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
-
-	sprintf(log_buffer, "Out of memory");
 
 	/* Initialize cleanup lock */
 	if (init_mutex_attr_recursive(&attr) != 0)
@@ -1164,6 +1164,9 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 	pthread_mutex_init(&cleanup_lock, &attr);
 
 	connect_svrpool();
+
+	if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
+		log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 
 	for (go = 1; go;) {
 		int i;
