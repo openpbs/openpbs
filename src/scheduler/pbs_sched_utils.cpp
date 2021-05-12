@@ -682,10 +682,16 @@ sched_svr_init(void)
 static void
 reconnect_servers()
 {
+	sigset_t prevsigs;
+	sigemptyset(&prevsigs);
 	pthread_mutex_lock(&cleanup_lock);
 
 	close_servers();
+	if (sigprocmask(SIG_BLOCK, &allsigs, &prevsigs) == -1)
+		log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
 	connect_svrpool();
+	if (sigprocmask(SIG_SETMASK, &prevsigs, NULL) == -1)
+		log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 
 	pthread_mutex_unlock(&cleanup_lock);
 }
@@ -775,13 +781,8 @@ wait_for_cmds()
 				err = read_sched_cmd(sock);
 				if (err != 1) {
 					/* if memory error ignore, else reconnect server */
-					if (err != -2) {
-						if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)
-							log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
+					if (err != -2)
 						reconnect_servers();
-						if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
-							log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
-					}
 				} else
 					hascmd = 1;
 			}
