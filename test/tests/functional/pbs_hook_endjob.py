@@ -162,7 +162,7 @@ class TestHookEndJob(TestFunctional):
             ret, True, "Could not delete hook %s" % self.hook_name)
         self.logger.info("**************** HOOK END ****************")
 
-    def check_log_for_endjob_hook_messages(self):
+    def check_log_for_endjob_hook_messages(self, existence=True):
         """
         Look for messages logged by the endjob hook.  This method assumes that
         all started jobs have been verified as terminated or forced deleted,
@@ -558,8 +558,16 @@ class TestHookEndJob(TestFunctional):
         that the end job hook is only executed once for each subjob and the
         job array.
         """
-        # TODO: implement
-        pass
+        def endjob_rerun_and_delete_array_job():
+            self.job_array_submit()
+            self.job_array_verify_started()
+            self.job_array_requeue()
+            self.job_array_verify_queued()
+            self.job_delete()
+            self.check_log_for_endjob_hook_messages()
+            self.job_array_verify_ended()
+
+        self.run_test_func(endjob_rerun_and_delete_array_job)
 
     def test_hook_endjob_rerun_and_force_delete_array_job(self):
         """
@@ -567,8 +575,16 @@ class TestHookEndJob(TestFunctional):
         Verify that the end job hook is only executed once for each subjob and
         the job array.
         """
-        # TODO: implement
-        pass
+        def rerun_and_force_delete_array_job():
+            self.job_array_submit()
+            self.job_array_verify_started()
+            self.job_array_requeue()
+            self.job_array_verify_queued()
+            self.job_delete(force=True)
+            self.check_log_for_endjob_hook_messages()
+            self.job_array_verify_ended()
+
+        self.run_test_func(rerun_and_force_delete_array_job)
 
     def test_hook_endjob_delete_running_single_job(self):
         """
@@ -737,21 +753,59 @@ class TestHookEndJob(TestFunctional):
         self.run_test_func(endjob_delete_subjobs_from_partial_running_array_job)
 
     def test_hook_endjob_delete_unstarted_single_job(self):
-        # TODO: add code and description, or remove
-        # endjob hook should not be called
-        pass
+        """
+        Run a single job, but delete before it starts.  Verify that the end
+        job hook is not executed.
+        """
+        def endjob_delete_unstarted_single_job():
+            self.job_submit(job_sleep_time=self.job_time_qdel)
+            self.job_delete()
+            self.check_log_for_endjob_hook_messages(existence=False)
+
+        self.run_test_func(endjob_delete_unstarted_single_job)
 
     def test_hook_endjob_force_delete_unstarted_single_job(self):
-        # TODO: add code and description, or remove
-        # endjob hook should not be called
-        pass
+        """
+        Run a single job, but force delete before it starts.  Verify that the end
+        job hook is not executed.
+        """
+        def endjob_force_delete_unstarted_single_job():
+            self.job_submit(job_sleep_time=self.job_time_qdel)
+            self.job_delete(force=True)
+            self.check_log_for_endjob_hook_messages(existence=False)
+
+        self.run_test_func(endjob_force_delete_unstarted_single_job)
 
     def test_hook_endjob_delete_unstarted_array_job(self):
+        """
+        Run an array job, but delete before it starts.  Verify that the end
+        job hook is not executed.
+        """
+        def endjob_delete_unstarted_array_job():
+            self.job_array_submit()
+            self.job_array_delete()
+            self.check_log_for_endjob_hook_messages(existence=False)
+
+        self.run_test_func(endjob_delete_unstarted_array_job)
+
+    def test_hook_endjob_force_delete_unstarted_array_job(self):
+        """
+        Run an array job, but force delete before it starts.  Verify that the end
+        job hook is not executed.
+        """
+        def endjob_delete_unstarted_array_job():
+            self.job_array_submit()
+            self.job_array_delete(force=True)
+            self.check_log_for_endjob_hook_messages(existence=False)
+
+        self.run_test_func(endjob_delete_unstarted_array_job)
+
+    def test_hook_endjob_force_delete_while_provisioning_single_job(self):
         # TODO: add code and description, or remove
         # endjob hook should not be called
         pass
 
-    def test_hook_endjob_force_delete_unstarted_array_job(self):
+    def test_hook_endjob_force_delete_while_provisioning_array_job(self):
         # TODO: add code and description, or remove
         # endjob hook should not be called
         pass
