@@ -4130,7 +4130,7 @@ event.accept()
         fn1 = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
         # Capture the output of cpuset_mem_script for job
         scr1 = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn1, None)],
-                               as_script=True)
+                               as_script=True, hosts=self.hosts_list[0])
         tmp_out1 = scr1['out']
         self.logger.info("test output for job1: %s" % (tmp_out1))
         # Ensure the number of cpus assigned matches request
@@ -4379,7 +4379,7 @@ sleep 300
         fna = self.get_cgroup_job_dir('cpu', jid, self.hosts_list[0])
         self.assertFalse(fna is None, 'No job directory for cpu subsystem')
         cpu_scr = self.du.run_cmd(cmd=[self.cpu_controller_script % fna],
-                                  as_script=True)
+                                  as_script=True, hosts=self.hosts_list[0])
         cpu_scr_out = cpu_scr['out']
         self.logger.info('cpu_scr_out:\n%s' % cpu_scr_out)
 
@@ -4476,7 +4476,7 @@ sleep 300
         fna = self.get_cgroup_job_dir('cpu', jid, self.hosts_list[0])
         self.assertFalse(fna is None, 'No job directory for cpu subsystem')
         cpu_scr = self.du.run_cmd(cmd=[self.cpu_controller_script % fna],
-                                  as_script=True)
+                                  as_script=True, hosts=self.hosts_list[0])
         cpu_scr_out = cpu_scr['out']
         self.logger.info('cpu_scr_out:\n%s' % cpu_scr_out)
         shares_match = (ncpus_req * 1000)
@@ -4564,7 +4564,7 @@ sleep 300
         fna = self.get_cgroup_job_dir('cpu', jid, self.hosts_list[0])
         self.assertFalse(fna is None, 'No job directory for cpu subsystem')
         cpu_scr = self.du.run_cmd(cmd=[self.cpu_controller_script % fna],
-                                  as_script=True)
+                                  as_script=True, hosts=self.hosts_list[0])
         cpu_scr_out = cpu_scr['out']
         self.logger.info('cpu_scr_out:\n%s' % cpu_scr_out)
         shares_match = (default_zero_shares_fraction * 1000)
@@ -4654,7 +4654,7 @@ sleep 300
         fna = self.get_cgroup_job_dir('cpu', jid, self.hosts_list[0])
         self.assertFalse(fna is None, 'No job directory for cpu subsystem')
         cpu_scr = self.du.run_cmd(cmd=[self.cpu_controller_script % fna],
-                                  as_script=True)
+                                  as_script=True, hosts=self.hosts_list[0])
         cpu_scr_out = cpu_scr['out']
         self.logger.info('cpu_scr_out:\n%s' % cpu_scr_out)
         shares_match = (zero_cpus_shares_fraction * 1000)
