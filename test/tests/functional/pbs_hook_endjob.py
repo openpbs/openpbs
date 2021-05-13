@@ -162,7 +162,7 @@ class TestHookEndJob(TestFunctional):
             ret, True, "Could not delete hook %s" % self.hook_name)
         self.logger.info("**************** HOOK END ****************")
 
-    def check_log_for_endjob_hook_messages(self, existence=True):
+    def check_log_for_endjob_hook_messages(self):
         """
         Look for messages logged by the endjob hook.  This method assumes that
         all started jobs have been verified as terminated or forced deleted,
@@ -286,7 +286,7 @@ class TestHookEndJob(TestFunctional):
         self.deleted_job_ids = set([self.job_id]).union(self.subjob_ids)
 
     def job_array_verify_queued(self, first_subjob=0, num_subjobs=None):
-        self.server.expect(JOB, {'job_state': 'B'}, self.job_id)
+        self.server.expect(JOB, {'job_state': 'Q'}, self.job_id)
         jids = self.subjob_ids[first_subjob:num_subjobs]
         for jid in jids:
             self.job_verify_queued(job_id=jid)
@@ -760,7 +760,7 @@ class TestHookEndJob(TestFunctional):
         def endjob_delete_unstarted_single_job():
             self.job_submit(job_sleep_time=self.job_time_qdel)
             self.job_delete()
-            self.check_log_for_endjob_hook_messages(existence=False)
+            self.check_log_for_endjob_hook_messages()
 
         self.run_test_func(endjob_delete_unstarted_single_job)
 
@@ -772,7 +772,7 @@ class TestHookEndJob(TestFunctional):
         def endjob_force_delete_unstarted_single_job():
             self.job_submit(job_sleep_time=self.job_time_qdel)
             self.job_delete(force=True)
-            self.check_log_for_endjob_hook_messages(existence=False)
+            self.check_log_for_endjob_hook_messages()
 
         self.run_test_func(endjob_force_delete_unstarted_single_job)
 
@@ -782,9 +782,12 @@ class TestHookEndJob(TestFunctional):
         job hook is not executed.
         """
         def endjob_delete_unstarted_array_job():
-            self.job_array_submit()
+            self.job_array_submit(
+                subjob_count=6,
+                job_sleep_time=self.job_time_qdel,
+                subjob_ncpus=int(self.node_cpu_count*10))
             self.job_array_delete()
-            self.check_log_for_endjob_hook_messages(existence=False)
+            self.check_log_for_endjob_hook_messages()
 
         self.run_test_func(endjob_delete_unstarted_array_job)
 
@@ -794,9 +797,13 @@ class TestHookEndJob(TestFunctional):
         job hook is not executed.
         """
         def endjob_delete_unstarted_array_job():
-            self.job_array_submit()
+            self.job_array_submit(
+                subjob_count=6,
+                job_sleep_time=self.job_time_qdel,
+                subjob_ncpus=int(self.node_cpu_count*10))
+            self.job_array_verify_queued()
             self.job_array_delete(force=True)
-            self.check_log_for_endjob_hook_messages(existence=False)
+            self.check_log_for_endjob_hook_messages()
 
         self.run_test_func(endjob_delete_unstarted_array_job)
 
