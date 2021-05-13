@@ -689,6 +689,11 @@ reconnect_servers()
 	close_servers();
 	if (sigprocmask(SIG_BLOCK, &allsigs, &prevsigs) == -1)
 		log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
+	/*
+	 * Connecting to server may potentially fork for reserve port authentication.
+	 * Call to connect to server must be protected from signals because it can cause
+	 * scheduler to go into a deadlock on logging mutex.
+	 */
 	connect_svrpool();
 	if (sigprocmask(SIG_SETMASK, &prevsigs, NULL) == -1)
 		log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
@@ -1163,7 +1168,11 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 		die(0);
 
 	pthread_mutex_init(&cleanup_lock, &attr);
-
+	/*
+	 * Connecting to server may potentially fork for reserve port authentication.
+	 * Call to connect to server must be protected from signals because it can cause
+	 * scheduler to go into a deadlock on logging mutex.
+	 */
 	connect_svrpool();
 
 	if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
