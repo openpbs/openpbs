@@ -758,7 +758,12 @@ class TestHookEndJob(TestFunctional):
         job hook is not executed.
         """
         def endjob_delete_unstarted_single_job():
-            self.job_submit(job_sleep_time=self.job_time_qdel)
+            ncpus = self.node_cpu_count * 10
+            a = {
+                'Resource_List.select': '1:ncpus=' + str(ncpus),
+            }
+            self.job_submit(job_sleep_time=self.job_time_qdel, job_attrs=a)
+            self.job_verify_queued()
             self.job_delete()
             self.check_log_for_endjob_hook_messages()
 
@@ -771,6 +776,7 @@ class TestHookEndJob(TestFunctional):
         """
         def endjob_force_delete_unstarted_single_job():
             self.job_submit(job_sleep_time=self.job_time_qdel)
+            self.job_verify_queued()
             self.job_delete(force=True)
             self.check_log_for_endjob_hook_messages()
 
@@ -807,12 +813,12 @@ class TestHookEndJob(TestFunctional):
 
         self.run_test_func(endjob_delete_unstarted_array_job)
 
-    def test_hook_endjob_force_delete_while_provisioning_single_job(self):
+ #   def test_hook_endjob_force_delete_while_provisioning_single_job(self):
         # TODO: add code and description, or remove
         # endjob hook should not be called
-        pass
+ #       pass
 
-    def test_hook_endjob_force_delete_while_provisioning_array_job(self):
+ #   def test_hook_endjob_force_delete_while_provisioning_array_job(self):
         # TODO: add code and description, or remove
         # endjob hook should not be called
-        pass
+ #       pass
