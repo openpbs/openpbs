@@ -41,11 +41,32 @@
 from tests.functional import *
 
 
+common_periodic_hook_script = """import pbs
+pbs.logmsg(pbs.LOG_DEBUG, "In exechost_periodic hook")
+server_node = pbs.server().name
+pbs.logmsg(pbs.LOG_DEBUG, "server name is %s" % server_node)
+
+vn = pbs.event().vnode_list
+vnodes = pbs.server().vnodes()
+for node in vnodes:
+    if node.name != server_node:
+        remote_node = node.name
+        pbs.logmsg(pbs.LOG_DEBUG, "remote node is %s" % node.name)
+vn = pbs.event().vnode_list
+if remote_node not in vn:
+    vn[remote_node] = pbs.vnode(remote_node)
+vn[remote_node].resources_available["mem"] = pbs.size("90gb")
+other_node = "invalid_node"
+if other_node not in vn:
+    vn[other_node] = pbs.vnode(other_node)
+vn[other_node].resources_available["mem"] = pbs.size("9gb")
+"""
+
+
 class TestHookExechostPeriodic(TestFunctional):
     """
     Tests to test exechost_periodic hook
     """
-
     def test_multiple_exechost_periodic_hooks(self):
         """
         This test sets two exechost_periodic hooks and restarts the mom,
@@ -149,15 +170,15 @@ class TestHookExechostPeriodic(TestFunctional):
         """
         hook_name = "periodic"
         hook_attrs = {'event': 'exechost_periodic', 'enabled': 'True'}
-        hook_script = "x"
+        hook_script = """raise Exception('x')"""
         hook_body = common_periodic_hook_script + hook_script
         self.server.create_import_hook(hook_name, hook_attrs, hook_body)
 
         common_msg = "PBS server internal error (15011) in "
         common_msg += "Error evaluating Python script"
         exp_msg = ["In exechost_periodic hook",
-                   common_msg + ", <class 'NameError'>",
-                   common_msg + ", name 'x' is not defined",
+                   common_msg + ", <class 'Exception'>",
+                   common_msg + ", x",
                    "Non-zero exit status 254 encountered for periodic hook",
                    "exechost_periodic request rejected by '%s'" % hook_name]
         for mom in self.moms.values():
@@ -179,25 +200,3 @@ class TestHookExechostPeriodic(TestFunctional):
         self.server.create_import_hook(hook_name, hook_attrs, hook_body)
         node_attribs = {'resources_available.foo': True}
         self.server.expect(NODE, node_attribs, id=self.hostB)
-
-common_periodic_hook_script = """import pbs
-pbs.logmsg(pbs.LOG_DEBUG, "In exechost_periodic hook")
-server_node = pbs.server().name
-pbs.logmsg(pbs.LOG_DEBUG, "server name is %s" % server_node)
-
-vn = pbs.event().vnode_list
-vnodes = pbs.server().vnodes()
-for node in vnodes:
-    if node.name != server_node:
-        remote_node = node.name
-        pbs.logmsg(pbs.LOG_DEBUG, "remote node is %s" % node.name)
-vn = pbs.event().vnode_list
-if remote_node not in vn.keys():
-    vn[remote_node] = pbs.vnode(remote_node)
-vn[remote_node].resources_available["mem"] = pbs.size("90gb")
-other_node = "invalid_node"
-if other_node not in vn.keys():
-    vn[other_node] = pbs.vnode(other_node)
-vn[other_node].resources_available["mem"] = pbs.size("9gb")
-
-"""
