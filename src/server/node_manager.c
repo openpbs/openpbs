@@ -136,7 +136,6 @@ static char *hook_privilege = "Not allowed to update vnodes or to request schedu
 extern struct python_interpreter_data  svr_interp_data;
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-extern char server_host[];
 extern void svr_renew_job_cred(struct work_task *pwt);
 #endif
 

@@ -101,7 +101,6 @@ extern unsigned int pbs_mom_port;
 extern unsigned int pbs_rm_port;
 extern mominfo_time_t  mominfo_time;
 extern char	*resc_in_err;
-extern char	server_host[];
 extern void *node_idx;
 extern time_t	 time_now;
 extern int write_single_node_mom_attr(struct pbsnode *np);

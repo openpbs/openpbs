@@ -237,7 +237,6 @@ issue_to_svr(char *servern, struct batch_request *preq, void (*replyfunc)(struct
 	struct work_task *pwt;
 	extern int pbs_failover_active;
 	extern char primary_host[];
-	extern char server_host[];
 
 
 	(void)strcpy(preq->rq_host, servern);

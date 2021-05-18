@@ -54,7 +54,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-extern char	server_host[PBS_MAXHOSTNAME + 1];
 extern unsigned int	pbs_server_port_dis;
 extern	time_t	time_now;
 

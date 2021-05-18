@@ -148,7 +148,6 @@
 extern void disable_svr_prov();
 extern void set_srv_prov_attributes();
 extern int  should_retry_route(int);
-extern	char server_host[PBS_MAXHOSTNAME+1];
 
 /* Local Private Functions */
 

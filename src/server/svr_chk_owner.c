@@ -81,7 +81,6 @@
 
 /* Global Data */
 
-extern char  server_host[];
 extern char *msg_badstate;
 extern char *msg_permlog;
 extern char *msg_unkjobid;

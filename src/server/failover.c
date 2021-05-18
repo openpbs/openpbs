@@ -112,7 +112,6 @@ extern char *path_svrlive;
 extern char *path_secondaryact;
 extern time_t secondary_delay;
 extern time_t time_now;
-extern char server_host[];
 
 extern struct connection *svr_conn;
 extern struct batch_request *saved_takeover_req;
