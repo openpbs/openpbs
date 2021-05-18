@@ -630,6 +630,8 @@ connect_svrpool()
 		}
 
 		/* Reached here means everything is success, so we will break out of the loop */
+		if (sigprocmask(SIG_SETMASK, &prevsigs, NULL) == -1)
+			log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 		break;
 
 unmask_continue:
