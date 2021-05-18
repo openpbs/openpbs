@@ -250,7 +250,7 @@ class TestCgroupsHook(TestFunctional):
 
             self.logger.info("increase log level for mom and \
                              set polling intervals")
-            c = {'$logevent': '0xffffffff','$clienthost': self.server.name,
+            c = {'$logevent': '0xffffffff', '$clienthost': self.server.name,
                  '$min_check_poll': 8, '$max_check_poll': 12}
             mom.add_config(c)
 
@@ -5320,4 +5320,3 @@ sleep 300
         for host in self.hosts_list:
             self.cleanup_frozen_jobs(host)
             self.cleanup_cgroup_subsys(host)
-
