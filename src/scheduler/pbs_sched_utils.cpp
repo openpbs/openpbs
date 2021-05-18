@@ -611,7 +611,7 @@ connect_svrpool()
 		for (i = 0; svr_conns_primary[i] != NULL && svr_conns_secondary[i] != NULL; i++) {
 			if (svr_conns_primary[i]->state == SVR_CONN_STATE_DOWN ||
 			    svr_conns_secondary[i]->state == SVR_CONN_STATE_DOWN)
-				goto unmask_break;
+				break;
 		}
 
 		if (i != get_num_servers()) {
@@ -630,7 +630,6 @@ connect_svrpool()
 		}
 
 		/* Reached here means everything is success, so we will break out of the loop */
-unmask_break:
 		if (sigprocmask(SIG_SETMASK, &prevsigs, NULL) == -1)
 			log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 		break;
