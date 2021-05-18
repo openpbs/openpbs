@@ -629,6 +629,9 @@ connect_svrpool()
 			goto unmask_continue;
 		}
 
+		/* Reached here means everything is success, so we will break out of the loop */
+		break;
+
 unmask_continue:
 		if (sigprocmask(SIG_SETMASK, &prevsigs, NULL) == -1)
 			log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
@@ -636,7 +639,6 @@ unmask_continue:
 		close_servers();
 		continue;
 	}
-
 	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED,
 		   LOG_INFO, msg_daemonname, "Connected to all the configured servers");
 
