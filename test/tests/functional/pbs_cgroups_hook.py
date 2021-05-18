@@ -250,7 +250,7 @@ class TestCgroupsHook(TestFunctional):
 
             self.logger.info("increase log level for mom and \
                              set polling intervals")
-            c = {'$logevent': '0xffffffff', '$clienthost': self.server.name,
+            c = {'$logevent': '0xffffffff','$clienthost': self.server.name,
                  '$min_check_poll': 8, '$max_check_poll': 12}
             mom.add_config(c)
 
@@ -1669,8 +1669,10 @@ if %s e.job.in_ms_mom():
                 return jdir
         return None
 
-    def find_main_cpath(self, cdir):
-        rc = self.du.isdir(hostname=self.hosts_list[0], path=cdir)
+    def find_main_cpath(self, cdir, host=None):
+        if host is None:
+            host = self.hosts_list[0]
+        rc = self.du.isdir(host, path=cdir)
         if rc:
             paths = ['pbs_jobs.service/jobid',
                      'pbs.service/jobid',
@@ -1678,7 +1680,7 @@ if %s e.job.in_ms_mom():
                      'pbs']
             for p in paths:
                 cpath = os.path.join(cdir, p)
-                rc = self.du.isdir(hostname=self.hosts_list[0], path=cpath)
+                rc = self.du.isdir(host, path=cpath)
                 if rc:
                     return cpath
         return None
@@ -1750,7 +1752,8 @@ if %s e.job.in_ms_mom():
             # reload config if server and mom cfg differ up to count times
             count = 5
             while (count > 0):
-                r1 = self.du.run_cmd(cmd=['cat', svr_conf], sudo=True)
+                r1 = self.du.run_cmd(cmd=['cat', svr_conf], sudo=True,
+                                     hosts=self.serverA)
                 r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True,
                                      hosts=self.mom.shortname)
                 if r1['out'] != r2['out']:
@@ -2471,11 +2474,11 @@ if %s e.job.in_ms_mom():
         fn2 = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
         # Capture the output of cpuset_mem_script for both jobs
         scr1 = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn1, None)],
-                               as_script=True, hosts=self.mom.shortname)
+                               as_script=True, hosts=self.hosts_list[0])
         scr1_out = scr1['out']
         self.logger.info('scr1_out:\n%s' % scr1_out)
         scr2 = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn2, None)],
-                               as_script=True, hosts=self.mom.shortname)
+                               as_script=True)
         scr2_out = scr2['out']
         self.logger.info('scr2_out:\n%s' % scr2_out)
         # Ensure the CPU ID for each job differs
@@ -2713,7 +2716,7 @@ if %s e.job.in_ms_mom():
         # Make dir in freezer subsystem under directory where we
         # have delegate control from systemd
         fdir_pbs = os.path.join(fdir, 'pbs_jobs.service', 'PtlPbs')
-        if not self.du.isdir(fdir_pbs):
+        if not self.du.isdir(self.hosts_list[0], fdir_pbs):
             self.du.mkdir(hostname=self.hosts_list[0], path=fdir_pbs,
                           mode=0o755, sudo=True)
         # Write PIDs into the tasks file for the freezer cgroup
@@ -2744,7 +2747,7 @@ if %s e.job.in_ms_mom():
         # Freeze the cgroup
         freezer_file = os.path.join(fdir_pbs, 'freezer.state')
         state = 'FROZEN'
-        fn = self.du.create_temp_file(hostname=self.hosts_list[0], body=state)
+        fn = self.du.create_temp_file(body=state)
         self.tempfile.append(fn)
         ret = self.du.run_copy(self.hosts_list[0], src=fn,
                                dest=freezer_file, sudo=True,
@@ -2805,7 +2808,7 @@ if %s e.job.in_ms_mom():
 
         # Thaw the cgroup
         state = 'THAWED'
-        fn = self.du.create_temp_file(hostname=self.hosts_list[0], body=state)
+        fn = self.du.create_temp_file(body=state)
         self.tempfile.append(fn)
         ret = self.du.run_copy(self.hosts_list[0], src=fn,
                                dest=freezer_file, sudo=True,
@@ -2858,7 +2861,7 @@ if %s e.job.in_ms_mom():
 
         cmd = ["rmdir", fdir_pbs]
         self.logger.info("Removing %s" % fdir_pbs)
-        self.du.run_cmd(cmd=cmd, sudo=True)
+        self.du.run_cmd(self.hosts_list[0], cmd=cmd, sudo=True)
         # Due to orphaned jobs node is not coming back to free state
         # workaround is to recreate the nodes. Orphaned jobs will
         # get cleaned up in tearDown hence not doing it here
@@ -3278,7 +3281,7 @@ if %s e.job.in_ms_mom():
                                         'jobid', str(jid))
                 self.logger.info('Checking that file %s should not exist'
                                  % filename)
-                self.assertFalse(os.path.isfile(filename))
+                self.assertFalse(self.du.isfile(self.hosts_list[0], filename))
 
     @skipOnCray
     def test_cgroup_assign_resources_mem_only_vnode(self):
@@ -3293,7 +3296,7 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg3
                          % ('', 'true', '', self.mem, '', self.swapctl, ''))
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
-                           id=self.hosts_list[0] + '[0]')
+                           id=self.hosts_list[0]+'[0]')
         socket1_found = False
         nodestat = self.server.status(NODE)
         total_kb = 0
@@ -4846,7 +4849,7 @@ sleep 300
             cgreqsuffix = 'mb'
             cgreq = PbsTypeSize(str(cgreqval) + cgreqsuffix)
             vmemreqsize = PbsTypeSize("100mb") + cgreq
-            vmemreq = str(int(vmemreqsize.value / 1024)) + 'mb'
+            vmemreq = str(int(vmemreqsize.value / 1024))+'mb'
             self.logger.info('will submit jobs with 100mb mem and %s vmem'
                              % vmemreq)
             a = {'Resource_List.select':
@@ -5137,33 +5140,80 @@ sleep 300
         self.logger.info("Job that requests 300mb pvmem "
                          "correctly has 300mb RLIMIT_AS")
 
-    def tearDown(self):
-        TestFunctional.tearDown(self)
-        mom_checks = True
-        if self.moms_list[0].is_cpuset_mom():
-            mom_checks = False
-        self.load_default_config(mom_checks=mom_checks)
-        if not self.iscray:
-            self.remove_vntype()
-        events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
-                  'execjob_epilogue', 'execjob_end', 'exechost_startup',
-                  'exechost_periodic', 'execjob_resize', 'execjob_abort']
-        # Disable the cgroups hook
-        conf = {'enabled': 'False', 'freq': 10, 'event': events}
-        self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
-        # Cleanup any temp file created
-        self.logger.info('Deleting temporary files %s' % self.tempfile)
-        self.du.rm(hostname=self.serverA, path=self.tempfile, force=True,
-                   recursive=True, sudo=True)
+    def cleanup_cgroup_subsys(self, host):
+        # Remove the jobdir if any under other cgroups
+        cgroup_subsys = ('systemd', 'cpu', 'cpuacct', 'cpuset', 'devices',
+                         'memory', 'hugetlb', 'perf_event', 'freezer',
+                         'blkio', 'pids', 'net_cls', 'net_prio')
+        for subsys in cgroup_subsys:
+            if (subsys in self.paths[host] and
+                    self.paths[host][subsys]):
+                self.logger.info('Looking for orphaned jobdir in %s' % subsys)
+                cdir = self.paths[host][subsys]
+                if self.du.isdir(host, cdir):
+                    self.logger.info("Inspecting " + cdir)
+                    cpath = self.find_main_cpath(cdir, host)
+                    # not always immediately under main path
+                    if cpath is not None and self.du.isdir(host, cpath):
+                        tasks_files = (
+                            glob.glob(os.path.join(cpath,
+                                                   '*', '*', 'tasks'))
+                            + glob.glob(os.path.join(cpath,
+                                                     '*', 'tasks')))
+                        if tasks_files != []:
+                            self.logger.info("Tasks files found in %s: %s"
+                                             % (cpath, tasks_files))
+                        for tasks_file in tasks_files:
+                            jdir = os.path.dirname(tasks_file)
+                            if not self.du.isdir(host, jdir):
+                                continue
+                            self.logger.info('deleting jobdir %s' % jdir)
+
+                            # Kill tasks before trying to rmdir freezer
+                            cgroup_tasks = os.path.join(jdir, 'tasks')
+                            ret = self.du.cat(hostname=host,
+                                              filename=cgroup_tasks,
+                                              sudo=True)
+                            if ret['rc'] == 0:
+                                for taskstr in ret['out']:
+                                    self.logger.info("trying to kill %s on %s"
+                                                     % (taskstr,
+                                                        host))
+                                    self.du.run_cmd(host,
+                                                    ['kill', '-9'] + [taskstr],
+                                                    sudo=True)
+                            for count in range(30):
+                                ret = self.du.cat(hostname=host,
+                                                  filename=cgroup_tasks,
+                                                  sudo=True)
+                                if ret['rc'] != 0:
+                                    self.logger.info("Cannot confirm "
+                                                     "cgroup tasks; sleeping "
+                                                     "30 seconds instead")
+                                    time.sleep(30)
+                                    break
+                                if ret['out'] == [] or ret['out'][0] == '':
+                                    self.logger.info("Processes in cgroup "
+                                                     "are gone")
+                                    break
+                                else:
+                                    self.logger.info("tasks still in cgroup: "
+                                                     + str(ret['out']))
+                                    time.sleep(1)
+
+                            cmd2 = ['rmdir', jdir]
+                            self.du.run_cmd(host, cmd=cmd2, sudo=True)
+
+    def cleanup_frozen_jobs(self, host):
         # Cleanup frozen jobs
         # Thaw ALL freezers found
         # If directory starts with a number (i.e. a job)
         # kill processes in the freezers and remove them
 
-        if 'freezer' in self.paths[self.hosts_list[0]]:
+        if 'freezer' in self.paths[host]:
             # Find freezers to thaw
             self.logger.info('Cleaning up frozen jobs ****')
-            fdir = self.paths[self.hosts_list[0]]['freezer']
+            fdir = self.paths[host]['freezer']
             freezer_states = \
                 glob.glob(os.path.join(fdir, '*', '*', '*', 'freezer.state'))
             freezer_states += \
@@ -5177,15 +5227,14 @@ sleep 300
                 # thaw the freezer
                 self.logger.info('Thawing ' + freezer_state)
                 state = 'THAWED'
-                fn = self.du.create_temp_file(
-                    hostname=self.hosts_list[0], body=state)
-                self.du.run_copy(hosts=self.hosts_list[0], src=fn,
+                fn = self.du.create_temp_file(body=state)
+                self.du.run_copy(hosts=host, src=fn,
                                  dest=freezer_state, sudo=True,
                                  uid='root', gid='root',
                                  mode=0o644)
                 # Confirm it's thawed
                 for count in range(30):
-                    ret = self.du.cat(hostname=self.hosts_list[0],
+                    ret = self.du.cat(hostname=host,
                                       filename=freezer_state,
                                       sudo=True)
                     if ret['rc'] != 0:
@@ -5217,7 +5266,7 @@ sleep 300
                         os.path.dirname(freezer_state), "tasks")
 
                     # Kill tasks before trying to rmdir freezer
-                    ret = self.du.cat(hostname=self.hosts_list[0],
+                    ret = self.du.cat(hostname=host,
                                       filename=freezer_tasks,
                                       sudo=True)
                     if ret['rc'] == 0:
@@ -5225,11 +5274,11 @@ sleep 300
                             self.logger.info("trying to kill %s on %s"
                                              % (taskstr,
                                                 self.hosts_list[0]))
-                            self.du.run_cmd(self.hosts_list[0],
+                            self.du.run_cmd(host,
                                             ['kill', '-9'] + [taskstr],
                                             sudo=True)
                     for count in range(30):
-                        ret = self.du.cat(hostname=self.hosts_list[0],
+                        ret = self.du.cat(hostname=host,
                                           filename=freezer_tasks,
                                           sudo=True)
                         if ret['rc'] != 0:
@@ -5248,68 +5297,27 @@ sleep 300
 
                     cmd = ["rmdir", os.path.dirname(freezer_state)]
                     self.logger.info("Executing %s" % ' '.join(cmd))
-                    self.du.run_cmd(hosts=self.hosts_list[0],
-                                    cmd=cmd, sudo=True)
+                    self.du.run_cmd(hosts=host, cmd=cmd, sudo=True)
 
-        # Remove the jobdir if any under other cgroups
-        cgroup_subsys = ('systemd', 'cpu', 'cpuacct', 'cpuset', 'devices',
-                         'memory', 'hugetlb', 'perf_event', 'freezer',
-                         'blkio', 'pids', 'net_cls', 'net_prio')
-        for subsys in cgroup_subsys:
-            if (subsys in self.paths[self.hosts_list[0]] and
-                    self.paths[self.hosts_list[0]][subsys]):
-                self.logger.info('Looking for orphaned jobdir in %s' % subsys)
-                cdir = self.paths[self.hosts_list[0]][subsys]
-                if os.path.isdir(cdir):
-                    self.logger.info("Inspecting " + cdir)
-                    cpath = self.find_main_cpath(cdir)
-                    # not always immediately under main path
-                    if cpath is not None and os.path.isdir(cpath):
-                        tasks_files = (
-                            glob.glob(os.path.join(cpath,
-                                                   '*', '*', 'tasks'))
-                            + glob.glob(os.path.join(cpath,
-                                                     '*', 'tasks')))
-                        if tasks_files != []:
-                            self.logger.info("Tasks files found in %s: %s"
-                                             % (cpath, tasks_files))
-                        for tasks_file in tasks_files:
-                            jdir = os.path.dirname(tasks_file)
-                            if not os.path.isdir(jdir):
-                                continue
-                            self.logger.info('deleting jobdir %s' % jdir)
+    def tearDown(self):
+        TestFunctional.tearDown(self)
+        mom_checks = True
+        if self.moms_list[0].is_cpuset_mom():
+            mom_checks = False
+        self.load_default_config(mom_checks=mom_checks)
+        if not self.iscray:
+            self.remove_vntype()
+        events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
+                  'execjob_epilogue', 'execjob_end', 'exechost_startup',
+                  'exechost_periodic', 'execjob_resize', 'execjob_abort']
+        # Disable the cgroups hook
+        conf = {'enabled': 'False', 'freq': 10, 'event': events}
+        self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
+        # Cleanup any temp file created
+        self.logger.info('Deleting temporary files %s' % self.tempfile)
+        self.du.rm(hostname=self.serverA, path=self.tempfile, force=True,
+                   recursive=True, sudo=True)
+        for host in self.hosts_list:
+            self.cleanup_frozen_jobs(host)
+            self.cleanup_cgroup_subsys(host)
 
-                            # Kill tasks before trying to rmdir freezer
-                            cgroup_tasks = os.path.join(jdir, 'tasks')
-                            ret = self.du.cat(hostname=self.hosts_list[0],
-                                              filename=cgroup_tasks,
-                                              sudo=True)
-                            if ret['rc'] == 0:
-                                for taskstr in ret['out']:
-                                    self.logger.info("trying to kill %s on %s"
-                                                     % (taskstr,
-                                                        self.hosts_list[0]))
-                                    self.du.run_cmd(self.hosts_list[0],
-                                                    ['kill', '-9'] + [taskstr],
-                                                    sudo=True)
-                            for count in range(30):
-                                ret = self.du.cat(hostname=self.hosts_list[0],
-                                                  filename=cgroup_tasks,
-                                                  sudo=True)
-                                if ret['rc'] != 0:
-                                    self.logger.info("Cannot confirm "
-                                                     "cgroup tasks; sleeping "
-                                                     "30 seconds instead")
-                                    time.sleep(30)
-                                    break
-                                if ret['out'] == [] or ret['out'][0] == '':
-                                    self.logger.info("Processes in cgroup "
-                                                     "are gone")
-                                    break
-                                else:
-                                    self.logger.info("tasks still in cgroup: "
-                                                     + str(ret['out']))
-                                    time.sleep(1)
-
-                            cmd2 = ['rmdir', jdir]
-                            self.du.run_cmd(cmd=cmd2, sudo=True)
