@@ -599,6 +599,10 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 installed_pkg="$(pip3 list)"
 IFS=$'\n' required_pkg=($(cat %{ptl_prefix}/fw/requirements.txt))
 for i in "${required_pkg[@]}"; do
+	if echo $i | grep -E -q '^*#'
+	then
+		continue
+	fi
 	if [[ "$installed_pkg" =~ "$i" ]]; then
 		continue
 	else
