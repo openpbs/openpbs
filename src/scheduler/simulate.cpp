@@ -190,7 +190,7 @@ simulate_events(status *policy, server_info *sinfo,
 		long t = 0;
 		if(arg != NULL)
 			t = *((long *) arg);
-		event_time = event->event_time + t;
+		event_time = (event->event_time + t) / t * t;
 	}
 	else if (cmd == SIM_TIME)
 		event_time = *((time_t *) arg);
