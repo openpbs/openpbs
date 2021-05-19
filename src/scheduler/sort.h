@@ -182,11 +182,6 @@ int cmp_job_preemption_time_asc(const void *j1, const void *j2);
 int cmp_preemption(resource_resv *r1, resource_resv *r2);
 
 /*
- * cmp_starving_jobs - compare based on eligible_time
- */
-int cmp_starving_jobs(const void *j1, const void *j2);
-
-/*
  * cmp_resv_state - compare based on resv_state
  */
 int cmp_resv_state(const void *r1, const void *r2);

@@ -105,6 +105,9 @@ char **glob_argv;
 char usage[] = "[-d home][-L logfile][-p file][-I schedname][-n][-N][-c clientsfile][-t num threads]";
 struct sockaddr_in saddr;
 sigset_t allsigs;
+sigset_t oldsigs;
+
+int sigstoblock[] = {SIGHUP, SIGINT, SIGTERM, SIGUSR1};
 
 /* if we received a sigpipe, this probably means the server went away. */
 
@@ -574,42 +577,41 @@ connect_svrpool()
 	int i;
 	svr_conn_t **svr_conns_primary = NULL;
 	svr_conn_t **svr_conns_secondary = NULL;
+	sigset_t prevsigs;
 
 	while (1) {
+		sigemptyset(&prevsigs);
+		/*
+	 	 * Connecting to server may potentially fork for reserve port authentication.
+	 	 * Call to connect to server must be protected from signals because it can cause
+	 	 * scheduler to go into a deadlock on logging mutex.
+	 	 */
+		if (sigprocmask(SIG_BLOCK, &allsigs, &prevsigs) == -1)
+			log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
 		/* pbs_connect() will return a connection handle for all servers
 		 * we have to close all servers before pbs_conenct is reattempted
 		 */
 		if (clust_primary_sock < 0) {
 			clust_primary_sock = pbs_connect(NULL);
-			if (clust_primary_sock < 0) {
+			if (clust_primary_sock < 0)
 				/* wait for 2s for not to burn too much CPU, and then retry connection */
-				sleep(2);
-				close_servers();
-				continue;
-			}
+				goto unmask_continue;
 		}
 		clust_secondary_sock = pbs_connect(NULL);
-		if (clust_secondary_sock < 0) {
+		if (clust_secondary_sock < 0)
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
-			sleep(2);
-			close_servers();
-			continue;
-		}
+			goto unmask_continue;
 
 		svr_conns_primary = get_conn_svr_instances(clust_primary_sock);
 		svr_conns_secondary = get_conn_svr_instances(clust_secondary_sock);
-		if (svr_conns_primary == NULL || svr_conns_secondary == NULL) {
+		if (svr_conns_primary == NULL || svr_conns_secondary == NULL)
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
-			sleep(2);
-			close_servers();
-			continue;
-		}
+			goto unmask_continue;
 
 		for (i = 0; svr_conns_primary[i] != NULL && svr_conns_secondary[i] != NULL; i++) {
 			if (svr_conns_primary[i]->state == SVR_CONN_STATE_DOWN ||
-			    svr_conns_secondary[i]->state == SVR_CONN_STATE_DOWN) {
+			    svr_conns_secondary[i]->state == SVR_CONN_STATE_DOWN)
 				break;
-			}
 		}
 
 		if (i != get_num_servers()) {
@@ -618,21 +620,26 @@ connect_svrpool()
 			 * Also wait for 2s for not to burn too much CPU
 			 */
 			log_errf(pbs_errno, __func__, "Scheduler %s could not connect with all the configured servers", sc_name);
-			sleep(2);
-			close_servers();
-			continue;
+			goto unmask_continue;
 		}
 
 		if (pbs_register_sched(sc_name, clust_primary_sock, clust_secondary_sock) != 0) {
 			log_errf(pbs_errno, __func__, "Couldn't register the scheduler %s with the configured servers", sc_name);
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
-			sleep(2);
-			close_servers();
-			continue;
+			goto unmask_continue;
 		}
 
 		/* Reached here means everything is success, so we will break out of the loop */
+		if (sigprocmask(SIG_SETMASK, &prevsigs, NULL) == -1)
+			log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 		break;
+
+unmask_continue:
+		if (sigprocmask(SIG_SETMASK, &prevsigs, NULL) == -1)
+			log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
+		sleep(2);
+		close_servers();
+		continue;
 	}
 	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED,
 		   LOG_INFO, msg_daemonname, "Connected to all the configured servers");
@@ -683,7 +690,6 @@ reconnect_servers()
 
 	close_servers();
 	connect_svrpool();
-	
 	pthread_mutex_unlock(&cleanup_lock);
 }
 
@@ -772,9 +778,8 @@ wait_for_cmds()
 				err = read_sched_cmd(sock);
 				if (err != 1) {
 					/* if memory error ignore, else reconnect server */
-					if (err != -2) {
+					if (err != -2)
 						reconnect_servers();
-					}
 				} else
 					hascmd = 1;
 			}
@@ -1047,10 +1052,11 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 		exit(1);
 	}
 	act.sa_flags = 0;
-	sigaddset(&allsigs, SIGHUP);  /* remember to block these */
-	sigaddset(&allsigs, SIGINT);  /* during critical sections */
-	sigaddset(&allsigs, SIGTERM); /* so we don't get confused */
-	sigaddset(&allsigs, SIGUSR1);
+
+	/* remember to block these during critical sections so we don't get confused */
+	for (auto &sig: sigstoblock) {
+		sigaddset(&allsigs, sig);
+	}
 	act.sa_mask = allsigs;
 
 	act.sa_handler = restart; /* do a restart on SIGHUP */
@@ -1138,6 +1144,9 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 	/*
 	 *  Local initialization stuff
 	 */
+	/* Set the signal mask temporarily for thread initialization */
+	if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)
+		log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
 	if (schedinit(nthreads)) {
 		(void) sprintf(log_buffer,
 			       "local initialization failed, terminating");
@@ -1145,8 +1154,8 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 			   __func__, log_buffer);
 		exit(1);
 	}
-
-	sprintf(log_buffer, "Out of memory");
+	if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
+		log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 
 	/* Initialize cleanup lock */
 	if (init_mutex_attr_recursive(&attr) != 0)
@@ -1218,7 +1227,6 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 static int
 schedule_wrapper(sched_cmd *cmd, int opt_no_restart)
 {
-	sigset_t oldsigs;
 	time_t now;
 
 #ifdef PBS_UNDOLR_ENABLED

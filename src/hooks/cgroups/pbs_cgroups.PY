@@ -1393,7 +1393,7 @@ class HookUtils(object):
                                'deleting cpuset cgroup')
 
         # Configure the cgroup
-        cgroup.configure_job(event.job.id, jobutil.assigned_resources,
+        cgroup.configure_job(event.job, jobutil.assigned_resources,
                              node, cgroup, event.type)
         # Write out the assigned resources
         cgroup.write_cgroup_assigned_resources(event.job.id)
@@ -3777,7 +3777,8 @@ class CgroupUtils(object):
             # before calling splitlines
             # should not happen since we pass universal_newlines True
             out_split = stringified_output(out).splitlines()
-            ver = int(re.sub(r'Version=\D*(\d+)', r'\1', out_split[0]))
+            ver = int(re.sub(r'Version=\D*(\d+)', r'\1',
+                             out_split[0].split()[0]))
         except Exception:
             # Note we also get here if we can't decode an int version
             return 0

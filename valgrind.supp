@@ -728,3 +728,13 @@
    fun:dis_flush
    ...
 }
+{
+   From PBS - Suppress scheduler query resources leak, it is misreported
+   Memcheck:Leak
+   match-leak-kinds: definite
+   ...
+   fun:*query_resources*
+   fun:*update_resource_def*
+   fun:schedule
+   ...
+}

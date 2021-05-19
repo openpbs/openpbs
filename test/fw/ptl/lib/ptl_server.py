@@ -1895,8 +1895,6 @@ class Server(Wrappers):
                 m = MoM(self, hostname, pbsconf_file=_n_pbsconf)
                 if m.isUp():
                     m.stop()
-                if hostname != self.hostname:
-                    m.add_config({'$clienthost': self.hostname})
                 try:
                     m.start()
                 except PbsServiceError:

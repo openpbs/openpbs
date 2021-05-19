@@ -84,6 +84,7 @@ extern char	pbs_tmpdir[];
 /* used by mom_main.c and start_exec.c for PBS_JOBDIR */
 extern char	pbs_jobdir_root[];
 extern int	pbs_jobdir_root_shared;
+#define JOBDIR_DEFAULT	"PBS_USER_HOME"
 
 /* test bits */
 #define PBSQA_DELJOB_SLEEP	1

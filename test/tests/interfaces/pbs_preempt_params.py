@@ -123,13 +123,11 @@ class TestPreemptParamsQmgr(TestInterfaces):
 
         self.server.manager(MGR_CMD_SET, SCHED, a, runas=ROOT_USER)
 
-        p = '"starving_jobs, normal_jobs, starving_jobs+fairshare, fairshare"'
+        p = '"express_queue, normal_jobs, express_queue+fairshare, fairshare"'
         a = {param: p}
         self.server.manager(MGR_CMD_SET, SCHED, a,
                             runas=ROOT_USER)
 
-        p = 'starving_jobs, normal_jobs, starving_jobs+fairshare,fairshare'
-        a = {param: p}
         self.server.manager(MGR_CMD_LIST, SCHED, a, runas=ROOT_USER)
 
         self.server.manager(MGR_CMD_UNSET, SCHED, param,

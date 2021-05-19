@@ -80,7 +80,7 @@ enum skip
 	SKIP_NOTHING,
 	/* Value used to know whether reservations are already scheduled or not */
 	SKIP_RESERVATIONS = 1,
-	/* Value used to know whether express, preempted, starving jobs are already scheduled or not */
+	/* Value used to know whether express, preempted, are already scheduled or not */
 	SKIP_NON_NORMAL_JOBS = 2
 };
 
@@ -471,7 +471,6 @@ enum preempt
 	PREEMPT_OVER_FS_LIMIT,	/* jobs over their fairshare of the machine */
 	PREEMPT_OVER_QUEUE_LIMIT,	/* jobs over queue run limits (maxrun etc) */
 	PREEMPT_OVER_SERVER_LIMIT,	/* jobs over server run limits */
-	PREEMPT_STARVING,		/* starving jobs */
 	PREEMPT_EXPRESS,		/* jobs in express queue */
 	PREEMPT_QRUN,			/* job is being qrun */
 	PREEMPT_ERR,			/* error occurred during preempt computation */

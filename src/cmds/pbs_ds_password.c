@@ -377,7 +377,8 @@ main(int argc, char *argv[])
 	char *db_errmsg = NULL;
 	int pmode;
 	int change_user = 0;
-	char *olduser;
+	char *olduser = NULL;
+	int ret = 0;
 	int update_db = 0;
 	char getopt_format[5];
 	char prog[]="pbs_ds_password";
@@ -427,7 +428,8 @@ main(int argc, char *argv[])
 	if (errflg) {
 		fprintf(stderr, "\nusage:\t%s [-r] [-C username]\n", prog);
 		fprintf(stderr, "      \t%s --version\n", prog);
-		return (-1);
+		ret = -1;
+		goto exit;
 	}
 
     /* NOTE : This functionality is added just for the automation testing purpose.
@@ -441,7 +443,8 @@ main(int argc, char *argv[])
 	/* check admin privileges */
 	if ((getuid() != 0) || (geteuid() != 0)) {
 		fprintf(stderr, "%s: Must be run by root\n", prog);
-		return (1);
+		ret = 1;
+		goto exit;
 	}
 
 	change_user = 0;
@@ -456,7 +459,8 @@ main(int argc, char *argv[])
 		/* check that the supplied user-id exists (and is non-root on unix) */
 		if (check_user(userid) != 0) {
 			fprintf(stderr, "\n%s: User-id %s does not exist/is root user/home dir is not accessible\n", prog, userid);
-			return (-1);
+			ret = -1;
+			goto exit;
 		}
 	}
 
@@ -464,7 +468,7 @@ main(int argc, char *argv[])
 	if (pbs_conf.pbs_data_service_host)
 		pbs_strncpy(conn_db_host, pbs_conf.pbs_data_service_host, sizeof(conn_db_host));
 	else
-		pbs_strncpy(conn_db_host, pbs_default(), sizeof(conn_db_host)); 
+		pbs_strncpy(conn_db_host, pbs_default(), sizeof(conn_db_host));
 
 	if (update_db == 1) {
 		/* then connect to database */
@@ -475,7 +479,8 @@ main(int argc, char *argv[])
 			/* able to connect ? Thats bad, PBS or dataservice is running */
 			fprintf(stderr, "%s: PBS Services and/or PBS Data Service is running\n", prog);
 			fprintf(stderr, "                 Stop PBS and Data Services before changing Data Service user\n");
-			return (-1);
+			ret = -1;
+			goto exit;
 		}
 
 		if (!conn) {
@@ -490,7 +495,8 @@ main(int argc, char *argv[])
 					fprintf(stderr, "%s: Failed to start PBS dataservice:[%s]\n", prog, db_errmsg);
 				else
 					fprintf(stderr, "%s: Failed to start PBS dataservice\n", prog);
-				return (-1);
+				ret = -1;
+				goto exit;
 			}
 			started_db = 1;
 
@@ -499,7 +505,8 @@ main(int argc, char *argv[])
 				pbs_db_get_errmsg(failcode, &db_errmsg);
 				if (db_errmsg)
 					fprintf(stderr, "%s: Could not connect to PBS data service:%s\n", prog, db_errmsg);
-				return (-1);
+				ret = -1;
+				goto exit;
 			}
 		}
 	}
@@ -514,11 +521,13 @@ main(int argc, char *argv[])
 		printf("\n\n");
 		if (strcmp(passwd, passwd2) != 0) {
 			fprintf(stderr, "Entered passwords do not match\n");
-			return (-2);
+			ret = -2;
+			goto exit;
 		}
 		if (strlen(passwd) == 0) {
 			fprintf(stderr, "Blank password is not allowed\n");
-			return (-2);
+			ret = -2;
+			goto exit;
 		}
 	} else if (gen_pwd == 1) {
 		gen_password(passwd, 16);
@@ -527,7 +536,8 @@ main(int argc, char *argv[])
 	rc = pbs_encrypt_pwd(passwd, &cred_type, &cred_buf, &cred_len, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv);
 	if (rc != 0) {
 		fprintf(stderr, "%s: Failed to encrypt password\n", prog);
-		return (-1);
+		ret = -1;
+		goto exit;
 	}
 
 	sprintf(pwd_file_new, "%s/server_priv/db_password.new", pbs_conf.pbs_home_path);
@@ -539,30 +549,36 @@ main(int argc, char *argv[])
 		pmode)) == -1) {
 		perror("open/create failed");
 		fprintf(stderr, "%s: Unable to create file %s\n", prog, pwd_file_new);
-		return (-1);
+		ret = -1;
+		goto exit;
 	}
 
 	if (update_db == 1) {
-		/* change password only if this config option is not set */		
+		/* change password only if this config option is not set */
 		rc = pbs_db_password(conn, userid, passwd, olduser);
+		free(olduser);
+		olduser = NULL;
 		memset(passwd, 0, sizeof(passwd));
 		memset(passwd2, 0, sizeof(passwd2));
 		if (rc == -1) {
 			fprintf(stderr, "%s: Failed to create/alter user id %s\n", prog, userid);
-			return -1;
+			ret = -1;
+			goto exit;
 		}
 	}
 
 	if (write(fd, cred_buf, cred_len) != cred_len) {
 		perror("write failed");
 		fprintf(stderr, "%s: Unable to write to file %s\n", prog, pwd_file_new);
-		return -1;
+		ret = -1;
+		goto exit;
 	}
 	close(fd);
 	free(cred_buf);
 
 	if (rename(pwd_file_new, pwd_file) != 0) {
-		return (-1);
+		ret = -1;
+		goto exit;
 	}
 
 	if (update_db == 1) {
@@ -583,7 +599,8 @@ main(int argc, char *argv[])
 		/* update PBS_HOME/server_priv/db_user file with the new user name */
 		if (update_db_usr(usr_file, userid) != 0) {
 			fprintf(stderr, "Unable to update file %s\n", usr_file);
-			return -1;
+			ret = -1;
+			goto exit;
 		}
 		printf("---> Updated new user\n");
 	}
@@ -599,14 +616,16 @@ main(int argc, char *argv[])
 		/* change ownership of the datastore directories to the new user, so that db can be started again */
 		if (change_ownership(datastore, userid) != 0) {
 			fprintf(stderr, "%s: Failed to change ownership on path %s\n", prog, datastore);
-			return -1;
+			ret = -1;
+			goto exit;
 		}
 		printf("---> Changed ownership of %s to user %s\n", datastore, userid);
 
 		/* reload configuration file */
 		if (pbs_loadconf(1) == 0) {
 			fprintf(stderr, "%s: Could not load pbs configuration\n", prog);
-			return (-1);
+			ret = -1;
+			goto exit;
 		}
 
 		failcode = pbs_start_db(conn_db_host, pbs_conf.pbs_data_service_port);
@@ -616,10 +635,13 @@ main(int argc, char *argv[])
 				fprintf(stderr, "%s: Failed to start PBS dataservice as new user:[%s]\n", prog, db_errmsg);
 			else
 				fprintf(stderr, "%s: Failed to start PBS dataservice as new user\n", prog);
-			return (-1);
+			ret = -1;
+			goto exit;
 		}
 	}
 	printf("---> Success\n");
 
-	return (0);
+exit:
+	free(olduser);
+	return ret;
 }

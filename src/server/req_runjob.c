@@ -125,7 +125,7 @@ void post_sendmom(struct work_task *);
 static int  svr_stagein(job *, struct batch_request *, char, int);
 static int  svr_strtjob2(job *, struct batch_request *);
 static job *chk_job_torun(struct batch_request *preq, job *);
-static void req_runjob2(struct batch_request *preq, job *pjob);
+static int req_runjob2(struct batch_request *preq, job *pjob);
 static job *where_to_runjob(struct batch_request *preq, job *);
 static void convert_job_to_resv(job *pjob);
 /* Global Data Items: */
@@ -702,7 +702,7 @@ req_runjob(struct batch_request *preq)
  * @param[in,out]	preq	-	Run Job Requests
  * @param[in,out]	pjob	-	job pointer
  */
-static void
+static int
 req_runjob2(struct batch_request *preq, job *pjob)
 {
 	int		  rc;
@@ -723,14 +723,14 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		if (job_save_db(pjob)) {
 			free_nodes(pjob);
 			req_reject(PBSE_SAVE_ERR, 0, preq);
-			return;
+			return 1;
 		}
 	}
 
 	if (prov_rc) { /* problem with the request */
 		free_nodes(pjob);
 		req_reject(prov_rc, 0, preq);
-		return;
+		return 1;
 	} else if (need_prov == 1) { /* prov required and request is fine */
 		/* allocate resources right away */
 		set_resc_assigned((void *)pjob, 0,  INCR);
@@ -738,7 +738,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		/* provisioning was needed and was qneueued successfully */
 		/* Allways send ack for prov jobs, even if not async run */
 		reply_ack(preq);
-		return;
+		return 0;
 	}
 
 	/* if need_prov ==0 then no prov required, so continue normal flow */
@@ -754,7 +754,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		/* Neither the run request nor the job specified an execvnode. */
 		free_nodes(pjob);
 		req_reject(PBSE_IVALREQ, 0, preq);
-		return;
+		return 1;
 	}
 	sprintf(log_buffer, msg_manager, msg_jobrun, preq->rq_user, preq->rq_host);
 	strcat(log_buffer, " on exec_vnode ");
@@ -777,7 +777,10 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		free_nodes(pjob);
 		if (preq)
 			req_reject(rc, 0, preq);
+		return 1;
 	}
+
+	return 0;
 }
 
 

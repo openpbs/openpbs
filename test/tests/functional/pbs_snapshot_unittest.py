@@ -150,7 +150,7 @@ class TestPBSSnapshot(TestFunctional):
 
     def take_snapshot(self, acct_logs=None, daemon_logs=None,
                       obfuscate=None, with_sudo=True, hosts=None,
-                      primary_host=None, basic=None):
+                      primary_host=None, basic=None, obf_snap=None):
         """
         Take a snapshot using pbs_snapshot command
 
@@ -168,32 +168,34 @@ class TestPBSSnapshot(TestFunctional):
         :type primary_host: str
         :param basic: use --basic option
         :type bool
+        :param obf_snap: path to existing snapshot to obfuscate
+        :type str
         :return a tuple of name of tarball and snapshot directory captured:
             (tarfile, snapdir)
         """
         if self.pbs_snapshot_path is None:
             self.skip_test("pbs_snapshot not found")
 
-        snap_cmd = [self.pbs_snapshot_path, "-o", self.parent_dir]
-        if acct_logs is not None:
-            snap_cmd.append("--accounting-logs=" + str(acct_logs))
-
-        if daemon_logs is not None:
-            snap_cmd.append("--daemon-logs=" + str(daemon_logs))
-
-        if obfuscate:
-            snap_cmd.append("--obfuscate")
+        if obf_snap:
+            snap_cmd = [self.pbs_snapshot_path, "--obf-snap", obf_snap]
+        else:
+            snap_cmd = [self.pbs_snapshot_path, "-o", self.parent_dir]
+            if acct_logs is not None:
+                snap_cmd.append("--accounting-logs=" + str(acct_logs))
+            if daemon_logs is not None:
+                snap_cmd.append("--daemon-logs=" + str(daemon_logs))
+            if obfuscate:
+                snap_cmd.append("--obfuscate")
+            if hosts is not None:
+                hosts_str = ",".join(hosts)
+                snap_cmd.append("--additional-hosts=" + hosts_str)
+            if primary_host is not None:
+                snap_cmd.append("-H " + primary_host)
+            if basic is not None:
+                snap_cmd.append("--basic")
 
         if with_sudo:
             snap_cmd.append("--with-sudo")
-
-        if hosts is not None:
-            hosts_str = ",".join(hosts)
-            snap_cmd.append("--additional-hosts=" + hosts_str)
-        if primary_host is not None:
-            snap_cmd.append("-H " + primary_host)
-        if basic is not None:
-            snap_cmd.append("--basic")
 
         ret = self.du.run_cmd(cmd=snap_cmd, logerr=False, as_script=True)
         self.assertEqual(ret['rc'], 0)
@@ -201,7 +203,7 @@ class TestPBSSnapshot(TestFunctional):
         # Get the name of the tarball that was created
         # pbs_snapshot prints to stdout only the following:
         #     "Snapshot available at: <path to tarball>"
-        self.assertTrue(len(ret['out']) > 0)
+        self.assertTrue(len(ret['out']) > 0, str(ret))
         snap_out = ret['out'][0]
         output_tar = snap_out.split(":")[1]
         output_tar = output_tar.strip()
@@ -225,6 +227,34 @@ class TestPBSSnapshot(TestFunctional):
         self.snaptars.append(output_tar)
 
         return (output_tar, snap_dir)
+
+    def check_snap_obfuscated(self, snap_dir, real_values):
+        """
+        Check that a snapshot doesn't contain any sensitive values
+
+        :param snap_dir: path to the snapshot dir
+        :type str
+        :param real_values: map of {attribute name: sensitive value}
+        :type dict
+        """
+        values = real_values.values()
+        for val_list in values:
+            for val in val_list:
+                # Just do a grep for the value in the snapshot
+                cmd = ["grep", "-wR", "\'" + str(val) + "\'", snap_dir]
+                ret = self.du.run_cmd(cmd=cmd, level=logging.DEBUG)
+                # grep returns 2 if an error occurred
+                self.assertNotEqual(ret["rc"], 2, "grep failed!")
+                self.assertIn(ret["out"], ["", None, []], str(val) +
+                              " was not obfuscated. Real values:\n" +
+                              str(real_values))
+                # Also make sure that no filenames contain the sensitive val
+                cmd = ["find", snap_dir, "-name", "\'*" + str(val) + "*\'"]
+                ret = self.du.run_cmd(cmd=cmd, level=logging.DEBUG)
+                self.assertEqual(ret["rc"], 0, "find command failed!")
+                self.assertIn(ret["out"], ["", None, []], str(val) +
+                              " was not obfuscated. Real values:\n" +
+                              str(real_values))
 
     def test_capture_server(self):
         """
@@ -914,24 +944,7 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         (_, snap_dir) = self.take_snapshot(obfuscate=True)
 
         # Make sure that none of the sensitive values were captured
-        values = real_values.values()
-        for val_list in values:
-            for val in val_list:
-                # Just do a grep for the value in the snapshot
-                cmd = ["grep", "-wR", "\'" + str(val) + "\'", snap_dir]
-                ret = self.du.run_cmd(cmd=cmd, level=logging.DEBUG)
-                # grep returns 2 if an error occurred
-                self.assertNotEqual(ret["rc"], 2, "grep failed!")
-                self.assertIn(ret["out"], ["", None, []], str(val) +
-                              " was not obfuscated. Real values:\n" +
-                              str(real_values))
-                # Also make sure that no filenames contain the sensitive val
-                cmd = ["find", snap_dir, "-name", "\'*" + str(val) + "*\'"]
-                ret = self.du.run_cmd(cmd=cmd, level=logging.DEBUG)
-                self.assertEqual(ret["rc"], 0, "find command failed!")
-                self.assertIn(ret["out"], ["", None, []], str(val) +
-                              " was not obfuscated. Real values:\n" +
-                              str(real_values))
+        self.check_snap_obfuscated(snap_dir, real_values)
 
     def test_basic_option(self):
         """
@@ -976,6 +989,53 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
 
         # Bring the rest of daemons up otherwise tearDown will error out
         self.server.pi.initd(op="start", daemon="all")
+
+    def test_obfuscate_existing(self):
+        """
+        Test the --obf-snap option which obfuscates an existing snapshot
+        """
+        if self.pbs_snapshot_path is None:
+            self.skip_test("pbs_snapshot not found")
+
+        now = int(time.time())
+
+        # Submit a job with sensitive attributes set
+        a = {ATTR_project: 'p1', ATTR_A: 'a1', ATTR_g: TSTGRP0,
+             ATTR_M: TEST_USER, ATTR_u: TEST_USER,
+             ATTR_l + ".walltime": "00:01:00", ATTR_S: "/bin/bash"}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(1000)
+        self.server.submit(j)
+
+        # Add job's attributes to the list
+        # TEST_USER belongs to group TESTGRP0
+        real_values = {}
+        real_values[ATTR_euser] = [TEST_USER]
+        real_values[ATTR_egroup] = [TSTGRP0]
+        real_values[ATTR_project] = ['p1']
+        real_values[ATTR_A] = ['a1']
+        real_values[ATTR_g] = [TSTGRP0]
+        real_values[ATTR_M] = [TEST_USER]
+        real_values[ATTR_u] = [TEST_USER]
+        real_values[ATTR_owner] = [TEST_USER, self.server.hostname]
+        real_values[ATTR_exechost] = [self.server.hostname]
+        real_values[ATTR_S] = ["/bin/bash"]
+
+        # Take a normal snapshot
+        (snap_tar, snap_dir) = self.take_snapshot(0, 0, with_sudo=True)
+
+        # Now, obfuscate the snapshot that we just took
+        (snap_obf_tar, snap_obf) = self.take_snapshot(obf_snap=snap_dir)
+
+        # Make sure that none of the sensitive values were captured
+        self.check_snap_obfuscated(snap_obf, real_values)
+        self.du.rm(path=snap_obf, force=True, recursive=True)
+        self.du.rm(path=snap_dir, force=True, recursive=True)
+
+        # Now, obfuscate using the tar directly instead of the snapshot dir
+        self.du.rm(path=snap_obf_tar, force=True)
+        (_, snap_obf) = self.take_snapshot(obf_snap=snap_tar)
+        self.check_snap_obfuscated(snap_obf, real_values)
 
     def tearDown(self):
         # Delete the snapshot directories and tarballs created

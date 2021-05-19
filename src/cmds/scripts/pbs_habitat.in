@@ -220,30 +220,6 @@ if [ $? -ne 0 ]; then
 fi
 server=`echo ${server_hostname} | awk -F. '{print $1}'`
 
-# Check the clienthost entries if present
-if [ -f "$PBS_HOME/mom_priv/config" ]; then
-	cmd='cat "$PBS_HOME/mom_priv/config"'
-	cmd="$cmd | sed -e 's/\t/ /g' -e 's/ \\+/ /g' -e 's/^ //' -e 's/ $//'"
-	cmd="$cmd | grep '\\\$clienthost' | cut -d' ' -f2"
-	for host in `eval $cmd`; do
-		if [ -z "$host" -o "$host" = 'CHANGE_THIS_TO_PBS_SERVER_HOSTNAME' ]; then
-			echo "***" >&2
-			echo "*** Invalid entry in $PBS_HOME/mom_priv/config" >&2
-			echo "*** for clienthost: $host" >&2
-			echo "***" >&2
-			exit 1
-		fi
-		if ! check_hostname "${host}"; then
-			echo "***" >&2
-			echo "*** Invalid entry in $PBS_HOME/mom_priv/config" >&2
-			echo "*** for clienthost: $host" >&2
-			echo "*** This value must resolve to a valid IP address." >&2
-			echo "***" >&2
-			exit 1
-		fi
-	done
-fi
-
 if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 	# Check for the db install script
 	if [ ! -x "${PBS_EXEC}/libexec/pbs_db_utility" ]; then

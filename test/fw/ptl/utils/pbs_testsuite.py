@@ -169,6 +169,14 @@ def runOnlyOnLinux(function):
     return function
 
 
+def checkMomBashVersion(function):
+    """
+    Decorator to skip a test if bash version is less than 4.2.46
+    """
+    function.__check_mom_bash_version__ = True
+    return function
+
+
 def requirements(*args, **kwargs):
     """
     Decorator to provide the cluster information required for a particular
@@ -468,6 +476,7 @@ class PBSTestSuite(unittest.TestCase):
         cls.skip_shasta_tests()
         cls.skip_cpuset_tests()
         cls.run_only_on_linux()
+        cls.check_mom_bash_version()
 
     def setUp(self):
         if 'skip-setup' in self.conf:
@@ -594,6 +603,28 @@ class PBSTestSuite(unittest.TestCase):
             # skip individual test cases
             for test_item in cls.test_dict.values():
                 if test_item.__dict__.get('__run_only_on_linux__', False):
+                    test_item.__unittest_skip__ = True
+                    test_item.__unittest_skip_why__ = msg
+
+    @classmethod
+    def check_mom_bash_version(cls):
+        skip_test = False
+        msg = 'capability supported only for bash version >= 4.2.46'
+        for mom in cls.moms.values():
+            if not mom.check_mom_bash_version():
+                skip_test = True
+                break
+        if not skip_test:
+            return
+        if cls.__dict__.get('__check_mom_bash_version__', False):
+            # skip all test cases in this test suite
+            for test_item in cls.test_dict.values():
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+        else:
+            # skip individual test cases
+            for test_item in cls.test_dict.values():
+                if test_item.__dict__.get('__check_mom_bash_version__', False):
                     test_item.__unittest_skip__ = True
                     test_item.__unittest_skip_why__ = msg
 
@@ -1531,6 +1562,9 @@ class PBSTestSuite(unittest.TestCase):
             mom.signal('-HUP')
         if not mom.isUp():
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
+        # give mom enough time to network sync with the server on cpuset system
+        if enabled_cpuset:
+            time.sleep(4)
         a = {'state': 'free'}
         self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         if enabled_cpuset:

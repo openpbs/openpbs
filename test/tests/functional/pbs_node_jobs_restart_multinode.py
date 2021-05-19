@@ -50,9 +50,6 @@ class TestMultiNodeJobsRestart(TestFunctional):
 
     def test_restart_hosts_resume(self):
 
-        if len(self.moms) != 2:
-            self.skipTest("test requires atleast two MoMs as input, " +
-                          "use -p moms=<mom1:mom2>")
         momA = self.moms.values()[0]
         momB = self.moms.values()[1]
 
@@ -64,11 +61,12 @@ class TestMultiNodeJobsRestart(TestFunctional):
 
         pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                    "bin", "pbsdsh")
-        script = "sleep 30 && %s echo 'Hello, World'" % pbsdsh_path
+        script = "sleep 60 && %s echo 'Hello, World'" % pbsdsh_path
         j = Job(TEST_USER)
         j.set_attributes({'Resource_List.select': '2',
                           'Resource_List.place': 'scatter'})
         j.create_script(script)
+        start_time = time.time()
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
@@ -81,7 +79,7 @@ class TestMultiNodeJobsRestart(TestFunctional):
 
         sleep(60)
 
-        self.server.log_match("%s;Exit_status=0" % jid)
+        self.server.log_match("%s;Exit_status=0" % jid, starttime=start_time)
 
         # Restart moms without -p flag
         momA.restart()
@@ -89,9 +87,6 @@ class TestMultiNodeJobsRestart(TestFunctional):
 
     def test_restart_hosts_resume_withoutp(self):
 
-        if len(self.moms) != 2:
-            self.skipTest("test requires atleast two MoMs as input, " +
-                          "use -p moms=<mom1:mom2>")
         momA = self.moms.values()[0]
         momB = self.moms.values()[1]
 
@@ -101,11 +96,12 @@ class TestMultiNodeJobsRestart(TestFunctional):
 
         pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                    "bin", "pbsdsh")
-        script = "sleep 30 && %s echo 'Hello, World'" % pbsdsh_path
+        script = "sleep 60 && %s echo 'Hello, World'" % pbsdsh_path
         j = Job(TEST_USER)
         j.set_attributes({'Resource_List.select': '2',
                           'Resource_List.place': 'scatter'})
         j.create_script(script)
+        start_time = time.time()
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
@@ -118,7 +114,7 @@ class TestMultiNodeJobsRestart(TestFunctional):
 
         sleep(60)
 
-        self.server.log_match("%s;Exit_status=0" % jid)
+        self.server.log_match("%s;Exit_status=0" % jid, starttime=start_time)
 
         # Restart moms without -p flag
         momA.restart()
@@ -126,9 +122,6 @@ class TestMultiNodeJobsRestart(TestFunctional):
 
     def test_premature_kill_restart(self):
 
-        if len(self.moms) != 2:
-            self.skipTest("test requires atleast two MoMs as input, " +
-                          "use -p moms=<mom1:mom2>")
         momA = self.moms.values()[0]
         momB = self.moms.values()[1]
 
@@ -138,11 +131,12 @@ class TestMultiNodeJobsRestart(TestFunctional):
 
         pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                    "bin", "pbsdsh")
-        script = "sleep 30 && %s echo 'Hello, World'" % pbsdsh_path
+        script = "sleep 60 && %s echo 'Hello, World'" % pbsdsh_path
         j = Job(TEST_USER)
         j.set_attributes({'Resource_List.select': '2',
                           'Resource_List.place': 'scatter'})
         j.create_script(script)
+        start_time = time.time()
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
@@ -156,7 +150,7 @@ class TestMultiNodeJobsRestart(TestFunctional):
 
         sleep(55)
 
-        self.server.log_match("%s;Exit_status=0" % jid)
+        self.server.log_match("%s;Exit_status=0" % jid, starttime=start_time)
 
         # Restart moms without -p flag
         momA.restart()

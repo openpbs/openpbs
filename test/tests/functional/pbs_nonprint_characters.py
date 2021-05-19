@@ -147,11 +147,11 @@ sleep 5
                           option="-v")
         j_output = ""
         if len(ret['out']) > 0:
-            if len(ret['out']) > 1:
-                j_output = '\n'.join(ret['out'])
+            if '\t' in chk_var:
+                j_output = '\n'.join(ret['out']).replace('\t\t', '\t')
             else:
-                j_output = ret['out'][0].strip()
-        self.assertEqual(j_output, chk_var)
+                j_output = '\n'.join(ret['out']).replace('\t', '')
+        self.assertIn(chk_var, j_output)
         self.logger.info('job output has: %s' % chk_var)
 
     def check_qstatout(self, chk_var, jid):
@@ -313,6 +313,7 @@ sleep 5
                 chk_var = 'NONPRINT_VAR=X%sY' % self.npcat[ch]
             self.check_jobout(chk_var, jid, job_outfile, job_host)
 
+    @checkMomBashVersion
     def test_nonprint_shell_function(self):
         """
         Export a shell function with a non-printable character and check
@@ -444,6 +445,7 @@ sleep 5
         # Reset the terminal
         self.logger.info('%sReset terminal' % self.reset)
 
+    @checkMomBashVersion
     def test_terminal_control_shell_function(self):
         """
         Export a shell function with terminal control

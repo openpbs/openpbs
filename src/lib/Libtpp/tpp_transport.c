@@ -1781,7 +1781,7 @@ handle_incoming_data(phy_conn_t *conn)
 	int closed;
 	int pkt_len;
 	char *p;
-	short rc;
+	ssize_t rc;
 
 	while (1) {
 		offset = conn->scratch.pos - conn->scratch.data;
@@ -1807,6 +1807,7 @@ handle_incoming_data(phy_conn_t *conn)
 		if (offset > sizeof(int)) {
 			pkt_len = ntohl(*((int *) conn->scratch.data));
 			torecv = pkt_len - offset; /* offset amount of data already received */
+			TPP_DBPRT("tfd=%d, Need to receive: pkt_len=%d, torecv=%d, space_left=%d bytes", conn->sock_fd, pkt_len, torecv, space_left);
 			if (torecv > space_left)
 				torecv = space_left;
 		} else {
@@ -1921,9 +1922,9 @@ send_data(phy_conn_t *conn)
 {
 	tpp_chunk_t *p = NULL;
 	tpp_packet_t *pkt = NULL;
-	int rc;
+	ssize_t rc;
 	int curr_pkt_done = 0;
-	int tosend;
+	size_t tosend;
 
 	/*
 	 * if a socket is still connecting, we will wait to send out data,
@@ -1932,7 +1933,6 @@ send_data(phy_conn_t *conn)
 	if ((conn->net_state == TPP_CONN_CONNECTING) || (conn->net_state == TPP_CONN_INITIATING))
 		return;
 
-	TPP_DBPRT("send_data, EM_OUT=%d, ev_mask now=%x", (conn->ev_mask & EM_OUT), conn->ev_mask);
 	while ((conn->ev_mask & EM_OUT) == 0) {
 		rc = 0;
 		curr_pkt_done = 0;
@@ -1975,7 +1975,7 @@ send_data(phy_conn_t *conn)
 					}
 					break;
 				}
-				TPP_DBPRT("tfd=%d, sending out %d bytes", conn->sock_fd, rc);
+				TPP_DBPRT("tfd=%d, tosend=%d, sent=%d bytes", conn->sock_fd, tosend, rc);
 				p->pos += rc;
 				tosend -= rc;
 			}

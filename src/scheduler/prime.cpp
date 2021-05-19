@@ -686,7 +686,6 @@ init_prime_time(struct status *policy, char *arg)
 	policy->strict_ordering = conf.prime_so;
 	policy->sort_by = &conf.prime_sort;
 	policy->fair_share = conf.prime_fs;
-	policy->help_starving_jobs = conf.prime_hsv;
 	policy->backfill = conf.prime_bf;
 	policy->sort_nodes = conf.prime_sn;
 	policy->backfill_prime = conf.prime_bp;
@@ -733,7 +732,6 @@ init_non_prime_time(struct status *policy, char *arg)
 	policy->strict_ordering = conf.non_prime_so;
 	policy->sort_by = &conf.non_prime_sort;
 	policy->fair_share = conf.non_prime_fs;
-	policy->help_starving_jobs = conf.non_prime_hsv;
 	policy->backfill = conf.non_prime_bf;
 	policy->sort_nodes = conf.non_prime_sn;
 	policy->backfill_prime = conf.non_prime_bp;
