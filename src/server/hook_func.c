@@ -1998,6 +1998,21 @@ mgr_hook_set(struct batch_request *preq)
 			num_set++;
 		free(hook_freq_val);
 		hook_freq_val = NULL;
+		if ((phook->enabled == TRUE) && (phook->freq > 0)) {
+			/* Delete all existing hook related timed work tasks */
+			delete_task_by_parm1_func(phook, run_periodic_hook, DELETE_ALL);
+			if ((phook->freq > 0) && (phook->script != NULL))
+				(void)set_task(WORK_Timed, time_now + phook->freq,
+					run_periodic_hook, phook);
+			else {
+				sprintf(log_buffer, "periodic hook is missing information, check hook frequency and script");
+				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
+					hookname, log_buffer);
+				snprintf(hook_msg, sizeof(hook_msg),
+					"periodic hook is missing information, check hook frequency and script");
+				goto mgr_hook_set_error;
+			}
+		}
 	}
 
 	if (num_set > 0) {
