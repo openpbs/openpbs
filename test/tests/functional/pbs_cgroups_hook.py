@@ -562,9 +562,9 @@ sleep 15
 #PBS -joe
 sleep 30
 """
-        self.sleep100_job = """#!/bin/bash
+        self.sleep200_job = """#!/bin/bash
 #PBS -joe
-sleep 100
+sleep 200
 """
         self.sleep5_job = """#!/bin/bash
 #PBS -joe
@@ -1932,7 +1932,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -1961,7 +1961,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.sleep100_job)
+        j1.create_script(self.sleep200_job)
         jid2 = self.server.submit(j1)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -1987,7 +1987,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -2008,7 +2008,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid2 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -2039,7 +2039,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s'
              % self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -2062,7 +2062,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.sleep100_job)
+        j1.create_script(self.sleep200_job)
         jid2 = self.server.submit(j1)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -2201,7 +2201,7 @@ if %s e.job.in_ms_mom():
              '1:ncpus=1:mem=300mb:host=%s' % self.hosts_list[0],
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2239,7 +2239,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2458,12 +2458,12 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.sleep100_job)
+        j1.create_script(self.sleep200_job)
         jid1 = self.server.submit(j1)
         b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'b'}
         j2 = Job(TEST_USER, attrs=b)
-        j2.create_script(self.sleep100_job)
+        j2.create_script(self.sleep200_job)
         jid2 = self.server.submit(j2)
         a = {'job_state': 'R'}
         # Make sure they are both running
@@ -2478,7 +2478,7 @@ if %s e.job.in_ms_mom():
         scr1_out = scr1['out']
         self.logger.info('scr1_out:\n%s' % scr1_out)
         scr2 = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn2, None)],
-                               as_script=True)
+                               as_script=True, hosts=self.hosts_list[0])
         scr2_out = scr2['out']
         self.logger.info('scr2_out:\n%s' % scr2_out)
         # Ensure the CPU ID for each job differs
@@ -2691,7 +2691,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], 'Resource_List.walltime': 100, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2943,7 +2943,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -2963,7 +2963,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid2 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -2984,7 +2984,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -3003,7 +3003,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid2 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -3228,7 +3228,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '2:ncpus=1:mem=100mb',
              'Resource_List.place': 'scatter'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3419,7 +3419,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3443,7 +3443,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3474,7 +3474,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3502,7 +3502,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3592,7 +3592,7 @@ if %s e.job.in_ms_mom():
         hostn = self.hosts_list[0]
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % hostn}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3616,7 +3616,7 @@ if %s e.job.in_ms_mom():
                            interval=3, offset=10)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % hostn}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4040,7 +4040,7 @@ event.accept()
              '1:ncpus=1:host=%s+1:ncpus=1:host=%s+1:ncpus=1:host=%s' %
              (self.hosts_list[0], self.hosts_list[1], self.hosts_list[2])}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R', 'substate': '41'}
         self.server.expect(JOB, a, jid)
@@ -4082,7 +4082,7 @@ event.accept()
         a = {'Resource_List.select': '3:ncpus=1:mem=100mb',
              'Resource_List.place': 'scatter'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4124,7 +4124,7 @@ event.accept()
         select_spec = "%d:ncpus=%d" % (vnodes_count, cpus_per_vnode)
         a = {'Resource_List.select': select_spec, ATTR_N: name + 'a'}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.sleep100_job)
+        j1.create_script(self.sleep200_job)
         jid1 = self.server.submit(j1)
         a = {'job_state': 'R'}
         # Make sure job is running
@@ -4374,7 +4374,7 @@ sleep 300
              "ncpus=%d" % ncpus_req,
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4471,7 +4471,7 @@ sleep 300
              "ncpus=%d" % ncpus_req,
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4559,7 +4559,7 @@ sleep 300
         a = {'Resource_List.select': 'ncpus=0',
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4649,7 +4649,7 @@ sleep 300
         a = {'Resource_List.select': 'ncpus=0',
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4745,7 +4745,7 @@ sleep 300
         self.mom.add_config(c)
         a = {'Resource_List.select': 'ncpus=1:mem=100mb'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -4857,7 +4857,7 @@ sleep 300
                  % (vmemreq, vnode_name)}
 
             j = Job(TEST_USER, attrs=a)
-            j.create_script(self.sleep100_job)
+            j.create_script(self.sleep200_job)
             jid = self.server.submit(j)
             bs = {'job_state': 'R'}
             self.server.expect(JOB, bs, jid, offset=1)
@@ -4878,7 +4878,7 @@ sleep 300
             self.logger.info('job cgswap detected to be correct, roughly %s'
                              % str(cgswap))
             j = Job(TEST_USER, attrs=a)
-            j.create_script(self.sleep100_job)
+            j.create_script(self.sleep200_job)
             jid = self.server.submit(j)
 
             # Second job should not run - not enough cgswap
@@ -4932,7 +4932,7 @@ sleep 300
             a['Resource_List.place'] = 'exclhost'
 
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
         bs = {'job_state': 'R'}
         self.server.expect(JOB, bs, jid, offset=1)
