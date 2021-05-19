@@ -1182,27 +1182,20 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 								nresv_copy->select = new selspec(*nresv_copy->resv->select_standing);
 							}
 						}
-						/* Duplication deep-copies node info array. This array gets
-						 * overwritten and needs to be freed. This is an alternative
-						 * to creating another duplication function that only duplicates
-						 * the required fields.
-						 */
-						release_nodes(nresv_copy);
-
-						nresv_copy->resv->orig_nspec_arr = parse_execvnode(occr_execvnodes_arr[j], sinfo, nresv_copy->select);
-						nresv_copy->nspec_arr = combine_nspec_array(nresv_copy->resv->orig_nspec_arr);
-						nresv_copy->ninfo_arr = create_node_array_from_nspec(nresv_copy->nspec_arr);
-						nresv_copy->resv->resv_nodes = create_resv_nodes(nresv_copy->nspec_arr, sinfo);
 					}
+					release_nodes(nresv_copy);
+
+					nresv_copy->resv->orig_nspec_arr = parse_execvnode(occr_execvnodes_arr[j], sinfo, nresv_copy->select);
+					nresv_copy->nspec_arr = combine_nspec_array(nresv_copy->resv->orig_nspec_arr);
+					nresv_copy->ninfo_arr = create_node_array_from_nspec(nresv_copy->nspec_arr);
+					nresv_copy->resv->resv_nodes = create_resv_nodes(nresv_copy->nspec_arr, sinfo);
 
 					/* Note that the sequence of occurrence dates and time are determined
 					 * during confirm_reservation and set to the reservation in the
 					 * simulated server
 					 */
 					nresv_copy->start = nresv->resv->occr_start_arr[j];
-
-					/* update start time, duration, and execvnodes of the occurrence */
-					nresv_copy->end = nresv_copy->start + nresv_copy->duration ;
+					nresv_copy->end = nresv_copy->start + nresv_copy->duration;
 
 					/* Only add the occurrence to the real universe if we are not
 					 * processing a degraded reservation as otherwise, the resources
