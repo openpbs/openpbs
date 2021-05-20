@@ -2315,7 +2315,7 @@ if %s e.job.in_ms_mom():
         a['Resource_List.select'] = \
             '1:ncpus=1:mem=300mb:host=%s' % self.hosts_list[0]
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(20)
+        j.set_sleep_time(200)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2689,7 +2689,7 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg3 % ('', vnpernuma, '', self.mem, '',
                                       self.swapctl, ''))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
-             self.hosts_list[0], 'Resource_List.walltime': 100, ATTR_N: name}
+             self.hosts_list[0], 'Resource_List.walltime': 200, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep200_job)
         jid = self.server.submit(j)
@@ -4074,18 +4074,9 @@ event.accept()
         self.moms_list[2].log_match("Event type is execjob_abort",
                                     starttime=now, n='ALL')
 
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
         self.moms_list[1].pi.restart()
-
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=15)
-
-        a = {'Resource_List.select': '3:ncpus=1:mem=100mb',
-             'Resource_List.place': 'scatter'}
-        j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep200_job)
-        jid = self.server.submit(j)
-        a = {'job_state': 'R'}
-        self.server.expect(JOB, a, jid)
 
     @timeout(1800)
     def test_big_cgroup_cpuset(self):
