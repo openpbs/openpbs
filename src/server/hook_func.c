@@ -2004,13 +2004,6 @@ mgr_hook_set(struct batch_request *preq)
 			if (phook->script != NULL)
 				(void)set_task(WORK_Timed, time_now + phook->freq,
 					run_periodic_hook, phook);
-			else {
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-					   hookname, "periodic hook is missing information, check hook frequency and script");
-				snprintf(hook_msg, sizeof(hook_msg),
-					"periodic hook is missing information, check hook frequency and script");
-				goto mgr_hook_set_error;
-			}
 		}
 	}
 
