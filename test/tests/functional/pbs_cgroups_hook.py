@@ -4183,9 +4183,9 @@ exit 0
             self.server.manager(MGR_CMD_SET, NODE, a, id=m.shortname)
 
         # submit multi-node job
-        a = {'Resource_List.select': '1:ncpus=1:host=%s+1:ncpus=1:host=%s'
-                % (self.hosts_list[0], self.hosts_list[1]),
-             'Resource_List.place': 'scatter:exclhost'}
+        a = {'Resource_List.select': '1:ncpus=1:host=%s+1:ncpus=1:host=%s' % (
+            self.hosts_list[0], self.hosts_list[1]),
+            'Resource_List.place': 'scatter:exclhost'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
 
