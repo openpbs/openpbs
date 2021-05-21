@@ -1088,7 +1088,7 @@ free_server_info(server_info *sinfo)
 	if (sinfo->policy != NULL)
 		delete sinfo->policy;
 	if (sinfo->fstree != NULL)
-		free_fairshare_head(sinfo->fstree);
+		delete sinfo->fstree;
 	if (sinfo->liminfo != NULL) {
 		lim_free_liminfo(sinfo->liminfo);
 		sinfo->liminfo = NULL;
@@ -2226,10 +2226,10 @@ dup_server_info(server_info *osinfo)
 
 	/* duplicate the server information */
 	if ((nsinfo = new_server_info(0)) == NULL)
-		return NULL;                /* error */
+		return NULL;
 
 	if (osinfo->fstree != NULL) {
-		nsinfo->fstree = dup_fairshare_head(osinfo->fstree);
+		nsinfo->fstree = new fairshare_head(*osinfo->fstree);
 		if (nsinfo->fstree == NULL) {
 			free_server(nsinfo);
 			return NULL;

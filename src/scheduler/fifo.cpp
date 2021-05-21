@@ -144,7 +144,7 @@ schedinit(int nthreads)
 	parse_ded_file(DEDTIME_FILE);
 
 	if (fstree != NULL)
-		free_fairshare_head(fstree);
+		delete fstree;
 	/* preload the static members to the fairshare tree */
 	fstree = preload_tree();
 	if (fstree != NULL) {
@@ -357,8 +357,8 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 						delta = IF_NEG_THEN_ZERO(delta);
 
 						;
-						for (auto gpath = user->gpath; gpath != NULL; gpath = gpath->next)
-							gpath->ginfo->usage += delta;
+						for (auto& g : user->gpath)
+							g->usage += delta;
 
 						resort = 1;
 					}
@@ -2023,7 +2023,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 			 */
 			update_usage_on_run(bjob);
 			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, bjob->name,
-				"Fairshare usage of entity %s increased due to job becoming a top job.", bjob->job->ginfo->name);
+				"Fairshare usage of entity %s increased due to job becoming a top job.", bjob->job->ginfo->name.c_str());
 		}
 
 		sprintf(log_buf, "Job is a top job and will run at %s",
