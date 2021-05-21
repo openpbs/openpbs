@@ -613,8 +613,10 @@ connect_to_peersvr(void *psvr)
 	if (send_connect(psvr) < 0)
 		return -1;
 
-	if (resc_upd_reqd && svr_info->ps_pending_replies)
+	if (resc_upd_reqd && svr_info->ps_pending_replies) {
 		mcast_resc_update_all(psvr);
+		send_nodestat_req();
+	}
 
 	return 0;
 }
@@ -1028,6 +1030,10 @@ update_node_cache(int stream, struct batch_status *bstat)
 	clear_node_cache(psvr);
 
 	init_node_from_bstat(bstat, psvr);
+
+	/* Trigger default scheduler to schedule the job which has failed due
+	to missing vnode cache information */
+	set_scheduler_flag(SCH_SCHEDULE_NEW, dflt_scheduler);
 
 	return 0;
 }
