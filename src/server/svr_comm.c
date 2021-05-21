@@ -271,14 +271,14 @@ send_nodestat_req(void)
 
 	update_msvr_stat(1, CACHE_MISS);
 
+	if (mtfd == -1)
+		return;
+
 	/* Do not udate the cache too often */
 	if (time_now < time_last_sent + 2)
 		return;
 
 	time_last_sent = time_now;
-
-	if (mtfd == -1)
-		return;
 
 	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 		   __func__, "Sending node stat to peer servers");
