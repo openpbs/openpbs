@@ -4074,7 +4074,6 @@ event.accept()
         self.moms_list[2].log_match("Event type is execjob_abort",
                                     starttime=now, n='ALL')
 
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
         self.moms_list[1].pi.restart()
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
@@ -4160,11 +4159,6 @@ event.accept()
         gets called.  The abort hook cleans up assigned cgroups, allowing
         the higher priority job to run on the same node.
         """
-        # Skip test if number of mom provided is not equal to two
-        if len(self.moms) != 2:
-            self.skipTest("test requires two MoMs as input, " +
-                          "use -p moms=<mom1>:<mom2>")
-
         # create express queue
         a = {'queue_type': 'execution',
              'started': 'True',
@@ -4189,7 +4183,8 @@ exit 0
             self.server.manager(MGR_CMD_SET, NODE, a, id=m.shortname)
 
         # submit multi-node job
-        a = {'Resource_List.select': '2:ncpus=1',
+        a = {'Resource_List.select': '1:ncpus=1:host=%s+1:ncpus=1:host=%s'
+                % (self.hosts_list[0], self.hosts_list[1]),
              'Resource_List.place': 'scatter:exclhost'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
