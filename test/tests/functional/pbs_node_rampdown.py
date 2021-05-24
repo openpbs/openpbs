@@ -348,10 +348,7 @@ class TestPbsNodeRampDown(TestFunctional):
         self.n9 = '%s[2]' % (self.hostB,)
         self.n10 = '%s[3]' % (self.hostB,)
 
-        if sys.platform in ('cygwin', 'win32'):
-            SLEEP_CMD = "pbs-sleep"
-        else:
-            SLEEP_CMD = "/bin/sleep"
+        SLEEP_CMD = "pbs_sleep"
 
         self.pbs_release_nodes_cmd = os.path.join(
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_release_nodes')
