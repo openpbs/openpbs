@@ -113,6 +113,9 @@ decode_l(attribute *patr, char *name, char *rescn, char *val)
 		}
 		post_attr_set(patr);
 		patr->at_val.at_long = strtol(val, &endp, 10);
+	} else if ((val != NULL) && (strlen(val) == 0)) {
+		patr->at_val.at_long = 0;
+		post_attr_set(patr);
 	} else {
 		ATR_UNSET(patr);
 		patr->at_val.at_long = 0;
