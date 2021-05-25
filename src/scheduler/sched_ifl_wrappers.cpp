@@ -72,8 +72,6 @@ handle_part_tolerance(void *ret)
 		pbs_errno = PBSE_NONE;
 	}
 
-	if (pbs_errno != PBSE_NONE)
-		return NULL;
 	return ret;
 }
 
