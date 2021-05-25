@@ -590,6 +590,8 @@ job_free(job *pj)
 	tempinfo = pj->ji_spawninfo;
 	while (tempinfo != NULL) {
 		next = tempinfo->next;
+		free(tempinfo->ji_taskid_list);
+		free(tempinfo->ji_nid_list);
 		free(tempinfo);
 		tempinfo = next;
 	}

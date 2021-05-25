@@ -3980,12 +3980,12 @@ join_err:
 			/* Get the identifier */
 			ident = disrui(stream, &ret);
 			if (ret != DIS_SUCCESS)
-				goto done;
+				goto err;
 		
 			/* Get the list_size */
 			list_size = disrui(stream, &ret);
 			if (ret != DIS_SUCCESS)
-				goto done;
+				goto err;
 
 			/* Get the list of where to send executable */
 			node_list = (tm_node_id *)calloc(list_size, sizeof(tm_node_id));
@@ -3998,7 +3998,10 @@ join_err:
 				}
 			}
 			pvnodeid = disrsi(stream, &ret);
-			BAIL("SPAWN_MULTI pvnodeid")
+			if (ret != DIS_SUCCESS) {
+				free(node_list);
+				goto err;
+			}
 
 			if ((np = find_node(pjob, stream, pvnodeid)) == NULL) {
 				SEND_ERR(PBSE_BADHOST)
@@ -4995,7 +4998,7 @@ join_err:
 						__func__, jobid))
 					
 					ident = disrui(stream, &ret);
-					assert(ident);
+					BAIL("OK-SPAWN_MULTI ident");
 
 					/* Get the info/pointer from the job */
 					for (tempinfo = pjob->ji_spawninfo; tempinfo != NULL; tempinfo = tempinfo->next) {
@@ -5010,9 +5013,13 @@ join_err:
 					siscnt = tempinfo->ji_num_sisters;
 					index = tempinfo->ji_taskid_index;
 					temptaskid = tempinfo->ji_taskid_list;
-					assert(temptaskid);
+					if (temptaskid == NULL) {
+						goto err;
+					}
 					tempnid = tempinfo->ji_nid_list;
-					assert(tempnid);
+					if (tempnid == NULL) {
+						goto err;
+					}
 
 					tvnodeid = disrui(stream, &ret);
 					BAIL("OK-SPAWN_MULTI tvnodeid")
@@ -5063,8 +5070,12 @@ join_err:
 						(void)diswui(efd, tempnid[i]);
 					}
 					(void)dis_flush(efd);
-					free(temptaskid);
-					free(tempnid);
+					tempinfo->ji_num_sisters = 0;
+					tempinfo->ji_taskid_index = 0;
+					free(tempinfo->ji_taskid_list);
+					free(tempinfo->ji_nid_list);
+					tempinfo->ji_taskid_list = NULL;
+					tempinfo->ji_nid_list = NULL;
 					break;
 
 				case	IM_GET_TASKS:
@@ -6538,7 +6549,7 @@ aterr:
 			/* Get the number of nodes */
 			list_size = disrui(fd, &ret);
 			if (ret != DIS_SUCCESS)
-				goto done;
+				goto err;
 
 			/* Get the list of where to send the executable */
 			node_list = (tm_node_id *)calloc(list_size, sizeof(tm_node_id));
@@ -6548,12 +6559,14 @@ aterr:
 				node_list[i] = disrui(fd, &ret);
 				if (ret != DIS_SUCCESS) {
 					free(node_list);
-					goto done;
+					goto err;
 				}
 			}
 			argc = disrui(fd, &ret);
-			if (ret != DIS_SUCCESS)
+			if (ret != DIS_SUCCESS) {
+				free(node_list);
 				goto done;
+			}
 			argv = (char **)calloc(argc + 1, sizeof(char *));
 			assert(argv);
 			for (i = 0; i < argc; i++) {
@@ -6624,6 +6637,7 @@ aterr:
 				sprintf(log_buffer, "mcast open failed");
 				log_joberr(-1, __func__, log_buffer, jobid);
 				free(node_list);
+				free(tempinfo);
 				free(temptaskid);
 				free(tempnid);
 				free(streamlist);
@@ -6647,6 +6661,7 @@ aterr:
                 			ret = tm_reply(fd, version, TM_ERROR, event);
 			                if (ret != DIS_SUCCESS) {
 						free(node_list);
+						free(tempinfo);
 						free(temptaskid);
 						free(tempnid);
 						free(streamlist);
@@ -6655,6 +6670,7 @@ aterr:
 			                ret = diswsi(fd, TM_ENOTFOUND);
 			                if (ret != DIS_SUCCESS) {
 						free(node_list);
+						free(tempinfo);
 						free(temptaskid);
 						free(tempnid);
 						free(streamlist);
@@ -6764,6 +6780,7 @@ aterr:
 					arrayfree(argv);
 					arrayfree(envp);
 					free(node_list);
+					free(tempinfo);
 					free(temptaskid);
 					free(tempnid);
 					free(streamlist);
@@ -6782,9 +6799,11 @@ aterr:
 					arrayfree(argv);
 					arrayfree(envp);
 					free(node_list);
+					free(tempinfo);
 					free(temptaskid);
 					free(tempnid);
 					free(streamlist);
+					tpp_mcast_close(mtfd);
 					goto done;
 				}
 				ret = diswui(mtfd, list_size);
@@ -6792,9 +6811,11 @@ aterr:
 					arrayfree(argv);
 					arrayfree(envp);
 					free(node_list);
+					free(tempinfo);
 					free(temptaskid);
 					free(tempnid);
 					free(streamlist);
+					tpp_mcast_close(mtfd);
 					goto done;
 				}
 				for (i = 0; i < list_size; i++) {
@@ -6803,9 +6824,11 @@ aterr:
 						arrayfree(argv);
 						arrayfree(envp);
 						free(node_list);
+						free(tempinfo);
 						free(temptaskid);
 						free(tempnid);
 						free(streamlist);
+						tpp_mcast_close(mtfd);
 						goto done;
 					}
 				}
@@ -6815,9 +6838,11 @@ aterr:
 					arrayfree(argv);
 					arrayfree(envp);
 					free(node_list);
+					free(tempinfo);
 					free(temptaskid);
 					free(tempnid);
 					free(streamlist);
+					tpp_mcast_close(mtfd);
 					goto done;
 				}
 				if (found_empty_string) {
@@ -6826,9 +6851,11 @@ aterr:
 						arrayfree(argv);
 						arrayfree(envp);
 						free(node_list);
+						free(tempinfo);
 						free(temptaskid);
 						free(tempnid);
 						free(streamlist);
+						tpp_mcast_close(mtfd);
 						goto done;
 					}
 					for (i = 0; i < argc; i++) {
@@ -6837,9 +6864,11 @@ aterr:
 							arrayfree(argv);
 							arrayfree(envp);
 							free(node_list);
+							free(tempinfo);
 							free(temptaskid);
 							free(tempnid);
 							free(streamlist);
+							tpp_mcast_close(mtfd);
 							goto done;
 						}
 					}
@@ -6850,9 +6879,11 @@ aterr:
 							arrayfree(argv);
 							arrayfree(envp);
 							free(node_list);
+							free(tempinfo);
 							free(temptaskid);
 							free(tempnid);
 							free(streamlist);
+							tpp_mcast_close(mtfd);
 							goto done;
 						}
 					}
@@ -6861,9 +6892,11 @@ aterr:
 						arrayfree(argv);
 						arrayfree(envp);
 						free(node_list);
+						free(tempinfo);
 						free(temptaskid);
 						free(tempnid);
 						free(streamlist);
+						tpp_mcast_close(mtfd);
 						goto done;
 					}
 				}
@@ -6873,9 +6906,11 @@ aterr:
 						arrayfree(argv);
 						arrayfree(envp);
 						free(node_list);
+						free(tempinfo);
 						free(temptaskid);
 						free(tempnid);
 						free(streamlist);
+						tpp_mcast_close(mtfd);
 						goto done;
 					}
 				}
@@ -6885,6 +6920,7 @@ aterr:
 					arrayfree(argv);
 					arrayfree(envp);
 					free(node_list);
+					free(tempinfo);
 					free(temptaskid);
 					free(tempnid);
 					free(streamlist);
@@ -6928,7 +6964,7 @@ aterr:
 			arrayfree(envp);
 			free(node_list);
 			free(streamlist);
-			/* temptaskid and tempnid arrays are freed in IM_ALL_OKAY */
+			/* tempinfo, temptaskid and tempnid arrays are freed in IM_ALL_OKAY */
 			reply = FALSE;
 			goto done;
 			break;
