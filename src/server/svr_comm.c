@@ -233,6 +233,8 @@ err:
  * @brief reply to connect message from peer server
  * sends all the resource update which needs to be updated
  * 
+ * @param[in] ptask - work task
+ * 
  */
 void
 replyhello_psvr(struct work_task *ptask)
@@ -257,19 +259,20 @@ replyhello_psvr(struct work_task *ptask)
  * stats only a few attributes. This request is asynchronous
  * and server will process when it gets a PS_STAT_RPLY.
  * 
+ * @param[in] type - msvr stat type
  */
 void
-send_nodestat_req(void)
+send_nodestat_req(enum msvr_stats_type type)
 {
 	struct attrl *pat;
 	struct attrl *head;
 	struct attrl *tail;
 	struct attrl *nxt;
 	int mtfd = open_ps_mtfd();
-	int rc;
 	static int time_last_sent = 0;
+	int rc;
 
-	update_msvr_stat(1, CACHE_MISS);
+	update_msvr_stat(1, type);
 
 	if (mtfd == -1)
 		return;

@@ -319,6 +319,9 @@ log_msvr_stat()
 void
 update_msvr_stat(ulong val, msvr_stat_type_t type)
 {
+	if (type < 0 || type >= END_OF_STAT)
+		return;
+		
 	msvr_stat.stat[type] += val;
 
 	log_msvr_stat();
@@ -616,7 +619,7 @@ connect_to_peersvr(void *psvr)
 	if (resc_upd_reqd) {
 		if (svr_info->ps_pending_replies)
 			mcast_resc_update_all(psvr);
-		send_nodestat_req();
+		send_nodestat_req(-1);
 	}
 
 	return 0;
