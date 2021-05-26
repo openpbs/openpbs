@@ -127,7 +127,6 @@ extern char *msg_man_set;
 extern char *msg_man_uns;
 extern char *msg_noattr;
 extern unsigned int pbs_mom_port;
-extern char server_host[];
 extern char *path_hooks;
 extern 	int max_concurrent_prov;
 extern char *msg_cannot_set_route_que;

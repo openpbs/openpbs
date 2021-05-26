@@ -124,7 +124,6 @@ extern char *path_spool;
 extern struct server server;
 extern struct attribute attr_jobscript_max_size;
 extern char  server_name[];
-extern char server_host[];
 extern unsigned int pbs_server_port_dis;
 extern char *resc_in_err;
 #endif	/* PBS_MOM */

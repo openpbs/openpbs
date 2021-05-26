@@ -100,7 +100,6 @@ extern time_t time_now;
 extern char  *resc_in_err;
 extern char  *msg_daemonname;
 extern char   server_name[];
-extern char   server_host[];
 
 extern pbs_list_head svr_allconns;
 

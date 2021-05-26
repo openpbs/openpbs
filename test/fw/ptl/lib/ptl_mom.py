@@ -52,6 +52,7 @@ import string
 import sys
 import tempfile
 import time
+import pkg_resources
 
 
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
@@ -149,16 +150,14 @@ class MoM(PBSService):
                     alps_client = self.du.which(exe='apbasil')
             else:
                 alps_client = "/opt/alps/apbasil.sh"
-            self.dflt_config = {'$clienthost': self.server.hostname,
-                                '$vnodedef_additive': 0,
+            self.dflt_config = {'$vnodedef_additive': 0,
                                 '$alps_client': alps_client,
                                 '$usecp': '*:%s %s' % (usecp, usecp)}
         elif self.platform == 'shasta':
             usecp = os.path.realpath('/lus')
-            self.dflt_config = {'$clienthost': self.server.hostname,
-                                '$usecp': '*:%s %s' % (usecp, usecp)}
+            self.dflt_config = {'$usecp': '*:%s %s' % (usecp, usecp)}
         else:
-            self.dflt_config = {'$clienthost': self.server.hostname}
+            self.dflt_config = {}
         self._is_cpuset_mom = None
 
         # If this is true, the mom will revert to default.
@@ -688,6 +687,26 @@ class MoM(PBSService):
         Returns True if MoM is only Linux
         """
         return True
+
+    def check_mom_bash_version(self):
+        """
+        Return True if bash version on mom is greater than or equal to 4.2.46
+        """
+        cmd = ['echo', '${BASH_VERSION%%[^0-9.]*}']
+        ret = self.du.run_cmd(self.hostname, cmd=cmd, sudo=True,
+                              as_script=True)
+        req_bash_version = "4.2.46"
+        if len(ret['out']) > 0:
+            mom_bash_version = ret['out'][0]
+        else:
+            # If we can't get the bash version, there is no harm
+            # in trying to run the test. It might fail in an error,
+            # but at least we tried.
+            return True
+        if mom_bash_version >= req_bash_version:
+            return True
+        else:
+            return False
 
     def is_cpuset_mom(self):
         """

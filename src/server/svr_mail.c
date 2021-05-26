@@ -180,7 +180,6 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	struct array_strings *pas;
 	char	*stdmessage = NULL;
 	char	*pat;
-	extern  char server_host[];
 
 	FILE   *outmail;
 	pid_t   mcpid;

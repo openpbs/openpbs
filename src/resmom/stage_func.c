@@ -1650,16 +1650,15 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 		}
 
 		/*
-		 ** There is a problem where scp can return zero
-		 ** indicating success even though the copy did
-		 ** not work.  In the case of a remote stagein,
-		 ** save the mtime of an existing file so we can
-		 ** check the mtime after the copy to be sure it
-		 ** worked.
+		 * There is a problem where scp can return zero indicating success even
+		 * though the copy did not work.  In the case of a remote stagein,
+		 * where the file already exists, save the ctime of an existing file so
+		 * we can check the ctime after the copy to be sure it worked.  ctime
+		 * is used instead of mtime because scp may reset mtime.
 		 */
 		if ((rmtflg != 0) && (dir == STAGE_DIR_IN)) {
 			if (stat(ag3, &sb) != -1)
-				original = sb.st_mtime;
+				original = sb.st_ctime;
 		}
 
 		DBPRT(("%s: %s %s %s %s\n", __func__, ag0, ag1, ag2, ag3))
@@ -1681,7 +1680,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 				if ((rc = WEXITSTATUS(rc)) == 0) {
 					if ((rmtflg != 0) && (dir == STAGE_DIR_IN)) {
 						if ((stat(ag3, &sb) == -1) ||
-							(original == sb.st_mtime))
+							(original == sb.st_ctime))
 							rc = 13;
 					}
 					return (rc);		/* good,  stop now */
@@ -1717,21 +1716,22 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 				(void)close(fd);
 			}
 			/*
-			 ** In order to fix a timing problem where the copy may
-			 ** have succeeded in less than a second, the child
-			 ** process may have to sleep for 1 second before doing
-			 ** the copy.  This will ensure the mtime will be different.
-			 ** This is needed because the exit value of
-			 ** the copy agent can be zero even when the copy
-			 ** did not work correctly.
-			 **
-			 ** The value of original will be 0 or the previously
-			 ** existing file's mtime.  If this mtime is "right now",
-			 ** then we have to sleep a second so we can tell if
-			 ** the copy worked.
+			 * In order to fix a timing problem where the copy may have
+			 * succeeded in less than a second, the child process may have to
+			 * sleep for 1 second before doing the copy.  This will ensure the
+			 * ctime will be different. This is needed because the exit value
+			 * of the copy agent can be zero even when the copy did not work
+			 * correctly.
+			 *
+			 * The value of original will be 0 or the previously existing
+			 * file's ctime.  If this ctime is "right now", then we have to
+			 * sleep a second so we can tell if the copy worked.  sleep() can
+			 * be terminated early if a signal is received, so loop until the
+			 * current time is different than the initial ctime of the file.
 			 */
-			if (original == time(NULL))
+			while (original == time(NULL)) {
 				sleep(1);
+			}
 
 			execl(ag0, ag0, ag1, ag2, ag3, NULL);
 			sprintf(log_buffer, "command: %s %s %s %s execl failed %d", ag0, ag1, ag2, ag3, errno);

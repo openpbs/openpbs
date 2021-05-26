@@ -346,8 +346,10 @@ get_db_connect_information()
 				strncpy(conn_db_host, pbs_conf.pbs_primary, PBS_MAXSERVERNAME);
 			else
 				strncpy(conn_db_host, pbs_conf.pbs_secondary, PBS_MAXSERVERNAME);
-		} else
-			strncpy(conn_db_host, pbs_default(), PBS_MAXSERVERNAME); /* connect to pbs.server */
+		} else if (pbs_conf.pbs_server_host_name)
+			strncpy(conn_db_host, pbs_conf.pbs_server_host_name, PBS_MAXSERVERNAME);
+		else
+			strncpy(conn_db_host, server_host, PBS_MAXSERVERNAME);
 
 		rc = pbs_status_db(conn_db_host, pbs_conf.pbs_data_service_port);
 		if (rc == -1) {

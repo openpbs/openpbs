@@ -148,7 +148,6 @@
 extern void disable_svr_prov();
 extern void set_srv_prov_attributes();
 extern int  should_retry_route(int);
-extern	char server_host[PBS_MAXHOSTNAME+1];
 
 /* Local Private Functions */
 
@@ -1782,7 +1781,7 @@ mgr_hook_set(struct batch_request *preq)
 					 *  2 - related to running the post processing function
 					 */
 					delete_task_by_parm1_func(phook, NULL, DELETE_ALL);
-					if ((phook->freq > 0) && (phook->script != NULL))
+					if (phook->script != NULL)
 						(void)set_task(WORK_Timed, time_now + phook->freq,
 								run_periodic_hook, phook);
 					else {
@@ -1999,6 +1998,13 @@ mgr_hook_set(struct batch_request *preq)
 			num_set++;
 		free(hook_freq_val);
 		hook_freq_val = NULL;
+		if ((phook->enabled == TRUE) && (phook->freq > 0)) {
+			/* Delete all existing hook related timed work tasks */
+			delete_task_by_parm1_func(phook, run_periodic_hook, DELETE_ALL);
+			if (phook->script != NULL)
+				(void)set_task(WORK_Timed, time_now + phook->freq,
+					run_periodic_hook, phook);
+		}
 	}
 
 	if (num_set > 0) {
