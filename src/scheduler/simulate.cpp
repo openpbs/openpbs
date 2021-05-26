@@ -187,10 +187,17 @@ simulate_events(status *policy, server_info *sinfo,
 	cur_sim_time = (*calendar->current_time);
 
 	if (cmd == SIM_NEXT_EVENT) {
-		long t = 0;
-		if(arg != NULL)
+		long t = 1;
+		if(arg != NULL) {
 			t = *((long *) arg);
-		event_time = event->event_time + t;
+			if (t == 0)
+				t = 1;
+		}
+		/* t is the opt_backfill_fuzzy window.  In order to create more consistent estimates
+		 * shorten the first window to the next time boundary (e.g. if t=1hr and it
+		 * is now 12:31, the first window is 29m).  The subsequent windows will be the same.
+		 */
+		event_time = (event->event_time + t) / t * t;
 	}
 	else if (cmd == SIM_TIME)
 		event_time = *((time_t *) arg);
