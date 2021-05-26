@@ -141,7 +141,6 @@ extern char	*path_spool;
 extern char	*path_track;
 extern char	*path_prov_track;
 extern long	 new_log_event_mask;
-extern char	 server_host[];
 extern char	 server_name[];
 extern pbs_list_head svr_newjobs;
 extern pbs_list_head svr_allresvs;

@@ -75,6 +75,7 @@ enum srv_atr {
 };
 
 extern char *pbs_server_name;
+extern char server_host[];
 extern uint pbs_server_port_dis;
 extern void *svr_attr_idx;
 extern attribute_def svr_attr_def[];
