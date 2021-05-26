@@ -50,7 +50,7 @@ extern "C" {
 
 /* misc_utils specific */
 
-#define IS_EMPTY(str) (str && str[0] != '\0')
+#define IS_EMPTY(str) (!str || str[0] == '\0')
 
 /* replace - Replace sub-string  with new pattern in string */
 void replace(char *, char *, char *, char *);

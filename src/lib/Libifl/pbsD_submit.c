@@ -167,9 +167,11 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *dest, char *ext
 	int msvr = multi_svr_op(c);
 	svr_conn_t **svr_conns = get_conn_svr_instances(c);
 	int nsvr = get_num_servers();
-	int start = rand_num() % nsvr;
+	int rand = rand_num() % nsvr;
 	int ct;
+	int start = rand;
 	int i;
+	
 
 	/* initialize the thread context data, if not already initialized */
 	if ((pbs_errno = pbs_client_thread_init_thread_context()) != 0)
@@ -219,21 +221,22 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *dest, char *ext
 			extend = lextend;
 		} else
 			extend = EXTEND_OPT_IMPLICIT_COMMIT;
-	}	
+	}
 
-	if (msvr && IS_EMPTY(dest)) {
+	if (msvr && !IS_EMPTY(dest)) {
 		/* Reached here means job is submitted to non default queue */
 
 		/* Since this could be a reservation queue and reservation queues are not shared,
 		 * we try to find out which server this queue resides on
 		 */
 		if ((start = get_obj_location_hint(dest, MGR_OBJ_RESV)) == -1)
-			start = 0;
+			start = rand;
 	}
 	
 	/* Queue job with null string for job id
 	* attempt again with other instances if we get a queued limit error.
 	*/
+	rc = PBSE_NONE;
 	for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
 
 		if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP) {
@@ -243,14 +246,18 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *dest, char *ext
 
 		c = svr_conns[i]->sd;
 		return_jobid = PBSD_queuejob(c, "", dest, attrib, extend, PROT_TCP, NULL, &commit_done);
-		if (return_jobid)
+		if (return_jobid) {
+			pbs_errno = PBSE_NONE;
 			break;
-		else if (IS_EMPTY(dest) || (pbs_errno != PBSE_MAXQUED && pbs_errno != PBSE_ENTLIMCT && pbs_errno != PBSE_ENTLIMRESC))
-				goto error;
+		}
+		else if (rc == PBSE_NONE)
+			rc = pbs_errno;
 	}
 
-	if (!return_jobid)
+	if (!return_jobid) {
+		pbs_errno = rc;
 		goto error;
+	}
 
 	if (commit_done)
 		goto done;
