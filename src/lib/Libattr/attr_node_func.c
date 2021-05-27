@@ -525,10 +525,15 @@ encode_jobs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname,
 	for (psubn = pnode->nd_psn; psubn; psubn = psubn->next) {
 		for (jip = psubn->jobs; jip; jip = jip->next) {
 			jobcnt++;
+			/* msvr: space for remote job marker */
+			if (jip->remotejob)
+				strsize += 1;
+
 			/* add 3 to length of node name for slash, comma, and space */
 			/* plus one for the cpu index				   */
 			strsize += strlen(jip->jobid) + 4;
 			i = psubn->index;
+
 			/* now add additional space needed for the cpu index */
 			while ((i = i/10) != 0)
 				strsize++;
@@ -553,8 +558,11 @@ encode_jobs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname,
 			} else
 				i++;
 
-			sprintf(job_str + offset, "%s/%ld",
-				jip->jobid, psubn->index);
+			if (jip->remotejob)	/* For remote jobs, add 'r' prefix to the id */
+				sprintf(job_str + offset, "%c%s/%ld",
+					MSVR_REMOTE_JOB_MARKER, jip->jobid, psubn->index);
+			else
+				sprintf(job_str + offset, "%s/%ld", jip->jobid, psubn->index);
 			offset += strlen(jip->jobid) + 1;
 			j = psubn->index;
 			while ((j = j/10) != 0)

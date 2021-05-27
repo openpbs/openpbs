@@ -206,10 +206,11 @@ struct	prop {
 };
 
 struct	jobinfo {
-	char		*jobid;
-	int		has_cpu;
-	size_t		mem;
-	struct	jobinfo	*next;
+	char *jobid;
+	int has_cpu;
+	int remotejob;
+	size_t mem;
+	struct jobinfo *next;
 };
 
 struct	resvinfo {
@@ -443,7 +444,7 @@ extern	int	chk_vnode_pool(attribute *, void *, int);
 extern	void	free_pnode(struct pbsnode *);
 extern	int	save_nodes_db(int, void *);
 extern void	propagate_socket_licensing(mominfo_t *);
-extern void	update_jobs_on_node(char *, char *, int, int);
+extern void	update_jobs_on_node(char *, char *, int, int, int);
 extern int	mcast_add(mominfo_t *, int *, bool);
 void		stream_eof(int, int, char *);
 
@@ -508,6 +509,8 @@ int is_nattr_set(const struct pbsnode *pnode, int attr_idx);
 void free_nattr(struct pbsnode *pnode, int attr_idx);
 void clear_nattr(struct pbsnode *pnode, int attr_idx);
 void set_nattr_jinfo(struct pbsnode *pnode, int attr_idx, struct pbsnode *val);
+
+struct jobinfo *create_jobinfo(char *jobid, int has_cpu, int remotejob);
 
 #ifdef	__cplusplus
 }

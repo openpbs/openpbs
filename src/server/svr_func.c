@@ -240,7 +240,7 @@ encode_svrstate(const attribute *pattr, pbs_list_head *phead, char *atname, char
 
 /**
  * @brief
- * 		set_resc_assigned - updates server and/or queue resources_assigned
+ * 		set_resc_assigned - updates node, server and/or queue resources_assigned
  *		attribute depending on to what kind of object the first argument
  *		points and possibly on what value of "state" the object has
  *

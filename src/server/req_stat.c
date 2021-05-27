@@ -599,7 +599,6 @@ req_stat_node(struct batch_request *preq)
 		rc = status_node(pnode, preq, &preply->brp_un.brp_status);
 
 	} else {			/* get status of all nodes */
-	
 		for (i = 0; i < svr_totnodes; i++) {
 			pnode = pbsndlist[i];
 

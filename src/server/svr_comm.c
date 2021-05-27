@@ -58,7 +58,7 @@ static int mtfd_replyhello_psvr = -1;
 
 /**
  * @brief send a command using peer server protocol
- * 
+ *
  * @param[in] c - connection stream
  * @param[in] command - command which needs to be sent
  * @return int
@@ -425,7 +425,7 @@ end:
  *
  * @param[in] stream  - TPP stream on which the request is arriving
  * @param[in] version - Version of protocol.
- * 
+ *
  * @see is_request
  *
  * @return none

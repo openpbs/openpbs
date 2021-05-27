@@ -1613,17 +1613,16 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 	}
 
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
-		if (ninfo_arr[i]->jobs != NULL) {
-			/* If there are no running jobs in the list and node reports a running job,
-			 * mark that the node has ghost job
-			 */
-			if (size == 0 && (flags & DETECT_GHOST_JOBS)) {
-				ninfo_arr[i]->has_ghost_job = 1;
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo_arr[i]->name,
-					  "Jobs reported running on node no longer exists or are not in running state");
-			}
+		int count_ghost_jobs = 0;
 
+		if (ninfo_arr[i]->jobs != NULL) {
 			for (j = 0, k = 0; ninfo_arr[i]->jobs[j] != NULL && k < size; j++) {
+				/* If one/more servers is down, jobs from down servers consuming resources on other servers'
+				 * nodes should not be considered as ghost jobs. So, disqualify any remote jobs on a node.
+				 */
+				if (part_tolerance && ninfo_arr[i]->jobs[j][0] == MSVR_REMOTE_JOB_MARKER)
+					continue;
+
 				/* jobs are in the format of node_name/sub_node.  We don't care about
 				 * the subnode... we just want to populate the jobs on our node
 				 * structure

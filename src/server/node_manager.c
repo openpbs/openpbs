@@ -2982,13 +2982,13 @@ mark_nodes_unknown(int all)
 }
 
 /**
- * @brief The TPP multicast version for server -> mom.
+ * @brief The TPP multicast version for server -> mom, or server -> server for multi-server
  *
  * @param[in] pmom - The mom to ping
  * @param[in] mtfd - The TPP channel to add moms for multicasting.
  * @param[in] unique - Ensure only unique values are added.
- * 
- * 
+ *
+ *
  * @return int
  * @retval 0: success
  * @retval !0: failure
@@ -6182,11 +6182,13 @@ which_parent_mom(pbsnode *pnode, mominfo_t *pcur_mom)
  * @param[in] jobid - job id going to land on the node
  * @param[in] svr_init - happens during server initialization?
  * @param[in] share_job - job sharing type
- * @return int 
+ * @param[in] remotejob - is the job on a different server?
+ * @return int
  * @reval PBSE_* : for failure
  */
 static int
-assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr_init, int share_job)
+assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr_init,
+		       int share_job, int remotejob)
 {
 	struct pbssubn *snp;
 	struct jobinfo *jp;
@@ -6208,17 +6210,12 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 	snp = pnode->nd_psn;
 	if (hw_ncpus == 0) {
 		/* setup jobinfo struture */
-		jp = (struct jobinfo *) malloc(sizeof(struct jobinfo));
+		jp = create_jobinfo(jobid, 0, remotejob);	/* has no cpus allocatted */
 		if (jp) {
 			jp->next = snp->jobs;
-			jp->has_cpu = 0; /* has no cpus allocatted */
 			snp->jobs = jp;
-			jp->jobid = strdup(jobid);
-			if (!jp->jobid)
-				rc = PBSE_SYSTEM;
 		} else
 			rc = PBSE_SYSTEM;
-
 	} else {
 		struct pbssubn *lst_sn;
 		int ncpus;
@@ -6264,21 +6261,14 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 			}
 
 			/* setup jobinfo struture */
-			jp = (struct jobinfo *) malloc(sizeof(struct jobinfo));
+			jp = create_jobinfo(jobid, 1, remotejob);
 			if (jp) {
 				jp->next = snp->jobs;
-				jp->has_cpu = 1; /* has a cpu allocatted */
 				snp->jobs = jp;
-				jp->jobid = strdup(jobid);
-				if (!jp->jobid) {
-					rc = PBSE_SYSTEM;
-					goto end;
-				}
 			} else {
 				rc = PBSE_SYSTEM;
 				goto end;
 			}
-
 			DBPRT(("set_node: node: %s/%ld to job %s, still free: %ld\n",
 			       pnode->nd_name, snp->index, jobid,
 			       pnode->nd_nsnfree))
@@ -6814,7 +6804,8 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				/* No need to add suspended job to jobinfo structure and assign CPU slots to it*/
 				break;
 
-			rc = assign_jobs_on_subnode(pnode, (phowl+i)->hw_ncpus, pjob->ji_qs.ji_jobid, svr_init, share_job);
+			rc = assign_jobs_on_subnode(pnode, (phowl + i)->hw_ncpus, pjob->ji_qs.ji_jobid,
+						    svr_init, share_job, 0);
 			if (rc != PBSE_NONE)
 				goto end;
 
@@ -7224,7 +7215,7 @@ adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, 
 	/* find the node */
 
 	pnode = find_nodebyname(noden);
-	if (pnode == NULL) {
+	if (pnode == NULL) {	/* Check if node exists on another multi-server instance */
 		if (pjob) {
 			pnode = find_alien_node(noden);
 			if (pnode) {
@@ -7232,7 +7223,6 @@ adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, 
 			} else
 				return PBSE_UNKOBJ;
 		}
-
 		return PBSE_UNKNODE;
 	}
 
@@ -8083,14 +8073,15 @@ update_node_rassn(attribute *pexech, enum batch_op op)
 /**
  * @brief update the jid on the respective nodes in the execvnode string
  * and update the state based on share_job value
- * 
+ *
  * @param[in] jid - job id
  * @param[in] exec_vnode - execvnode string
  * @param[in] op - operation INCR/DECR
  * @param[in] share_job - job sharing type
+ * @param[in] remotejob  - is the update for a job owned by another server?
  */
 void
-update_jobs_on_node(char *jid, char *exec_vnode, int op, int share_job)
+update_jobs_on_node(char *jid, char *exec_vnode, int op, int share_job, int remotejob)
 {
 	char *chunk;
 	int j;
@@ -8124,7 +8115,7 @@ update_jobs_on_node(char *jid, char *exec_vnode, int op, int share_job)
 						ncpus = 0;
 					}
 					if (op == INCR) {
-						assign_jobs_on_subnode(pnode, ncpus, jid, 0, share_job);
+						assign_jobs_on_subnode(pnode, ncpus, jid, 0, share_job, remotejob);
 						update_node_state(pnode, share_job);
 					} else if (op == DECR)
 						deallocate_job_from_node(jid, pnode);
@@ -8202,4 +8193,35 @@ long determine_resv_retry(resc_resv *presv)
 		retry = time_now + resv_retry_time;
 
 	return retry;
+}
+
+/**
+ * @brief	Constructor for struct jobinfo
+ *
+ * @param[in]	jobid - id of the job
+ * @param[in]	has_cpu - 'has_cpu' bit value
+ * @param[in]	remotejob - 'remotejob' bit value
+ *
+ * @return struct jobinfo*
+ * @retval newly allocated jobinfo struct
+ * @retval NULL for any errors
+ */
+struct jobinfo *
+create_jobinfo(char *jobid, int has_cpu, int remotejob)
+{
+	struct jobinfo *jp = NULL;
+
+	jp = (struct jobinfo *) malloc(sizeof(struct jobinfo));
+	if (jp == NULL)
+		return NULL;
+
+	jp->has_cpu = has_cpu;
+	jp->remotejob = remotejob;
+	jp->jobid = strdup(jobid);
+	if (jp->jobid == NULL) {
+		free(jp);
+		return NULL;
+	}
+
+	return jp;
 }

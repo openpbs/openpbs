@@ -108,9 +108,7 @@ get_peersvr_from_svrid(char *sv_id)
 			 "Failed to parse server instance id %s", sv_id);
 
 	for (psvr = GET_NEXT(peersvrl); psvr; psvr = GET_NEXT(psvr->mi_link)) {
-		
-		if (is_same_host(psi.name, psvr->mi_host) &&
-		    psi.port == psvr->mi_port)
+		if (is_same_host(psi.name, psvr->mi_host) && psi.port == psvr->mi_port)
 			return psvr;
 	}
 
@@ -355,7 +353,7 @@ free_psvr_ru(psvr_ru_t *ru_head)
  * @param[in] op - operation performed - INCR/DECR
  * @param[in] exec_vnode - exec_vnode string
  * @param[in] broadcast - whether request needs to be broadcasted
- * @return psvr_ru_t* 
+ * @return psvr_ru_t*
  * @retval NULL - on failure
  */
 psvr_ru_t *
@@ -388,11 +386,11 @@ err:
 
 /**
  * @brief reverse any resource update in the resource usage list
- * 
+ *
  * This happens when we receive a full update from one of the peer server.
- * We need to reverse any udate from that server before applying
+ * We need to reverse any update from that server before applying
  * to avoid duplicate updates.
- * 
+ *
  * @param[in] ru_head - head of the resource update object list
  */
 static void
@@ -405,7 +403,7 @@ reverse_resc_update(psvr_ru_t *ru_head)
 	     ru_cur = GET_NEXT(ru_cur->ru_link)) {
 		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, ru_cur->jobid,
 			   "Reversing resc update op=%d, execvnode=%s", ru_cur->op, ru_cur->execvnode);
-		update_jobs_on_node(ru_cur->jobid, ru_cur->execvnode, DECR, ru_cur->share_job);
+		update_jobs_on_node(ru_cur->jobid, ru_cur->execvnode, DECR, ru_cur->share_job, 0);
 		job_attr_def[JOB_ATR_exec_vnode].at_decode(&pexech, job_attr_def[JOB_ATR_exec_vnode].at_name, NULL, ru_cur->execvnode);
 		update_node_rassn(&pexech, DECR);
 	}
@@ -806,7 +804,7 @@ save_resc_update(void *pobj, psvr_ru_t *ru_new)
 
 /**
  * @brief handler for resource update from a peer server
- * 
+ *
  * @param[in] stream - connection stream
  * @param[in] ru_head - head of resource update list
  * @param[in,out] psvr - peer server object
@@ -833,7 +831,7 @@ req_resc_update(int stream, pbs_list_head *ru_head, void *psvr)
 		if (rc == PBSE_DUPRESC)
 			continue;
 
-		update_jobs_on_node(ru_cur->jobid, ru_cur->execvnode, ru_cur->op, ru_cur->share_job);
+		update_jobs_on_node(ru_cur->jobid, ru_cur->execvnode, ru_cur->op, ru_cur->share_job, 1);
 		job_attr_def[JOB_ATR_exec_vnode].at_decode(&pexech, job_attr_def[JOB_ATR_exec_vnode].at_name,
 							   NULL, ru_cur->execvnode);
 		update_node_rassn(&pexech, ru_cur->op);
@@ -920,7 +918,7 @@ open_ps_mtfd(void)
 /**
  * @brief multicast single job's resource usage
  * to all peer servers
- * 
+ *
  * @param[in] psvr_ru - resource usage structure
  * @param[in] mtfd - mutlicast fd
  */
