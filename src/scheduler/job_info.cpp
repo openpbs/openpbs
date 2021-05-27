@@ -1255,6 +1255,8 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				resresv->job->is_susp_sched = 1;
 			if (!strcmp(attrp->value, PROVISIONING_SUBSTATE))
 				resresv->job->is_provisioning = 1;
+			if (!strcmp(attrp->value, PRERUNNING_SUBSTATE))
+				resresv->job->is_prerunning = 1;
 		}
 		else if (!strcmp(attrp->name, ATTR_sched_preempted)) {
 			count = strtol(attrp->value, &endp, 10);
@@ -1403,7 +1405,6 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 
 		attrp = attrp->next;
 	}
-
 	return resresv;
 }
 
@@ -1449,6 +1450,7 @@ new_job_info()
 
 	jinfo->is_provisioning = 0;
 	jinfo->is_preempted = 0;
+	jinfo->is_prerunning = 0;
 
 	jinfo->job_name = NULL;
 	jinfo->comment = NULL;
