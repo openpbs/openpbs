@@ -152,7 +152,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         """
         submit a job with a script and executable
         """
-        cmd = [self.qsub_cmd, self.fn, '--', self.mom.sleep_cmd,'10']
+        cmd = [self.qsub_cmd, self.fn, '--', self.mom.sleep_cmd, '10']
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
         failed = rv['rc'] == 2 and rv['err'][0].split(' ')[0] == 'usage:'
         self.assertTrue(failed, 'qsub should have failed, but did not fail')
