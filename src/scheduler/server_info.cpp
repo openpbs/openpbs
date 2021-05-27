@@ -2056,7 +2056,7 @@ int
 check_run_job(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL)
-		if ((job->job->is_running == 1 && (job->job->is_prerunning != 1))
+		if ((job->job->is_running == 1) && (job->job->is_prerunning != 1))
 			return 1;
 
 	return 0;

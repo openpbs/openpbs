@@ -2736,6 +2736,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->is_susp_sched = ojinfo->is_susp_sched;
 	njinfo->is_array = ojinfo->is_array;
 	njinfo->is_subjob = ojinfo->is_subjob;
+	njinfo->is_prerunning = ojinfo->is_prerunning;
 	njinfo->can_not_preempt = ojinfo->can_not_preempt;
 	njinfo->topjob_ineligible = ojinfo->topjob_ineligible;
 	njinfo->is_checkpointed = ojinfo->is_checkpointed;
