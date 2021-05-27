@@ -198,6 +198,7 @@ exit 1
         """
         self.submit_and_preempt_jobs(preempt_order='R')
 
+    @skipOnCpuSet
     def test_preempt_requeue_exclhost(self):
         """
         Test that a job is preempted by requeue on node
