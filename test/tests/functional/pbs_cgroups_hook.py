@@ -4770,7 +4770,7 @@ sleep 300
         # N is the number of 'cpu cores' per M. and P being the
         # number of hyperthreads per core.
         njobs = len(phys) * cores * hyperthreads_per_core
-        if njobs > 64:
+        if njobs > 100:
             self.skipTest("too many jobs (%d) to submit" % njobs)
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
