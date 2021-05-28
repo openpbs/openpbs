@@ -5235,7 +5235,7 @@ sleep 300
         a = {'Resource_List.select':
              "1:ncpus=1:host=%s" % self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
