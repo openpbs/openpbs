@@ -5210,21 +5210,52 @@ sleep 300
 
         self.load_config(self.cfg17)
 
-        self.du.mkdir(hostname=self.hosts_list[0],
-                      path='/dev/tstm', mode=0o0755, sudo=True)
-        self.du.run_cmd(self.hosts_list[0],
-                        ['mount', '-t', 'cgroup', '-o',
-                         'rw,nosuid,nodev,noexec,relatime,seclabel,memory',
-                         'cgroup', '/dev/tstm'],
-                        sudo=True)
+        dir_created = self.du.mkdir(hostname=self.hosts_list[0],
+                                    path='/dev/tstm', mode=0o0755,
+                                    sudo=True)
+        if not dir_created:
+            self.skipTest('not able to create /dev/tstm')
+        result = self.du.run_cmd(self.hosts_list[0],
+                                 ['mount', '-t', 'cgroup', '-o',
+                                  'rw,nosuid,nodev,noexec,relatime,seclabel,'
+                                  'memory',
+                                  'cgroup', '/dev/tstm'],
+                                 sudo=True)
+        if result['rc'] != 0:
+            self.du.run_cmd(self.hosts_list[0],
+                            ['rmdir', '/dev/tstm'],
+                            sudo=True)
+            self.skipTest('not able to mount /dev/tstm')
 
-        self.du.mkdir(hostname=self.hosts_list[0],
-                      path='/dev/tstc', mode=0o0755, sudo=True)
-        self.du.run_cmd(self.hosts_list[0],
-                        ['mount', '-t', 'cgroup', '-o',
-                         'rw,nosuid,nodev,noexec,relatime,seclabel,cpuset',
-                         'cgroup', '/dev/tstc'],
-                        sudo=True)
+        dir_created = self.du.mkdir(hostname=self.hosts_list[0],
+                                    path='/dev/tstc', mode=0o0755,
+                                    sudo=True)
+        if not dir_created:
+            self.du.run_cmd(self.hosts_list[0],
+                            ['umount', '/dev/tstm'],
+                            sudo=True)
+            self.du.run_cmd(self.hosts_list[0],
+                            ['rmdir', '/dev/tstm'],
+                            sudo=True)
+            self.skipTest('not able to create /dev/tstc')
+
+        result = self.du.run_cmd(self.hosts_list[0],
+                                 ['mount', '-t', 'cgroup', '-o',
+                                  'rw,nosuid,nodev,noexec,relatime,seclabel,'
+                                  'cpuset',
+                                  'cgroup', '/dev/tstc'],
+                                 sudo=True)
+        if result['rc'] != 0:
+            self.du.run_cmd(self.hosts_list[0],
+                            ['umount', '/dev/tstm'],
+                            sudo=True)
+            self.du.run_cmd(self.hosts_list[0],
+                            ['rmdir', '/dev/tstm'],
+                            sudo=True)
+            self.du.run_cmd(self.hosts_list[0],
+                            ['rmdir', '/dev/tstc'],
+                            sudo=True)
+            self.skipTest('not able to mount /dev/tstc')
 
         # sleep 2s: make sure no old log lines will match 'begin' time
         time.sleep(2)
