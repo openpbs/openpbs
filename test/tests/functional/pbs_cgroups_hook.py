@@ -2618,7 +2618,7 @@ if %s e.job.in_ms_mom():
         # Submit M jobs N cpus wide, where M is the amount of physical
         # processors and N is number of 'cpu cores' per M. Expect them to run.
         njobs = phys
-        if njobs > 64:
+        if njobs > 100:
             self.skipTest("too many jobs (%d) to submit" % njobs)
         a = {'Resource_List.select': '1:ncpus=%s:mem=300mb:host=%s' %
              (cores, self.hosts_list[0]), ATTR_N: name + 'a'}
