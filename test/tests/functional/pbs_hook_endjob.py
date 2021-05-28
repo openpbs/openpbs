@@ -93,13 +93,16 @@ def endjob_hook(hook_func_name):
 @tags('hooks')
 class TestHookEndJob(TestFunctional):
     node_cpu_count = 4
+    job_default_nchunks = 1
+    job_default_ncpus = 1
     job_array_num_subjobs = node_cpu_count
     job_time_success = 5
+    job_time_rerun = 10
     job_time_qdel = 120
     resv_start_delay = 20
     resv_duration = job_time_qdel + 60
 
-    node_fail_timeout = 10
+    node_fail_timeout = 15
     job_requeue_timeout = 1
     resv_retry_time = 5
 
@@ -115,24 +118,27 @@ class TestHookEndJob(TestFunctional):
         self.started_job_ids = set()
         self.deleted_job_ids = set()
         self.failed_job_ids = set()
+        self.array_job_requeued = False
         self.resv_id = None
         self.resv_queue = None
         self.resv_start_time = None
         self.scheduling_enabled = True
+        self.node_count = len(self.server.moms)
         self.hook_name = test_body_func.__name__
 
-        self.logger.info("**************** HOOK START ****************")
+        self.logger.info("**************** HOOK TEST START ****************")
 
         a = {
             'resources_available.ncpus': self.node_cpu_count,
         }
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        for mom in self.moms:
+            self.server.manager(MGR_CMD_SET, NODE, a, mom)
 
-        attrs = {
+        a = {
             'event': 'endjob',
             'enabled': 'True',
         }
-        ret = self.server.create_hook(self.hook_name, attrs)
+        ret = self.server.create_hook(self.hook_name, a)
         self.assertEqual(
             ret, True, "Could not create hook %s" % self.hook_name)
 
@@ -160,7 +166,7 @@ class TestHookEndJob(TestFunctional):
         ret = self.server.delete_hook(self.hook_name)
         self.assertEqual(
             ret, True, "Could not delete hook %s" % self.hook_name)
-        self.logger.info("**************** HOOK END ****************")
+        self.logger.info("**************** HOOK TEST END ****************")
 
     def check_log_for_endjob_hook_messages(self):
         """
@@ -169,30 +175,42 @@ class TestHookEndJob(TestFunctional):
         thus insuring that the endjob hook has run for those jobs.
         """
         for jid in [self.job_id] + self.subjob_ids:
-            msg_logged = jid in self.started_job_ids
+            job_ended = jid in self.started_job_ids and \
+                not (self.array_job_requeued and jid == self.job_id)
             self.server.log_match(
                 '%s;endjob hook started for test %s' % (jid, self.hook_name),
                 starttime=self.log_start_time, n='ALL', max_attempts=1,
-                existence=msg_logged)
+                existence=job_ended)
             self.server.log_match(
                 '%s;endjob hook, resv:%s' % (jid, self.resv_queue or "(None)"),
                 starttime=self.log_start_time, n='ALL', max_attempts=1,
-                existence=msg_logged)
+                existence=job_ended)
             self.server.log_match(
                 '%s;endjob hook finished for test %s' % (jid, self.hook_name),
                 starttime=self.log_start_time, n='ALL', max_attempts=1,
-                existence=msg_logged)
-            # remove any jobs that didn't result in a log match failure from
-            # the list of started and deleted jobs.  at this point, the should
-            # no longer exist and thus are irrelevant in either set.
-            self.started_job_ids.discard(jid)
-            self.deleted_job_ids.discard(jid)
+                existence=job_ended)
+            # remove any jobs that ended from the list of started and deleted
+            # jobs.  at this point, they should no longer exist and thus are
+            # irrelevant in either set.
+            if job_ended:
+                self.started_job_ids.discard(jid)
+                self.deleted_job_ids.discard(jid)
         # reset the start time so that searches on requeued jobs don't match
         # state or log messages prior to the current search.
         self.log_start_time = int(time.time())
+        self.array_job_requeued = False
 
-    def job_submit(self, job_sleep_time=job_time_success, job_attrs={}):
-        self.job = Job(TEST_USER, attrs=job_attrs)
+    def job_submit(
+            self,
+            nchunks=job_default_nchunks,
+            ncpus=job_default_ncpus,
+            job_sleep_time=job_time_success,
+            job_attrs={}):
+        a = {
+            'Resource_List.select': str(nchunks) + ':ncpus=' + str(ncpus),
+        }
+        a.update(job_attrs)
+        self.job = Job(TEST_USER, attrs=a)
         self.job.set_sleep_time(job_sleep_time)
         self.job_id = self.server.submit(self.job)
 
@@ -258,16 +276,19 @@ class TestHookEndJob(TestFunctional):
     def job_array_submit(
             self,
             job_sleep_time=job_time_success,
-            avail_ncpus=job_array_num_subjobs,
             subjob_count=job_array_num_subjobs,
-            subjob_ncpus=1,
+            subjob_nchunks=job_default_nchunks,
+            subjob_ncpus=job_default_ncpus,
             job_attrs={}):
         a = {
             ATTR_J: '0-' + str(subjob_count - 1),
-            'Resource_List.select': '1:ncpus=' + str(subjob_ncpus),
         }
         a.update(job_attrs)
-        self.job_submit(job_sleep_time, job_attrs=a)
+        self.job_submit(
+            nchunks=subjob_nchunks,
+            ncpus=subjob_ncpus,
+            job_sleep_time=job_sleep_time,
+            job_attrs=a)
 
         self.subjob_count = subjob_count
         self.subjob_ids = [
@@ -276,17 +297,27 @@ class TestHookEndJob(TestFunctional):
 
     def job_array_requeue(self, force=False):
         self.job_requeue(force=force)
-        # remove job array id from the list of started because a requeue
-        # should not cause the endjob hook to be run for the array job.
-        self.started_job_ids.discard(self.job_id)
+        # a rerun of an array job should not cause the endjob hook to be run
+        # for the array job itself, so flag the array job as having been
+        # requeued.
+        self.array_job_requeued = True
 
     def job_array_delete(self, force=False):
         self.job_delete(force=force)
-        # all subjobs should have been deleted
-        self.deleted_job_ids = set([self.job_id]).union(self.subjob_ids)
+        # all subjobs should have been deleted.  this method does assume that
+        # all started jobs were still running at the time the delete of the
+        # array was issued.
+        self.deleted_job_ids.update(self.subjob_ids)
+        # XXX: how should subjobs be tagged (deleted/failed/etc.) if the
+        # deletion of the job array fails?  if the deletion fails, should the
+        # subjobs be added to the failed_job_ids set as well?  with the
+        # existing tests, this is not currently an issue, but could become one.
 
     def job_array_verify_queued(self, first_subjob=0, num_subjobs=None):
-        self.server.expect(JOB, {'job_state': 'Q'}, self.job_id)
+        if self.job_id in self.started_job_ids:
+            self.server.expect(JOB, {'job_state': 'B'}, self.job_id)
+        else:
+            self.server.expect(JOB, {'job_state': 'Q'}, self.job_id)
         jids = self.subjob_ids[first_subjob:num_subjobs]
         for jid in jids:
             self.job_verify_queued(job_id=jid)
@@ -370,7 +401,7 @@ class TestHookEndJob(TestFunctional):
 
             a = {ATTR_queue: self.resv_queue}
             self.job_array_submit(
-                subjob_ncpus=int(self.node_cpu_count/2), job_attrs=a)
+                subjob_ncpus=self.node_cpu_count//2, job_attrs=a)
 
             self.resv_verify_started()
 
@@ -385,7 +416,7 @@ class TestHookEndJob(TestFunctional):
         executed for both runs.
         """
         def endjob_rerun_single_job():
-            self.job_submit()
+            self.job_submit(job_sleep_time=self.job_time_rerun)
             self.job_verify_started()
             self.job_requeue()
             self.job_verify_queued()
@@ -401,7 +432,7 @@ class TestHookEndJob(TestFunctional):
         hook is executed for both runs.
         """
         def endjob_force_rerun_single_job():
-            self.job_submit()
+            self.job_submit(job_sleep_time=self.job_time_rerun)
             self.job_verify_started()
             self.job_requeue(force=True)
             self.job_verify_queued()
@@ -418,7 +449,7 @@ class TestHookEndJob(TestFunctional):
         runs.
         """
         def endjob_rerun_single_job_no_mom():
-            self.job_submit()
+            self.job_submit(job_sleep_time=self.job_time_rerun)
             self.job_verify_started()
             self.mom.stop()
             self.job_requeue()
@@ -437,7 +468,7 @@ class TestHookEndJob(TestFunctional):
         both runs.
         """
         def endjob_force_rerun_single_job_no_mom():
-            self.job_submit()
+            self.job_submit(job_sleep_time=self.job_time_rerun)
             self.job_verify_started()
             self.mom.stop()
             self.job_requeue(force=True)
@@ -455,7 +486,7 @@ class TestHookEndJob(TestFunctional):
         that the end job hook is only executed once.
         """
         def endjob_rerun_and_delete_single_job():
-            self.job_submit()
+            self.job_submit(job_sleep_time=self.job_time_rerun)
             self.job_verify_started()
             self.job_requeue()
             self.job_verify_queued()
@@ -471,7 +502,7 @@ class TestHookEndJob(TestFunctional):
         Verify that the end job hook is only executed once.
         """
         def endjob_rerun_and_force_delete_single_job():
-            self.job_submit()
+            self.job_submit(job_sleep_time=self.job_time_rerun)
             self.job_verify_started()
             self.job_requeue()
             self.job_verify_queued()
@@ -487,7 +518,7 @@ class TestHookEndJob(TestFunctional):
         executed for all subjob on both runs and only once for the array job.
         """
         def endjob_rerun_array_job():
-            self.job_array_submit()
+            self.job_array_submit(job_sleep_time=self.job_time_rerun)
             self.job_array_verify_started()
             self.job_array_requeue()
             self.job_array_verify_queued()
@@ -504,7 +535,7 @@ class TestHookEndJob(TestFunctional):
         array job.
         """
         def endjob_force_rerun_array_job():
-            self.job_array_submit()
+            self.job_array_submit(job_sleep_time=self.job_time_rerun)
             self.job_array_verify_started()
             self.job_array_requeue(force=True)
             self.job_array_verify_queued()
@@ -521,7 +552,7 @@ class TestHookEndJob(TestFunctional):
         runs.
         """
         def endjob_rerun_array_job_no_mom():
-            self.job_array_submit()
+            self.job_array_submit(job_sleep_time=self.job_time_rerun)
             self.job_array_verify_started()
             self.mom.stop()
             self.job_array_requeue()
@@ -540,7 +571,7 @@ class TestHookEndJob(TestFunctional):
         both runs.
         """
         def endjob_force_rerun_array_job_no_mom():
-            self.job_array_submit()
+            self.job_array_submit(job_sleep_time=self.job_time_rerun)
             self.job_array_verify_started()
             self.mom.stop()
             self.job_array_requeue(force=True)
@@ -559,16 +590,18 @@ class TestHookEndJob(TestFunctional):
         job array.
         """
         def endjob_rerun_and_delete_array_job():
-            self.job_array_submit()
+            self.job_array_submit(job_sleep_time=self.job_time_rerun)
             self.job_array_verify_started()
             self.job_array_requeue()
             self.job_array_verify_queued()
-            self.job_delete()
             self.check_log_for_endjob_hook_messages()
+            self.job_array_delete()
             self.job_array_verify_ended()
 
         self.run_test_func(endjob_rerun_and_delete_array_job)
 
+    # FIXME: force delete of a started array job should cause the end-job hook
+    # to be run but currently does not.
     def test_hook_endjob_rerun_and_force_delete_array_job(self):
         """
         Start an array job, issue a rerun and immediately force delete it.
@@ -576,12 +609,12 @@ class TestHookEndJob(TestFunctional):
         the job array.
         """
         def rerun_and_force_delete_array_job():
-            self.job_array_submit()
+            self.job_array_submit(job_sleep_time=self.job_time_rerun)
             self.job_array_verify_started()
             self.job_array_requeue()
             self.job_array_verify_queued()
-            self.job_delete(force=True)
             self.check_log_for_endjob_hook_messages()
+            self.job_array_delete(force=True)
             self.job_array_verify_ended()
 
         self.run_test_func(rerun_and_force_delete_array_job)
@@ -656,6 +689,8 @@ class TestHookEndJob(TestFunctional):
 
         self.run_test_func(endjob_delete_running_array_job)
 
+    # FIXME: force delete of a started array job should cause the end-job hook
+    # to be run but currently does not.
     def test_hook_endjob_force_delete_running_array_job(self):
         """
         Run an array job, where all jobs get started but also force deleted
@@ -670,6 +705,16 @@ class TestHookEndJob(TestFunctional):
 
         self.run_test_func(endjob_delete_running_array_job)
 
+    # FIXME: this test current causes qdel of the array job to hang, the test
+    # to timeout and qdel to eventually terminate with a segmentation fault.
+    #
+    #     Program terminated with signal 11, Segmentation fault.
+    #     #0  0x000000000040b8b9 in recv_deljob (fd=3) at /home/pbsdev/...
+    #         pbs/source/src/lib/Libpbs/../Libifl/pbsD_deljoblist.c:301
+    #     301    else if (reply->brp_choice != BATCH_REPLY_CHOICE_NULL &&
+    #
+    # this may be reproducible with a script and possibly filed as a issue
+    # against the master branch independent of the end-job hook additions.
     def test_hook_endjob_delete_running_array_job_no_mom(self):
         """
         Run an array job, but delete it after disabling the MOM and before the
@@ -685,6 +730,8 @@ class TestHookEndJob(TestFunctional):
 
         self.run_test_func(endjob_delete_running_array_job_no_mom)
 
+    # FIXME: force delete of a started array job should cause the end-job hook
+    # to be run but currently does not.
     def test_hook_endjob_force_delete_running_array_job_no_mom(self):
         """
         Run an array job, but force delete it after disabling the MOM and
@@ -708,10 +755,10 @@ class TestHookEndJob(TestFunctional):
         """
         def endjob_delete_partial_running_array_job():
             self.job_array_submit(
-                subjob_count=6,
-                job_sleep_time=self.job_time_qdel,
-                subjob_ncpus=int(self.node_cpu_count/2))
-            self.job_array_verify_started(num_subjobs=2)
+                subjob_count=self.node_count*4,
+                subjob_ncpus=self.node_cpu_count//2,
+                job_sleep_time=self.job_time_qdel)
+            self.job_array_verify_started(num_subjobs=self.node_count*2)
             self.job_array_delete()
             self.job_array_verify_ended()
 
@@ -726,7 +773,7 @@ class TestHookEndJob(TestFunctional):
         def endjob_delete_subjobs_from_running_array_job():
             self.job_array_submit(job_sleep_time=self.job_time_qdel)
             self.job_array_verify_started()
-            for jid in self.subjob_ids[0:1]:
+            for jid in self.subjob_ids:
                 self.job_delete(jid)
             self.job_array_verify_ended()
 
@@ -740,17 +787,18 @@ class TestHookEndJob(TestFunctional):
         """
         def endjob_delete_subjobs_from_partial_running_array_job():
             self.job_array_submit(
-                subjob_count=6,
-                job_sleep_time=self.job_time_qdel,
-                subjob_ncpus=int(self.node_cpu_count/2))
-            self.job_array_verify_started(num_subjobs=2)
+                subjob_count=self.node_count*4,
+                subjob_ncpus=self.node_cpu_count//2,
+                job_sleep_time=self.job_time_qdel)
+            self.job_array_verify_started(num_subjobs=self.node_count*2)
             # delete subjobs in the reverse order so as to prevent additional
             # subjobs from starting
             for jid in self.subjob_ids[::-1]:
                 self.job_delete(jid)
             self.job_array_verify_ended()
 
-        self.run_test_func(endjob_delete_subjobs_from_partial_running_array_job)
+        self.run_test_func(
+            endjob_delete_subjobs_from_partial_running_array_job)
 
     def test_hook_endjob_delete_unstarted_single_job(self):
         """
@@ -758,27 +806,29 @@ class TestHookEndJob(TestFunctional):
         job hook is not executed.
         """
         def endjob_delete_unstarted_single_job():
-            ncpus = self.node_cpu_count * 10
-            a = {
-                'Resource_List.select': '1:ncpus=' + str(ncpus),
-            }
-            self.job_submit(job_sleep_time=self.job_time_qdel, job_attrs=a)
+            self.job_submit(
+                nchunks=self.node_count*self.node_cpu_count*2,
+                ncpus=1,
+                job_sleep_time=self.job_time_qdel)
             self.job_verify_queued()
             self.job_delete()
-            self.check_log_for_endjob_hook_messages()
+            self.job_verify_ended()
 
         self.run_test_func(endjob_delete_unstarted_single_job)
 
     def test_hook_endjob_force_delete_unstarted_single_job(self):
         """
-        Run a single job, but force delete before it starts.  Verify that the end
-        job hook is not executed.
+        Run a single job, but force delete before it starts.  Verify that the
+        end job hook is not executed.
         """
         def endjob_force_delete_unstarted_single_job():
-            self.job_submit(job_sleep_time=self.job_time_qdel)
+            self.job_submit(
+                nchunks=self.node_count*self.node_cpu_count*2,
+                ncpus=1,
+                job_sleep_time=self.job_time_qdel)
             self.job_verify_queued()
             self.job_delete(force=True)
-            self.check_log_for_endjob_hook_messages()
+            self.job_verify_ended()
 
         self.run_test_func(endjob_force_delete_unstarted_single_job)
 
@@ -789,36 +839,37 @@ class TestHookEndJob(TestFunctional):
         """
         def endjob_delete_unstarted_array_job():
             self.job_array_submit(
-                subjob_count=6,
-                job_sleep_time=self.job_time_qdel,
-                subjob_ncpus=int(self.node_cpu_count*10))
+                subjob_nchunks=self.node_count*self.node_cpu_count*2,
+                subjob_ncpus=1,
+                job_sleep_time=self.job_time_qdel)
+            self.job_array_verify_queued()
             self.job_array_delete()
-            self.check_log_for_endjob_hook_messages()
+            self.job_array_verify_ended()
 
         self.run_test_func(endjob_delete_unstarted_array_job)
 
     def test_hook_endjob_force_delete_unstarted_array_job(self):
         """
-        Run an array job, but force delete before it starts.  Verify that the end
-        job hook is not executed.
+        Run an array job, but force delete before it starts.  Verify that the
+        end job hook is not executed.
         """
         def endjob_delete_unstarted_array_job():
             self.job_array_submit(
-                subjob_count=6,
-                job_sleep_time=self.job_time_qdel,
-                subjob_ncpus=int(self.node_cpu_count*10))
+                subjob_nchunks=self.node_count*self.node_cpu_count*2,
+                subjob_ncpus=1,
+                job_sleep_time=self.job_time_qdel)
             self.job_array_verify_queued()
             self.job_array_delete(force=True)
-            self.check_log_for_endjob_hook_messages()
+            self.job_array_verify_ended()
 
         self.run_test_func(endjob_delete_unstarted_array_job)
 
- #   def test_hook_endjob_force_delete_while_provisioning_single_job(self):
-        # TODO: add code and description, or remove
-        # endjob hook should not be called
- #       pass
+    # def test_hook_endjob_force_delete_while_provisioning_single_job(self):
+    #     # TODO: add code and description, or remove
+    #     # endjob hook should not be called
+    #     pass
 
- #   def test_hook_endjob_force_delete_while_provisioning_array_job(self):
-        # TODO: add code and description, or remove
-        # endjob hook should not be called
- #       pass
+    # def test_hook_endjob_force_delete_while_provisioning_array_job(self):
+    #     # TODO: add code and description, or remove
+    #     # endjob hook should not be called
+    #     pass
