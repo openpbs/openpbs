@@ -4776,6 +4776,9 @@ sleep 300
              self.hosts_list[0], ATTR_N: name + 'a'}
         for _ in range(njobs):
             j = Job(TEST_USER, attrs=a)
+            # make sure this stays around for an hour
+            # (or until deleted in teardown)
+            j.set_sleep_time(3600)
             jid = self.server.submit(j)
             a1 = {'job_state': 'R'}
             self.server.expect(JOB, a1, jid)
