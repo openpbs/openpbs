@@ -1767,9 +1767,13 @@ if %s e.job.in_ms_mom():
         events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
                   'execjob_epilogue', 'execjob_end', 'exechost_startup',
                   'exechost_periodic', 'execjob_resize', 'execjob_abort']
+        # Alarm timeout should be set really large because some tests will
+        # create a lot of simultaneous jobs on a single (slow) MoM
+        # Shipped default is 90 seconds, which is reasonable for real hosts,
+        # but not for containers or VMs sharing a host
         a = {'enabled': 'True',
              'freq': '10',
-             'alarm': 30,
+             'alarm': 120,
              'event': events}
         # Sometimes the deletion of the old hook is still pending
         failed = True
