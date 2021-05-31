@@ -412,9 +412,9 @@ int get_server_fd_from_jid(int c, char *jobid);
 int multi_svr_op(int fd);
 int get_job_svr_inst_id(int c, char *job_id);
 
-int pbs_register_sched_single_msvr(const char *sched_id, int primary_conn_id, int secondary_conn_id);
-void pbs_connect_single_msvr(svr_conn_t *conn);
-int pbs_disconnect_single_msvr(svr_conn_t *svr_conn);
+int pbs_register_sched_msvr_instance(const char *sched_id, int primary_conn_id, int secondary_conn_id);
+void pbs_connect_msvr_instance(svr_conn_t *conn);
+int pbs_disconnect_msvr_instance(svr_conn_t *svr_conn);
 #ifdef __cplusplus
 }
 #endif

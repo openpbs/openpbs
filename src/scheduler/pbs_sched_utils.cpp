@@ -548,8 +548,8 @@ close_msvr_conn(svr_conn_t *prim_conn, svr_conn_t *sec_conn)
 	if (poll_context && sec_conn != NULL)
 		tpp_em_del_fd(poll_context, sec_conn->sd);
 
-	pbs_disconnect_single_msvr(prim_conn);
-	pbs_disconnect_single_msvr(sec_conn);
+	pbs_disconnect_msvr_instance(prim_conn);
+	pbs_disconnect_msvr_instance(sec_conn);
 }
 
 /**
@@ -567,19 +567,19 @@ reconnect_msvr_conn(svr_conn_t *prim_conn, svr_conn_t *sec_conn)
 {
 	close_msvr_conn(prim_conn, sec_conn);
 
-	pbs_connect_single_msvr(prim_conn);
-	pbs_connect_single_msvr(sec_conn);
+	pbs_connect_msvr_instance(prim_conn);
+	pbs_connect_msvr_instance(sec_conn);
 	if (prim_conn->sd < 0 || sec_conn->sd < 0) {
 		close_msvr_conn(prim_conn, sec_conn);	/* Close both connections if either is down */
 		return 1;
 	}
 
-	if (pbs_register_sched_single_msvr(sc_name, prim_conn->sd, sec_conn->sd) != 0) {
+	if (pbs_register_sched_msvr_instance(sc_name, prim_conn->sd, sec_conn->sd) != 0) {
 		close_msvr_conn(prim_conn, sec_conn);
 		return 1;
 	}
 
-	/* Both primary and secondary successful, add secondary to poll list */
+	/* Both primary and secondary successfully connected, add secondary to poll list */
 	if (tpp_em_add_fd(poll_context, sec_conn->sd, EM_IN | EM_HUP | EM_ERR) < 0) {
 		log_errf(errno, __func__, "Couldn't add secondary connection to poll list for server %s", sec_conn->name);
 		die(-1);
@@ -669,6 +669,7 @@ connect_svrpool()
 			    svr_conns_secondary[i]->state == SVR_CONN_STATE_DOWN) {
 				/* At least one server is down, operate in partition tolerance mode */
 				part_tolerance = true;
+				close_msvr_conn(svr_conns_primary[i], svr_conns_secondary[i]);
 				downcount += 1;
 			}
 		}
@@ -752,20 +753,16 @@ reconnect_servers(void)
 	static time_t last_reconnect = -1;
 	const int min_reconnect_period = 30;	/* Reconnect at least 30secs after last */
 
-	pthread_mutex_lock(&cleanup_lock);
 	if (prim_conn == NULL || sec_conn == NULL || get_num_servers() == 1) {
 		close_servers();
 		connect_svrpool();
-		pthread_mutex_unlock(&cleanup_lock);
-
 		return;
 	}
 
-	part_tolerance = true;
-
-	if (time(NULL) - last_reconnect < min_reconnect_period) {
+	if (time(NULL) - last_reconnect < min_reconnect_period)
 		return;	/* To throttle the reconnect frequency, don't connect if under min_reconnect_period */
-	}
+
+	pthread_mutex_lock(&cleanup_lock);
 
 	/* Find out which servers are down & try to reconnect to them */
 	for (int i = 0; i < get_num_servers(); i++) {
@@ -788,9 +785,10 @@ reconnect_servers(void)
 	}
 	pthread_mutex_unlock(&cleanup_lock);
 
-	if (num_down > 0)
+	if (num_down > 0) {
+		part_tolerance = true;
 		log_errf(pbs_errno, __func__, "One/more servers is down, sched will operate in partition tolerant mode");
-	else	/* All servers re-connected, come out of partition tolerance mode */
+	} else	/* All servers re-connected, come out of partition tolerance mode */
 		part_tolerance = false;
 
 	last_reconnect = time(NULL);

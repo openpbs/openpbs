@@ -181,7 +181,12 @@ send_preempt_jobs(int virtual_sd, char **preempt_jobs_list)
 
     ret = pbs_preempt_jobs(virtual_sd, preempt_jobs_list);
 
-	return static_cast<preempt_job_info *>(handle_part_tolerance(ret));
+	if (handle_part_tolerance(ret) == NULL) {
+		free(ret);
+		return NULL;
+	}
+
+	return ret;
 }
 
 /**
@@ -254,7 +259,12 @@ send_selstat(int virtual_fd, struct attropl *attrib, struct attrl *rattrib, char
 	struct batch_status *ret = NULL;
 
 	ret = pbs_selstat(virtual_fd, attrib, rattrib, extend);
-	return static_cast<struct batch_status *>(handle_part_tolerance(ret));
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
 }
 
 /**
@@ -275,7 +285,12 @@ send_statvnode(int virtual_fd, char *id, struct attrl *attrib, char *extend)
 	struct batch_status *ret = NULL;
 
 	ret = pbs_statvnode(virtual_fd, id, attrib, extend);
-	return static_cast<struct batch_status *>(handle_part_tolerance(ret));
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
 }
 
 /**
@@ -295,7 +310,12 @@ send_statsched(int virtual_fd, struct attrl *attrib, char *extend)
 	struct batch_status *ret = NULL;
 
 	ret = pbs_statsched(virtual_fd, attrib, extend);
-	return static_cast<struct batch_status *>(handle_part_tolerance(ret));
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
 }
 
 /**
@@ -316,7 +336,12 @@ send_statqueue(int virtual_fd, char *id, struct attrl *attrib, char *extend)
 	struct batch_status *ret = NULL;
 
 	ret = pbs_statque(virtual_fd, id, attrib, extend);
-	return static_cast<struct batch_status *>(handle_part_tolerance(ret));
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
 }
 
 /**
@@ -336,7 +361,12 @@ send_statserver(int virtual_fd, struct attrl *attrib, char *extend)
 	struct batch_status *ret = NULL;
 
 	ret = pbs_statserver(virtual_fd, attrib, extend);
-	return static_cast<struct batch_status *>(handle_part_tolerance(ret));
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
 }
 
 /**
@@ -357,7 +387,12 @@ send_statrsc(int virtual_fd, char *id, struct attrl *attrib, char *extend)
 	struct batch_status *ret = NULL;
 
 	ret = pbs_statrsc(virtual_fd, id, attrib, extend);
-	return static_cast<struct batch_status *>(handle_part_tolerance(ret));
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
 }
 
 /**
@@ -378,5 +413,10 @@ send_statresv(int virtual_fd, char *id, struct attrl *attrib, char *extend)
 	struct batch_status *ret = NULL;
 
 	ret = pbs_statresv(virtual_fd, id, attrib, extend);
-	return static_cast<struct batch_status *>(handle_part_tolerance(ret));
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
 }

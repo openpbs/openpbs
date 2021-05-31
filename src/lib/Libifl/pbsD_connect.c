@@ -629,7 +629,7 @@ err:
  * @return void
  */
 void
-pbs_connect_single_msvr(svr_conn_t *conn)
+pbs_connect_msvr_instance(svr_conn_t *conn)
 {
 	connect_to_server(conn, NULL);
 }
@@ -644,7 +644,7 @@ pbs_connect_single_msvr(svr_conn_t *conn)
  * @retval	-1 for error
  */
 int
-pbs_disconnect_single_msvr(svr_conn_t *svr_conn)
+pbs_disconnect_msvr_instance(svr_conn_t *svr_conn)
 {
 	if (svr_conn == NULL)
 		return -1;
@@ -899,7 +899,7 @@ __pbs_disconnect(int connect)
 		for (i = 0; svr_conns[i]; i++) {
 			int lrc = 0;
 
-			lrc = pbs_disconnect_single_msvr(svr_conns[i]);
+			lrc = pbs_disconnect_msvr_instance(svr_conns[i]);
 			if (lrc != 0)
 				rc = lrc;
 		}
@@ -1276,21 +1276,19 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
 		return -1;
 
 	for (i = 0; i < get_num_servers(); i++) {
-		if (svr_conns_primary[i]->sd > 0 &&
-		    send_register_sched(svr_conns_primary[i]->sd, sched_id) != 0) {
-			ret = -1;
-			continue;
+		if (svr_conns_primary[i]->sd > 0 && svr_conns_secondary[i]->sd > 0) {
+			if (pbs_register_sched_msvr_instance(sched_id, svr_conns_primary[i]->sd, svr_conns_secondary[i]->sd) != 0) {
+				ret = -1;
+				continue;
+			}
 		}
-		if (svr_conns_secondary[i]->sd > 0 &&
-		    send_register_sched(svr_conns_secondary[i]->sd, sched_id) != 0)
-			ret = -1;
 	}
 
 	return ret;
 }
 
 /**
- * @brief Registers the Scheduler with all the Servers configured
+ * @brief Registers the Scheduler with one of the multi-server instances
  *
  * param[in]	sched_id - sched identifier which is known to server
  * param[in]	primary_conn_id - primary connection handle which represents all servers returned by pbs_connect
@@ -1301,7 +1299,7 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
  * @return 0  - success
  */
 int
-pbs_register_sched_single_msvr(const char *sched_id, int primary_conn_id, int secondary_conn_id)
+pbs_register_sched_msvr_instance(const char *sched_id, int primary_conn_id, int secondary_conn_id)
 {
 	if (sched_id == NULL || primary_conn_id < 0 || secondary_conn_id < 0)
 		return -1;
