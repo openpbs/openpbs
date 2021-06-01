@@ -349,7 +349,7 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 				if (user != NULL) {
 					auto rj = find_resource_resv(sinfo->running_jobs, lj.name);
 
-					if (rj != NULL && rj->job != NULL) {
+					if (rj != NULL && rj->job != NULL && !rj->job->is_prerunning) {
 						/* just in case the delta is negative just add 0 */
 						delta = formula_evaluate(conf.fairshare_res.c_str(), rj, rj->job->resused) -
 							formula_evaluate(conf.fairshare_res.c_str(), rj, lj.resused);

@@ -327,6 +327,9 @@ enum resv_conf {
 /* job substate meaning node is provisioning */
 #define PROVISIONING_SUBSTATE "71"
 
+/* job substate meaning job is pre-running state */
+#define PRERUNNING_SUBSTATE "41"
+
 /* TRUE_FALSE indicates both true and false for collections of resources */
 enum { FALSE, TRUE, TRUE_FALSE };
 
