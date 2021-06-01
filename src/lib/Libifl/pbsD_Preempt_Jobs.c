@@ -163,7 +163,7 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	if (!svr_connections)
 		return NULL;
 
-	p_replies = calloc(get_num_servers(), sizeof(preempt_job_info *));
+	p_replies = calloc(num_servers, sizeof(preempt_job_info *));
 	if (p_replies == NULL) {
 		pbs_errno = PBSE_SYSTEM;
 		goto err;
