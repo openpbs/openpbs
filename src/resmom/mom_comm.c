@@ -6010,10 +6010,9 @@ tm_request(int fd, int version)
 	int				num = 0, mtfd = -1;
 	tm_node_id			*node_list;
 	eventent			*nep = NULL;
-	int				k,index, alreadyadded, momcnt = 0;
+	int				k,index, momcnt = 0;
 	tm_task_id			*temptaskid;
 	tm_node_id			*tempnid;
-	tm_node_id			*streamlist;
 	struct job_multispawn_info	*tempinfo, *orig;
 
 	conn_t 	*conn = get_conn(fd);
@@ -6624,8 +6623,6 @@ aterr:
 			assert(temptaskid);
 			tempnid = (tm_node_id *)calloc(list_size, sizeof(tm_node_id));
 			assert(tempnid);
-			streamlist = (tm_node_id *)calloc(list_size, sizeof(tm_node_id));
-			assert(streamlist);
 
 			taskident++;
 			
@@ -6640,14 +6637,12 @@ aterr:
 				free(tempinfo);
 				free(temptaskid);
 				free(tempnid);
-				free(streamlist);
 				goto err;
 			}
 
 			/* go through the list of nodes and send a request */
 			for (i = 0; i < list_size; i++) {
 				/* reset for each node in the list */
-				alreadyadded = 0;
 				tvnodeid = node_list[i];
 				/* check the node number is legal */
 				pnode = pjob->ji_vnods;
@@ -6664,7 +6659,6 @@ aterr:
 						free(tempinfo);
 						free(temptaskid);
 						free(tempnid);
-						free(streamlist);
                        				goto done;
 					}
 			                ret = diswsi(fd, TM_ENOTFOUND);
@@ -6673,7 +6667,6 @@ aterr:
 						free(tempinfo);
 						free(temptaskid);
 						free(tempnid);
-						free(streamlist);
                        				goto done;
 					}
         			}
@@ -6707,18 +6700,7 @@ aterr:
 					/*
 					 ** Sending to another MOM.
 					 */
-					/* 
-					** Have we already added a stream for this mom?
-					** We don't want to open another stream to the same mom.
-					*/	
-					for (k = 0; k < momcnt; k++) {
-						if (tvnodeid == streamlist[k]) {
-							alreadyadded = 1;
-							break;
-						}
-					}
-
-					/* Open a stream to the mom if a stream isn't already open */
+					/* Open a stream to the mom */
 					/* The host of the current vnode is phost, use phost */
 					if (phost->hn_stream == -1)
 						phost->hn_stream = tpp_open(phost->hn_host, phost->hn_port);
@@ -6730,23 +6712,19 @@ aterr:
 						continue;
 					}
 				
-					if (pbs_conf.pbs_use_mcast == 1 && !alreadyadded) {
+					if (pbs_conf.pbs_use_mcast == 1) {
 						/* add each of the tpp streams to the tpp mcast channel */
-						if (tpp_mcast_add_strm(mtfd, phost->hn_stream, FALSE) == -1) {
+						if (tpp_mcast_add_strm(mtfd, phost->hn_stream, TRUE) == -1) {
 							tpp_close(phost->hn_stream);
 							phost->hn_stream = -1;
 							sprintf(log_buffer, "mcast add node %d failed", tvnodeid);
 							log_joberr(-1, __func__, log_buffer, jobid);
 							continue;
 						}
-						/* add the mom to the list of moms who have streams added */
-						streamlist[momcnt] = tvnodeid;
-						momcnt++;
 					}
 					/* Add the IM_SPAWN_MULTI event to the list */	
 					if (nep == NULL) {
-						nep = event_alloc(pjob, IM_SPAWN_MULTI, fd, phost,
-							event, fromtask);
+						nep = event_alloc(pjob, IM_SPAWN_MULTI, fd, phost, event, fromtask);
 						ep = nep;
 					} else {
 						ep = event_dup(nep, pjob, phost);
@@ -6765,6 +6743,7 @@ aterr:
 			} /* end of looping through the nodes */
 
 			/* Save info off to the job struct */
+			(void)tpp_mcast_members(mtfd, &momcnt);
 			tempinfo->ji_num_sisters = momcnt;
 			tempinfo->ji_taskid_list = temptaskid;
 			tempinfo->ji_nid_list = tempnid;
@@ -6776,17 +6755,6 @@ aterr:
 						get_jattr_str(pjob, JOB_ATR_Cookie),
 						IM_SPAWN_MULTI, ep->ee_event, fromtask,
 						found_empty_string ? IM_PROTOCOL_VER : IM_OLD_PROTOCOL_VER);
-				if (ret != DIS_SUCCESS) {
-					arrayfree(argv);
-					arrayfree(envp);
-					free(node_list);
-					free(tempinfo);
-					free(temptaskid);
-					free(tempnid);
-					free(streamlist);
-					tpp_mcast_close(mtfd);
-					goto done;
-				}
 			
 				/* send body of the message: 
 				** start with the identifier,
@@ -6794,128 +6762,34 @@ aterr:
 				** then send the list of where in a loop
 				** then argc, argv, env, etc.
 				*/
-				ret = diswui(mtfd, taskident);
-				if (ret != DIS_SUCCESS) {
-					arrayfree(argv);
-					arrayfree(envp);
-					free(node_list);
-					free(tempinfo);
-					free(temptaskid);
-					free(tempnid);
-					free(streamlist);
-					tpp_mcast_close(mtfd);
-					goto done;
-				}
-				ret = diswui(mtfd, list_size);
-				if (ret != DIS_SUCCESS) {
-					arrayfree(argv);
-					arrayfree(envp);
-					free(node_list);
-					free(tempinfo);
-					free(temptaskid);
-					free(tempnid);
-					free(streamlist);
-					tpp_mcast_close(mtfd);
-					goto done;
-				}
-				for (i = 0; i < list_size; i++) {
+				if (ret == DIS_SUCCESS)
+					ret = diswui(mtfd, taskident);
+				if (ret == DIS_SUCCESS)
+					ret = diswui(mtfd, list_size);
+				for (i = 0; i < list_size && ret == DIS_SUCCESS; i++) {
 					ret = diswui(mtfd, node_list[i]);
-					if (ret != DIS_SUCCESS) {
-						arrayfree(argv);
-						arrayfree(envp);
-						free(node_list);
-						free(tempinfo);
-						free(temptaskid);
-						free(tempnid);
-						free(streamlist);
-						tpp_mcast_close(mtfd);
-						goto done;
-					}
 				}
-
-				ret = diswsi(mtfd, myvnodeid);
-				if (ret != DIS_SUCCESS) {
-					arrayfree(argv);
-					arrayfree(envp);
-					free(node_list);
-					free(tempinfo);
-					free(temptaskid);
-					free(tempnid);
-					free(streamlist);
-					tpp_mcast_close(mtfd);
-					goto done;
-				}
-				if (found_empty_string) {
+				if (ret == DIS_SUCCESS)
+					ret = diswsi(mtfd, myvnodeid);
+				if (found_empty_string && ret == DIS_SUCCESS) {
 					ret = diswui(mtfd, argc);
-					if (ret != DIS_SUCCESS) {
-						arrayfree(argv);
-						arrayfree(envp);
-						free(node_list);
-						free(tempinfo);
-						free(temptaskid);
-						free(tempnid);
-						free(streamlist);
-						tpp_mcast_close(mtfd);
-						goto done;
-					}
-					for (i = 0; i < argc; i++) {
+					for (i = 0; i < argc && ret == DIS_SUCCESS; i++) {
 						ret = diswst(mtfd, argv[i]);
-						if (ret != DIS_SUCCESS) {
-							arrayfree(argv);
-							arrayfree(envp);
-							free(node_list);
-							free(tempinfo);
-							free(temptaskid);
-							free(tempnid);
-							free(streamlist);
-							tpp_mcast_close(mtfd);
-							goto done;
-						}
 					}
 				} else {
-				  	for (i = 0; argv[i]; i++) {
+				  	for (i = 0; argv[i] && ret == DIS_SUCCESS; i++) {
 						ret = diswst(mtfd, argv[i]);
-						if (ret != DIS_SUCCESS) {
-							arrayfree(argv);
-							arrayfree(envp);
-							free(node_list);
-							free(tempinfo);
-							free(temptaskid);
-							free(tempnid);
-							free(streamlist);
-							tpp_mcast_close(mtfd);
-							goto done;
-						}
 					}
-					ret = diswst(mtfd, "");
-					if (ret != DIS_SUCCESS) {
-						arrayfree(argv);
-						arrayfree(envp);
-						free(node_list);
-						free(tempinfo);
-						free(temptaskid);
-						free(tempnid);
-						free(streamlist);
-						tpp_mcast_close(mtfd);
-						goto done;
-					}
+					if (ret == DIS_SUCCESS)
+						ret = diswst(mtfd, "");
 				}
-				for (i = 0; envp[i]; i++) {
+				for (i = 0; envp[i] && ret == DIS_SUCCESS; i++) {
 					ret = diswst(mtfd, envp[i]);
-					if (ret != DIS_SUCCESS) {
-						arrayfree(argv);
-						arrayfree(envp);
-						free(node_list);
-						free(tempinfo);
-						free(temptaskid);
-						free(tempnid);
-						free(streamlist);
-						tpp_mcast_close(mtfd);
-						goto done;
-					}
 				}
-				ret = (dis_flush(mtfd) == -1) ?
-					DIS_NOCOMMIT : DIS_SUCCESS;
+				if (ret == DIS_SUCCESS) {
+					ret = (dis_flush(mtfd) == -1) ?
+						DIS_NOCOMMIT : DIS_SUCCESS;
+				}
 				if (ret != DIS_SUCCESS) {
 					arrayfree(argv);
 					arrayfree(envp);
@@ -6923,7 +6797,6 @@ aterr:
 					free(tempinfo);
 					free(temptaskid);
 					free(tempnid);
-					free(streamlist);
 					tpp_mcast_close(mtfd);
 					goto done;
 				}
@@ -6963,7 +6836,6 @@ aterr:
 			arrayfree(argv);
 			arrayfree(envp);
 			free(node_list);
-			free(streamlist);
 			/* tempinfo, temptaskid and tempnid arrays are freed in IM_ALL_OKAY */
 			reply = FALSE;
 			goto done;
