@@ -254,6 +254,7 @@ void clean_saved_rsc(void*);
 int process_status_reply(int);
 void *get_peersvr_from_svrid(char *);
 void update_msvr_stat(unsigned long, msvr_stat_type_t);
+int ps_send_discard(char *, char *, char *, int);
 
 /* end of multi-svr functions */
 
