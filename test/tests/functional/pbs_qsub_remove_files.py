@@ -238,7 +238,7 @@ class TestQsub_remove_files(TestFunctional):
         """
         script = \
             "#!/bin/sh\n"\
-            "/bin/sleep 3;\n"\
+            "pbs_sleep 3;\n"\
             "if [ $PBS_ARRAY_INDEX -eq 2 ]; then\n"\
             "exit 1; fi; exit 0;"
         j = Job(TEST_USER, attrs={ATTR_R: 'oe', ATTR_J: '1-3'},
@@ -267,7 +267,7 @@ class TestQsub_remove_files(TestFunctional):
         """
         script = \
             "#!/bin/sh\n"\
-            "/bin/sleep 3;\n"\
+            "pbs_sleep 3;\n"\
             "if [ $PBS_ARRAY_INDEX -eq 2 ]; then\n"\
             "exit 1; fi; exit 0;"
         tmp_dir = self.du.create_temp_dir(asuser=TEST_USER)

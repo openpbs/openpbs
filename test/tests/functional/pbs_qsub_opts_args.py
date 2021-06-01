@@ -152,7 +152,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         """
         submit a job with a script and executable
         """
-        cmd = [self.qsub_cmd, self.fn, '--', '/bin/sleep 10']
+        cmd = [self.qsub_cmd, self.fn, '--', self.mom.sleep_cmd, '10']
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
         failed = rv['rc'] == 2 and rv['err'][0].split(' ')[0] == 'usage:'
         self.assertTrue(failed, 'qsub should have failed, but did not fail')
@@ -187,7 +187,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         """
         submit a job with only an executable
         """
-        cmd = [self.qsub_cmd, '--', '/bin/sleep 10']
+        cmd = [self.qsub_cmd, '--', self.mom.sleep_cmd, '10']
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
         self.assertEqual(rv['rc'], 0, 'qsub failed')
 
@@ -195,7 +195,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         """
         submit a job with an option and executable
         """
-        cmd = [self.qsub_cmd, '-V', '--', '/bin/sleep', '10']
+        cmd = [self.qsub_cmd, '-V', '--', self.mom.sleep_cmd, '10']
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
         self.assertEqual(rv['rc'], 0, 'qsub failed')
 
