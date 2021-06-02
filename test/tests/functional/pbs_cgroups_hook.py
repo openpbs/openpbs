@@ -1454,6 +1454,76 @@ sleep 300
     }
 }
 """
+        self.cfg17 = """{
+    "cgroup_prefix"         : "pbs_jobs",
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : ["no_cgroups"],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : false,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : false,
+    "ncpus_are_cores"       : false,
+    "manage_rlimit_as"      : true,
+    "cgroup" : {
+        "cpuacct" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : []
+        },
+        "cpuset" : {
+            "mount_path"          : "/sys/fs/cgroup/cpuset",
+            "enabled"            : true,
+            "exclude_cpus"       : [],
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "mem_fences"         : true,
+            "mem_hardwall"       : false,
+            "memory_spread_page" : false
+        },
+        "devices" : {
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "allow"              : [
+                "b *:* rwm",
+                "c *:* rwm"
+            ]
+        },
+        "hugetlb" : {
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "0MB",
+            "reserve_percent"    : 0,
+            "reserve_amount"     : "0MB"
+        },
+        "memory" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "soft_limit"         : false,
+            "default"            : "100MB",
+            "reserve_percent"    : 0,
+            "swappiness"         : 0,
+            "reserve_amount"     : "1GB",
+            "enforce_default"    : true,
+            "exclhost_ignore_default" : true
+        },
+        "memsw" : {
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "100MB",
+            "reserve_percent"    : 0,
+            "reserve_amount"     : "10GB",
+            "manage_cgswap"      : true,
+            "enforce_default"    : true,
+            "exclhost_ignore_default" : true
+        }
+    }
+}
+"""
 
         Job.dflt_attributes[ATTR_k] = 'oe'
         # Increase the server log level
@@ -1697,9 +1767,13 @@ if %s e.job.in_ms_mom():
         events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
                   'execjob_epilogue', 'execjob_end', 'exechost_startup',
                   'exechost_periodic', 'execjob_resize', 'execjob_abort']
+        # Alarm timeout should be set really large because some tests will
+        # create a lot of simultaneous jobs on a single (slow) MoM
+        # Shipped default is 90 seconds, which is reasonable for real hosts,
+        # but not for containers or VMs sharing a host
         a = {'enabled': 'True',
              'freq': '10',
-             'alarm': 30,
+             'alarm': 120,
              'event': events}
         # Sometimes the deletion of the old hook is still pending
         failed = True
@@ -2548,7 +2622,7 @@ if %s e.job.in_ms_mom():
         # Submit M jobs N cpus wide, where M is the amount of physical
         # processors and N is number of 'cpu cores' per M. Expect them to run.
         njobs = phys
-        if njobs > 64:
+        if njobs > 100:
             self.skipTest("too many jobs (%d) to submit" % njobs)
         a = {'Resource_List.select': '1:ncpus=%s:mem=300mb:host=%s' %
              (cores, self.hosts_list[0]), ATTR_N: name + 'a'}
@@ -2632,7 +2706,7 @@ if %s e.job.in_ms_mom():
 
         a = {
             'Resource_List.select':
-            '1:ncpus=1:mem=300mb:vmem=320mb:host=%s' % self.hosts_list[0],
+            '1:ncpus=1:mem=400mb:vmem=420mb:host=%s' % self.hosts_list[0],
             ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job1)
@@ -4700,12 +4774,15 @@ sleep 300
         # N is the number of 'cpu cores' per M. and P being the
         # number of hyperthreads per core.
         njobs = len(phys) * cores * hyperthreads_per_core
-        if njobs > 64:
+        if njobs > 100:
             self.skipTest("too many jobs (%d) to submit" % njobs)
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
         for _ in range(njobs):
             j = Job(TEST_USER, attrs=a)
+            # make sure this stays around for an hour
+            # (or until deleted in teardown)
+            j.set_sleep_time(3600)
             jid = self.server.submit(j)
             a1 = {'job_state': 'R'}
             self.server.expect(JOB, a1, jid)
@@ -5077,7 +5154,7 @@ sleep 300
         # First job -- request vmem and no pvmem,
         # RLIMIT_AS shoud be unlimited
         a = {'Resource_List.select':
-             '1:ncpus=0:mem=300mb:vmem=300mb:vnode=%s'
+             '1:ncpus=0:mem=400mb:vmem=400mb:vnode=%s'
              % self.mom.shortname}
 
         j = Job(TEST_USER, attrs=a)
@@ -5103,7 +5180,7 @@ sleep 300
 
         # Second job -- see if pvmem still works
         # RLIMIT_AS should correspond to pvmem
-        a['Resource_List.pvmem'] = '300mb'
+        a['Resource_List.pvmem'] = '400mb'
         j = Job(TEST_USER, attrs=a)
         j.create_script("#!/bin/bash\nulimit -v")
         jid = self.server.submit(j)
@@ -5123,9 +5200,119 @@ sleep 300
         job_out = '\n'.join(result['out'])
         self.logger.info("job_out=%s" % job_out)
         # ulimit reports kb, not bytes
-        self.assertTrue(str(300 * 1024) in job_out)
-        self.logger.info("Job that requests 300mb pvmem "
-                         "correctly has 300mb RLIMIT_AS")
+        self.assertTrue(str(400 * 1024) in job_out)
+        self.logger.info("Job that requests 400mb pvmem "
+                         "correctly has 400mb RLIMIT_AS")
+
+    def test_cgroup_mount_paths(self):
+        """
+        Test to see if the cgroup hook picks the shortest path,
+        but also if it can be overrided in the config file
+        """
+
+        if self.du.isdir(self.hosts_list[0], '/dev/tstc'):
+            self.skipTest('Test requires /dev/tstc not to exist')
+        if self.du.isdir(self.hosts_list[0], '/dev/tstm'):
+            self.skipTest('Test requires /dev/tstm not to exist')
+
+        self.load_config(self.cfg17)
+
+        dir_created = self.du.mkdir(hostname=self.hosts_list[0],
+                                    path='/dev/tstm', mode=0o0755,
+                                    sudo=True)
+        if not dir_created:
+            self.skipTest('not able to create /dev/tstm')
+        result = self.du.run_cmd(self.hosts_list[0],
+                                 ['mount', '-t', 'cgroup', '-o',
+                                  'rw,nosuid,nodev,noexec,relatime,seclabel,'
+                                  'memory',
+                                  'cgroup', '/dev/tstm'],
+                                 sudo=True)
+        if result['rc'] != 0:
+            self.du.run_cmd(self.hosts_list[0],
+                            ['rmdir', '/dev/tstm'],
+                            sudo=True)
+            self.skipTest('not able to mount /dev/tstm')
+
+        dir_created = self.du.mkdir(hostname=self.hosts_list[0],
+                                    path='/dev/tstc', mode=0o0755,
+                                    sudo=True)
+        if not dir_created:
+            self.du.run_cmd(self.hosts_list[0],
+                            ['umount', '/dev/tstm'],
+                            sudo=True)
+            self.du.run_cmd(self.hosts_list[0],
+                            ['rmdir', '/dev/tstm'],
+                            sudo=True)
+            self.skipTest('not able to create /dev/tstc')
+
+        result = self.du.run_cmd(self.hosts_list[0],
+                                 ['mount', '-t', 'cgroup', '-o',
+                                  'rw,nosuid,nodev,noexec,relatime,seclabel,'
+                                  'cpuset',
+                                  'cgroup', '/dev/tstc'],
+                                 sudo=True)
+        if result['rc'] != 0:
+            self.du.run_cmd(self.hosts_list[0],
+                            ['umount', '/dev/tstm'],
+                            sudo=True)
+            self.du.run_cmd(self.hosts_list[0],
+                            ['rmdir', '/dev/tstm'],
+                            sudo=True)
+            self.du.run_cmd(self.hosts_list[0],
+                            ['rmdir', '/dev/tstc'],
+                            sudo=True)
+            self.skipTest('not able to mount /dev/tstc')
+
+        # sleep 2s: make sure no old log lines will match 'begin' time
+        time.sleep(2)
+        begin = int(time.time())
+        # sleep 2s to allow for small time differences and rounding errors
+        time.sleep(2)
+
+        a = {'Resource_List.select':
+             "1:ncpus=1:host=%s" % self.hosts_list[0]}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep600_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        failure = False
+
+        try:
+            self.moms_list[0].log_match(msg='create_job: Creating directory '
+                                            '/sys/fs/cgroup/cpuset/'
+                                            'pbs_jobs.service/jobid/%s'
+                                            % jid,
+                                        n='ALL', starttime=begin,
+                                        max_attempts=1)
+        except Exception:
+            failure = True
+        try:
+            self.moms_list[0].log_match(msg='create_job: Creating directory '
+                                            '/dev/tstm/'
+                                            'pbs_jobs.service/jobid/%s'
+                                            % jid,
+                                        n='ALL', starttime=begin,
+                                        max_attempts=1)
+        except Exception:
+            failure = True
+
+        self.du.run_cmd(self.hosts_list[0],
+                        ['umount', '/dev/tstm'],
+                        sudo=True)
+        self.du.run_cmd(self.hosts_list[0],
+                        ['rmdir', '/dev/tstm'],
+                        sudo=True)
+        self.du.run_cmd(self.hosts_list[0],
+                        ['umount', '/dev/tstc'],
+                        sudo=True)
+        self.du.run_cmd(self.hosts_list[0],
+                        ['rmdir', '/dev/tstc'],
+                        sudo=True)
+
+        self.assertFalse(failure,
+                         'Did not find correct paths for created cgroup dirs')
 
     def cleanup_cgroup_subsys(self, host):
         # Remove the jobdir if any under other cgroups
