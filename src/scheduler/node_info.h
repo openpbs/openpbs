@@ -613,6 +613,8 @@ int add_event_to_nodes(timed_event *te, nspec **nspecs);
 
 int add_node_events(timed_event *te, void *arg1, void *arg2);
 
+struct batch_status *send_statvnode(int virtual_fd, char *id, struct attrl *attrib, char *extend);
+
 /*
  * Find a node by its hostname
  */

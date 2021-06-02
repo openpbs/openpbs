@@ -80,6 +80,8 @@ static pthread_once_t conn_once_ctl = PTHREAD_ONCE_INIT;
 static pthread_mutex_t conn_lock;
 static svr_conns_list_t *conn_list = NULL;
 
+static int disconnect_from_server(int connect);
+
 /**
  * @brief
  *	-returns the default server name.
@@ -567,6 +569,7 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 	svr_conns_list_t *new_conns = create_conn_svr_instances();
 	svr_conn_t **svr_conns;
 	int last_err = PBSE_NONE;
+	int num_svrs = 1;
 
 	if (new_conns == NULL)
 		return -1;
@@ -584,17 +587,17 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 	}
 
 	/* Try to connect to all servers in the cluster */
-	for (i = 0; i < get_num_servers(); i++) {
+	num_svrs = get_num_servers();
+	for (i = 0; i < num_svrs; i++) {
 		svr_conns[i] = add_instance(pbs_conf.psi[i].name, pbs_conf.psi[i].port);
 		if (!svr_conns[i])
 			goto err;
 
 		fd = connect_to_server(svr_conns[i], extend_data);
 		if (fd != -1) {
-			if (new_conns->cfd == -1)
+			if (num_svrs == 1)
 				new_conns->cfd = fd;
 			else {
-				/* cluster represents more than one fd, cfd has to be virtual */
 				int vfd;
 				vfd = socket(AF_INET, SOCK_STREAM, 0);
 				if (vfd == -1)
@@ -619,6 +622,43 @@ err:
 }
 
 /**
+ * @brief	(Re)Connect to a single server in a multi-server setup
+ *
+ * @param[in,out]	conn - svr_conn_t object for the server to be connected to
+ *
+ * @return void
+ */
+void
+pbs_connect_msvr_instance(svr_conn_t *conn)
+{
+	connect_to_server(conn, NULL);
+}
+
+/**
+ * @brief	Disconnect from a single multi-server instance
+ *
+ * @param[in,out]	svr_conn - connection structure for the instance
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	-1 for error
+ */
+int
+pbs_disconnect_msvr_instance(svr_conn_t *svr_conn)
+{
+	if (svr_conn == NULL)
+		return -1;
+
+	if (disconnect_from_server(svr_conn->sd) != 0)
+		return -1;
+
+	svr_conn->sd = -1;
+	svr_conn->state = SVR_CONN_STATE_DOWN;
+
+	return 0;
+}
+
+/**
  * @brief	Makes a PBS_BATCH_Connect request to 'server'.
  *
  * @param[in]   server - the hostname of the pbs server to connect to.
@@ -639,11 +679,11 @@ __pbs_connect_extend(char *server, char *extend_data)
 	int	sock = -1;
 	int	i;
 	int	f;
-		
-	char   pbsrc[_POSIX_PATH_MAX];	
-	struct stat sb;	
-	int    using_secondary = 0;	
-	
+
+	char   pbsrc[_POSIX_PATH_MAX];
+	struct stat sb;
+	int    using_secondary = 0;
+
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
 		return -1;
@@ -657,50 +697,50 @@ __pbs_connect_extend(char *server, char *extend_data)
 		return -1;
 	}
 
-	if (get_num_servers() == 1 && pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {	
-		/* failover configuered ...   */	
-		if (is_same_host(server, pbs_conf.pbs_primary)) {	
-			have_alt = 1;	
-			
-			altservers[0] = pbs_conf.pbs_primary;	
-			altservers[1] = pbs_conf.pbs_secondary;	
-				
-			/* We want to try the one last seen as "up" first to not   */	
-			/* have connection delays.   If the primary was up, there  */	
-			/* is no .pbsrc.NAME file.  If the last command connected  */	
-			/* to the Secondary, then it created the .pbsrc.USER file. */	
+	if (get_num_servers() == 1 && pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {
+		/* failover configuered ...   */
+		if (is_same_host(server, pbs_conf.pbs_primary)) {
+			have_alt = 1;
 
-			/* see if already seen Primary down */		
+			altservers[0] = pbs_conf.pbs_primary;
+			altservers[1] = pbs_conf.pbs_secondary;
+
+			/* We want to try the one last seen as "up" first to not   */
+			/* have connection delays.   If the primary was up, there  */
+			/* is no .pbsrc.NAME file.  If the last command connected  */
+			/* to the Secondary, then it created the .pbsrc.USER file. */
+
+			/* see if already seen Primary down */
 			snprintf(pbsrc, _POSIX_PATH_MAX, "%s/.pbsrc.%s", pbs_conf.pbs_tmpdir, pbs_current_user);
-			if (stat(pbsrc, &sb) != -1) {	
-				/* try secondary first */	
-				altservers[0] = pbs_conf.pbs_secondary;		
+			if (stat(pbsrc, &sb) != -1) {
+				/* try secondary first */
+				altservers[0] = pbs_conf.pbs_secondary;
 				altservers[1] = pbs_conf.pbs_primary;
-				using_secondary = 1;	
-			} 		
-		}	
+				using_secondary = 1;
+			}
+		}
 	}
 
 	/*
-	 * connect to server ...	
-	 * If attempt to connect fails and if Failover configured and	
-	 *   if attempting to connect to Primary,  try the Secondary	
-	 *   if attempting to connect to Secondary, try the Primary	
-	 */	
+	 * connect to server ...
+	 * If attempt to connect fails and if Failover configured and
+	 *   if attempting to connect to Primary,  try the Secondary
+	 *   if attempting to connect to Secondary, try the Primary
+	 */
 	for (i = 0; i < (have_alt + 1); ++i) {
-		if (have_alt) 
+		if (have_alt)
 			pbs_strncpy(server_name, altservers[i], PBS_MAXSERVERNAME);
 		if ((sock = connect_to_servers(server_name, server_port, extend_data)) != -1)
-			break; 
+			break;
 	}
-	
+
 	if (get_num_servers() > 1)
 		return sock;
-	
-	if (i >= (have_alt+1) && sock == -1) {
-		return -1; 		/* cannot connect */
+
+	if (i >= (have_alt + 1) && sock == -1) {
+		return -1; /* cannot connect */
 	}
-	
+
 	if (have_alt && (i == 1)) {
 		/* had to use the second listed server ... */
 		if (using_secondary == 1) {
@@ -708,12 +748,12 @@ __pbs_connect_extend(char *server, char *extend_data)
 			unlink(pbsrc);
 		} else {
 			/* create file that causes trying the Primary first   */
-			f = open(pbsrc, O_WRONLY|O_CREAT, 0200);
+			f = open(pbsrc, O_WRONLY | O_CREAT, 0200);
 			if (f != -1)
 				close(f);
 		}
 	}
-	
+
 	return sock;
 }
 
@@ -857,11 +897,11 @@ __pbs_disconnect(int connect)
 	svr_conns = get_conn_svr_instances(connect);
 	if (svr_conns) {
 		for (i = 0; svr_conns[i]; i++) {
-			if (disconnect_from_server(svr_conns[i]->sd) != 0)
-				rc = -1;
+			int lrc = 0;
 
-			svr_conns[i]->sd = -1;
-			svr_conns[i]->state = SVR_CONN_STATE_DOWN;
+			lrc = pbs_disconnect_msvr_instance(svr_conns[i]);
+			if (lrc != 0)
+				rc = lrc;
 		}
 	} else {
 		/* fd doesn't belong to a multi-server setup */
@@ -1213,7 +1253,7 @@ rerr:
  * param[in]	secondary_conn_id - secondary connection handle which represents all servers returned by pbs_connect
  *
  * @return int
- * @retval !0  - failure
+ * @retval !0  - couldn't register with a connected server
  * @return 0  - success
  */
 int
@@ -1222,6 +1262,7 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
 	int i;
 	svr_conn_t **svr_conns_primary = NULL;
 	svr_conn_t **svr_conns_secondary = NULL;
+	int ret = 0;
 
 	if (sched_id == NULL || primary_conn_id < 0 || secondary_conn_id < 0)
 		return -1;
@@ -1235,13 +1276,38 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
 		return -1;
 
 	for (i = 0; i < get_num_servers(); i++) {
-		if (svr_conns_primary[i]->sd < 0 ||
-		    send_register_sched(svr_conns_primary[i]->sd, sched_id) != 0)
-			return -1;
-		if (svr_conns_secondary[i]->sd < 0 ||
-		    send_register_sched(svr_conns_secondary[i]->sd, sched_id) != 0)
-			return -1;
+		if (svr_conns_primary[i]->sd > 0 && svr_conns_secondary[i]->sd > 0) {
+			if (pbs_register_sched_msvr_instance(sched_id, svr_conns_primary[i]->sd, svr_conns_secondary[i]->sd) != 0) {
+				ret = -1;
+				continue;
+			}
+		}
 	}
+
+	return ret;
+}
+
+/**
+ * @brief Registers the Scheduler with one of the multi-server instances
+ *
+ * param[in]	sched_id - sched identifier which is known to server
+ * param[in]	primary_conn_id - primary connection handle which represents all servers returned by pbs_connect
+ * param[in]	secondary_conn_id - secondary connection handle which represents all servers returned by pbs_connect
+ *
+ * @return int
+ * @retval !0  - couldn't register with a connected server
+ * @return 0  - success
+ */
+int
+pbs_register_sched_msvr_instance(const char *sched_id, int primary_conn_id, int secondary_conn_id)
+{
+	if (sched_id == NULL || primary_conn_id < 0 || secondary_conn_id < 0)
+		return -1;
+
+	if (send_register_sched(primary_conn_id, sched_id) != 0)
+		return -1;
+	if (send_register_sched(secondary_conn_id, sched_id) != 0)
+		return -1;
 
 	return 0;
 }

@@ -100,4 +100,7 @@ resdef **copy_resdef_array(resdef **deflist);
 /* update the def member in sort_info structures in conf */
 void update_sorting_defs(void);
 
+/* wrapper for pbs_statrsc */
+struct batch_status *send_statrsc(int virtual_fd, char *id, struct attrl *attrib, char *extend);
+
 #endif /* _RESOURCE_H */
