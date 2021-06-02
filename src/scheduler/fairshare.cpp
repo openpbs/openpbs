@@ -220,7 +220,7 @@ group_info::group_info(const std::string& gname) : name(gname)
 
 /**
  * @brief
- * 		parse the resource group fil
+ * 		parse the resource group file
  *
  * @param[in]	fname	-	name of the file
  * @param[in]	root	-	root of fairshare tree
@@ -344,13 +344,11 @@ preload_tree()
 	group_info *root;
 	group_info *unknown;		/* pointer to the "unknown" group */
 
-	if ((head = new fairshare_head) == NULL)
+	if ((head = new fairshare_head()) == NULL)
 		return 0;
 
-	if ((root = new group_info(FAIRSHARE_ROOT_NAME)) == NULL) {
-		delete head;
-		return 0;
-	}
+	root = new group_info(FAIRSHARE_ROOT_NAME);
+
 
 	head->root = root;
 
@@ -462,7 +460,7 @@ update_usage_on_run(resource_resv *resresv)
 
 	u = formula_evaluate(conf.fairshare_res.c_str(), resresv, resresv->resreq);
 	if (resresv->job->ginfo !=NULL) {
-		for (auto &g : resresv->job->ginfo->gpath)
+		for (auto& g : resresv->job->ginfo->gpath)
 			g->temp_usage += u;
 	}
 	else
@@ -919,13 +917,23 @@ fairshare_head::fairshare_head()
  * @param[in]	ofhead	-	fairshare_head to dup
  *
  * @return	duplicated fairshare_head
- * @retval	NULL	: fail
+ * @retval	NULL	: fail 
  */
 fairshare_head::fairshare_head(fairshare_head& ofhead)
 {
 	last_decay = ofhead.last_decay;
 	root = dup_fairshare_tree(ofhead.root, NULL);
+}
 
+/**
+ * @brief copy assignment operator for fairshare_head
+ */
+fairshare_head fairshare_head::operator=(fairshare_head& ofhead)
+{
+	free_fairshare_tree(root);
+	last_decay = ofhead.last_decay;
+	root = dup_fairshare_tree(ofhead.root, NULL);
+	return *this;
 }
 
 /**

@@ -312,7 +312,7 @@ print_fairshare_entity(group_info *ginfo)
 		ginfo->tree_percentage == 0 ? -1 : ginfo->usage / ginfo->tree_percentage);
 
 	printf("Path from root: \n");
-	for (auto& gp : ginfo->gpath) {
+	for (const auto& gp : ginfo->gpath) {
 		printf("%-10s: %5d %10.0f / %5.3f = %.0f\n",
 			gp->name.c_str(), gp->cresgroup,
 			gp->usage, gp->tree_percentage,

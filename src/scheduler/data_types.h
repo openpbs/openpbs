@@ -917,6 +917,7 @@ class fairshare_head
 	time_t last_decay;			/* last time tree was decayed */
 	fairshare_head();
 	fairshare_head(fairshare_head&);
+	fairshare_head operator=(fairshare_head&);
 	~fairshare_head();
 };
 
