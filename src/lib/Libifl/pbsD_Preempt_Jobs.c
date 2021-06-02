@@ -87,8 +87,7 @@ preempt_jobs_send(int connect, char **preempt_jobs_list)
 	}
 
 	if (dis_flush(connect)) {
-		if (pbs_errno == PBSE_NONE)
-			pbs_errno = PBSE_PROTOCOL;
+		pbs_errno = PBSE_PROTOCOL;
 		return 1;
 	}
 	return 0;
