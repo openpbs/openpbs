@@ -405,7 +405,7 @@ ps_process_discard_job(int c)
 	set_jattr_str_slim(pjob, JOB_ATR_exec_host, exechost, NULL);
 	set_jattr_l_slim(pjob, JOB_ATR_run_version, rver, SET);
 
-	discard_job(pjob, "", 1);
+	discard_job(pjob, "Discard request for non local job", 1);
 
 end:
 	free(pjob);

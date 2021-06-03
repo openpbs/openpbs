@@ -2470,14 +2470,8 @@ discard_job(job *pjob, char *txt, int noack)
 		pn = parse_plus_spec(NULL, &rc);
 	}
 
-	/* Get run vervion of this job */
+	/* Get run version of this job */
 	rver = get_jattr_long(pjob, JOB_ATR_run_version);
-
-	if ((mom_superior->mi_dmn_info->dmn_state & INUSE_DOWN) &&
-	    !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_AlienJob))
-		ps_send_discard(pjob->ji_qs.ji_jobid,
-				get_jattr_str(pjob, JOB_ATR_exec_vnode),
-				get_jattr_str(pjob, JOB_ATR_exec_host), rver);
 
 	/* unless "noack", attach discard array to the job */
 	if (noack == 0)
@@ -2496,6 +2490,12 @@ discard_job(job *pjob, char *txt, int noack)
 		} else
 			(pdsc + i)->jdcd_state = JDCD_DOWN;
 	}
+
+	if ((mom_superior->mi_dmn_info->dmn_state & INUSE_DOWN) &&
+	    !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_AlienJob))
+		ps_send_discard(pjob->ji_qs.ji_jobid,
+				get_jattr_str(pjob, JOB_ATR_exec_vnode),
+				get_jattr_str(pjob, JOB_ATR_exec_host), rver);
 
 	/*
 	 * at this point unless "noack", we call post_discard_job() to see if
