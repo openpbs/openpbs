@@ -105,7 +105,7 @@ tm_spawn_multi(int	 argc,
 	char		*envp[],
 	int		list_size,
 	tm_node_id	where[],
-	tm_task_id	*tids,
+	tm_task_id	tids[],
 	tm_event_t	*event);
 
 int

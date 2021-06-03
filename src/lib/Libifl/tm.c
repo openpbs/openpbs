@@ -815,7 +815,7 @@ tm_nodeinfo(tm_node_id **list, int *nnodes)
  */
 int
 tm_spawn_multi(int argc, char **argv, char **envp,
-		int list_size, tm_node_id where[], tm_task_id *tids,
+		int list_size, tm_node_id where[], tm_task_id tids[],
 		tm_event_t *event)
 {
 	char		*cp;
