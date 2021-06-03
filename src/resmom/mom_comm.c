@@ -2984,7 +2984,7 @@ im_request(int stream, int version)
 	tm_task_id		*temptaskid;
 	tm_node_id		*tempnid;
 	tm_task_id		*taskidlist;
-	struct job_multispawn_info *tempinfo;
+	struct job_multispawn_info *tempinfo, *prev;
 	unsigned int		ident;
 
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
@@ -4088,7 +4088,7 @@ join_err:
 			}
 
 			/* Allocate a temporary place to store task IDs */
-                	taskidlist = (tm_task_id *)calloc(list_size, sizeof(tm_task_id));
+			taskidlist = (tm_task_id *)calloc(list_size, sizeof(tm_task_id));
 			assert(taskidlist);
 
 			/*
@@ -5001,9 +5001,12 @@ join_err:
 					BAIL("OK-SPAWN_MULTI ident");
 
 					/* Get the info/pointer from the job */
+					prev = NULL;
 					for (tempinfo = pjob->ji_spawninfo; tempinfo != NULL; tempinfo = tempinfo->next) {
-						if (tempinfo->ji_ident == ident)
+						if (tempinfo->ji_ident == ident) {
 							break;
+						}
+						prev = tempinfo;
 					}
 					if (tempinfo == NULL) {
 						sprintf(log_buffer, "Didn't find the spawninfo for the ident %d",ident);
@@ -5043,7 +5046,7 @@ join_err:
 					/* Don't reply until we heard back from all sisters */
 					if (siscnt != 0) {
 						tempinfo->ji_num_sisters = siscnt;
-						tempinfo->ji_taskid_index=index;
+						tempinfo->ji_taskid_index = index;
 						tempinfo->ji_taskid_list = temptaskid;
 						tempinfo->ji_nid_list = tempnid;
 						break;
@@ -5070,12 +5073,17 @@ join_err:
 						(void)diswui(efd, tempnid[i]);
 					}
 					(void)dis_flush(efd);
-					tempinfo->ji_num_sisters = 0;
-					tempinfo->ji_taskid_index = 0;
+
+					/* the spawn info is no longer needed, free it */
 					free(tempinfo->ji_taskid_list);
 					free(tempinfo->ji_nid_list);
-					tempinfo->ji_taskid_list = NULL;
-					tempinfo->ji_nid_list = NULL;
+					if (prev == NULL) {
+						/* tempinfo was the head */
+						pjob->ji_spawninfo = prev;
+					} else {
+						prev->next = tempinfo->next;
+					}
+					free(tempinfo);
 					break;
 
 				case	IM_GET_TASKS:
@@ -6013,7 +6021,7 @@ tm_request(int fd, int version)
 	int				k,index, momcnt = 0;
 	tm_task_id			*temptaskid;
 	tm_node_id			*tempnid;
-	struct job_multispawn_info	*tempinfo, *orig;
+	struct job_multispawn_info	*tempinfo;
 
 	conn_t 	*conn = get_conn(fd);
 	if (!conn) {
@@ -6800,14 +6808,13 @@ aterr:
 					tpp_mcast_close(mtfd);
 					goto done;
 				}
-			}
-
-			/*
-			** If there is no need to send to sisters
-			** we can reply now, we're done
-			*/
-			if (momcnt == 0) {
+			} else {
+				/*
+				** If there is no need to send to sisters
+				** we can reply now, we've created all the tasks
+				*/
 				(void)tm_reply(fd, version, i, event);
+
 				/* sending the number of task ids */
 				(void)diswui(fd, index);
 
@@ -6817,20 +6824,17 @@ aterr:
 					(void)diswui(fd, tempnid[k]);
 				}
 				(void)dis_flush(fd);
-				/* Reset the task counts */
-				tempinfo->ji_num_sisters = 0;
-				tempinfo->ji_taskid_index = 0;
-				/* These aren't needed anymore */
+
+				/* the spawn info is no longer needed, free it */
 				free(temptaskid);
 				free(tempnid);
+				free(tempinfo);
+				tempinfo = NULL;
 			}
 			tpp_mcast_close(mtfd);
-			if (pjob->ji_spawninfo == NULL) {
-				tempinfo->next = NULL;
-				pjob->ji_spawninfo = tempinfo;
-			} else {
-				orig = pjob->ji_spawninfo;	
-				tempinfo->next = orig;
+			if (tempinfo != NULL) {
+				/* Attach the spawninfo to the job structure */
+				tempinfo->next = pjob->ji_spawninfo;
 				pjob->ji_spawninfo = tempinfo;
 			}
 			arrayfree(argv);
