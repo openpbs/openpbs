@@ -1613,8 +1613,6 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 	}
 
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
-		int count_ghost_jobs = 0;
-
 		if (ninfo_arr[i]->jobs != NULL) {
 			for (j = 0, k = 0; ninfo_arr[i]->jobs[j] != NULL && k < size; j++) {
 				/* If one/more servers is down, jobs from down servers consuming resources on other servers'
