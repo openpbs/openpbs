@@ -2394,7 +2394,6 @@ discard_job(job *pjob, char *txt, int noack)
 	struct pbsnode *pnode;
 	int	 rc;
 	int	 rver;
-	mominfo_t *mom_superior = NULL;
 	
 	/* We're about to discard the job, reply to a preemption.
 	 * This serves as a catch all just incase the code doesn't reply on its own.
@@ -2449,9 +2448,6 @@ discard_job(job *pjob, char *txt, int noack)
 		/* had better be the "natural" vnode with only the one parent */
 		if (pnode != NULL) {
 
-			if (!mom_superior)
-				mom_superior = pnode->nd_moms[0];
-
 			for (i = 0; i < nmom; ++i) {
 				if ((pdsc + i)->jdcd_mom == pnode->nd_moms[0])
 					break;		/* already have this Mom */
@@ -2473,6 +2469,11 @@ discard_job(job *pjob, char *txt, int noack)
 	/* Get run version of this job */
 	rver = get_jattr_long(pjob, JOB_ATR_run_version);
 
+	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_AlienJob))
+		ps_send_discard(pjob->ji_qs.ji_jobid,
+				get_jattr_str(pjob, JOB_ATR_exec_vnode),
+				get_jattr_str(pjob, JOB_ATR_exec_host), rver);
+
 	/* unless "noack", attach discard array to the job */
 	if (noack == 0)
 		pjob->ji_discard = pdsc;
@@ -2490,12 +2491,6 @@ discard_job(job *pjob, char *txt, int noack)
 		} else
 			(pdsc + i)->jdcd_state = JDCD_DOWN;
 	}
-
-	if ((mom_superior->mi_dmn_info->dmn_state & INUSE_DOWN) &&
-	    !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_AlienJob))
-		ps_send_discard(pjob->ji_qs.ji_jobid,
-				get_jattr_str(pjob, JOB_ATR_exec_vnode),
-				get_jattr_str(pjob, JOB_ATR_exec_host), rver);
 
 	/*
 	 * at this point unless "noack", we call post_discard_job() to see if
