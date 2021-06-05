@@ -331,7 +331,7 @@ ps_send_discard(char *jobid, char *execvnode, char *exechost, int rver)
 	if (!exechost)
 		return -1;
 
-	mtfd = open_ps_mtfd();
+	mtfd = open_ps_mtfd_for_execvnode(execvnode);
 	if (mtfd == -1)
 		return -1;
 
@@ -381,6 +381,8 @@ ps_process_discard_job(int c)
 	char *exechost = NULL;
 	long rver;
 	job *pjob = NULL;
+
+	log_errf(-1, __func__, "received discard job");
 
 	jid = disrcs(c, &sz, &rc);
 	if (rc)

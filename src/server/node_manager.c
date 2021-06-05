@@ -2394,7 +2394,7 @@ discard_job(job *pjob, char *txt, int noack)
 	struct pbsnode *pnode;
 	int	 rc;
 	int	 rver;
-	
+
 	/* We're about to discard the job, reply to a preemption.
 	 * This serves as a catch all just incase the code doesn't reply on its own.
 	 */
@@ -2469,6 +2469,7 @@ discard_job(job *pjob, char *txt, int noack)
 	/* Get run version of this job */
 	rver = get_jattr_long(pjob, JOB_ATR_run_version);
 
+	/* ask each peer server to handle discard job for its share of moms running the job */
 	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_AlienJob))
 		ps_send_discard(pjob->ji_qs.ji_jobid,
 				get_jattr_str(pjob, JOB_ATR_exec_vnode),
