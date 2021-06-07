@@ -88,7 +88,7 @@ PBSD_server_ready(int c)
 {
 	if (!msvr_mode())
 		return 0;
-		
+
 	PBSD_status_aggregate(c, PBS_BATCH_ServerReady, NULL, NULL, NULL, MGR_OBJ_SERVER, NULL);
 	return pbs_errno;
 }

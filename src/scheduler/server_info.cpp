@@ -197,6 +197,8 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 
 	PBSD_server_ready(pbs_sd);
+	if (got_sigpipe)
+		return NULL;
 
 	if (allres.empty())
 		if (update_resource_defs(pbs_sd) == false)
