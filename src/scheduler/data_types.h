@@ -879,7 +879,7 @@ class resdef
 class prev_job_info
 {
 	public:
-	const std::string name;	/* name of job */
+	std::string name;	/* name of job */
 	std::string entity_name;	/* fair share entity of job */
 	resource_req *resused;	/* resources used by the job */
 	prev_job_info(const std::string& pname, const std::string& ename, resource_req *rused);
@@ -917,7 +917,7 @@ class fairshare_head
 	time_t last_decay;			/* last time tree was decayed */
 	fairshare_head();
 	fairshare_head(fairshare_head&);
-	fairshare_head operator=(fairshare_head&);
+	fairshare_head& operator=(fairshare_head&);
 	~fairshare_head();
 };
 

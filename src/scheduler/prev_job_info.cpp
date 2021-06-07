@@ -108,7 +108,11 @@ prev_job_info::prev_job_info(prev_job_info&& opj) noexcept: name(std::move(opj.n
 
 prev_job_info& prev_job_info::operator=(const prev_job_info& opj)
 {
-	return *this = prev_job_info(opj);
+	name = opj.name;
+	entity_name = opj.entity_name;
+	resused = dup_resource_req_list(opj.resused);
+	
+	return *this;
 }
 
 /**

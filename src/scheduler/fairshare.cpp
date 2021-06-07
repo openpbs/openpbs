@@ -928,7 +928,7 @@ fairshare_head::fairshare_head(fairshare_head& ofhead)
 /**
  * @brief copy assignment operator for fairshare_head
  */
-fairshare_head fairshare_head::operator=(fairshare_head& ofhead)
+fairshare_head& fairshare_head::operator=(fairshare_head& ofhead)
 {
 	free_fairshare_tree(root);
 	last_decay = ofhead.last_decay;
