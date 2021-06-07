@@ -876,8 +876,11 @@ open_ps_mtfd_for_execvnode(char *exec_vnode)
 	     chunk && !rc; chunk = parse_plus_spec(NULL, &rc)) {
 
 		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
-			if ((pnode = find_nodebyname(noden)) == NULL &&
-			    (pnode = find_alien_node(noden)) == NULL) {
+
+			if ((pnode = find_nodebyname(noden)))
+				continue;
+
+			if ((pnode = find_alien_node(noden)) == NULL) {
 				/* Broadcast when we dont have the node cache */
 				close_streams(mtfd, rc);
 				mtfd = open_ps_mtfd();

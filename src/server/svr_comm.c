@@ -382,8 +382,6 @@ ps_process_discard_job(int c)
 	long rver;
 	job *pjob = NULL;
 
-	log_errf(-1, __func__, "received discard job");
-
 	jid = disrcs(c, &sz, &rc);
 	if (rc)
 		goto end;
