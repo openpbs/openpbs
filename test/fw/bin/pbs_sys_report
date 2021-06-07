@@ -42,10 +42,21 @@ import csv
 import json
 import sys
 import os
+import getopt
 
 
-def write_to_csv(head, csvrows, i):
-    with open('sys_report.csv', 'a+') as fp:
+def usage():
+    msg = []
+    msg += ['Usage: ' + os.path.basename(sys.argv[0])]
+    msg += [' [PTL_JSON_FILE] \n\n']
+    msg += [' System monitoring results to csv conversion tool']
+    msg += ['--output-file : path to generate file\n']
+    msg += ['--help or -h : To display usage information\n']
+    print(''.join(msg))
+
+
+def write_to_csv(head, csvrows, i, filepath):
+    with open(filepath, 'a+') as fp:
         if i == 0:
             csv.writer(fp).writerow(head)
         csv.writer(fp).writerow(csvrows)
@@ -53,11 +64,34 @@ def write_to_csv(head, csvrows, i):
 
 if __name__ == '__main__':
 
+    if len(sys.argv) < 2:
+        usage()
+        sys.exit(1)
+
+    try:
+        opts, args = getopt.getopt(sys.argv[2:], "h",
+                                   ["help", "output-file="])
+    except getopt.GetoptError as err:
+        print(err)
+        usage()
+        sys.exit(1)
+
     with open(sys.argv[1]) as fp:
         td = json.load(fp)
 
-    if os.path.exists("sys_report.csv"):
-        os.remove("sys_report.csv")
+    filepath = None
+    for o, val in opts:
+        if o in ("-h", "--help"):
+            usage()
+            sys.exit(0)
+        elif o == "--output-file":
+            filepath = val
+
+    if not filepath:
+        filepath = "sys_report.csv"
+
+    if os.path.exists(filepath):
+        os.remove(filepath)
 
     i = 0
     for k, v in sorted(td['testsuites'].items()):
@@ -73,10 +107,7 @@ if __name__ == '__main__':
                             name = ''
                             time = ''
                             for mes in vl:
-                                for nm, value in mes.items():
-                                    if nm == 'time':
-                                        time = value
-                                        timelist.append(value)
+                                timelist.append(mes['time'])
                                 timelist = list(set(timelist))
                             timelist.sort()
                             for tm in timelist:
@@ -84,13 +115,11 @@ if __name__ == '__main__':
                                 csvrows = []
                                 csvrows.append(tm)
                                 for mes in vl:
-                                    for nm, value in mes.items():
-                                        if nm == 'name':
-                                            name = value
+                                    name = mes['name']
                                     if mes['time'] == tm:
                                         for nm, value in sorted(mes.items()):
                                             if nm != 'name' and nm != 'time':
                                                 head.append(nm + '_' + name)
                                                 csvrows.append(value)
-                                write_to_csv(head, csvrows, i)
+                                write_to_csv(head, csvrows, i, filepath)
                                 i += 1
