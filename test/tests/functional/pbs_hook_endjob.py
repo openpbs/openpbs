@@ -131,8 +131,8 @@ class TestHookEndJob(TestFunctional):
         a = {
             'resources_available.ncpus': self.node_cpu_count,
         }
-        for mom in self.moms:
-            self.server.manager(MGR_CMD_SET, NODE, a, mom)
+        for mom in self.moms.values():
+            self.server.manager(MGR_CMD_SET, NODE, a, mom.shortname)
 
         a = {
             'event': 'endjob',
