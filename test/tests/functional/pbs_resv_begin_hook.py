@@ -453,7 +453,7 @@ if e.type == pbs.RESV_BEGIN:
     def test_check_reservation_state_lookup(self):
         """
         Test: check for the existence and values of the
-        pbs.REVERSE_RESV_STTE dictionary
+        pbs.REVERSE_RESV_STATE dictionary
 
         run a hook that converts reseration state change ints into a string, then search
         for it in the server log.
