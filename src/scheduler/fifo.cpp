@@ -349,7 +349,7 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 				if (user != NULL) {
 					auto rj = find_resource_resv(sinfo->running_jobs, lj.name);
 
-					if (rj != NULL && rj->job != NULL) {
+					if (rj != NULL && rj->job != NULL && !rj->job->is_prerunning) {
 						/* just in case the delta is negative just add 0 */
 						delta = formula_evaluate(conf.fairshare_res.c_str(), rj, rj->job->resused) -
 							formula_evaluate(conf.fairshare_res.c_str(), rj, lj.resused);
@@ -1153,8 +1153,6 @@ end_cycle_tasks(server_info *sinfo)
 		free(cmp_aoename);
 		cmp_aoename = NULL;
 	}
-
-	got_sigpipe = 0;
 
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
 		"", "Leaving Scheduling Cycle");
@@ -2808,7 +2806,7 @@ set_validate_sched_attrs(int connector)
 
 	/* Stat the scheduler to get details of sched */
 
-	all_ss = pbs_statsched(connector, NULL, NULL);
+	all_ss = send_statsched(connector, NULL, NULL);
 	ss = bs_find(all_ss, sc_name);
 
 	if (ss == NULL) {

@@ -94,7 +94,6 @@ extern resource_def *svr_resc_def; /* the resource def structure */
 extern int svr_resc_size; /* static + dynamic */
 extern int svr_resc_unk;  /* the last one */
 extern char          server_name[];
-extern char          server_host[];
 extern struct python_interpreter_data  svr_interp_data;
 extern pbs_list_head       svr_queues;    /* list of queues                   */
 extern pbs_list_head       svr_alljobs;   /* list of all jobs in server       */

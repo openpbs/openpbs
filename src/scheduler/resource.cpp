@@ -102,7 +102,7 @@ query_resources(int pbs_sd)
 	struct attrl *attrp;			/* iterate over resource fields */
 	std::unordered_map<std::string, resdef *> tmpres;
 
-	if ((bs = pbs_statrsc(pbs_sd, NULL, NULL, const_cast<char *>("p"))) == NULL) {
+	if ((bs = send_statrsc(pbs_sd, NULL, NULL, const_cast<char *>("p"))) == NULL) {
 		const char *errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";

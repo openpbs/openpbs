@@ -990,7 +990,7 @@ e.accept()
                                 'bin', 'qsub')
 
         cmd = [qsub_cmd, '-J1-4%2', '-Wmax_run_subjobs=4', '--',
-               '/bin/sleep 100']
+               self.mom.sleep_cmd, '100']
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
         self.assertNotEqual(rv['rc'], 0, 'qsub must fail')
         msg = "qsub: multiple max_run_subjobs values found"

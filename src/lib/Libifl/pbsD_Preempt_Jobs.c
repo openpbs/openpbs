@@ -110,9 +110,7 @@ preempt_jobs_recv(int connect, int *ret_count)
 	preempt_job_info *ppj_reply = NULL;
 
 	reply = PBSD_rdrpy(connect);
-	if (reply == NULL)
-		pbs_errno = PBSE_PROTOCOL;
-	else {
+	if (reply != NULL) {
 		int i = 0;
 		int count = 0;
 		preempt_job_info *ppj_temp = NULL;
@@ -156,14 +154,15 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	int i;
 	int count = 0;
 	int last_count = -1;
-	int retidx = 0;	/* first server's list will be used to collate results from all */
+	int retidx = -1;	/* first server's list will be used to collate results from all */
 	preempt_job_info *ret = NULL;
 	void *missing_jobs = NULL;
+	int num_servers = get_num_servers();
 
 	if (!svr_connections)
 		return NULL;
 
-	p_replies = calloc(get_num_servers(), sizeof(preempt_job_info *));
+	p_replies = calloc(num_servers, sizeof(preempt_job_info *));
 	if (p_replies == NULL) {
 		pbs_errno = PBSE_SYSTEM;
 		goto err;
@@ -187,10 +186,17 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	/* With multi-server, jobs are sharded across multiple servers.
 	 * So, send the request to all the active servers and collate their replies
 	 */
-	for (i = 0; i < get_num_servers(); i++) {
-		if (preempt_jobs_send(svr_connections[i]->sd, preempt_jobs_list) != 0)
-			goto err;
+	for (i = 0; i < num_servers; i++) {
+		if (svr_connections[i]->sd > 0) {
+			if (preempt_jobs_send(svr_connections[i]->sd, preempt_jobs_list) != 0) {
+				goto err;
+			}
+			if (retidx == -1)
+				retidx = i;
+		}
 	}
+	if (retidx == -1)
+		goto err;
 
 	/**
 	 * Each server will return an array containing all jobs
@@ -206,8 +212,8 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	 * 	- Using the AVL tree avoids the cost of N strcmps otherwise needed to find the jobid
 	 *  in the first array
 	 */
-	for (i = 0; i < get_num_servers(); last_count = count, i++) {
-		if ((p_replies[i] = preempt_jobs_recv(svr_connections[i]->sd, &count)) == NULL)
+	for (i = 0; i < num_servers; last_count = count, i++) {
+		if (svr_connections[i]->sd > 0 && (p_replies[i] = preempt_jobs_recv(svr_connections[i]->sd, &count)) == NULL)
 			goto err;
 		if (last_count != -1 && count != last_count) {
 			/* something went wrong, this server did not return the same count, abort */
@@ -215,9 +221,9 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 		}
 	}
 
-	/* Find jobs which couldn't be found on the first server and store them in AVL tree */
+	/* Find jobs which couldn't be found on the retidx server and store them in AVL tree */
 	for (i = 0; i < count; i++) {
-		if (p_replies[retidx][i].order[0] == 'D' && get_num_servers() > 1) {
+		if (p_replies[retidx][i].order[0] == 'D' && num_servers > 1) {
 			int *data = malloc(sizeof(int));
 			if (data == NULL) {
 				pbs_errno = PBSE_SYSTEM;
@@ -229,14 +235,14 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	}
 	ret = p_replies[retidx];
 
-	if (missing_jobs != NULL && get_num_servers() > 1) {
-		for (i = 1; i < get_num_servers(); i++) {	/* Starting from 1 as retidx == 0 */
+	if (missing_jobs != NULL && num_servers > 1) {
+		for (i = retidx + 1; i < num_servers; i++) {
 			int j;
 
 			if (p_replies[i] == NULL)
 				continue;
 
-			/* Check if the missing jobs were found on any other server */
+			/* Check if the missing jobs were found on this server */
 			for (j = 0; j < count; j++) {
 				if (p_replies[i][j].order[0] != 'D') {
 					/* Job was found on another server!
@@ -261,8 +267,9 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 		goto err;
 
 	/* Free up all the other lists */
-	for (i = 1; i < get_num_servers(); i++) {
-		free(p_replies[i]);
+	for (i = 0; i < num_servers; i++) {
+		if (i != retidx)
+			free(p_replies[i]);
 	}
 	free(p_replies);
 	pbs_idx_destroy(missing_jobs);
@@ -271,7 +278,7 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 
 err:
 	if (p_replies != NULL) {
-		for (i = 0; i < get_num_servers(); i++) {
+		for (i = 0; i < num_servers; i++) {
 			free(p_replies[i]);
 		}
 		free(p_replies);

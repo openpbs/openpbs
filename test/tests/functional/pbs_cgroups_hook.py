@@ -250,7 +250,7 @@ class TestCgroupsHook(TestFunctional):
 
             self.logger.info("increase log level for mom and \
                              set polling intervals")
-            c = {'$logevent': '0xffffffff',
+            c = {'$logevent': '0xffffffff', '$clienthost': self.server.name,
                  '$min_check_poll': 8, '$max_check_poll': 12}
             mom.add_config(c)
 
@@ -562,9 +562,9 @@ sleep 15
 #PBS -joe
 sleep 30
 """
-        self.sleep100_job = """#!/bin/bash
+        self.sleep600_job = """#!/bin/bash
 #PBS -joe
-sleep 100
+sleep 600
 """
         self.sleep5_job = """#!/bin/bash
 #PBS -joe
@@ -1454,6 +1454,76 @@ sleep 300
     }
 }
 """
+        self.cfg17 = """{
+    "cgroup_prefix"         : "pbs_jobs",
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : ["no_cgroups"],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : false,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : false,
+    "ncpus_are_cores"       : false,
+    "manage_rlimit_as"      : true,
+    "cgroup" : {
+        "cpuacct" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : []
+        },
+        "cpuset" : {
+            "mount_path"          : "/sys/fs/cgroup/cpuset",
+            "enabled"            : true,
+            "exclude_cpus"       : [],
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "mem_fences"         : true,
+            "mem_hardwall"       : false,
+            "memory_spread_page" : false
+        },
+        "devices" : {
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "allow"              : [
+                "b *:* rwm",
+                "c *:* rwm"
+            ]
+        },
+        "hugetlb" : {
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "0MB",
+            "reserve_percent"    : 0,
+            "reserve_amount"     : "0MB"
+        },
+        "memory" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "soft_limit"         : false,
+            "default"            : "100MB",
+            "reserve_percent"    : 0,
+            "swappiness"         : 0,
+            "reserve_amount"     : "1GB",
+            "enforce_default"    : true,
+            "exclhost_ignore_default" : true
+        },
+        "memsw" : {
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "100MB",
+            "reserve_percent"    : 0,
+            "reserve_amount"     : "10GB",
+            "manage_cgswap"      : true,
+            "enforce_default"    : true,
+            "exclhost_ignore_default" : true
+        }
+    }
+}
+"""
 
         Job.dflt_attributes[ATTR_k] = 'oe'
         # Increase the server log level
@@ -1669,15 +1739,19 @@ if %s e.job.in_ms_mom():
                 return jdir
         return None
 
-    def find_main_cpath(self, cdir):
-        if os.path.isdir(cdir):
+    def find_main_cpath(self, cdir, host=None):
+        if host is None:
+            host = self.hosts_list[0]
+        rc = self.du.isdir(host, path=cdir)
+        if rc:
             paths = ['pbs_jobs.service/jobid',
                      'pbs.service/jobid',
                      'pbs.slice',
                      'pbs']
             for p in paths:
                 cpath = os.path.join(cdir, p)
-                if os.path.isdir(cpath):
+                rc = self.du.isdir(host, path=cpath)
+                if rc:
                     return cpath
         return None
 
@@ -1693,9 +1767,13 @@ if %s e.job.in_ms_mom():
         events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
                   'execjob_epilogue', 'execjob_end', 'exechost_startup',
                   'exechost_periodic', 'execjob_resize', 'execjob_abort']
+        # Alarm timeout should be set really large because some tests will
+        # create a lot of simultaneous jobs on a single (slow) MoM
+        # Shipped default is 90 seconds, which is reasonable for real hosts,
+        # but not for containers or VMs sharing a host
         a = {'enabled': 'True',
              'freq': '10',
-             'alarm': 30,
+             'alarm': 120,
              'event': events}
         # Sometimes the deletion of the old hook is still pending
         failed = True
@@ -1748,8 +1826,10 @@ if %s e.job.in_ms_mom():
             # reload config if server and mom cfg differ up to count times
             count = 5
             while (count > 0):
-                r1 = self.du.run_cmd(cmd=['cat', svr_conf], sudo=True)
-                r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
+                r1 = self.du.run_cmd(cmd=['cat', svr_conf], sudo=True,
+                                     hosts=self.serverA)
+                r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True,
+                                     hosts=self.mom.shortname)
                 if r1['out'] != r2['out']:
                     self.logger.info('server & mom pbs_cgroups.CF differ')
                     time.sleep(2)
@@ -1926,7 +2006,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -1955,7 +2035,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.sleep100_job)
+        j1.create_script(self.sleep600_job)
         jid2 = self.server.submit(j1)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -1981,7 +2061,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -2002,7 +2082,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid2 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -2033,7 +2113,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s'
              % self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -2056,7 +2136,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.sleep100_job)
+        j1.create_script(self.sleep600_job)
         jid2 = self.server.submit(j1)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -2195,7 +2275,7 @@ if %s e.job.in_ms_mom():
              '1:ncpus=1:mem=300mb:host=%s' % self.hosts_list[0],
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2205,7 +2285,7 @@ if %s e.job.in_ms_mom():
         fnma = self.get_cgroup_job_dir('memory', jid, self.hosts_list[0])
         self.assertFalse(fnma is None, 'No job directory for memory subsystem')
         memscr = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fna, fnma)],
-                                 as_script=True)
+                                 as_script=True, hosts=self.mom.shortname)
         memscr_out = memscr['out']
         self.logger.info('memscr_out:\n%s' % memscr_out)
         self.assertTrue('CpuIDs=0' in memscr_out)
@@ -2233,7 +2313,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2241,7 +2321,7 @@ if %s e.job.in_ms_mom():
         fn = self.get_cgroup_job_dir('cpuset', jid, self.hosts_list[0])
         fnm = self.get_cgroup_job_dir('memory', jid, self.hosts_list[0])
         scr = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn, fnm)],
-                              as_script=True)
+                              as_script=True, hosts=self.mom.shortname)
         scr_out = scr['out']
         self.logger.info('scr_out:\n%s' % scr_out)
         self.assertTrue('CpuIDs=0' in scr_out)
@@ -2309,7 +2389,7 @@ if %s e.job.in_ms_mom():
         a['Resource_List.select'] = \
             '1:ncpus=1:mem=300mb:host=%s' % self.hosts_list[0]
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(20)
+        j.set_sleep_time(600)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2317,7 +2397,7 @@ if %s e.job.in_ms_mom():
         devd = self.paths[self.hosts_list[0]]['devices']
         scr = self.du.run_cmd(
             cmd=[self.check_dirs_script % (jid, devd)],
-            as_script=True)
+            as_script=True, hosts=self.mom.shortname)
         scr_out = scr['out']
         self.logger.info('scr_out:\n%s' % scr_out)
         # the config file named entries must be translated to major/minor
@@ -2328,14 +2408,14 @@ if %s e.job.in_ms_mom():
             self.du.run_cmd(cmd=['ls -al /dev/console'
                                  '| awk \'BEGIN {FS=" |,"} '
                                  '{print $5} {print $7}\''],
-                            as_script=True)
+                            as_script=True, hosts=self.hosts_list[0])
         (console_major, console_minor) = console_results['out']
         # only one line here
         tty0_major_results = \
             self.du.run_cmd(cmd=['ls -al /dev/tty0'
                                  '| awk \'BEGIN {FS=" |,"} '
                                  '{print $5}\''],
-                            as_script=True)
+                            as_script=True, hosts=self.hosts_list[0])
         tty0_major = tty0_major_results['out'][0]
         check_devices = ['b *:* rwm',
                          'c %s:%s rwm' % (console_major, console_minor),
@@ -2452,12 +2532,12 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.sleep100_job)
+        j1.create_script(self.sleep600_job)
         jid1 = self.server.submit(j1)
         b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'b'}
         j2 = Job(TEST_USER, attrs=b)
-        j2.create_script(self.sleep100_job)
+        j2.create_script(self.sleep600_job)
         jid2 = self.server.submit(j2)
         a = {'job_state': 'R'}
         # Make sure they are both running
@@ -2468,11 +2548,11 @@ if %s e.job.in_ms_mom():
         fn2 = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
         # Capture the output of cpuset_mem_script for both jobs
         scr1 = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn1, None)],
-                               as_script=True)
+                               as_script=True, hosts=self.hosts_list[0])
         scr1_out = scr1['out']
         self.logger.info('scr1_out:\n%s' % scr1_out)
         scr2 = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn2, None)],
-                               as_script=True)
+                               as_script=True, hosts=self.hosts_list[0])
         scr2_out = scr2['out']
         self.logger.info('scr2_out:\n%s' % scr2_out)
         # Ensure the CPU ID for each job differs
@@ -2542,7 +2622,7 @@ if %s e.job.in_ms_mom():
         # Submit M jobs N cpus wide, where M is the amount of physical
         # processors and N is number of 'cpu cores' per M. Expect them to run.
         njobs = phys
-        if njobs > 64:
+        if njobs > 100:
             self.skipTest("too many jobs (%d) to submit" % njobs)
         a = {'Resource_List.select': '1:ncpus=%s:mem=300mb:host=%s' %
              (cores, self.hosts_list[0]), ATTR_N: name + 'a'}
@@ -2626,7 +2706,7 @@ if %s e.job.in_ms_mom():
 
         a = {
             'Resource_List.select':
-            '1:ncpus=1:mem=300mb:vmem=320mb:host=%s' % self.hosts_list[0],
+            '1:ncpus=1:mem=400mb:vmem=420mb:host=%s' % self.hosts_list[0],
             ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job1)
@@ -2683,9 +2763,9 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg3 % ('', vnpernuma, '', self.mem, '',
                                       self.swapctl, ''))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
-             self.hosts_list[0], 'Resource_List.walltime': 100, ATTR_N: name}
+             self.hosts_list[0], 'Resource_List.walltime': 600, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2710,7 +2790,7 @@ if %s e.job.in_ms_mom():
         # Make dir in freezer subsystem under directory where we
         # have delegate control from systemd
         fdir_pbs = os.path.join(fdir, 'pbs_jobs.service', 'PtlPbs')
-        if not self.du.isdir(fdir_pbs):
+        if not self.du.isdir(self.hosts_list[0], fdir_pbs):
             self.du.mkdir(hostname=self.hosts_list[0], path=fdir_pbs,
                           mode=0o755, sudo=True)
         # Write PIDs into the tasks file for the freezer cgroup
@@ -2741,7 +2821,7 @@ if %s e.job.in_ms_mom():
         # Freeze the cgroup
         freezer_file = os.path.join(fdir_pbs, 'freezer.state')
         state = 'FROZEN'
-        fn = self.du.create_temp_file(hostname=self.hosts_list[0], body=state)
+        fn = self.du.create_temp_file(body=state)
         self.tempfile.append(fn)
         ret = self.du.run_copy(self.hosts_list[0], src=fn,
                                dest=freezer_file, sudo=True,
@@ -2802,7 +2882,7 @@ if %s e.job.in_ms_mom():
 
         # Thaw the cgroup
         state = 'THAWED'
-        fn = self.du.create_temp_file(hostname=self.hosts_list[0], body=state)
+        fn = self.du.create_temp_file(body=state)
         self.tempfile.append(fn)
         ret = self.du.run_copy(self.hosts_list[0], src=fn,
                                dest=freezer_file, sudo=True,
@@ -2855,7 +2935,7 @@ if %s e.job.in_ms_mom():
 
         cmd = ["rmdir", fdir_pbs]
         self.logger.info("Removing %s" % fdir_pbs)
-        self.du.run_cmd(cmd=cmd, sudo=True)
+        self.du.run_cmd(self.hosts_list[0], cmd=cmd, sudo=True)
         # Due to orphaned jobs node is not coming back to free state
         # workaround is to recreate the nodes. Orphaned jobs will
         # get cleaned up in tearDown hence not doing it here
@@ -2937,7 +3017,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -2957,7 +3037,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid2 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -2978,7 +3058,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -2997,7 +3077,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid2 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
@@ -3222,7 +3302,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '2:ncpus=1:mem=100mb',
              'Resource_List.place': 'scatter'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3275,7 +3355,7 @@ if %s e.job.in_ms_mom():
                                         'jobid', str(jid))
                 self.logger.info('Checking that file %s should not exist'
                                  % filename)
-                self.assertFalse(os.path.isfile(filename))
+                self.assertFalse(self.du.isfile(self.hosts_list[0], filename))
 
     @skipOnCray
     def test_cgroup_assign_resources_mem_only_vnode(self):
@@ -3413,7 +3493,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3437,7 +3517,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3468,7 +3548,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3496,7 +3576,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3586,7 +3666,7 @@ if %s e.job.in_ms_mom():
         hostn = self.hosts_list[0]
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % hostn}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3610,7 +3690,7 @@ if %s e.job.in_ms_mom():
                            interval=3, offset=10)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % hostn}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -3639,8 +3719,8 @@ if %s e.job.in_ms_mom():
                 "memory subsystem is not enabled for cgroups")
         if cpath is not None:
             cmd = ["rmdir", cpath]
+            self.du.run_cmd(cmd=cmd, sudo=True, hosts=self.hosts_list[0])
         self.logger.info("Removing %s" % cpath)
-        self.du.run_cmd(cmd=cmd, sudo=True)
         self.load_config(self.cfg6 % (self.mem, self.swapctl))
         # check where cpath is once more
         # since we loaded a new cgroup config file
@@ -3652,12 +3732,13 @@ if %s e.job.in_ms_mom():
         # Verify that memory.use_hierarchy is enabled
         fpath = os.path.join(cpath, "memory.use_hierarchy")
         self.logger.info("looking for file %s" % fpath)
-        if os.path.isfile(fpath):
-            with open(fpath, 'r') as fd:
-                val = fd.read()
-                self.assertEqual(
-                    val.rstrip(), "1", "%s is not equal to 1"
-                    % val.rstrip())
+        rc = self.du.isfile(hostname=self.hosts_list[0], path=fpath)
+        if rc:
+            ret = self.du.cat(hostname=self.hosts_list[0], filename=fpath,
+                              logerr=False)
+            val = (' '.join(ret['out'])).strip()
+            self.assertEqual(
+                val, "1", "%s is not equal to 1" % val)
             self.logger.info("memory.use_hierarchy is enabled")
         else:
             self.assertFalse(1, "File %s not present" % fpath)
@@ -4033,7 +4114,7 @@ event.accept()
              '1:ncpus=1:host=%s+1:ncpus=1:host=%s+1:ncpus=1:host=%s' %
              (self.hosts_list[0], self.hosts_list[1], self.hosts_list[2])}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R', 'substate': '41'}
         self.server.expect(JOB, a, jid)
@@ -4068,17 +4149,7 @@ event.accept()
                                     starttime=now, n='ALL')
 
         self.moms_list[1].pi.restart()
-
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=15)
-
-        a = {'Resource_List.select': '3:ncpus=1:mem=100mb',
-             'Resource_List.place': 'scatter'}
-        j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
-        jid = self.server.submit(j)
-        a = {'job_state': 'R'}
-        self.server.expect(JOB, a, jid)
 
     @timeout(1800)
     def test_big_cgroup_cpuset(self):
@@ -4117,7 +4188,7 @@ event.accept()
         select_spec = "%d:ncpus=%d" % (vnodes_count, cpus_per_vnode)
         a = {'Resource_List.select': select_spec, ATTR_N: name + 'a'}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.sleep100_job)
+        j1.create_script(self.sleep600_job)
         jid1 = self.server.submit(j1)
         a = {'job_state': 'R'}
         # Make sure job is running
@@ -4126,7 +4197,7 @@ event.accept()
         fn1 = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
         # Capture the output of cpuset_mem_script for job
         scr1 = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn1, None)],
-                               as_script=True)
+                               as_script=True, hosts=self.hosts_list[0])
         tmp_out1 = scr1['out']
         self.logger.info("test output for job1: %s" % (tmp_out1))
         # Ensure the number of cpus assigned matches request
@@ -4162,11 +4233,6 @@ event.accept()
         gets called.  The abort hook cleans up assigned cgroups, allowing
         the higher priority job to run on the same node.
         """
-        # Skip test if number of mom provided is not equal to two
-        if len(self.moms) != 2:
-            self.skipTest("test requires two MoMs as input, " +
-                          "use -p moms=<mom1>:<mom2>")
-
         # create express queue
         a = {'queue_type': 'execution',
              'started': 'True',
@@ -4191,8 +4257,9 @@ exit 0
             self.server.manager(MGR_CMD_SET, NODE, a, id=m.shortname)
 
         # submit multi-node job
-        a = {'Resource_List.select': '2:ncpus=1',
-             'Resource_List.place': 'scatter:exclhost'}
+        a = {'Resource_List.select': '1:ncpus=1:host=%s+1:ncpus=1:host=%s' % (
+            self.hosts_list[0], self.hosts_list[1]),
+            'Resource_List.place': 'scatter:exclhost'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
 
@@ -4250,8 +4317,9 @@ sleep 300
             self.server.manager(MGR_CMD_SET, NODE, a, id=m.shortname)
 
         # submit multi-node job
-        a = {'Resource_List.select': '2:ncpus=1',
-             'Resource_List.place': 'scatter:excl'}
+        a = {'Resource_List.select': '1:ncpus=1:host=%s+1:ncpus=1:host=%s' % (
+            self.hosts_list[0], self.hosts_list[1]),
+            'Resource_List.place': 'scatter:exclhost'}
         j1 = Job(TEST_USER, attrs=a)
         j1.set_sleep_time(300)
         jid1 = self.server.submit(j1)
@@ -4367,7 +4435,7 @@ sleep 300
              "ncpus=%d" % ncpus_req,
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4375,7 +4443,7 @@ sleep 300
         fna = self.get_cgroup_job_dir('cpu', jid, self.hosts_list[0])
         self.assertFalse(fna is None, 'No job directory for cpu subsystem')
         cpu_scr = self.du.run_cmd(cmd=[self.cpu_controller_script % fna],
-                                  as_script=True)
+                                  as_script=True, hosts=self.hosts_list[0])
         cpu_scr_out = cpu_scr['out']
         self.logger.info('cpu_scr_out:\n%s' % cpu_scr_out)
 
@@ -4464,7 +4532,7 @@ sleep 300
              "ncpus=%d" % ncpus_req,
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4472,7 +4540,7 @@ sleep 300
         fna = self.get_cgroup_job_dir('cpu', jid, self.hosts_list[0])
         self.assertFalse(fna is None, 'No job directory for cpu subsystem')
         cpu_scr = self.du.run_cmd(cmd=[self.cpu_controller_script % fna],
-                                  as_script=True)
+                                  as_script=True, hosts=self.hosts_list[0])
         cpu_scr_out = cpu_scr['out']
         self.logger.info('cpu_scr_out:\n%s' % cpu_scr_out)
         shares_match = (ncpus_req * 1000)
@@ -4552,7 +4620,7 @@ sleep 300
         a = {'Resource_List.select': 'ncpus=0',
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4560,7 +4628,7 @@ sleep 300
         fna = self.get_cgroup_job_dir('cpu', jid, self.hosts_list[0])
         self.assertFalse(fna is None, 'No job directory for cpu subsystem')
         cpu_scr = self.du.run_cmd(cmd=[self.cpu_controller_script % fna],
-                                  as_script=True)
+                                  as_script=True, hosts=self.hosts_list[0])
         cpu_scr_out = cpu_scr['out']
         self.logger.info('cpu_scr_out:\n%s' % cpu_scr_out)
         shares_match = (default_zero_shares_fraction * 1000)
@@ -4642,7 +4710,7 @@ sleep 300
         a = {'Resource_List.select': 'ncpus=0',
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -4650,7 +4718,7 @@ sleep 300
         fna = self.get_cgroup_job_dir('cpu', jid, self.hosts_list[0])
         self.assertFalse(fna is None, 'No job directory for cpu subsystem')
         cpu_scr = self.du.run_cmd(cmd=[self.cpu_controller_script % fna],
-                                  as_script=True)
+                                  as_script=True, hosts=self.hosts_list[0])
         cpu_scr_out = cpu_scr['out']
         self.logger.info('cpu_scr_out:\n%s' % cpu_scr_out)
         shares_match = (zero_cpus_shares_fraction * 1000)
@@ -4706,12 +4774,15 @@ sleep 300
         # N is the number of 'cpu cores' per M. and P being the
         # number of hyperthreads per core.
         njobs = len(phys) * cores * hyperthreads_per_core
-        if njobs > 64:
+        if njobs > 100:
             self.skipTest("too many jobs (%d) to submit" % njobs)
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
         for _ in range(njobs):
             j = Job(TEST_USER, attrs=a)
+            # make sure this stays around for an hour
+            # (or until deleted in teardown)
+            j.set_sleep_time(3600)
             jid = self.server.submit(j)
             a1 = {'job_state': 'R'}
             self.server.expect(JOB, a1, jid)
@@ -4738,7 +4809,7 @@ sleep 300
         self.mom.add_config(c)
         a = {'Resource_List.select': 'ncpus=1:mem=100mb'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         time.sleep(2)
         stime = int(time.time())
         time.sleep(2)
@@ -4850,7 +4921,7 @@ sleep 300
                  % (vmemreq, vnode_name)}
 
             j = Job(TEST_USER, attrs=a)
-            j.create_script(self.sleep100_job)
+            j.create_script(self.sleep600_job)
             jid = self.server.submit(j)
             bs = {'job_state': 'R'}
             self.server.expect(JOB, bs, jid, offset=1)
@@ -4871,7 +4942,7 @@ sleep 300
             self.logger.info('job cgswap detected to be correct, roughly %s'
                              % str(cgswap))
             j = Job(TEST_USER, attrs=a)
-            j.create_script(self.sleep100_job)
+            j.create_script(self.sleep600_job)
             jid = self.server.submit(j)
 
             # Second job should not run - not enough cgswap
@@ -4925,7 +4996,7 @@ sleep 300
             a['Resource_List.place'] = 'exclhost'
 
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep100_job)
+        j.create_script(self.sleep600_job)
         jid = self.server.submit(j)
         bs = {'job_state': 'R'}
         self.server.expect(JOB, bs, jid, offset=1)
@@ -5083,7 +5154,7 @@ sleep 300
         # First job -- request vmem and no pvmem,
         # RLIMIT_AS shoud be unlimited
         a = {'Resource_List.select':
-             '1:ncpus=0:mem=300mb:vmem=300mb:vnode=%s'
+             '1:ncpus=0:mem=400mb:vmem=400mb:vnode=%s'
              % self.mom.shortname}
 
         j = Job(TEST_USER, attrs=a)
@@ -5109,7 +5180,7 @@ sleep 300
 
         # Second job -- see if pvmem still works
         # RLIMIT_AS should correspond to pvmem
-        a['Resource_List.pvmem'] = '300mb'
+        a['Resource_List.pvmem'] = '400mb'
         j = Job(TEST_USER, attrs=a)
         j.create_script("#!/bin/bash\nulimit -v")
         jid = self.server.submit(j)
@@ -5129,37 +5200,194 @@ sleep 300
         job_out = '\n'.join(result['out'])
         self.logger.info("job_out=%s" % job_out)
         # ulimit reports kb, not bytes
-        self.assertTrue(str(300 * 1024) in job_out)
-        self.logger.info("Job that requests 300mb pvmem "
-                         "correctly has 300mb RLIMIT_AS")
+        self.assertTrue(str(400 * 1024) in job_out)
+        self.logger.info("Job that requests 400mb pvmem "
+                         "correctly has 400mb RLIMIT_AS")
 
-    def tearDown(self):
-        TestFunctional.tearDown(self)
-        mom_checks = True
-        if self.moms_list[0].is_cpuset_mom():
-            mom_checks = False
-        self.load_default_config(mom_checks=mom_checks)
-        if not self.iscray:
-            self.remove_vntype()
-        events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
-                  'execjob_epilogue', 'execjob_end', 'exechost_startup',
-                  'exechost_periodic', 'execjob_resize', 'execjob_abort']
-        # Disable the cgroups hook
-        conf = {'enabled': 'False', 'freq': 10, 'event': events}
-        self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
-        # Cleanup any temp file created
-        self.logger.info('Deleting temporary files %s' % self.tempfile)
-        self.du.rm(hostname=self.serverA, path=self.tempfile, force=True,
-                   recursive=True, sudo=True)
+    def test_cgroup_mount_paths(self):
+        """
+        Test to see if the cgroup hook picks the shortest path,
+        but also if it can be overrided in the config file
+        """
+
+        if self.du.isdir(self.hosts_list[0], '/dev/tstc'):
+            self.skipTest('Test requires /dev/tstc not to exist')
+        if self.du.isdir(self.hosts_list[0], '/dev/tstm'):
+            self.skipTest('Test requires /dev/tstm not to exist')
+
+        self.load_config(self.cfg17)
+
+        dir_created = self.du.mkdir(hostname=self.hosts_list[0],
+                                    path='/dev/tstm', mode=0o0755,
+                                    sudo=True)
+        if not dir_created:
+            self.skipTest('not able to create /dev/tstm')
+        result = self.du.run_cmd(self.hosts_list[0],
+                                 ['mount', '-t', 'cgroup', '-o',
+                                  'rw,nosuid,nodev,noexec,relatime,seclabel,'
+                                  'memory',
+                                  'cgroup', '/dev/tstm'],
+                                 sudo=True)
+        if result['rc'] != 0:
+            self.du.run_cmd(self.hosts_list[0],
+                            ['rmdir', '/dev/tstm'],
+                            sudo=True)
+            self.skipTest('not able to mount /dev/tstm')
+
+        dir_created = self.du.mkdir(hostname=self.hosts_list[0],
+                                    path='/dev/tstc', mode=0o0755,
+                                    sudo=True)
+        if not dir_created:
+            self.du.run_cmd(self.hosts_list[0],
+                            ['umount', '/dev/tstm'],
+                            sudo=True)
+            self.du.run_cmd(self.hosts_list[0],
+                            ['rmdir', '/dev/tstm'],
+                            sudo=True)
+            self.skipTest('not able to create /dev/tstc')
+
+        result = self.du.run_cmd(self.hosts_list[0],
+                                 ['mount', '-t', 'cgroup', '-o',
+                                  'rw,nosuid,nodev,noexec,relatime,seclabel,'
+                                  'cpuset',
+                                  'cgroup', '/dev/tstc'],
+                                 sudo=True)
+        if result['rc'] != 0:
+            self.du.run_cmd(self.hosts_list[0],
+                            ['umount', '/dev/tstm'],
+                            sudo=True)
+            self.du.run_cmd(self.hosts_list[0],
+                            ['rmdir', '/dev/tstm'],
+                            sudo=True)
+            self.du.run_cmd(self.hosts_list[0],
+                            ['rmdir', '/dev/tstc'],
+                            sudo=True)
+            self.skipTest('not able to mount /dev/tstc')
+
+        # sleep 2s: make sure no old log lines will match 'begin' time
+        time.sleep(2)
+        begin = int(time.time())
+        # sleep 2s to allow for small time differences and rounding errors
+        time.sleep(2)
+
+        a = {'Resource_List.select':
+             "1:ncpus=1:host=%s" % self.hosts_list[0]}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep600_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        failure = False
+
+        try:
+            self.moms_list[0].log_match(msg='create_job: Creating directory '
+                                            '/sys/fs/cgroup/cpuset/'
+                                            'pbs_jobs.service/jobid/%s'
+                                            % jid,
+                                        n='ALL', starttime=begin,
+                                        max_attempts=1)
+        except Exception:
+            failure = True
+        try:
+            self.moms_list[0].log_match(msg='create_job: Creating directory '
+                                            '/dev/tstm/'
+                                            'pbs_jobs.service/jobid/%s'
+                                            % jid,
+                                        n='ALL', starttime=begin,
+                                        max_attempts=1)
+        except Exception:
+            failure = True
+
+        self.du.run_cmd(self.hosts_list[0],
+                        ['umount', '/dev/tstm'],
+                        sudo=True)
+        self.du.run_cmd(self.hosts_list[0],
+                        ['rmdir', '/dev/tstm'],
+                        sudo=True)
+        self.du.run_cmd(self.hosts_list[0],
+                        ['umount', '/dev/tstc'],
+                        sudo=True)
+        self.du.run_cmd(self.hosts_list[0],
+                        ['rmdir', '/dev/tstc'],
+                        sudo=True)
+
+        self.assertFalse(failure,
+                         'Did not find correct paths for created cgroup dirs')
+
+    def cleanup_cgroup_subsys(self, host):
+        # Remove the jobdir if any under other cgroups
+        cgroup_subsys = ('systemd', 'cpu', 'cpuacct', 'cpuset', 'devices',
+                         'memory', 'hugetlb', 'perf_event', 'freezer',
+                         'blkio', 'pids', 'net_cls', 'net_prio')
+        for subsys in cgroup_subsys:
+            if (subsys in self.paths[host] and
+                    self.paths[host][subsys]):
+                self.logger.info('Looking for orphaned jobdir in %s' % subsys)
+                cdir = self.paths[host][subsys]
+                if self.du.isdir(host, cdir):
+                    self.logger.info("Inspecting " + cdir)
+                    cpath = self.find_main_cpath(cdir, host)
+                    # not always immediately under main path
+                    if cpath is not None and self.du.isdir(host, cpath):
+                        tasks_files = (
+                            glob.glob(os.path.join(cpath,
+                                                   '*', '*', 'tasks'))
+                            + glob.glob(os.path.join(cpath,
+                                                     '*', 'tasks')))
+                        if tasks_files != []:
+                            self.logger.info("Tasks files found in %s: %s"
+                                             % (cpath, tasks_files))
+                        for tasks_file in tasks_files:
+                            jdir = os.path.dirname(tasks_file)
+                            if not self.du.isdir(host, jdir):
+                                continue
+                            self.logger.info('deleting jobdir %s' % jdir)
+
+                            # Kill tasks before trying to rmdir freezer
+                            cgroup_tasks = os.path.join(jdir, 'tasks')
+                            ret = self.du.cat(hostname=host,
+                                              filename=cgroup_tasks,
+                                              sudo=True)
+                            if ret['rc'] == 0:
+                                for taskstr in ret['out']:
+                                    self.logger.info("trying to kill %s on %s"
+                                                     % (taskstr,
+                                                        host))
+                                    self.du.run_cmd(host,
+                                                    ['kill', '-9'] + [taskstr],
+                                                    sudo=True)
+                            for count in range(30):
+                                ret = self.du.cat(hostname=host,
+                                                  filename=cgroup_tasks,
+                                                  sudo=True)
+                                if ret['rc'] != 0:
+                                    self.logger.info("Cannot confirm "
+                                                     "cgroup tasks; sleeping "
+                                                     "30 seconds instead")
+                                    time.sleep(30)
+                                    break
+                                if ret['out'] == [] or ret['out'][0] == '':
+                                    self.logger.info("Processes in cgroup "
+                                                     "are gone")
+                                    break
+                                else:
+                                    self.logger.info("tasks still in cgroup: "
+                                                     + str(ret['out']))
+                                    time.sleep(1)
+
+                            cmd2 = ['rmdir', jdir]
+                            self.du.run_cmd(host, cmd=cmd2, sudo=True)
+
+    def cleanup_frozen_jobs(self, host):
         # Cleanup frozen jobs
         # Thaw ALL freezers found
         # If directory starts with a number (i.e. a job)
         # kill processes in the freezers and remove them
 
-        if 'freezer' in self.paths[self.hosts_list[0]]:
+        if 'freezer' in self.paths[host]:
             # Find freezers to thaw
             self.logger.info('Cleaning up frozen jobs ****')
-            fdir = self.paths[self.hosts_list[0]]['freezer']
+            fdir = self.paths[host]['freezer']
             freezer_states = \
                 glob.glob(os.path.join(fdir, '*', '*', '*', 'freezer.state'))
             freezer_states += \
@@ -5173,15 +5401,14 @@ sleep 300
                 # thaw the freezer
                 self.logger.info('Thawing ' + freezer_state)
                 state = 'THAWED'
-                fn = self.du.create_temp_file(
-                     hostname=self.hosts_list[0], body=state)
-                self.du.run_copy(hosts=self.hosts_list[0], src=fn,
+                fn = self.du.create_temp_file(body=state)
+                self.du.run_copy(hosts=host, src=fn,
                                  dest=freezer_state, sudo=True,
                                  uid='root', gid='root',
                                  mode=0o644)
                 # Confirm it's thawed
                 for count in range(30):
-                    ret = self.du.cat(hostname=self.hosts_list[0],
+                    ret = self.du.cat(hostname=host,
                                       filename=freezer_state,
                                       sudo=True)
                     if ret['rc'] != 0:
@@ -5213,7 +5440,7 @@ sleep 300
                         os.path.dirname(freezer_state), "tasks")
 
                     # Kill tasks before trying to rmdir freezer
-                    ret = self.du.cat(hostname=self.hosts_list[0],
+                    ret = self.du.cat(hostname=host,
                                       filename=freezer_tasks,
                                       sudo=True)
                     if ret['rc'] == 0:
@@ -5221,11 +5448,11 @@ sleep 300
                             self.logger.info("trying to kill %s on %s"
                                              % (taskstr,
                                                 self.hosts_list[0]))
-                            self.du.run_cmd(self.hosts_list[0],
+                            self.du.run_cmd(host,
                                             ['kill', '-9'] + [taskstr],
                                             sudo=True)
                     for count in range(30):
-                        ret = self.du.cat(hostname=self.hosts_list[0],
+                        ret = self.du.cat(hostname=host,
                                           filename=freezer_tasks,
                                           sudo=True)
                         if ret['rc'] != 0:
@@ -5244,68 +5471,26 @@ sleep 300
 
                     cmd = ["rmdir", os.path.dirname(freezer_state)]
                     self.logger.info("Executing %s" % ' '.join(cmd))
-                    self.du.run_cmd(hosts=self.hosts_list[0],
-                                    cmd=cmd, sudo=True)
+                    self.du.run_cmd(hosts=host, cmd=cmd, sudo=True)
 
-        # Remove the jobdir if any under other cgroups
-        cgroup_subsys = ('systemd', 'cpu', 'cpuacct', 'cpuset', 'devices',
-                         'memory', 'hugetlb', 'perf_event', 'freezer',
-                         'blkio', 'pids', 'net_cls', 'net_prio')
-        for subsys in cgroup_subsys:
-            if (subsys in self.paths[self.hosts_list[0]] and
-                    self.paths[self.hosts_list[0]][subsys]):
-                self.logger.info('Looking for orphaned jobdir in %s' % subsys)
-                cdir = self.paths[self.hosts_list[0]][subsys]
-                if os.path.isdir(cdir):
-                    self.logger.info("Inspecting " + cdir)
-                    cpath = self.find_main_cpath(cdir)
-                    # not always immediately under main path
-                    if cpath is not None and os.path.isdir(cpath):
-                        tasks_files = (
-                            glob.glob(os.path.join(cpath,
-                                                   '*', '*', 'tasks'))
-                            + glob.glob(os.path.join(cpath,
-                                                     '*', 'tasks')))
-                        if tasks_files != []:
-                            self.logger.info("Tasks files found in %s: %s"
-                                             % (cpath, tasks_files))
-                        for tasks_file in tasks_files:
-                            jdir = os.path.dirname(tasks_file)
-                            if not os.path.isdir(jdir):
-                                continue
-                            self.logger.info('deleting jobdir %s' % jdir)
-
-                            # Kill tasks before trying to rmdir freezer
-                            cgroup_tasks = os.path.join(jdir, 'tasks')
-                            ret = self.du.cat(hostname=self.hosts_list[0],
-                                              filename=cgroup_tasks,
-                                              sudo=True)
-                            if ret['rc'] == 0:
-                                for taskstr in ret['out']:
-                                    self.logger.info("trying to kill %s on %s"
-                                                     % (taskstr,
-                                                        self.hosts_list[0]))
-                                    self.du.run_cmd(self.hosts_list[0],
-                                                    ['kill', '-9'] + [taskstr],
-                                                    sudo=True)
-                            for count in range(30):
-                                ret = self.du.cat(hostname=self.hosts_list[0],
-                                                  filename=cgroup_tasks,
-                                                  sudo=True)
-                                if ret['rc'] != 0:
-                                    self.logger.info("Cannot confirm "
-                                                     "cgroup tasks; sleeping "
-                                                     "30 seconds instead")
-                                    time.sleep(30)
-                                    break
-                                if ret['out'] == [] or ret['out'][0] == '':
-                                    self.logger.info("Processes in cgroup "
-                                                     "are gone")
-                                    break
-                                else:
-                                    self.logger.info("tasks still in cgroup: "
-                                                     + str(ret['out']))
-                                    time.sleep(1)
-
-                            cmd2 = ['rmdir', jdir]
-                            self.du.run_cmd(cmd=cmd2, sudo=True)
+    def tearDown(self):
+        TestFunctional.tearDown(self)
+        mom_checks = True
+        if self.moms_list[0].is_cpuset_mom():
+            mom_checks = False
+        self.load_default_config(mom_checks=mom_checks)
+        if not self.iscray:
+            self.remove_vntype()
+        events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
+                  'execjob_epilogue', 'execjob_end', 'exechost_startup',
+                  'exechost_periodic', 'execjob_resize', 'execjob_abort']
+        # Disable the cgroups hook
+        conf = {'enabled': 'False', 'freq': 10, 'event': events}
+        self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
+        # Cleanup any temp file created
+        self.logger.info('Deleting temporary files %s' % self.tempfile)
+        self.du.rm(hostname=self.serverA, path=self.tempfile, force=True,
+                   recursive=True, sudo=True)
+        for host in self.hosts_list:
+            self.cleanup_frozen_jobs(host)
+            self.cleanup_cgroup_subsys(host)

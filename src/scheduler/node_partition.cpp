@@ -113,8 +113,8 @@ new_node_partition()
 		return NULL;
 	}
 
-	np->ok_break = 1;
-	np->excl = 0;
+	np->ok_break = false;
+	np->excl = false;
 	np->name = NULL;
 	np->def = NULL;
 	np->res_val = NULL;
@@ -1380,6 +1380,26 @@ update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 
 	if (sinfo->node_group_enable && sinfo->node_group_key != NULL)
 		node_partition_update_array(policy, sinfo->nodepart);
+
+	if (pbs_conf.pbs_num_servers > 1) {	/* Update svr_to_psets for multi-server */
+		static node_partition **svrtopsetarr = NULL;
+		int i = 0;
+
+		if (svrtopsetarr == NULL) {
+			svrtopsetarr = static_cast<node_partition **> (malloc(pbs_conf.pbs_num_servers + 1));
+			if (svrtopsetarr == NULL) {
+				log_err(errno, __func__, MEM_ERR_MSG);
+				return;
+			}
+		}
+
+		/* Create an array of node partitions of server psets */
+		for (const auto &spset : sinfo->svr_to_psets) {
+			svrtopsetarr[i++] = spset.second;
+		}
+		svrtopsetarr[i] = NULL;
+		node_partition_update_array(policy, svrtopsetarr);
+	}
 
 	/* Update and resort the placement sets on the queues */
 	for (i = 0; sinfo->queues[i] != NULL; i++) {

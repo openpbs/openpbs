@@ -519,7 +519,6 @@ req_confirmresv(struct batch_request *preq)
 	char *next_execvnode = NULL;
 	char **short_xc = NULL;
 	char **tofree = NULL;
-	extern char server_host[];
 	int is_being_altered = 0;
 	char *tmp_buf = NULL;
 	size_t tmp_buf_size = 0;

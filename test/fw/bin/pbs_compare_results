@@ -43,6 +43,7 @@ import csv
 import json
 import sys
 import getopt
+import time
 
 
 def usage():
@@ -54,10 +55,11 @@ def usage():
     msg += ['--html-report : option to generate html report\n']
     msg += ['--output-file : path to generate csv and html file\n']
     msg += ['--help or -h : To display usage information\n']
+    msg += ['--append : Append results to an existing file\n']
     print(''.join(msg))
 
 
-def generate_html_report(filepath):
+def generate_html_report(filepath, append):
     """
     Generate html performance comparision report
     """
@@ -80,32 +82,57 @@ def generate_html_report(filepath):
       <table>
         <tr><th><b>Performance tests benchmark comparision results</b>
         </th></tr>
-        <tr><td><b>cmd:</b> %s</td></tr>
         <tr><td><b>user:</b> %s</td></tr>
         <tr><td><b>host:</b> %s</td></tr>
       </table>
       <table>
       %s
       </table>
-    </body>
+     </body>
     </html>
     '''
+
+    HTML_add = '''
+      %s
+      </table>
+     </body>
+    </html>
+    '''
+
     if not filepath.endswith('.html'):
         filepath = filepath + '.html'
-    with open(filepath, 'w+') as fp:
-        fp.write(HTML % (oldv['command'], oldv['user'],
-                         list(oldv['machine_info'].keys())[0],
-                         _h + ''.join(_data)))
+    if append:
+        fd = open(filepath, "r")
+        d = fd.read()
+        fd.close()
+        m = d.split("\n")
+        s = "\n".join(m[:-4])
+        fd = open(filepath, "w+")
+        for i in range(len(s)):
+            fd.write(s[i])
+        fd.close()
+
+        with open(filepath, 'a+') as fp:
+            fp.write(HTML_add % (''.join(_data)))
+    else:
+        with open(filepath, 'w+') as fp:
+            fp.write(HTML % (oldv['user'],
+                             list(oldv['machine_info'].keys())[0],
+                             _h + ''.join(_data)))
 
 
-def generate_csv_report(filepath):
+def generate_csv_report(filepath, append):
     """
     compare 2 json results and generate csv report
     """
     if not filepath.endswith('.csv'):
         filepath = filepath + '.csv'
-    with open(filepath, 'w+') as fp:
-        csv.writer(fp).writerows([header] + data)
+    if append:
+        with open(filepath, 'a+') as fp:
+            csv.writer(fp).writerows(mdata)
+    else:
+        with open(filepath, 'w+') as fp:
+            csv.writer(fp).writerows([header] + mdata)
 
 
 def percent_change(nv, ov, unit):
@@ -119,6 +146,8 @@ def percent_change(nv, ov, unit):
         nv = a
     diff = ov - nv
     pchange = 0
+    if nv == 0:
+        nv = 1
     if diff > 0:
         pchange = (diff / nv) * 100
     elif diff < 0:
@@ -136,13 +165,15 @@ if __name__ == '__main__':
     html_report = False
     try:
         opts, args = getopt.getopt(sys.argv[3:], "h",
-                                   ["help", "html-report", "output-file="])
+                                   ["help", "html-report", "output-file=",
+                                    "append"])
     except getopt.GetoptError as err:
         print(err)
         usage()
         sys.exit(1)
 
     filepath = None
+    append = 0
     for o, val in opts:
         if o == '--html-report':
             html_report = True
@@ -151,63 +182,99 @@ if __name__ == '__main__':
             sys.exit(0)
         elif o == "--output-file":
             filepath = val
+        elif o == "--append":
+            append = 1
 
     with open(sys.argv[1]) as fp:
         oldv = json.load(fp)
 
-    with open(sys.argv[2]) as fp:
-        newv = json.load(fp)
-
-    header = ['Description', 'TestCase', 'Test Measure',
-              oldv['product_version'], newv['product_version'],
-              '% Diff', 'Unit']
+    newfiles = sys.argv[2].split(',')
+    header = ['TestCase', 'Test Measure', 'Unit',
+              oldv['product_version'] + ' baseline PBS']
     TR = '    <tr>\n%s    </tr>\n'
     TH = '      <th>%s</th>\n'
     TD = '      <td>%s</td>\n'
     TDR = '      <td rowspan=%d>%s</td>\n'
-
-    data = []
-    for k, v in sorted(oldv['avg_measurements']['testsuites'].items()):
-        assert k in newv['avg_measurements']['testsuites'], k
-        _ntcs = newv['avg_measurements']['testsuites'][k]['testcases']
-        _otcs = v['testcases']
-        for _k, _v in sorted(v['testcases'].items()):
-            _tcn = k + '.' + _k
-            assert _k in _ntcs, _tcn
-            _om = _v
-            _om = [x for x in _om if 'test_measure' in x]
-            _om = sorted(_om, key=lambda x: x['test_measure'])
-            _nm = _ntcs[_k]
-            _nm = [x for x in _nm if 'test_measure' in x]
-            _nm = sorted(_nm, key=lambda x: x['test_measure'])
-            _nm_ms = [x['test_measure'] for x in _nm]
-            for key, val in sorted(oldv['testsuites'].items()):
-                assert key in newv['testsuites'], key
-                for tc, doc in sorted(val['testcases'].items()):
-                    if _k == tc:
-                        _docs = doc['docstring']
-            for i, _m in enumerate(_om):
-                _mn = _m['test_measure']
-                _msg = 'test measure %s missing' % _mn
-                _msg += ' in new %s' % _tcn
-                assert _mn in _nm_ms, _msg
-                _o = _m['test_data']['mean']
-                _n = _nm[i]['test_data']['mean']
-                _row = [_docs, _tcn, _mn]
-                _row += [str(_o), str(_n), percent_change(_n, _o, _m['unit']),
-                         _m['unit']]
-                data.append(_row)
-
+    filenum = 0
+    mult_data = {}
+    for newfile in newfiles:
+        with open(newfile) as fp:
+            newv = json.load(fp)
+        header.extend([newv['product_version'], '% Improvement'])
+        for k, v in sorted(oldv['avg_measurements']['testsuites'].items()):
+            assert k in newv['avg_measurements']['testsuites'], k
+            _ntcs = newv['avg_measurements']['testsuites'][k]['testcases']
+            _otcs = v['testcases']
+            mn = 0
+            for _k, _v in sorted(v['testcases'].items()):
+                _tcn = k + '.' + _k
+                assert _k in _ntcs, _tcn
+                _om = _v
+                _om = [x for x in _om if 'test_measure' in x]
+                _om = sorted(_om, key=lambda x: x['test_measure'])
+                _nm = _ntcs[_k]
+                _nm = [x for x in _nm if 'test_measure' in x]
+                _nm = sorted(_nm, key=lambda x: x['test_measure'])
+                _nm_ms = [x['test_measure'] for x in _nm]
+                for key, val in sorted(oldv['testsuites'].items()):
+                    assert key in newv['testsuites'], key
+                    for tc, doc in sorted(val['testcases'].items()):
+                        if _k == tc:
+                            _docs = doc['docstring']
+                for i, _m in enumerate(_om):
+                    data = []
+                    _mn = _m['test_measure']
+                    _msg = 'test measure %s missing' % _mn
+                    _msg += ' in new %s' % _tcn
+                    assert _mn in _nm_ms, _msg
+                    _os = _m['test_data']['std_dev']
+                    _o = _m['test_data']['mean']
+                    _omi = _m['test_data']['minimum']
+                    _oma = _m['test_data']['maximum']
+                    _omt = _m['test_data']['total_samples']
+                    _oms = _m['test_data']['samples_considered']
+                    _n = _nm[i]['test_data']['mean']
+                    _ns = _nm[i]['test_data']['std_dev']
+                    _nsmi = _nm[i]['test_data']['minimum']
+                    _nsma = _nm[i]['test_data']['maximum']
+                    _nst = _nm[i]['test_data']['total_samples']
+                    _nss = _nm[i]['test_data']['samples_considered']
+                    _old_vals = ('mean:' + str(round(_o, 2)) +
+                                 ', std_dev:' + str(round(_os, 2)) +
+                                 ', minimum:' + str(round(_omi, 2)) +
+                                 ', maximum:' + str(round(_oma, 2)) +
+                                 ', mean_samples:' + str(round(_omt, 2)) +
+                                 ', samples_considered:' + str(round(_oms, 2)))
+                    _new_vals = ('mean:' + str(round(_n, 2)) +
+                                 ', std_dev:' + str(round(_ns, 2)) +
+                                 ', minimum:' + str(round(_nsmi, 2)) +
+                                 ', maximum:' + str(round(_nsma, 2)) +
+                                 ', mean_samples:' + str(round(_nst, 2)) +
+                                 ', samples_considered:' + str(round(_nss, 2)))
+                    _row = [_tcn, _mn, _m['unit'], _old_vals]
+                    _rowadd = [_new_vals, percent_change(_n, _o, _m['unit'])]
+                    if filenum == 0:
+                        data = _row
+                        mult_data[mn] = data
+                        data.extend(_rowadd)
+                    else:
+                        data.extend(_rowadd)
+                        mult_data[mn].extend(data)
+                    mn = mn + 1
+        filenum += 1
+    mdata = []
+    for ind, dat in mult_data.items():
+        mdata.append(dat)
     _h = TR % ''.join([TH % x for x in header])
     _data = []
     _rsns = {}
     _adf = []
-    for i, d in enumerate(data):
+    for i, d in enumerate(mdata):
         if d[1] in _rsns:
             _rsns[d[1]] += 1
         else:
             _rsns.setdefault(d[1], 1)
-    for i, d in enumerate(data):
+    for i, d in enumerate(mdata):
         if _rsns[d[1]] > 1:
             if d[1] in _adf:
                 _data.append(TR % ''.join([TD % x for x in d[2:]]))
@@ -221,5 +288,5 @@ if __name__ == '__main__':
     if not filepath:
         filepath = 'performance_test_report'
     if html_report:
-        generate_html_report(filepath)
-    generate_csv_report(filepath)
+        generate_html_report(filepath, append)
+    generate_csv_report(filepath, append)

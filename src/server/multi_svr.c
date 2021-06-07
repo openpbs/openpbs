@@ -54,7 +54,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-extern char	server_host[PBS_MAXHOSTNAME + 1];
 extern unsigned int	pbs_server_port_dis;
 extern	time_t	time_now;
 
@@ -319,6 +318,9 @@ log_msvr_stat()
 void
 update_msvr_stat(ulong val, msvr_stat_type_t type)
 {
+	if (type < 0 || type >= END_OF_STAT)
+		return;
+		
 	msvr_stat.stat[type] += val;
 
 	log_msvr_stat();
@@ -613,8 +615,11 @@ connect_to_peersvr(void *psvr)
 	if (send_connect(psvr) < 0)
 		return -1;
 
-	if (resc_upd_reqd && svr_info->ps_pending_replies)
-		mcast_resc_update_all(psvr);
+	if (resc_upd_reqd) {
+		if (svr_info->ps_pending_replies)
+			mcast_resc_update_all(psvr);
+		send_nodestat_req(-1);
+	}
 
 	return 0;
 }
@@ -1028,6 +1033,10 @@ update_node_cache(int stream, struct batch_status *bstat)
 	clear_node_cache(psvr);
 
 	init_node_from_bstat(bstat, psvr);
+
+	/* Trigger default scheduler to schedule the job which has failed due
+	to missing vnode cache information */
+	set_scheduler_flag(SCH_SCHEDULE_NEW, dflt_scheduler);
 
 	return 0;
 }

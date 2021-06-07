@@ -121,4 +121,7 @@ int will_confirm(resource_resv *resv, time_t server_time);
 /* wrapper for pbs_confirmresv */
 int send_confirmresv(int virtual_sd, resource_resv *resv, const char *location, unsigned long start, const char *extend);
 
+/* wrapper for pbs_statresv */
+struct batch_status *send_statresv(int virtual_fd, char *id, struct attrl *attrib, char *extend);
+
 #endif /* _RESV_INFO_H */

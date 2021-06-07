@@ -997,7 +997,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	}
 
 	/* get jobs from PBS server */
-	if ((jobs = pbs_selstat(pbs_sd, &opl, attrib, const_cast<char *>("S"))) == NULL) {
+	if ((jobs = send_selstat(pbs_sd, &opl, attrib, const_cast<char *>("S"))) == NULL) {
 		if (pbs_errno > 0) {
 			errmsg = pbs_geterrmsg(pbs_sd);
 			if (errmsg == NULL)
@@ -1255,6 +1255,8 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				resresv->job->is_susp_sched = 1;
 			if (!strcmp(attrp->value, PROVISIONING_SUBSTATE))
 				resresv->job->is_provisioning = 1;
+			if (!strcmp(attrp->value, PRERUNNING_SUBSTATE))
+				resresv->job->is_prerunning = 1;
 		}
 		else if (!strcmp(attrp->name, ATTR_sched_preempted)) {
 			count = strtol(attrp->value, &endp, 10);
@@ -1403,7 +1405,6 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 
 		attrp = attrp->next;
 	}
-
 	return resresv;
 }
 
@@ -1449,6 +1450,7 @@ new_job_info()
 
 	jinfo->is_provisioning = 0;
 	jinfo->is_preempted = 0;
+	jinfo->is_prerunning = 0;
 
 	jinfo->job_name = NULL;
 	jinfo->comment = NULL;
@@ -2734,6 +2736,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->is_susp_sched = ojinfo->is_susp_sched;
 	njinfo->is_array = ojinfo->is_array;
 	njinfo->is_subjob = ojinfo->is_subjob;
+	njinfo->is_prerunning = ojinfo->is_prerunning;
 	njinfo->can_not_preempt = ojinfo->can_not_preempt;
 	njinfo->topjob_ineligible = ojinfo->topjob_ineligible;
 	njinfo->is_checkpointed = ojinfo->is_checkpointed;

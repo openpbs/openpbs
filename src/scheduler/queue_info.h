@@ -99,5 +99,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 
 int queue_in_partition(queue_info *qinfo, char *partition);
 
+struct batch_status *send_statqueue(int virtual_fd, char *id, struct attrl *attrib, char *extend);
+
 
 #endif /* _QUEUE_INFO_H */

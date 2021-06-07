@@ -312,7 +312,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	}
 
 	/* get nodes from PBS server */
-	if ((nodes = pbs_statvnode(pbs_sd, NULL, attrib, NULL)) == NULL) {
+	if ((nodes = send_statvnode(pbs_sd, NULL, attrib, NULL)) == NULL) {
 		err = pbs_geterrmsg(pbs_sd);
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, "", "Error getting nodes: %s", err);
 		return NULL;

@@ -203,7 +203,7 @@ query_server(status *pol, int pbs_sd)
 			return NULL;
 
 	/* get server information from pbs server */
-	if ((server = pbs_statserver(pbs_sd, NULL, NULL)) == NULL) {
+	if ((server = send_statserver(pbs_sd, NULL, NULL)) == NULL) {
 		errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";

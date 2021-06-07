@@ -75,6 +75,7 @@ enum srv_atr {
 };
 
 extern char *pbs_server_name;
+extern char server_host[];
 extern uint pbs_server_port_dis;
 extern void *svr_attr_idx;
 extern attribute_def svr_attr_def[];
@@ -237,7 +238,7 @@ int connect_to_peersvr(void *);
 bool is_peersvr(void *);
 void mcast_resc_usage(psvr_ru_t *, int);
 int open_ps_mtfd(void);
-void send_nodestat_req(void);
+void send_nodestat_req(enum msvr_stats_type);
 void req_peer_svr_ack(int);
 void *pending_ack_svr(void);
 psvr_ru_t *init_psvr_ru(job *, int, char *, bool);

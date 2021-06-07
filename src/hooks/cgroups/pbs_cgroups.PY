@@ -2222,8 +2222,8 @@ class NodeUtils(object):
                        caller_name())
         cpuinfo['physical_cpus'] = int(cpuinfo['logical_cpus']
                                        // cpuinfo['hyperthreads_per_core'])
-        wanted_keys = ['physical_cpus', 'logical_cpus','hyperthreads_per_core',
-                       'hyperthreads']
+        wanted_keys = ['physical_cpus', 'logical_cpus',
+                       'hyperthreads_per_core', 'hyperthreads']
         cpuinfo_short = dict((k, cpuinfo[k])
                              for k in wanted_keys if k in cpuinfo)
         pbs.logmsg(pbs.EVENT_DEBUG4, "%s returning: %s"
@@ -3020,7 +3020,7 @@ class CgroupUtils(object):
                 prefix = subsys + '.2MB.'
             elif subsys == 'memsw':
                 prefix = 'memory.' + subsys + '.'
-            elif subsys in ['freezer', 'systemd']:
+            elif subsys in ['systemd', 'perf_event']:
                 prefix = ''
             else:
                 prefix = subsys + '.'
@@ -3036,6 +3036,39 @@ class CgroupUtils(object):
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         paths = {}
+        subsys_to_discover = {'blkio', 'cpu', 'cpuacct', 'cpuset', 'devices',
+                              'freezer', 'hugetlb', 'memory', 'net_cls',
+                              'net_prio', 'perf_event', 'pids', 'rdma',
+                              'systemd'}
+        subsys_to_skip = set()
+
+        # First deal with the ones with paths set in the configuration file
+        for subsys in subsys_to_discover:
+            if (subsys in self.cfg['cgroup']
+                    and 'mount_path' in self.cfg['cgroup'][subsys]
+                    and self.cfg['cgroup'][subsys]['mount_path']):
+                flags = []
+                if (subsys == 'cpuset'
+                        and os.path.exists(os.path.join(self.cfg['cgroup']
+                                                                ['cpuset']
+                                                                ['mount_path'],
+                                                        'cpus'))):
+                    flags = ['noprefix']
+                paths[subsys] = \
+                    self._assemble_path(subsys,
+                                        self.cfg['cgroup'][subsys]
+                                                ['mount_path'],
+                                        flags)
+                # memory -> memsw, different prefix
+                if (subsys == 'memory'):
+                    paths['memsw'] = \
+                        self._assemble_path(subsys,
+                                            self.cfg['cgroup']['memory']
+                                                    ['mount_path'],
+                                            flags)
+                subsys_to_skip.add(subsys)
+        subsys_to_discover -= subsys_to_skip
+
         # Loop through the mounts and collect the ones for cgroups
         with open(os.path.join(os.sep, 'proc', 'mounts'), 'r') as desc:
             for line in desc:
@@ -3045,21 +3078,28 @@ class CgroupUtils(object):
                 # It is possible to have more than one cgroup mounted in
                 # the same place, so check them all for each mount.
                 flags = entries[3].split(',')
-                for subsys in ['blkio', 'cpu', 'cpuacct', 'cpuset', 'devices',
-                               'freezer', 'hugetlb', 'pids']:
-                    if subsys in flags:
-                        paths[subsys] = self._assemble_path(subsys, entries[1],
-                                                            flags)
-                if 'memory' in flags:
-                    paths['memory'] = \
-                        self._assemble_path('memory', entries[1], flags)
-                    # memory and memsw share a common mount point,
-                    # but use a different prefix
-                    paths['memsw'] = \
-                        self._assemble_path('memsw', entries[1], flags)
-                if 'systemd' in flags or 'name=systemd' in flags:
-                    paths['systemd'] = \
-                        self._assemble_path('systemd', entries[1], flags)
+                for subsys in subsys_to_discover:
+                    if (subsys in flags
+                            or (subsys == 'systemd'
+                                and ('name=systemd' in flags))):
+                        subsys_path_candidate = \
+                            self._assemble_path(subsys, entries[1], flags)
+                        # If there are more than one option, prefer shortest
+                        if (subsys not in paths
+                            or (len(paths[subsys])
+                                > len(subsys_path_candidate))):
+                            if subsys in paths:
+                                pbs.logmsg(pbs.EVENT_DEBUG3,
+                                           '_get_paths: shorter path+prefix '
+                                           '%s used for subsystem %s'
+                                           % (subsys_path_candidate, subsys))
+                            if subsys == 'memory':
+                                # memory and memsw share a common mount point,
+                                # but use a different prefix
+                                paths['memsw'] = \
+                                    self._assemble_path('memsw', entries[1],
+                                                        flags)
+                            paths[subsys] = subsys_path_candidate
 
         # if a host does not have any cgroup controllers mounted
         # don't panic here, let main code handle it by just accepting event
@@ -3385,6 +3425,13 @@ class CgroupUtils(object):
         defaults['cgroup']['hugetlb']['reserve_percent'] = 0
         defaults['cgroup']['hugetlb']['reserve_amount'] = '0MB'
         defaults['cgroup']['hugetlb']['vnode_hidden_mb'] = 1
+
+        # These are unmanaged -- if enabled only creation/removal
+        # and filling in 'tasks' are currently performed
+        defaults['cgroup']['blkio'] = {}
+        defaults['cgroup']['blkio']['enabled'] = False
+        defaults['cgroup']['freezer'] = {}
+        defaults['cgroup']['freezer']['enabled'] = False
         defaults['cgroup']['net_cls'] = {}
         defaults['cgroup']['net_cls']['enabled'] = False
         defaults['cgroup']['net_prio'] = {}
@@ -3393,6 +3440,8 @@ class CgroupUtils(object):
         defaults['cgroup']['perf_event']['enabled'] = False
         defaults['cgroup']['pids'] = {}
         defaults['cgroup']['pids']['enabled'] = False
+        defaults['cgroup']['rdma'] = {}
+        defaults['cgroup']['rdma']['enabled'] = False
 
         # Identify the config file and read in the data
         config_file = ''
@@ -3660,7 +3709,9 @@ class CgroupUtils(object):
                    % (mem_avail, vmem_avail, hpmem_avail))
 
         for key in self.paths:
-            if key in ('blkio', 'cpu', 'cpuacct', 'freezer', 'systemd'):
+            if key in ('blkio', 'cpu', 'cpuacct', 'freezer',
+                       'net_cls', 'net_prio', 'perf_event',
+                       'pids', 'rdma', 'systemd'):
                 continue
             if not self.enabled(key):
                 continue
@@ -3745,12 +3796,8 @@ class CgroupUtils(object):
                                            '= %s'
                                            % (caller_name(), jobid, key,
                                               assigned[jobid][key]['list']))
-                elif key == 'pids':
-                    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: subsystem %s' %
-                               (caller_name(), key))
-                elif key == 'systemd':
-                    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: subsystem %s' %
-                               (caller_name(), key))
+                # Note: unmanaged but known subsystems should be filtered
+                # at the top of the loop body
                 else:
                     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Unknown subsystem %s' %
                                (caller_name(), key))
@@ -3776,6 +3823,8 @@ class CgroupUtils(object):
             # if we get a non-str type then convert
             # before calling splitlines
             # should not happen since we pass universal_newlines True
+            # Note: some versions prepend "Version=", other versions
+            # add a more precise version in parentheses after a space
             out_split = stringified_output(out).splitlines()
             ver = int(re.sub(r'Version=\D*(\d+)', r'\1',
                              out_split[0].split()[0]))

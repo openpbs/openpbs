@@ -667,8 +667,18 @@ tpp_sock_resolve_ip(tpp_addr_t *addr, char *host, int len)
 		sa->sa_family = AF_INET6;
 	} else
 		return -1;
-
+#ifndef WIN32
+	/* 
+	 * introducing a new mutex to prevent child process from 
+	 * inheriting getnameinfo mutex using pthread_atfork handlers
+	 */
+	tpp_lock(&tpp_nslookup_mutex);
+#endif
 	rc = getnameinfo(sa, salen, host, len, NULL, 0, 0);
+	/* unlock nslookup mutex */
+#ifndef WIN32
+		tpp_unlock(&tpp_nslookup_mutex);
+#endif
 	if (rc != 0) {
 		TPP_DBPRT("Error: %s", gai_strerror(rc));
 	}

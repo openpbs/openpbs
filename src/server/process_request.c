@@ -117,7 +117,6 @@ pbs_list_head svr_requests;
 
 
 extern struct server server;
-extern char      server_host[];
 extern pbs_list_head svr_newjobs;
 extern pbs_list_head svr_allconns;
 extern time_t    time_now;
