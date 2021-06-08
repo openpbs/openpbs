@@ -43,16 +43,7 @@ import json
 import sys
 import os
 import getopt
-
-
-def usage():
-    msg = []
-    msg += ['Usage: ' + os.path.basename(sys.argv[0])]
-    msg += [' [PTL_JSON_FILE] \n\n']
-    msg += [' System monitoring results to csv conversion tool']
-    msg += ['--output-file : path to generate file\n']
-    msg += ['--help or -h : To display usage information\n']
-    print(''.join(msg))
+import argparse
 
 
 def write_to_csv(head, csvrows, i, filepath):
@@ -64,28 +55,13 @@ def write_to_csv(head, csvrows, i, filepath):
 
 if __name__ == '__main__':
 
-    if len(sys.argv) < 2:
-        usage()
-        sys.exit(1)
-
-    try:
-        opts, args = getopt.getopt(sys.argv[2:], "h",
-                                   ["help", "output-file="])
-    except getopt.GetoptError as err:
-        print(err)
-        usage()
-        sys.exit(1)
-
-    with open(sys.argv[1]) as fp:
-        td = json.load(fp)
-
-    filepath = None
-    for o, val in opts:
-        if o in ("-h", "--help"):
-            usage()
-            sys.exit(0)
-        elif o == "--output-file":
-            filepath = val
+    msg = 'System monitoring results to csv conversion tool'
+    parser = argparse.ArgumentParser(description=msg)
+    parser.add_argument('PTL_JSON_FILE', help='path to ptl_test_results.json')
+    parser.add_argument('--outputfile', nargs='?',
+                        help='path to generate file')
+    args = parser.parse_args()
+    filepath = args.outputfile
 
     if not filepath:
         filepath = "sys_report.csv"
@@ -93,7 +69,9 @@ if __name__ == '__main__':
     if os.path.exists(filepath):
         os.remove(filepath)
 
-    i = 0
+    with open(args.PTL_JSON_FILE) as fp:
+        td = json.load(fp)
+
     for k, v in sorted(td['testsuites'].items()):
         _otcs = v['testcases']
         for _k, _v in sorted(v['testcases'].items()):
@@ -110,6 +88,7 @@ if __name__ == '__main__':
                                 timelist.append(mes['time'])
                                 timelist = list(set(timelist))
                             timelist.sort()
+                            i = 0
                             for tm in timelist:
                                 head = ['Time']
                                 csvrows = []
