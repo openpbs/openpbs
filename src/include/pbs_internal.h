@@ -169,9 +169,6 @@ extern "C" {
 #define	ESC_CHAR	'\\'
 #endif
 
-/* prefix for any remote job occupying resources locally, used for the 'jobs' attribute */
-#define MSVR_REMOTE_JOB_MARKER	'r'
-
 /* set of characters that are not allowed in a queue name */
 #define INVALID_QUEUE_NAME_CHARS "`~!$%^&*()+=<>?;'\"|"
 

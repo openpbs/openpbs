@@ -471,45 +471,47 @@ extern char *return_internal_value(char *name, char *val);
 
 /* other associated funtions */
 
-extern int   acl_check(attribute *, char *canidate, int type);
-extern int   check_duplicates(struct array_strings *strarr);
+extern int acl_check(attribute *, char *canidate, int type);
+extern int check_duplicates(struct array_strings *strarr);
 
 extern char *arst_string(char *str, attribute *pattr);
-extern void  attrl_fixlink(pbs_list_head *svrattrl);
-extern int   save_attr_fs(attribute_def *, attribute *, int);
+extern void attrl_fixlink(pbs_list_head *svrattrl);
+extern int save_attr_fs(attribute_def *, attribute *, int);
 
-extern int      encode_state(const attribute *, pbs_list_head *, char *,
-	char *, int, svrattrl **rtnl);
-extern int      encode_props(const attribute*, pbs_list_head*, char*,
-	char*, int, svrattrl **rtnl);
-extern int      encode_jobs  (const attribute*, pbs_list_head*, char*,
-	char*, int, svrattrl **rtnl);
-extern int      encode_resvs(const attribute*, pbs_list_head*, char*,
-	char*, int, svrattrl **rtnl);
-extern int      encode_ntype(const attribute*, pbs_list_head*, char*,
-	char*, int, svrattrl **rtnl);
-extern int      encode_sharing(const attribute*, pbs_list_head*, char*,
-	char*, int, svrattrl **rtnl);
-extern int      decode_state(attribute*, char*, char*, char*);
-extern int      decode_props(attribute*, char*, char*, char*);
-extern int      decode_ntype(attribute*, char*, char*, char*);
-extern int	decode_sharing(attribute*, char*, char*, char*);
-extern int      decode_null  (attribute*, char*, char*, char*);
-extern int      comp_null(attribute*, attribute*);
-extern int      count_substrings(char*, int*);
-extern int      set_resources_min_max(attribute *, attribute*, enum batch_op);
-extern int      set_node_state  (attribute*, attribute*, enum batch_op);
-extern int      set_node_ntype  (attribute*, attribute*, enum batch_op);
-extern int      set_node_props  (attribute*, attribute*, enum batch_op);
-extern int      set_null	(attribute*, attribute*, enum batch_op);
-extern int      node_state      (attribute*, void*, int);
-extern int      node_np_action  (attribute*, void*, int);
-extern int      node_ntype(attribute*, void*, int);
-extern int      node_prop_list(attribute*, void*, int);
-extern int      node_comment(attribute *, void *, int);
-extern int	is_true_or_false(char *val);
+extern int encode_state(const attribute *, pbs_list_head *, char *,
+			char *, int, svrattrl **rtnl);
+extern int encode_props(const attribute *, pbs_list_head *, char *,
+			char *, int, svrattrl **rtnl);
+extern int encode_jobs(const attribute *, pbs_list_head *, char *,
+		       char *, int, svrattrl **rtnl);
+extern int encode_msvr_rmtjobs(const attribute *, pbs_list_head *, char *,
+		       char *, int, svrattrl **rtnl);
+extern int encode_resvs(const attribute *, pbs_list_head *, char *,
+			char *, int, svrattrl **rtnl);
+extern int encode_ntype(const attribute *, pbs_list_head *, char *,
+			char *, int, svrattrl **rtnl);
+extern int encode_sharing(const attribute *, pbs_list_head *, char *,
+			  char *, int, svrattrl **rtnl);
+extern int decode_state(attribute *, char *, char *, char *);
+extern int decode_props(attribute *, char *, char *, char *);
+extern int decode_ntype(attribute *, char *, char *, char *);
+extern int decode_sharing(attribute *, char *, char *, char *);
+extern int decode_null(attribute *, char *, char *, char *);
+extern int comp_null(attribute *, attribute *);
+extern int count_substrings(char *, int *);
+extern int set_resources_min_max(attribute *, attribute *, enum batch_op);
+extern int set_node_state(attribute *, attribute *, enum batch_op);
+extern int set_node_ntype(attribute *, attribute *, enum batch_op);
+extern int set_node_props(attribute *, attribute *, enum batch_op);
+extern int set_null(attribute *, attribute *, enum batch_op);
+extern int node_state(attribute *, void *, int);
+extern int node_np_action(attribute *, void *, int);
+extern int node_ntype(attribute *, void *, int);
+extern int node_prop_list(attribute *, void *, int);
+extern int node_comment(attribute *, void *, int);
+extern int is_true_or_false(char *val);
 extern void unset_entlim_resc(attribute *, char *);
-extern int      action_node_partition(attribute *, void *, int);
+extern int action_node_partition(attribute *, void *, int);
 
 /* Action routines for OS provisioning */
 extern int	node_prov_enable_action(attribute *, void *, int);

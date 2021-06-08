@@ -338,6 +338,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 
 	set_nattr_jinfo(pnode, ND_ATR_jobs, pnode);
 	set_nattr_jinfo(pnode, ND_ATR_resvs, pnode);
+	set_nattr_jinfo(pnode, ND_ATR_msvr_remote_jobs, pnode);
 
 	set_nattr_l_slim(pnode, ND_ATR_ResvEnable, 1, SET);
 	(get_nattr(pnode, ND_ATR_ResvEnable))->at_flags |= ATR_VFLAG_DEFLT;

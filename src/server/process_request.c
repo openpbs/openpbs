@@ -308,7 +308,7 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 			goto rerr;
 		}
 	}
-	
+
 	if (sched->sc_primary_conn != -1 && sched->sc_secondary_conn != -1) {
 		rc = PBSE_SCHEDCONNECTED;
 		goto rerr;
@@ -608,7 +608,7 @@ process_request(int sfds)
 		request->rq_perm = ATR_DFLAG_USRD | ATR_DFLAG_USWR |
 				   ATR_DFLAG_OPRD | ATR_DFLAG_OPWR |
 				   ATR_DFLAG_MGRD | ATR_DFLAG_MGWR |
-				   ATR_DFLAG_SvWR;
+				   ATR_DFLAG_SvRD | ATR_DFLAG_SvWR;
 
 	} else {
 

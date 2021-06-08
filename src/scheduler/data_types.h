@@ -673,6 +673,7 @@ struct node_info
 	char *mom;			/* host name on which mom resides */
 
 	char **jobs;			/* the name of the jobs currently on the node */
+	std::unordered_set<std::string> msvr_rmt_jobs;	/* ids of remote jobs running on this node in a msvr setup */
 	char **resvs;			/* the name of the reservations currently on the node */
 	resource_resv **job_arr;	/* ptrs to structs of the jobs on the node */
 	resource_resv **run_resvs_arr;	/* ptrs to structs of resvs holding resources on the node */
