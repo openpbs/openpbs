@@ -420,6 +420,10 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'R', 'Resource_List.foobar': '95gb'}
         self.server.expect(JOB, a, id=jid)
 
+        # Turn off scheduling. There is a race where scheduler could
+        # already be inside a cycle because of previous expect call and
+        # read the old dynamic resource script.
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         # Change script during job run
         tmp_file = self.du.create_temp_file(body="echo 50gb")
         self.du.run_copy(src=tmp_file, dest=filenames[0], sudo=True,
@@ -428,6 +432,8 @@ class TestServerDynRes(TestFunctional):
         # Rerun job
         self.server.rerunjob(jid)
 
+        # Turn on scheduling
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         # The job shouldn't run
         job_comment = "Can Never Run: Insufficient amount of server resource:"
         job_comment += " foobar (R: 95gb A: 50gb T: 50gb)"
