@@ -42,7 +42,6 @@ import csv
 import json
 import sys
 import os
-import getopt
 import argparse
 
 
@@ -58,8 +57,7 @@ if __name__ == '__main__':
     msg = 'System monitoring results to csv conversion tool'
     parser = argparse.ArgumentParser(description=msg)
     parser.add_argument('PTL_JSON_FILE', help='path to ptl_test_results.json')
-    parser.add_argument('--outputfile', nargs='?',
-                        help='path to generate file')
+    parser.add_argument('--outputfile', help='path to generate file')
     args = parser.parse_args()
     filepath = args.outputfile
 
