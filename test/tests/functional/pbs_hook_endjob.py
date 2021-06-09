@@ -103,7 +103,7 @@ class TestHookEndJob(TestFunctional):
     resv_duration = job_time_qdel + 60
 
     node_fail_timeout = 15
-    job_requeue_timeout = 1
+    job_requeue_timeout = 5
     resv_retry_time = 5
 
     def run_test_func(self, test_body_func, *args, **kwargs):
@@ -195,6 +195,7 @@ class TestHookEndJob(TestFunctional):
             if job_ended:
                 self.started_job_ids.discard(jid)
                 self.deleted_job_ids.discard(jid)
+                self.failed_job_ids.discard(jid)
         # reset the start time so that searches on requeued jobs don't match
         # state or log messages prior to the current search.
         self.log_start_time = int(time.time())
@@ -645,35 +646,101 @@ class TestHookEndJob(TestFunctional):
 
         self.run_test_func(endjob_force_delete_running_single_job)
 
-    def test_hook_endjob_delete_running_single_job_no_mom(self):
+    def test_hook_endjob_delete_running_single_job_no_rerun_no_mom(self):
         """
-        Run a single job, but delete before completion after disabling the MOM.
-        Verify that the end job hook is executed.
+        Run a single non-rerunable job, but delete before completion after
+        disabling the MOM. Verify that the end job hook is executed.
         """
-        def endjob_delete_running_single_job_no_mom():
+        def endjob_delete_running_single_job_no_rerun_no_mom():
             a = {ATTR_r: 'n'}
             self.job_submit(job_sleep_time=self.job_time_qdel, job_attrs=a)
             self.job_verify_started()
             self.mom.stop()
             self.job_delete()
+            self.assertTrue(self.job_id in self.failed_job_ids)
             self.job_verify_ended()
 
-        self.run_test_func(endjob_delete_running_single_job_no_mom)
+        self.run_test_func(endjob_delete_running_single_job_no_rerun_no_mom)
 
-    def test_hook_endjob_force_delete_running_single_job_no_mom(self):
+    # FIXME: the job is rerun after the MOM is restarted, and it runs to
+    # completion; however, the job's substate indicates that it was deleted.
+    def test_hook_endjob_delete_running_single_job_rerun_no_mom(self):
         """
-        Run a single job, but force delete before completion after disabling
-        the MOM. Verify that the end job hook is executed.
+        Run a single rerunable job, but delete before completion after
+        disabling the MOM. Verify that the end job hook is executed and that
+        the job is rerun once the MOM is retstarted.
         """
-        def endjob_force_delete_running_single_job_no_mom():
+        def endjob_delete_running_single_job_rerun_no_mom():
+            self.job_submit(job_sleep_time=self.job_time_qdel)
+            self.job_verify_started()
+            self.mom.stop()
+            self.job_delete()
+            self.assertTrue(self.job_id in self.failed_job_ids)
+            self.job_verify_queued()
+            self.check_log_for_endjob_hook_messages()
+            self.mom.start()
+            self.assertTrue(self.mom.isUp(max_attempts=30))
+            self.job_verify_started()
+            time.sleep(self.job_time_qdel)
+            self.job_verify_ended()
+
+        self.run_test_func(endjob_delete_running_single_job_rerun_no_mom)
+
+    # FIXME: the job completes while the MOM is unavailable; however, the job
+    # is still rerun after the MOM is restarted.  The job then runs to
+    # completion a second time and it's substate indicates that it was deleted.
+    def test_hook_endjob_delete_running_single_job_finished_no_mom(self):
+        """
+        Run a single rerunable job, but delete before completion after
+        disabling the MOM. Verify that the end job hook is executed and that
+        the job is not rerun once the MOM is retstarted.
+        """
+        def endjob_delete_running_single_job_finished_no_mom():
+            self.job_submit()
+            self.job_verify_started()
+            self.mom.stop()
+            self.job_delete()
+            self.assertTrue(self.job_id in self.failed_job_ids)
+            self.job_verify_queued()
+            self.check_log_for_endjob_hook_messages()
+            time.sleep(self.job_time_success * 2)
+            self.mom.start()
+            self.assertTrue(self.mom.isUp(max_attempts=30))
+            self.job_verify_ended()
+
+        self.run_test_func(endjob_delete_running_single_job_finished_no_mom)
+
+    def test_hook_endjob_force_delete_running_single_job_no_rerun_no_mom(self):
+        """
+        Run a single non-rerunable job, but force delete before completion
+        after disabling the MOM. Verify that the end job hook is executed.
+        """
+        def endjob_force_delete_running_single_job_no_rerun_no_mom():
             a = {ATTR_r: 'n'}
             self.job_submit(job_sleep_time=self.job_time_qdel, job_attrs=a)
             self.job_verify_started()
             self.mom.stop()
             self.job_delete(force=True)
+            self.assertFalse(self.job_id in self.failed_job_ids)
             self.job_verify_ended()
 
-        self.run_test_func(endjob_force_delete_running_single_job_no_mom)
+        self.run_test_func(
+            endjob_force_delete_running_single_job_no_rerun_no_mom)
+
+    def test_hook_endjob_force_delete_running_single_job_rerun_no_mom(self):
+        """
+        Run a single rerunable job, but force delete before completion after
+        disabling the MOM. Verify that the end job hook is executed.
+        """
+        def endjob_force_delete_running_single_job_rerun_no_mom():
+            self.job_submit(job_sleep_time=self.job_time_qdel)
+            self.job_verify_started()
+            self.mom.stop()
+            self.job_delete(force=True)
+            self.assertFalse(self.job_id in self.failed_job_ids)
+            self.job_verify_ended()
+
+        self.run_test_func(endjob_force_delete_running_single_job_rerun_no_mom)
 
     def test_hook_endjob_delete_running_array_job(self):
         """
