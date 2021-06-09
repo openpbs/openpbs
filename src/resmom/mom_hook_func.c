@@ -1363,7 +1363,9 @@ run_hook_exit:
 					bld_env_variables(&hook_env, "PBS_HOOK_CONFIG_FILE", pbs_hook_conf);
 				env_string = make_envp(hook_env.v_envp);
 			}
+			wloaduserprofile(pwdp);
 			run_exit = wsystem(cmdline, pwdp->pw_userlogin, env_string);
+			wunloaduserprofile(pwdp);
 			free(env_string);
 			(void)win_alarm(0, NULL);
 			free_string_array(hook_env.v_envp);
