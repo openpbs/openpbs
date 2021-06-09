@@ -67,6 +67,7 @@ class TestHookExechostPeriodic(TestFunctional):
     """
     Tests to test exechost_periodic hook
     """
+
     def test_multiple_exechost_periodic_hooks(self):
         """
         This test sets two exechost_periodic hooks and restarts the mom,
@@ -96,6 +97,7 @@ class TestHookExechostPeriodic(TestFunctional):
         self.mom.log_match("exechost_periodic hook2",
                            max_attempts=5, interval=5)
 
+    @skipOnCpuSet
     @requirements(num_moms=2)
     def test_exechost_periodic_accept(self):
         """
@@ -141,6 +143,7 @@ class TestHookExechostPeriodic(TestFunctional):
         node_attribs = {'resources_available.mem': "90gb"}
         self.server.expect(NODE, node_attribs, id=self.momB.shortname)
 
+    @skipOnCpuSet
     @requirements(num_moms=2)
     def test_exechost_periodic_alarm(self):
         """
@@ -163,6 +166,7 @@ class TestHookExechostPeriodic(TestFunctional):
             for msg in exp_msg:
                 mom.log_match(msg)
 
+    @skipOnCpuSet
     @requirements(num_moms=2)
     def test_exechost_periodic_error(self):
         """
@@ -185,6 +189,7 @@ class TestHookExechostPeriodic(TestFunctional):
             for msg in exp_msg:
                 mom.log_match(msg)
 
+    @skipOnCpuSet
     @requirements(num_moms=2)
     def test_exechost_periodic_custom_resc(self):
         """

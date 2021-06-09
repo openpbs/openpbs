@@ -580,7 +580,8 @@ class Server(Wrappers):
         Remove all the nodes from PBS
         """
         try:
-            self.manager(MGR_CMD_DELETE, VNODE, id="@default")
+            self.manager(MGR_CMD_DELETE, VNODE, id="@default",
+                         runas=ROOT_USER)
         except PbsManagerError as e:
             if "Unknown node" not in e.msg[0]:
                 raise

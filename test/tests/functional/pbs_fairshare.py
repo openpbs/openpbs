@@ -378,7 +378,6 @@ class TestFairshare(TestFunctional):
         self.assertEqual(fs_usage, 1,
                          "Fairshare usage %d not equal to 1" % fs_usage)
 
-    @skipOnCpuSet
     def test_fairshare_topjob(self):
         """
         Test that jobs are run in the augmented fairshare order after a topjob
@@ -390,10 +389,8 @@ class TestFairshare(TestFunctional):
         self.scheduler.add_to_resource_group(TEST_USER, 11, 'root', 10)
         self.scheduler.add_to_resource_group(TEST_USER1, 12, 'root', 10)
         self.scheduler.add_to_resource_group(TEST_USER2, 13, 'root', 10)
-
-        self.server.manager(MGR_CMD_SET, NODE,
-                            {'resources_available.ncpus': 5},
-                            id=self.mom.shortname)
+        a = {'resources_available.ncpus': 5}
+        self.mom.create_vnodes(a, 1)
         a = {'Resource_List.select': '5:ncpus=1'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)

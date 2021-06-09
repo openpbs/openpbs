@@ -2090,7 +2090,7 @@ class TestReservations(TestFunctional):
         jids = [jid1, jid2]
         for job in jids:
             self.server.expect(JOB, 'queue', op=UNSET, id=job)
-        exp_attrib = {'job_state': 'F', 'substate': '91'}
+        exp_attrib = {'job_state': 'F'}
         for jid in jids:
             self.server.expect(JOB, exp_attrib, id=jid, extend='x')
         # Verify all the PBS daemons are up and running upon resv completion
