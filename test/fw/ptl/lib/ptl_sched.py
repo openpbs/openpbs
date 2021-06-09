@@ -59,7 +59,8 @@ from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
 from ptl.lib.ptl_service import PBSService, PBSInitServices
-from ptl.lib.ptl_fairshare import FairshareTree, FairshareNode
+from ptl.lib.ptl_fairshare import (FairshareTree, FairshareNode,
+                                   Fairshare)
 from ptl.lib.ptl_entities import Holidays
 from ptl.lib.ptl_error import (PbsManagerError, PbsStatusError,
                                PbsInitServicesError, PbsServiceError,
@@ -231,6 +232,8 @@ class Scheduler(PBSService):
         self.db_access = db_access
 
         self.version = None
+        self.fairshare = Fairshare(self.has_snap, self.pbs_conf, self.sc_name,
+                                   self.hostname, self.user)
 
     def setup_sched_priv(self, sched_priv=None):
         """
