@@ -295,7 +295,7 @@ class Fairshare(object):
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
         if self.sc_name is not 'default':
             cmd += ['-I', self.sc_name]
-        self.du.run_cmd(cmd=cmd, runas=self.user)
+        self.du.run_cmd(self.hostname, cmd=cmd, runas=self.user)
         self.fairshare_tree = None
         self.resource_group = None
 
