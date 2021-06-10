@@ -430,6 +430,26 @@ clean_saved_rsc(void *idx)
 }
 
 /**
+ * @brief process server stat ready if server does not have pending ack
+ * 
+ * @return void
+ */
+void
+process_svr_stat_ready(void)
+{
+	struct work_task *ptask;
+
+	if (pending_ack_svr() == NULL) {
+		ptask = find_work_task(WORK_Deferred_Reply, NULL, req_stat_svr_ready);
+		if (ptask) {
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				  "All peer server acks received. Processing pbs_server_ready");
+			convert_work_task(ptask, WORK_Immed);
+		}
+	}
+}
+
+/**
  * @brief send resource update for all the jobs
  * which has an update for peer server.
  * Reset the pending_replies to zero before sending all updates.
@@ -472,8 +492,10 @@ send_job_resc_updates(int mtfd)
 		}
 	}
 
-	if (ct == 0)
+	if (ct == 0) {
+		process_svr_stat_ready();
 		return 0;
+	}
 
 	rc = ps_compose(mtfd, PS_RSC_UPDATE_FULL);
 	if (rc != DIS_SUCCESS)
@@ -485,6 +507,8 @@ send_job_resc_updates(int mtfd)
 	* needs to account for, hence INCR.
 	*/
 	rc = send_resc_usage(mtfd, GET_NEXT(ru_head), ct, ct);
+
+	process_svr_stat_ready();
 
 end:
 	if (rc != DIS_SUCCESS)
@@ -503,7 +527,6 @@ req_peer_svr_ack(int conn)
 {
 	server_t *psvr;
 	int *pending_rply;
-	struct work_task *ptask;
 
 	if ((psvr = tfind2(conn, 0, &streams)) != NULL) {
 		pending_rply = &((svrinfo_t *) psvr->mi_data)->ps_pending_replies;
@@ -517,14 +540,8 @@ req_peer_svr_ack(int conn)
 		return;
 	}
 
-	if (*pending_rply == 0 && pending_ack_svr() == NULL) {
-		ptask = find_work_task(WORK_Deferred_Reply, NULL, req_stat_svr_ready);
-		if (ptask) {
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				  "All peer server acks received. Processing pbs_server_ready");
-			convert_work_task(ptask, WORK_Immed);
-		}
-	}
+	if (*pending_rply == 0)
+		process_svr_stat_ready();
 }
 
 /**

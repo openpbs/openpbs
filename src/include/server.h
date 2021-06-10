@@ -256,6 +256,7 @@ void *get_peersvr_from_svrid(char *);
 void update_msvr_stat(unsigned long, msvr_stat_type_t);
 int ps_send_discard(char *, char *, char *, int);
 int open_ps_mtfd_for_execvnode(char *);
+void process_svr_stat_ready(void);
 
 /* end of multi-svr functions */
 
