@@ -74,20 +74,18 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
 
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
-        self.momA.delete_vnode_defs()
-        self.momB.delete_vnode_defs()
 
-        self.hostA = self.momA.shortname
-        self.hostB = self.momB.shortname
+        if self.momA.is_cpuset_mom() or self.momB.is_cpuset_mom():
+            node_status = self.server.status(NODE)
 
-        rc = self.server.manager(MGR_CMD_DELETE, NODE, None, "")
-        self.assertEqual(rc, 0)
-
-        rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
-        self.assertEqual(rc, 0)
-
-        rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
-        self.assertEqual(rc, 0)
+        if self.momA.is_cpuset_mom():
+            self.hostA = node_status[1]['id']
+        else:
+            self.hostA = self.momA.shortname
+        if self.momB.is_cpuset_mom():
+            self.hostB = node_status[-1]['id']
+        else:
+            self.hostB = self.momB.shortname
 
     def test_Rrecord(self):
         """
