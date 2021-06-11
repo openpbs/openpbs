@@ -41,6 +41,7 @@
 from tests.functional import *
 
 
+@skipOnCpuSet
 class TestMomMockRun(TestFunctional):
 
     def test_rsc_used(self):
