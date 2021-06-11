@@ -492,7 +492,7 @@ encode_ntype(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname
  * @param[out]  rtnl - the return value, a pointer to svrattrl
  *
  * @return	int
- * @retval	<0	an error encountered; value is negative of an error code
+ * @retval	<0 or PBSE_SYSTEM	an error encountered; value is negative of an error code
  * @retval	 0	ok, encode happened and svrattrl created and linked in,
  *			or nothing to encode
  *
@@ -593,7 +593,7 @@ encode_jobs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname,
  * @param[out]  rtnl - the return value, a pointer to svrattrl
  *
  * @return	int
- * @retval	<0	an error encountered; value is negative of an error code
+ * @retval	<0 or PBSE_SYSTEM	an error encountered; value is negative of an error code
  * @retval	 0	ok, encode happened and svrattrl created and linked in,
  *			or nothing to encode
  *

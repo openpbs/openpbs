@@ -112,6 +112,7 @@
  *
  */
 
+#include <sstream>
 #include <unordered_map>
 
 #include <pbs_config.h>
@@ -491,16 +492,12 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		else if (!strcmp(attrp->name, ATTR_NODE_jobs))
 			ninfo->jobs = break_comma_list(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_msvr_remote_jobs)) {
-			char *ptr = NULL;
-			char *jidptr = attrp->value;
-
-			for (ptr = strchr(attrp->value, ','); ptr != NULL; jidptr = ptr + 1, ptr = strchr(ptr + 1, ',')) {
-				*ptr = '\0';
-				ninfo->msvr_rmt_jobs.insert(jidptr);
-				*ptr = ',';
+			std::string rmtjid;
+			std::istringstream ss(attrp->value);
+			while (ss) {
+				std::getline(ss, rmtjid, ',');
+				ninfo->msvr_rmt_jobs.insert(rmtjid);
 			}
-			/* insert the last jid */
-			ninfo->msvr_rmt_jobs.insert(jidptr);
 		}
 		else if (!strcmp(attrp->name, ATTR_maxrun)) {
 			count = strtol(attrp->value, &endp, 10);
