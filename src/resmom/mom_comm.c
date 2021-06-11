@@ -2980,11 +2980,11 @@ im_request(int stream, int version)
 	int			siscnt = 0;
 	int			list_size = 0;
 	int			created = 0;
-	tm_node_id		*node_list;
-	tm_task_id		*temptaskid;
-	tm_node_id		*tempnid;
-	tm_task_id		*taskidlist;
-	struct job_multispawn_info *tempinfo, *prev;
+	tm_node_id		*node_list = NULL;
+	tm_task_id		*temptaskid = NULL;
+	tm_node_id		*tempnid = NULL;
+	tm_task_id		*taskidlist = NULL;
+	struct job_multispawn_info *tempinfo = NULL, *prev = NULL;
 	unsigned int		ident;
 
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
@@ -4142,54 +4142,24 @@ join_err:
 			/* We finished going through the node_list, now send im_compose IM_ALL_OKAY */
 			ret = im_compose(stream, jobid, cookie, IM_ALL_OKAY,
 					event, fromtask, IM_OLD_PROTOCOL_VER);
-			if (ret != DIS_SUCCESS) {
-				arrayfree(argv);
-				arrayfree(envp);
-				free(node_list);
-				free(taskidlist);
-				break;
+			if (ret == DIS_SUCCESS) {
+				/* Send the identifier */
+				ret = diswsi(stream, ident);
+			} 
+
+			if (ret == DIS_SUCCESS) {
+				/* Send the nodeid */
+				ret = diswsi(stream, pjob->ji_nodeid);
 			}
 
-			/* Send the identifier */
-			ret = diswsi(stream, ident);
-			if (ret != DIS_SUCCESS) {
-				arrayfree(argv);
-				arrayfree(envp);
-				free(node_list);
-				free(taskidlist);
-				break;
-			}
-
-			/* Send the nodeid */
-			ret = diswsi(stream, pjob->ji_nodeid);
-			if (ret != DIS_SUCCESS) {
-				arrayfree(argv);
-				arrayfree(envp);
-				free(node_list);
-				free(taskidlist);
-				break;
-			}
-
-			/* Send the num of tasks created */
-			ret = diswui(stream, created);
-			if (ret != DIS_SUCCESS) {
-				arrayfree(argv);
-				arrayfree(envp);
-				free(node_list);
-				free(taskidlist);
-				break;
+			if (ret == DIS_SUCCESS) {
+				/* Send the num of tasks created */
+				ret = diswui(stream, created);
 			}
 
 			/* Send the taskids for the tasks created */
-			for (i = 0; i < created; i++) {
+			for (i = 0; i < created && ret == DIS_SUCCESS; i++) {
 				ret = diswui(stream, taskidlist[i]);
-				if (ret != DIS_SUCCESS) {
-					arrayfree(argv);
-					arrayfree(envp);
-					free(node_list);
-					free(taskidlist);
-					break;
-				}
 			}
 				
 			arrayfree(argv);
@@ -6000,7 +5970,7 @@ tm_request(int fd, int version)
 	int				i, event, numele;
 	size_t				len;
 	long				ipadd;
-	char				**argv, **envp;
+	char				**argv = NULL, **envp = NULL;
 	char				*name, *info;
 	infoent				*ip;
 	int				signum;
@@ -6016,12 +5986,12 @@ tm_request(int fd, int version)
 	mom_hook_input_t		hook_input;
 	int 				list_size;
 	int				num = 0, mtfd = -1;
-	tm_node_id			*node_list;
+	tm_node_id			*node_list = NULL;
 	eventent			*nep = NULL;
 	int				k,index, momcnt = 0;
-	tm_task_id			*temptaskid;
-	tm_node_id			*tempnid;
-	struct job_multispawn_info	*tempinfo;
+	tm_task_id			*temptaskid = NULL;
+	tm_node_id			*tempnid = NULL;
+	struct job_multispawn_info	*tempinfo = NULL;
 
 	conn_t 	*conn = get_conn(fd);
 	if (!conn) {
@@ -6564,24 +6534,19 @@ aterr:
 
 			for (i = 0; i < list_size; i++) {
 				node_list[i] = disrui(fd, &ret);
-				if (ret != DIS_SUCCESS) {
-					free(node_list);
+				if (ret != DIS_SUCCESS)
 					goto err;
-				}
 			}
 			argc = disrui(fd, &ret);
-			if (ret != DIS_SUCCESS) {
-				free(node_list);
+			if (ret != DIS_SUCCESS)
 				goto done;
-			}
+
 			argv = (char **)calloc(argc + 1, sizeof(char *));
 			assert(argv);
 			for (i = 0; i < argc; i++) {
 				argv[i] = disrst(fd, &ret);
 				if (ret != DIS_SUCCESS) {
 					argv[i] = NULL;
-					arrayfree(argv);
-					free(node_list);
 					goto done;
 				}
 				if(strlen(argv[i]) == 0)
@@ -6597,10 +6562,7 @@ aterr:
 
 				env = disrst(fd, &ret);
 				if (ret != DIS_SUCCESS && ret != DIS_EOD) {
-					arrayfree(argv);
 					envp[i] = NULL;
-					arrayfree(envp);
-					free(node_list);
 					goto done;
 				}
 				if (env == NULL)
@@ -6641,7 +6603,6 @@ aterr:
 			if ((mtfd = tpp_mcast_open()) == -1) {
 				sprintf(log_buffer, "mcast open failed");
 				log_joberr(-1, __func__, log_buffer, jobid);
-				free(node_list);
 				free(tempinfo);
 				free(temptaskid);
 				free(tempnid);
@@ -6663,7 +6624,6 @@ aterr:
 					log_joberr(-1, __func__, log_buffer, jobid);
                 			ret = tm_reply(fd, version, TM_ERROR, event);
 			                if (ret != DIS_SUCCESS) {
-						free(node_list);
 						free(tempinfo);
 						free(temptaskid);
 						free(tempnid);
@@ -6671,7 +6631,6 @@ aterr:
 					}
 			                ret = diswsi(fd, TM_ENOTFOUND);
 			                if (ret != DIS_SUCCESS) {
-						free(node_list);
 						free(tempinfo);
 						free(temptaskid);
 						free(tempnid);
@@ -6799,9 +6758,6 @@ aterr:
 						DIS_NOCOMMIT : DIS_SUCCESS;
 				}
 				if (ret != DIS_SUCCESS) {
-					arrayfree(argv);
-					arrayfree(envp);
-					free(node_list);
 					free(tempinfo);
 					free(temptaskid);
 					free(tempnid);
@@ -6837,10 +6793,8 @@ aterr:
 				tempinfo->next = pjob->ji_spawninfo;
 				pjob->ji_spawninfo = tempinfo;
 			}
-			arrayfree(argv);
-			arrayfree(envp);
-			free(node_list);
-			/* tempinfo, temptaskid and tempnid arrays are freed in IM_ALL_OKAY */
+			/* At this point tempinfo, temptaskid and tempnid arrays are needed */
+			/* and will be freed later in IM_ALL_OKAY */
 			reply = FALSE;
 			goto done;
 			break;
@@ -6951,7 +6905,6 @@ aterr:
 				argv[i] = disrst(fd, &ret);
 				if (ret != DIS_SUCCESS) {
 					argv[i] = NULL;
-					arrayfree(argv);
 					goto done;
 				}
 				if(strlen(argv[i]) == 0)
@@ -6967,9 +6920,7 @@ aterr:
 
 				env = disrst(fd, &ret);
 				if (ret != DIS_SUCCESS && ret != DIS_EOD) {
-					arrayfree(argv);
 					envp[i] = NULL;
-					arrayfree(envp);
 					goto done;
 				}
 				if (env == NULL)
@@ -6995,8 +6946,6 @@ aterr:
 			ret = DIS_SUCCESS;
 
 			if (prev_error) {
-				arrayfree(argv);
-				arrayfree(envp);
 				goto done;
 			}
 
@@ -7024,8 +6973,6 @@ aterr:
 						}
 					}
 				}
-				arrayfree(argv);
-				arrayfree(envp);
 				ret = tm_reply(fd, version, i, event);
 				if (ret != DIS_SUCCESS)
 					goto done;
@@ -7042,41 +6989,25 @@ aterr:
 			ret = im_compose(phost->hn_stream, jobid, cookie,
 					 IM_SPAWN_TASK, ep->ee_event, fromtask,
 					 found_empty_string ? IM_PROTOCOL_VER : IM_OLD_PROTOCOL_VER);
-			if (ret != DIS_SUCCESS) {
-				arrayfree(argv);
-				arrayfree(envp);
+			if (ret != DIS_SUCCESS)
 				goto done;
-			}
 			ret = diswui(phost->hn_stream, myvnodeid);
-			if (ret != DIS_SUCCESS) {
-				arrayfree(argv);
-				arrayfree(envp);
+			if (ret != DIS_SUCCESS)
 				goto done;
-			}
 			ret = diswui(phost->hn_stream, tvnodeid);
-			if (ret != DIS_SUCCESS) {
-				arrayfree(argv);
-				arrayfree(envp);
+			if (ret != DIS_SUCCESS)
 				goto done;
-			}
 			ret = diswui(phost->hn_stream, TM_NULL_TASK);
-			if (ret != DIS_SUCCESS) {
-				arrayfree(argv);
-				arrayfree(envp);
+			if (ret != DIS_SUCCESS)
 				goto done;
-			}
 			if (found_empty_string) {
 				ret = diswui(phost->hn_stream, argc);
 				if (ret != DIS_SUCCESS) {
-					arrayfree(argv);
-					arrayfree(envp);
 					goto done;
 				}
 				for (i = 0; i < argc; i++) {
 					ret = diswst(phost->hn_stream, argv[i]);
 					if (ret != DIS_SUCCESS) {
-						arrayfree(argv);
-						arrayfree(envp);
 						goto done;
 					}
 				}
@@ -7084,36 +7015,26 @@ aterr:
 			  	for (i = 0; argv[i]; i++) {
 					ret = diswst(phost->hn_stream, argv[i]);
 					if (ret != DIS_SUCCESS) {
-						arrayfree(argv);
-						arrayfree(envp);
 						goto done;
 					}
 				}
 				ret = diswst(phost->hn_stream, "");
 				if (ret != DIS_SUCCESS) {
-					arrayfree(argv);
-					arrayfree(envp);
 					goto done;
 				}
 			}
 			for (i = 0; envp[i]; i++) {
 				ret = diswst(phost->hn_stream, envp[i]);
 				if (ret != DIS_SUCCESS) {
-					arrayfree(argv);
-					arrayfree(envp);
 					goto done;
 				}
 			}
 			ret = (dis_flush(phost->hn_stream) == -1) ?
 				DIS_NOCOMMIT : DIS_SUCCESS;
 			if (ret != DIS_SUCCESS) {
-				arrayfree(argv);
-				arrayfree(envp);
 				goto done;
 			}
 			reply = FALSE;
-			arrayfree(argv);
-			arrayfree(envp);
 
 			break;
 
@@ -7352,6 +7273,9 @@ done:
 		}
 	}
 
+	arrayfree(argv);
+	arrayfree(envp);
+	free(node_list);
 	free(jobid);
 	free(cookie);
 	return 0;
@@ -7375,6 +7299,9 @@ err:
 	close_conn(fd);
 	if (cookie)
 		free(cookie);
+	arrayfree(argv);
+	arrayfree(envp);
+	free(node_list);
 	return -1;
 }
 
