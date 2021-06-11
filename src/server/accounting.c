@@ -587,7 +587,7 @@ acct_job(const job *pjob, int type, char *buf, int len)
 		len -= i;
 	} else if (is_jattr_set(pjob, JOB_ATR_depend)) {
 		pbs_list_head phead;
-		svrattrl *svrattrl_list;
+		svrattrl *svrattrl_list = NULL;
 		CLEAR_HEAD(phead);
 		job_attr_def[JOB_ATR_depend].at_encode(get_jattr(pjob, JOB_ATR_depend),
 			&phead, job_attr_def[JOB_ATR_depend].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
