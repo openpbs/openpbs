@@ -124,7 +124,7 @@ extern char *msg_startup1;
 
 static pthread_mutex_t cleanup_lock;
 
-static void reconnect_servers();
+static void reconnect_servers(int);
 static void sched_svr_init(void);
 static void connect_svrpool();
 static int schedule_wrapper(sched_cmd *cmd, int opt_no_restart);
@@ -186,7 +186,6 @@ sigfunc_pipe(int sig)
 {
 	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "sigfunc_pipe", "We've received a sigpipe: The server probably died.");
 	got_sigpipe = 1;
-	part_tolerance = true;
 }
 
 /**
@@ -742,11 +741,12 @@ sched_svr_init(void)
 
 /**
  * @brief reconnect to all the servers configured
+ * @param[in]	sock - fd of the server which is known to be down, set to -1 if not known
  *
  * @return void
  */
 static void
-reconnect_servers(void)
+reconnect_servers(int sock)
 {
 	svr_conn_t **prim_conn = get_conn_svr_instances(clust_primary_sock);
 	svr_conn_t **sec_conn = get_conn_svr_instances(clust_secondary_sock);
@@ -760,6 +760,7 @@ reconnect_servers(void)
 		return;
 	}
 
+	part_tolerance = true;	/* If we are here then at least one server is down, so set this now, we'll reset it if needed */
 	if (time(NULL) - last_reconnect < min_reconnect_period)
 		return;	/* To throttle the reconnect frequency, don't connect if under min_reconnect_period */
 
@@ -773,14 +774,19 @@ reconnect_servers(void)
 		int rets = 0;
 		socklen_t error_sz = sizeof(errp);
 
-		if (prim_conn[i]->state == SVR_CONN_STATE_UP)
-			retp = getsockopt(prim_conn[i]->sd, SOL_SOCKET, SO_ERROR, &errp, &error_sz);
-		if (sec_conn[i]->state == SVR_CONN_STATE_UP)
-			rets = getsockopt(sec_conn[i]->sd, SOL_SOCKET, SO_ERROR, &errs, &error_sz);
-		if (retp || rets || errp || errs
+		if (sock > 0 && (prim_conn[i]->sd == sock || sec_conn[i]->sd == sock))
+			reconnect_msvr_conn(prim_conn[i], sec_conn[i]);
+		else {	/* Try to check if the connection is down */
+			if (prim_conn[i]->state == SVR_CONN_STATE_UP)
+				retp = getsockopt(prim_conn[i]->sd, SOL_SOCKET, SO_ERROR, &errp, &error_sz);
+			if (sec_conn[i]->state == SVR_CONN_STATE_UP)
+				rets = getsockopt(sec_conn[i]->sd, SOL_SOCKET, SO_ERROR, &errs, &error_sz);
+
+			if (retp || rets || errp || errs
 			|| prim_conn[i]->state == SVR_CONN_STATE_DOWN
 			|| sec_conn[i]->state == SVR_CONN_STATE_DOWN)
 			reconnect_msvr_conn(prim_conn[i], sec_conn[i]);
+		}
 		if (prim_conn[i]->sd < 0 || sec_conn[i]->sd < 0)
 			num_down += 1;
 	}
@@ -881,7 +887,7 @@ wait_for_cmds()
 				if (err != 1) {
 					/* if memory error ignore, else reconnect server */
 					if (err != -2)
-						reconnect_servers();
+						reconnect_servers(sock);
 				} else
 					hascmd = 1;
 			}
@@ -908,7 +914,7 @@ send_cycle_end()
 	sec_conns = get_conn_svr_instances(clust_secondary_sock);
 	prim_conns = get_conn_svr_instances(clust_primary_sock);
 	if (sec_conns == NULL || prim_conns == NULL) {
-		reconnect_servers();
+		reconnect_servers(-1);
 		got_sigpipe = 0;
 		return;
 	}
@@ -937,7 +943,7 @@ send_cycle_end()
 	}
 
 	if (got_sigpipe || reconnect)
-		reconnect_servers();
+		reconnect_servers(-1);
 
 	got_sigpipe = 0;
 }
