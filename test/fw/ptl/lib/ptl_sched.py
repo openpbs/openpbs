@@ -840,6 +840,8 @@ class Scheduler(PBSService):
             self.add_resource('hbmem')
         # Revert fairshare usage
         self.fairshare.revert_fairshare()
+        self.fairshare_tree = None
+        self.resource_group = None
         self.parse_sched_config()
         return self.isUp()
 

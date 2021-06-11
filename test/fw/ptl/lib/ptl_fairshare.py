@@ -296,8 +296,6 @@ class Fairshare(object):
         if self.sc_name is not 'default':
             cmd += ['-I', self.sc_name]
         self.du.run_cmd(self.hostname, cmd=cmd, runas=self.user)
-        self.fairshare_tree = None
-        self.resource_group = None
 
     def query_fairshare(self, name=None, id=None):
         """
