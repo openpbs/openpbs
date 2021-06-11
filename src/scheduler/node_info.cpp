@@ -494,10 +494,8 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		else if (!strcmp(attrp->name, ATTR_msvr_remote_jobs)) {
 			std::string rmtjid;
 			std::istringstream ss(attrp->value);
-			while (ss) {
-				std::getline(ss, rmtjid, ',');
+			while (std::getline(ss, rmtjid, ','))
 				ninfo->msvr_rmt_jobs.insert(rmtjid);
-			}
 		}
 		else if (!strcmp(attrp->name, ATTR_maxrun)) {
 			count = strtol(attrp->value, &endp, 10);
