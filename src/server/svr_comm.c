@@ -55,6 +55,7 @@
 extern time_t time_now;
 
 static int mtfd_replyhello_psvr = -1;
+static int mtfd_nodestat_psvr = -1;
 
 /**
  * @brief send a command using peer server protocol
@@ -103,6 +104,22 @@ mcast_resc_update_all(void *psvr)
 
 	if (mtfd_replyhello_psvr != -1)
 		set_task(WORK_Immed, 0, replyhello_psvr, NULL);
+}
+
+/**
+ * @brief mcast all the node stat requests
+ * It sets the work task to execute immediately to
+ * batch other peer server responses togethor. 
+ * 
+ * @param psvr 
+ */
+void
+mcast_node_stat_all(void *psvr)
+{
+	mcast_add(psvr, &mtfd_nodestat_psvr, FALSE);
+
+	if (mtfd_nodestat_psvr != -1)
+		set_task(WORK_Immed, 0, send_nodestat_req, NULL);
 }
 
 /**
@@ -258,23 +275,24 @@ replyhello_psvr(struct work_task *ptask)
  * @brief send a node stat request to peer servers
  * stats only a few attributes. This request is asynchronous
  * and server will process when it gets a PS_STAT_RPLY.
- * 
- * @param[in] type - msvr stat type
+ *
  */
 void
-send_nodestat_req(enum msvr_stats_type type)
+send_nodestat_req(struct work_task *ptask)
 {
 	struct attrl *pat;
 	struct attrl *head;
 	struct attrl *tail;
 	struct attrl *nxt;
-	int mtfd = open_ps_mtfd();
 	static int time_last_sent = 0;
 	int rc;
 
-	update_msvr_stat(1, type);
+	if (mtfd_nodestat_psvr == -1) {
+		update_msvr_stat(1, CACHE_MISS);
+		mtfd_nodestat_psvr = open_ps_mtfd();
+	}
 
-	if (mtfd == -1)
+	if (mtfd_nodestat_psvr == -1)
 		return;
 
 	/* Do not udate the cache too often */
@@ -298,16 +316,17 @@ send_nodestat_req(enum msvr_stats_type type)
 	tail->next = pat;
 	tail = tail->next;
 
-	rc = PBSD_status_put(mtfd, PBS_BATCH_StatusNode, "", head, NULL, PROT_TPP, NULL);
+	rc = PBSD_status_put(mtfd_nodestat_psvr, PBS_BATCH_StatusNode, "", head, NULL, PROT_TPP, NULL);
 	if (rc)
-		close_streams(mtfd, rc);
+		close_streams(mtfd_nodestat_psvr, rc);
 
 	for (pat = head; pat; pat = nxt) {
 		nxt = pat->next;
 		free(pat);
 	}
-	tpp_mcast_close(mtfd);
-	mtfd = -1;
+
+	tpp_mcast_close(mtfd_nodestat_psvr);
+	mtfd_nodestat_psvr = -1;
 }
 
 /**
@@ -486,6 +505,8 @@ ps_request(int stream, int version)
 		tpp_eom(stream);
 		/* mcast reply togethor, but do not wait */
 		mcast_resc_update_all(psvr);
+		/* send a node stat request */
+		mcast_node_stat_all(psvr);
 		return;
 	} else if ((psvr = tfind2((u_long) stream, 0, &streams)) != NULL) {
 		psvr_info = psvr->mi_data;

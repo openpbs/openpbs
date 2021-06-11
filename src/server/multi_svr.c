@@ -635,7 +635,7 @@ connect_to_peersvr(void *psvr)
 	if (resc_upd_reqd) {
 		if (svr_info->ps_pending_replies)
 			mcast_resc_update_all(psvr);
-		send_nodestat_req(-1);
+		mcast_node_stat_all(psvr);
 	}
 
 	return 0;

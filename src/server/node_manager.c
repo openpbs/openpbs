@@ -6520,7 +6520,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			*/
 			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 				   pjob->ji_qs.ji_jobid, "Unknown node received");
-			send_nodestat_req(CACHE_MISS);
+			send_nodestat_req(NULL);
 			return PBSE_UNKNODE;
 		}
 
@@ -6596,7 +6596,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 						   presv->ri_qs.ri_resvID, "Unknown node %s received", vname);
 				free(execvncopy);
 				rc = PBSE_UNKNODE;
-				send_nodestat_req(CACHE_MISS);
+				send_nodestat_req(NULL);
 				goto end;
 			}
 
@@ -6688,7 +6688,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 							   pjob->ji_qs.ji_jobid, "Unknown node %s received", peh);
 						free(phowl);
 						free(execvncopy);
-						send_nodestat_req(CACHE_MISS);
+						send_nodestat_req(NULL);
 						return (PBSE_UNKNODE);
 					}
 					if ((phowl + ndindex)->hw_pnd->nd_moms)
