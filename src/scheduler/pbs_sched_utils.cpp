@@ -186,6 +186,7 @@ sigfunc_pipe(int sig)
 {
 	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "sigfunc_pipe", "We've received a sigpipe: The server probably died.");
 	got_sigpipe = 1;
+	part_tolerance = true;
 }
 
 /**
@@ -778,10 +779,10 @@ reconnect_servers(void)
 			rets = getsockopt(sec_conn[i]->sd, SOL_SOCKET, SO_ERROR, &errs, &error_sz);
 		if (retp || rets || errp || errs
 			|| prim_conn[i]->state == SVR_CONN_STATE_DOWN
-			|| sec_conn[i]->state == SVR_CONN_STATE_DOWN) {
-			if (reconnect_msvr_conn(prim_conn[i], sec_conn[i]) != 0)
-				num_down += 1;
-		}
+			|| sec_conn[i]->state == SVR_CONN_STATE_DOWN)
+			reconnect_msvr_conn(prim_conn[i], sec_conn[i]);
+		if (prim_conn[i]->sd < 0 || sec_conn[i]->sd < 0)
+			num_down += 1;
 	}
 	pthread_mutex_unlock(&cleanup_lock);
 
