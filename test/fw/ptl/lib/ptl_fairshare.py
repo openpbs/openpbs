@@ -43,11 +43,13 @@ import logging
 import os
 import pwd
 import re
+import grp
 import sys
 import time
 
 from ptl.utils.pbs_dshutils import DshUtils
-from ptl.utils.pbs_testusers import ROOT_USER
+from ptl.utils.pbs_testusers import ROOT_USER, PbsUser
+from ptl.lib.ptl_error import PbsFairshareError
 
 
 class FairshareTree(object):
@@ -267,3 +269,178 @@ class FairshareNode(object):
         if self.perc is not None:
             ret.append(str(self.perc))
         return "\t".join(ret)
+
+
+class Fairshare(object):
+    du = DshUtils()
+    logger = logger = logging.getLogger(__name__)
+    fs_re = r'(?P<name>[\S]+)[\s]*:[\s]*Grp:[\s]*(?P<Grp>[-]*[0-9]*)' + \
+            r'[\s]*cgrp:[\s]*(?P<cgrp>[-]*[0-9]*)[\s]*' + \
+            r'Shares:[\s]*(?P<Shares>[-]*[0-9]*)[\s]*Usage:[\s]*' + \
+            r'(?P<Usage>[0-9]+)[\s]*Perc:[\s]*(?P<Perc>.*)%'
+    fs_tag = re.compile(fs_re)
+
+    def __init__(self, has_snap=None, pbs_conf={}, sc_name=None,
+                 hostname=None, user=None):
+        self.has_snap = has_snap
+        self.pbs_conf = pbs_conf
+        self.sc_name = sc_name
+        self.hostname = hostname
+        self.user = user
+
+    def revert_fairshare(self):
+        """
+        Helper method to revert scheduler's fairshare tree.
+        """
+        cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
+        if self.sc_name is not 'default':
+            cmd += ['-I', self.sc_name]
+        self.du.run_cmd(self.hostname, cmd=cmd, runas=self.user)
+
+    def query_fairshare(self, name=None, id=None):
+        """
+        Parse fairshare data using ``pbsfs`` and populates
+        fairshare_tree.If name or id are specified, return the data
+        associated to that id.Otherwise return the entire fairshare
+        tree
+        """
+        if self.has_snap:
+            return None
+
+        tree = FairshareTree()
+        cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs')]
+        if self.sc_name != 'default':
+            cmd += ['-I', self.sc_name]
+
+        ret = self.du.run_cmd(self.hostname, cmd=cmd,
+                              sudo=True, logerr=False)
+
+        if ret['rc'] != 0:
+            raise PbsFairshareError(rc=ret['rc'], rv=None,
+                                    msg=str(ret['err']))
+        pbsfs = ret['out']
+        for p in pbsfs:
+            m = self.fs_tag.match(p)
+            if m:
+                usage = int(m.group('Usage'))
+                perc = float(m.group('Perc'))
+                nm = m.group('name')
+                cgrp = int(m.group('cgrp'))
+                pid = int(m.group('Grp'))
+                nd = tree.get_node(id=pid)
+                if nd:
+                    pname = nd.parent_name
+                else:
+                    pname = None
+                # if an entity has a negative cgroup it should belong
+                # to the unknown resource, we work around the fact that
+                # PBS (up to 13.0) sets this cgroup id to -1 by
+                # reassigning it to 0
+                # TODO: cleanup once PBS code is updated
+                if cgrp < 0:
+                    cgrp = 0
+                node = FairshareNode(name=nm,
+                                     id=cgrp,
+                                     parent_id=pid,
+                                     parent_name=pname,
+                                     nshares=int(m.group('Shares')),
+                                     usage=usage,
+                                     perc={'TREEROOT': perc})
+                if perc:
+                    node.prio['TREEROOT'] = float(usage) / perc
+                if nm == name or id == cgrp:
+                    return node
+
+                tree.add_node(node, apply=False)
+        # now that all nodes are known, update parent and child
+        # relationship of the tree
+        tree.update()
+
+        for node in tree.nodes.values():
+            pnode = node._parent
+            while pnode is not None and pnode.id != 0:
+                if pnode.perc['TREEROOT']:
+                    node.perc[pnode.name] = \
+                        (node.perc['TREEROOT'] * 100 / pnode.perc[
+                         'TREEROOT'])
+                if pnode.name in node.perc and node.perc[pnode.name]:
+                    node.prio[pnode.name] = (
+                        node.usage / node.perc[pnode.name])
+                pnode = pnode._parent
+
+        if name:
+            n = tree.get_node(name)
+            if n is None:
+                raise PbsFairshareError(rc=1, rv=None,
+                                        msg='Unknown entity ' + name)
+            return n
+        if id:
+            n = tree.get_node(id=id)
+            raise PbsFairshareError(rc=1, rv=None,
+                                    msg='Unknown entity ' + str(id))
+            return n
+        return tree
+
+    def set_fairshare_usage(self, name=None, usage=None):
+        """
+        Set the fairshare usage associated to a given entity.
+
+        :param name: The entity to set the fairshare usage of
+        :type name: str or :py:class:`~ptl.lib.pbs_testlib.PbsUser` or None
+        :param usage: The usage value to set
+        """
+        if self.has_snap:
+            return True
+
+        if name is None:
+            self.logger.error(self.logprefix + ' an entity name required')
+            return False
+
+        if isinstance(name, PbsUser):
+            name = str(name)
+
+        if usage is None:
+            self.logger.error(self.logprefix + ' a usage is required')
+            return False
+
+        cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs')]
+        if self.sc_name is not 'default':
+            cmd += ['-I', self.sc_name]
+        cmd += ['-s', name, str(usage)]
+        ret = self.du.run_cmd(self.hostname, cmd, runas=self.user)
+        if ret['rc'] == 0:
+            return True
+        return False
+
+    def cmp_fairshare_entities(self, name1=None, name2=None):
+        """
+        Compare two fairshare entities. Wrapper of ``pbsfs -c e1 e2``
+
+        :param name1: name of first entity to compare
+        :type name1: str or :py:class:`~ptl.lib.pbs_testlib.PbsUser` or None
+        :param name2: name of second entity to compare
+        :type name2: str or :py:class:`~ptl.lib.pbs_testlib.PbsUser` or None
+        :returns: the name of the entity of higher priority or None on error
+        """
+        if self.has_snap:
+            return None
+
+        if name1 is None or name2 is None:
+            self.logger.erro(self.logprefix + 'two fairshare entity names ' +
+                             'required')
+            return None
+
+        if isinstance(name1, PbsUser):
+            name1 = str(name1)
+
+        if isinstance(name2, PbsUser):
+            name2 = str(name2)
+
+        cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs')]
+        if self.sc_name is not 'default':
+            cmd += ['-I', self.sc_name]
+        cmd += ['-c', name1, name2]
+        ret = self.du.run_cmd(self.hostname, cmd, runas=self.user)
+        if ret['rc'] == 0:
+            return ret['out'][0]
+        return None
