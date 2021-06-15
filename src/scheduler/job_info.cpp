@@ -562,10 +562,7 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		resource_req *req;
 		resource_req *walltime_req = NULL;
 		resource_req *soft_walltime_req = NULL;
-		char fairshare_name[100];
 		long duration;
-		time_t start;
-		time_t end;
 
 		if ((resresv = query_job(cur_job, sinfo, err)) == NULL) {
 			data->error = 1;
@@ -711,7 +708,8 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		if (resresv->job->stime != UNSPECIFIED &&
 			!(resresv->job->is_queued || resresv->job->is_suspended) &&
 			resresv->ninfo_arr != NULL) {
-			start = resresv->job->stime;
+			auto start = resresv->job->stime;
+			time_t end;
 
 			/* if a job is exiting, then its end time can be more closely
 			 * estimated by setting it to now + EXITING_TIME
@@ -764,7 +762,8 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		 * of something most likely unique - egroup:euser
 		 */
 
-		if (resresv->job->ginfo ==NULL) {
+		if (resresv->job->ginfo == NULL) {
+			char fairshare_name[100];
 #ifdef NAS /* localmod 058 */
 			sprintf(fairshare_name, "%s:%s:%s", resresv->group, resresv->user,
 				(qinfo->name != NULL ? qinfo->name : ""));
@@ -856,7 +855,7 @@ static inline th_data_query_jinfo *
 alloc_tdata_jquery(status *policy, int pbs_sd, struct batch_status *jobs, queue_info *qinfo,
 		int sidx, int eidx)
 {
-	th_data_query_jinfo *tdata = NULL;
+	th_data_query_jinfo *tdata;
 
 	tdata = static_cast<th_data_query_jinfo *>(malloc(sizeof(th_data_query_jinfo)));
 	if (tdata == NULL) {
@@ -905,7 +904,6 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	static struct attropl opl2[2] = { { &opl2[1], const_cast<char *>(ATTR_state), NULL, const_cast<char *>("Q"), EQ},
 		{ NULL, const_cast<char *>(ATTR_array), NULL, const_cast<char *>("True"), NE} };
 	static struct attrl *attrib = NULL;
-	int i;
 
 	/* linked list of jobs returned from pbs_selstat() */
 	struct batch_status *jobs;
@@ -922,21 +920,23 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	int num_prev_jobs;
 	int num_new_jobs;
 
-	/* used for pbs_geterrmsg() */
-	const char *errmsg;
-
 	/* for multi-threading */
-	int chunk_size;
-	int j;
 	int jidx;
 	th_data_query_jinfo *tdata = NULL;
 	th_task_info *task = NULL;
-	int num_tasks;
-	int th_err = 0;
 	resource_resv ***jinfo_arrs_tasks;
 	int tid;
 
-	const char *jobattrs[] = {
+	if (policy == NULL || qinfo == NULL || queue_name.empty())
+		return pjobs;
+
+	opl.value = const_cast<char *>(queue_name.c_str());
+
+	if (qinfo->is_peer_queue)
+		opl.next = &opl2[0];
+
+	if (attrib == NULL) {
+		const char *jobattrs[] = {
 			ATTR_p,
 			ATTR_qtime,
 			ATTR_qrank,
@@ -973,20 +973,10 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_A,
 			ATTR_max_run_subjobs,
 			ATTR_server_inst_id,
-			NULL
-	};
+			NULL};
 
-	if (policy == NULL || qinfo == NULL || queue_name.empty())
-		return pjobs;
-
-	opl.value = const_cast<char *>(queue_name.c_str());
-
-	if (qinfo->is_peer_queue)
-		opl.next = &opl2[0];
-
-	if (attrib == NULL) {
-		for (i = 0; jobattrs[i] != NULL; i++) {
-			struct attrl *temp_attrl = NULL;
+		for (int i = 0; jobattrs[i] != NULL; i++) {
+			struct attrl *temp_attrl;
 
 			temp_attrl = new_attrl();
 			temp_attrl->name = strdup(jobattrs[i]);
@@ -999,7 +989,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	/* get jobs from PBS server */
 	if ((jobs = send_selstat(pbs_sd, &opl, attrib, const_cast<char *>("S"))) == NULL) {
 		if (pbs_errno > 0) {
-			errmsg = pbs_geterrmsg(pbs_sd);
+			const char *errmsg = pbs_geterrmsg(pbs_sd);
 			if (errmsg == NULL)
 				errmsg = "";
 			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, "job_info",
@@ -1050,17 +1040,21 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			return NULL;
 		}
 
-		for (j = 0, jidx = num_prev_jobs; tdata->oarr[j] != NULL; j++) {
+		jidx = num_prev_jobs;
+		for (int j = 0; tdata->oarr[j] != NULL; j++) {
 			resresv_arr[jidx++] = tdata->oarr[j];
 		}
 		free(tdata->oarr);
 		free(tdata);
 		resresv_arr[jidx] = NULL;
 	} else {
-		chunk_size = num_new_jobs / num_threads;
+		int chunk_size = num_new_jobs / num_threads;
+		int th_err = 0;
+		int num_tasks = 0;
+
 		chunk_size = (chunk_size > MT_CHUNK_SIZE_MIN) ? chunk_size : MT_CHUNK_SIZE_MIN;
 		chunk_size = (chunk_size < MT_CHUNK_SIZE_MAX) ? chunk_size : MT_CHUNK_SIZE_MAX;
-		for (j = 0, num_tasks = 0; num_new_jobs > 0;
+		for (int j = 0; num_new_jobs > 0;
 				num_tasks++, j += chunk_size, num_new_jobs -= chunk_size) {
 			tdata = alloc_tdata_jquery(policy, pbs_sd, jobs, qinfo, j, j + chunk_size - 1);
 			if (tdata == NULL) {
@@ -1089,13 +1083,13 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			th_err = 1;
 		}
 		/* Get results from worker threads */
-		for (i = 0; i < num_tasks;) {
+		for (int i = 0; i < num_tasks;) {
 			pthread_mutex_lock(&result_lock);
 			while (ds_queue_is_empty(result_queue))
 				pthread_cond_wait(&result_cond, &result_lock);
 			while (!ds_queue_is_empty(result_queue)) {
-				task = (th_task_info*) ds_dequeue(result_queue);
-				tdata = (th_data_query_jinfo*) task->thread_data;
+				task = static_cast<th_task_info *>(ds_dequeue(result_queue));
+				tdata = static_cast<th_data_query_jinfo *>(task->thread_data);
 				if (tdata->error)
 					th_err = 1;
 				jinfo_arrs_tasks[task->task_id] = tdata->oarr;
@@ -1112,9 +1106,10 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			return NULL;
 		}
 		/* Assemble job info objects from various threads into the resresv_arr */
-		for (i = 0, jidx = num_prev_jobs; i < num_tasks; i++) {
+		jidx = num_prev_jobs;
+		for (int i = 0; i < num_tasks; i++) {
 			if (jinfo_arrs_tasks[i] != NULL) {
-				for (j = 0; jinfo_arrs_tasks[i][j] != NULL; j++) {
+				for (int j = 0; jinfo_arrs_tasks[i][j] != NULL; j++) {
 					resresv_arr[jidx++] = jinfo_arrs_tasks[i][j];
 				}
 				free(jinfo_arrs_tasks[i]);
@@ -1942,7 +1937,6 @@ int
 translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 {
 	int rc = 1;
-	const char *pbse;
 	char commentbuf[MAX_LOG_SIZE];
 	const char *arg1;
 	const char *arg2;
@@ -1961,6 +1955,8 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 	}
 
 	if (err->error_code < RET_BASE) {
+		const char *pbse;
+
 		if (err->specmsg != NULL)
 			pbse = err->specmsg;
 		else
@@ -2649,7 +2645,6 @@ create_resresv_sets(status *policy, server_info *sinfo)
 {
 	int i;
 	int j = 0;
-	int cur_ind;
 	int len;
 	int rset_len;
 	resource_resv **resresvs;
@@ -2672,7 +2667,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 	rsets[0] = NULL;
 
 	for (i = 0; resresvs[i] != NULL; i++) {
-		cur_ind = find_resresv_set_by_resresv(policy, rsets, resresvs[i]);
+		auto cur_ind = find_resresv_set_by_resresv(policy, rsets, resresvs[i]);
 
 		/* Didn't find the set, create it.*/
 		if (cur_ind == -1) {
@@ -2957,7 +2952,6 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 	int i = 0;
 	int *jobs = NULL;
 	resource_resv *job = NULL;
-	int ret = -1;
 	int done = 0;
 	int rc = 1;
 	int *preempted_list = NULL;
@@ -3087,7 +3081,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 
 	if (done) {
 		clear_schd_error(err);
-		ret = run_update_resresv(policy, pbs_sd, sinfo, hjob->job->queue, hjob, NULL, RURR_ADD_END_EVENT, err);
+		auto ret = run_update_resresv(policy, pbs_sd, sinfo, hjob->job->queue, hjob, NULL, RURR_ADD_END_EVENT, err);
 
 		/* oops... we screwed up.. the high priority job didn't run.  Forget about
 		 * running it now and resume preempted work
@@ -3603,7 +3597,6 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 	int i, j, k;
 	int good = 1;		/* good boolean: Is job eligible to be preempted */
 	struct preempt_ordering *po;
-	resdef **rdtc_non_consumable = NULL;
 
 	if ( err == NULL || hjob == NULL || hjob->job == NULL ||
 		rjobs == NULL || rjobs[0] == NULL)
@@ -3766,8 +3759,6 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 		if (good)
 			break;
 	}
-	if (rdtc_non_consumable != NULL)
-		free (rdtc_non_consumable);
 
 	if (good && rjobs[i] != NULL)
 		return i;
@@ -3938,16 +3929,16 @@ create_subjob_from_array(resource_resv *array, int index, const std::string& sub
 
 	subjob = dup_resource_resv(array, array->server, array->job->queue, subjob_name);
 
+	if (subjob == NULL) {
+		free_schd_error(err);
+		return NULL;
+	}
+
 	/* make a copy of dependent jobs */
 	subjob->job->depend_job_str = string_dup(array->job->depend_job_str);
 	subjob->job->dependent_jobs = (resource_resv **) dup_array(array->job->dependent_jobs);
 
 	array->job->queued_subjobs = tmp;
-
-	if (subjob == NULL) {
-		free_schd_error(err);
-		return NULL;
-	}
 
 	subjob->job->is_begin = 0;
 	subjob->job->is_array = 0;
@@ -4203,9 +4194,7 @@ formula_evaluate(const char *formula, resource_resv *resresv, resource_req *resr
 	char buf[1024];
 	char *globals;
 	int globals_size = 1024;  /* initial size... will grow if needed */
-	resource_req *req;
 	sch_resource_t ans = 0;
-	const char *str;
 	char *formula_buf;
 	int formula_buf_len;
 
@@ -4241,7 +4230,7 @@ formula_evaluate(const char *formula, resource_resv *resresv, resource_req *resr
 
 
 	for (const auto& cr : consres) {
-		req = find_resource_req(resreq, cr);
+		auto req = find_resource_req(resreq, cr);
 
 		if (req != NULL)
 			sprintf(buf, "\'%s\':%.*f,", cr->name.c_str(),
@@ -4299,7 +4288,7 @@ formula_evaluate(const char *formula, resource_resv *resresv, resource_req *resr
 
 	obj = PyMapping_GetItemString(dict, "_PBS_PYTHON_EXCEPTIONSTR_");
 	if (obj != NULL) {
-		str = PyUnicode_AsUTF8(obj);
+		auto str = PyUnicode_AsUTF8(obj);
 		if (str != NULL) {
 			if (strlen(str) > 0) { /* exception happened */
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
@@ -4511,13 +4500,12 @@ char*
 getaoename(selspec *select)
 {
 	int i = 0;
-	resource_req *req;
 
 	if (select == NULL)
 		return NULL;
 
 	for (i = 0; select->chunks[i] != NULL; i++) {
-		req = find_resource_req(select->chunks[i]->req, allres["aoe"]);
+		auto req = find_resource_req(select->chunks[i]->req, allres["aoe"]);
 		if (req != NULL)
 			return string_dup(req->res_str);
 	}
@@ -4870,7 +4858,6 @@ void create_res_released(status *policy, resource_resv *pjob)
 nspec **create_res_released_array(status *policy, resource_resv *resresv)
 {
 	nspec **nspec_arr = NULL;
-	int i = 0;
 	resource_req *req;
 
 	if ((resresv == NULL) || (resresv->nspec_arr == NULL) || (resresv->ninfo_arr == NULL))
@@ -4880,7 +4867,7 @@ nspec **create_res_released_array(status *policy, resource_resv *resresv)
 	if (nspec_arr == NULL)
 		return NULL;
 	if (!policy->rel_on_susp.empty()) {
-		for (i = 0; nspec_arr[i] != NULL; i++) {
+		for (int i = 0; nspec_arr[i] != NULL; i++) {
 			for (req = nspec_arr[i]->resreq; req != NULL; req = req->next) {
 				auto ros = policy->rel_on_susp;
 				if (req->type.is_consumable == 1 && ros.find(req->def) == ros.end())
@@ -4993,7 +4980,6 @@ extend_soft_walltime(resource_resv *resresv, time_t server_time)
 static int cull_preemptible_jobs(resource_resv *job, const void *arg)
 {
 	struct resresv_filter *inp;
-	int index;
 	resource_req *req_scan;
 
 	if (arg == NULL || job == NULL)
@@ -5120,7 +5106,7 @@ static int cull_preemptible_jobs(resource_resv *job, const void *arg)
 					 */
 					return 1;
 				}
-				for (index = 0; job->select->chunks[index] != NULL; index++)
+				for (int index = 0; job->select->chunks[index] != NULL; index++)
 				{
 					for (req_scan = job->select->chunks[index]->req; req_scan != NULL; req_scan = req_scan->next)
 					{
@@ -5252,8 +5238,6 @@ static char **parse_runone_job_list(char *depend_val) {
 	char *r;
 	char **ret = NULL;
 	char *depend_str = NULL;
-	int  job_delim = 0;
-	int  svr_delim = 0;
 
 	if (depend_val == NULL)
 		return NULL;
@@ -5278,9 +5262,9 @@ static char **parse_runone_job_list(char *depend_val) {
 		return NULL;
 	}
 	for (i = 0;  i < len; i++) {
-		job_delim = strcspn(r, ":");
+		auto job_delim = strcspn(r, ":");
 		r[job_delim] = '\0';
-		svr_delim = strcspn(r, "@");
+		auto svr_delim = strcspn(r, "@");
 		r[svr_delim] = '\0';
 		ret[i] = string_dup(r);
 		if (ret[i] == NULL) {
@@ -5316,7 +5300,7 @@ void associate_dependent_jobs(server_info *sinfo) {
 				sinfo->jobs[i]->job->dependent_jobs = static_cast<resource_resv **>(calloc((len + 1), sizeof(resource_resv *)));
 				sinfo->jobs[i]->job->dependent_jobs[len] = NULL;
 				for (j = 0; job_arr[j] != NULL; j++) {
-					resource_resv *jptr = NULL;
+					resource_resv *jptr;
 					jptr = find_resource_resv(sinfo->jobs, job_arr[j]);
 					if (jptr != NULL)
 						sinfo->jobs[i]->job->dependent_jobs[j] = jptr;

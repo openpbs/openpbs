@@ -144,7 +144,7 @@ static schedule_func schedule_ptr;
 void
 on_segv(int sig)
 {
-	int ret_lock = -1;
+	int ret_lock;
 
 	/* We want any other threads to block here, we want them alive until abort() is called
 	 * as it dumps core for all threads
@@ -233,7 +233,7 @@ schedexit(void)
 void
 die(int sig)
 {
-	int ret_lock = -1;
+	int ret_lock;
 
 	ret_lock = pthread_mutex_trylock(&cleanup_lock);
 	if (ret_lock != 0)
@@ -415,41 +415,6 @@ hard_cycle_interrupt(int sig)
 	do_hard_cycle_interrupt = 1;
 }
 #endif /* localmod 030 */
-/**
- * @brief
- * 		log the bad connection message
- *
- * @param[in]	msg	-	The message to be logged.
- */
-void
-badconn(const char *msg)
-{
-	struct in_addr addr;
-	char buf[5 * sizeof(addr) + 100];
-	struct hostent *phe;
-
-	addr = saddr.sin_addr;
-	phe = gethostbyaddr((void *) &addr, sizeof(addr), AF_INET);
-	if (phe == NULL) {
-		char hold[6];
-		size_t i;
-		union {
-			struct in_addr aa;
-			u_char bb[sizeof(addr)];
-		} uu;
-
-		uu.aa = addr;
-		sprintf(buf, "%u", (unsigned int) uu.bb[0]);
-		for (i = 1; i < sizeof(addr); i++) {
-			sprintf(hold, ".%u", (unsigned int) uu.bb[i]);
-			strcat(buf, hold);
-		}
-	} else
-		pbs_strncpy(buf, phe->h_name, sizeof(buf));
-
-	log_errf(-1, __func__, "%s on port %u %s", buf, (unsigned int) ntohs(saddr.sin_port), msg);
-	return;
-}
 
 /**
  * @brief
@@ -809,7 +774,7 @@ reconnect_servers(void)
 static int
 read_sched_cmd(int sock)
 {
-	int rc = -1;
+	int rc;
 	sched_cmd cmd;
 
 	rc = get_sched_cmd(sock, &cmd);
@@ -854,10 +819,8 @@ read_sched_cmd(int sock)
 static void
 wait_for_cmds()
 {
-	int nsocks;
 	int i;
 	em_event_t *events;
-	int err;
 	int hascmd = 0;
 	sigset_t emptyset;
 
@@ -865,8 +828,8 @@ wait_for_cmds()
 
 	while (!hascmd) {
 		sigemptyset(&emptyset);
-		nsocks = tpp_em_pwait(poll_context, &events, -1, &emptyset);
-		err = errno;
+		auto nsocks = tpp_em_pwait(poll_context, &events, -1, &emptyset);
+		auto err = errno;
 
 		if (nsocks < 0) {
 			if (!(err == EINTR || err == EAGAIN || err == 0)) {
@@ -966,7 +929,7 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 
 	/*the real deal or show version and exit?*/
 
-	schedule_ptr = &(*sched_ptr);
+	schedule_ptr = sched_ptr;
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 

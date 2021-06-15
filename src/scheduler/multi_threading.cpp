@@ -262,37 +262,37 @@ worker(void *tid)
 			case TS_IS_ND_ELIGIBLE:
 				snprintf(buf, sizeof(buf), "Thread %d calling check_node_eligibility_chunk()", ntid);
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				check_node_eligibility_chunk((th_data_nd_eligible *) work->thread_data);
+				check_node_eligibility_chunk(static_cast<th_data_nd_eligible *>(work->thread_data));
 				break;
 			case TS_DUP_ND_INFO:
 				snprintf(buf, sizeof(buf), "Thread %d calling dup_node_info_chunk()", ntid);
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				dup_node_info_chunk((th_data_dup_nd_info *) work->thread_data);
+				dup_node_info_chunk(static_cast<th_data_dup_nd_info *>(work->thread_data));
 				break;
 			case TS_QUERY_ND_INFO:
 				snprintf(buf, sizeof(buf), "Thread %d calling query_node_info_chunk()", ntid);
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				query_node_info_chunk((th_data_query_ninfo *) work->thread_data);
+				query_node_info_chunk(static_cast<th_data_query_ninfo *>(work->thread_data));
 				break;
 			case TS_FREE_ND_INFO:
 				snprintf(buf, sizeof(buf), "Thread %d calling free_node_info_chunk()", ntid);
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				free_node_info_chunk((th_data_free_ninfo *) work->thread_data);
+				free_node_info_chunk(static_cast<th_data_free_ninfo *>(work->thread_data));
 				break;
 			case TS_DUP_RESRESV:
 				snprintf(buf, sizeof(buf), "Thread %d calling dup_resource_resv_array_chunk()", ntid);
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				dup_resource_resv_array_chunk((th_data_dup_resresv *) work->thread_data);
+				dup_resource_resv_array_chunk(static_cast<th_data_dup_resresv *>(work->thread_data));
 				break;
 			case TS_QUERY_JOB_INFO:
 				snprintf(buf, sizeof(buf), "Thread %d calling query_jobs_chunk()", ntid);
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				query_jobs_chunk((th_data_query_jinfo *) work->thread_data);
+				query_jobs_chunk(static_cast<th_data_query_jinfo *>(work->thread_data));
 				break;
 			case TS_FREE_RESRESV:
 				snprintf(buf, sizeof(buf), "Thread %d calling free_resource_resv_array_chunk()", ntid);
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				free_resource_resv_array_chunk((th_data_free_resresv *) work->thread_data);
+				free_resource_resv_array_chunk(static_cast<th_data_free_resresv *>(work->thread_data));
 				break;
 			default:
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,

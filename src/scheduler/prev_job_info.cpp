@@ -90,9 +90,8 @@ create_prev_job_info(resource_resv **jobs)
 	}
 }
 
-prev_job_info::prev_job_info(const std::string& pname, const std::string& ename, resource_req *rused): name(pname), entity_name(ename)
+prev_job_info::prev_job_info(const std::string& pname, const std::string& ename, resource_req *rused): name(pname), entity_name(ename), resused(rused)
 {
-	resused = rused;
 }
 
 prev_job_info::prev_job_info(const prev_job_info& opj): name(opj.name), entity_name(opj.entity_name)

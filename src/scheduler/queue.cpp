@@ -59,7 +59,7 @@
 ds_queue *
 new_ds_queue(void)
 {
-	ds_queue *ret_obj = NULL;
+	ds_queue *ret_obj;
 
 	ret_obj = static_cast<ds_queue *>(malloc(sizeof(ds_queue)));
 	if (ret_obj == NULL) {

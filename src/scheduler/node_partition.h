@@ -216,7 +216,7 @@ int resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *
  */
 node_partition *create_specific_nodepart(status *policy, const char *name, node_info **nodes, int flags );
 /* create the placement sets for the server and queues */
-int create_placement_sets(status *policy, server_info *sinfo);
+bool create_placement_sets(status *policy, server_info *sinfo);
 
 /* Update placement sets and allparts */
 void update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags);

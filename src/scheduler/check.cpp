@@ -58,7 +58,6 @@
  *	dedtime_conflict()
  *	check_nodes()
  *	check_ded_time_queue()
- *	should_check_resvs()
  *	check_prime_queue()
  *	check_nonprime_queue()
  *	check_prime_boundary()
@@ -217,8 +216,7 @@ time_to_ded_boundary(status *policy, resource_resv *njob)
 			else
 				duration = ded_time.from - start;
 		}
-	}
-	else /* Dedicated time */  {
+	} else /* Dedicated time */  {
 		min_end = njob->server->server_time + min_time_left;
 		end = njob->server->server_time + time_left;
 		/* See if job's minimum duration can be completed without hitting
@@ -307,9 +305,6 @@ shrink_to_boundary(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
 	nspec** ns_arr = NULL;
-	sch_resource_t time_to_dedboundary = 0;
-	sch_resource_t time_to_primeboundary = 0;
-	time_t orig_duration = 0;
 
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
 		return NULL;
@@ -317,11 +312,12 @@ shrink_to_boundary(status *policy, server_info *sinfo,
 	 * if it is not hitting */
 	if (err->error_code == CROSS_PRIME_BOUNDARY ||
 		err->error_code == CROSS_DED_TIME_BOUNDRY) {
-		orig_duration = njob->duration;
-		time_to_dedboundary = time_to_ded_boundary(policy, njob);
+		auto orig_duration = njob->duration;
+		auto time_to_dedboundary = time_to_ded_boundary(policy, njob);
 		if (time_to_dedboundary == UNSPECIFIED)
 			return NULL;
-		time_to_primeboundary = time_to_prime_boundary(policy, njob);
+
+		auto time_to_primeboundary = time_to_prime_boundary(policy, njob);
 		if (time_to_primeboundary == UNSPECIFIED)
 			return NULL;
 		clear_schd_error(err);
@@ -451,33 +447,24 @@ nspec **
 shrink_to_run_event(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
-	time_t orig_duration = UNSPECIFIED;
-	time_t possible_shrink_duration = UNSPECIFIED;
 	nspec** ns_arr = NULL;
 	timed_event *te = NULL;
 	timed_event *initial_event = NULL;
 	timed_event *farthest_event = NULL;
-	timed_event *last_skipped_event = NULL;
-	time_t last_tried_event_time = 0;
-	time_t end_time = 0;
-	time_t min_end_time = 0;
-	time_t servertime_now = 0;
-	unsigned int event_mask;
-	int retry_count = 0;
+	unsigned int event_mask = TIMED_RUN_EVENT;
 
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
 		return NULL;
 
-	orig_duration = njob->duration;
-	servertime_now = sinfo->server_time;
-	end_time = servertime_now + njob->duration;
-	min_end_time = servertime_now + njob->min_duration;
+	auto orig_duration = njob->duration;
+	auto servertime_now = sinfo->server_time;
+	auto end_time = servertime_now + njob->duration;
+	auto min_end_time = servertime_now + njob->min_duration;
 	/* Go till farthest event in the event list between job's min and max duration */
 	te = get_next_event(sinfo->calendar);
 	/* Get the front pointer of the event list. It may not always be NULL. */
 	if (te != NULL)
 		initial_event = te->prev;
-	event_mask = TIMED_RUN_EVENT;
 	for (te = find_init_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask);
 		te != NULL && te->event_time < end_time;
 		te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
@@ -489,10 +476,11 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 		ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
 	else {
 		/* try shrinking upto the farthest event */
+		time_t last_tried_event_time = 0;
+		int retry_count = SHRINK_MAX_RETRY;
+		timed_event *last_skipped_event = NULL;
 		end_time = farthest_event->event_time;
-		retry_count = SHRINK_MAX_RETRY;
-		event_mask = TIMED_RUN_EVENT;
-		last_skipped_event = NULL;
+
 		/* Now, go backwards in the events list */
 		for (te = farthest_event; retry_count != 0;
 			te = find_prev_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
@@ -525,8 +513,7 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 			last_skipped_event = NULL;/* This event does not get skipped */
 			last_tried_event_time = te->event_time;
 			/* Shrink end_time to the next segment */
-			possible_shrink_duration = njob->duration - njob->min_duration;
-			end_time = min_end_time + possible_shrink_duration * (retry_count - 1)/retry_count;
+			end_time = min_end_time + (njob->duration - njob->min_duration) * (retry_count - 1) / retry_count;
 			retry_count--;
 		}
 	}
@@ -955,7 +942,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 #ifdef NAS /* localmod 036 */
 			{
 				if (resresv->job->resv->resv->is_standing) {
-					resource_req *req = find_resource_req(resresv->resreq, allres["min_walltime"];
+					resource_req *req = find_resource_req(resresv->resreq, allres["min_walltime"]);
 
 					if (req != NULL) {
 						int resv_time_left = calc_time_left(resresv->job->resv, 0);
@@ -1434,10 +1421,6 @@ find_counts_elm(counts *cts_list, const char *name, resdef *rdef, counts **cnt, 
 enum sched_error_code
 check_ded_time_boundary(resource_resv *resresv)
 {
-	sch_resource_t time_left;
-	sch_resource_t finish_time;	/* the finish time of the job */
-	int ded;			/* is it currently ded time ? */
-
 	if (resresv == NULL)
 		return SE_NONE;
 
@@ -1447,15 +1430,15 @@ check_ded_time_boundary(resource_resv *resresv)
 	if (ded_time.from == 0 && ded_time.to == 0)
 		return SE_NONE;
 
-	ded = is_ded_time(resresv->server->server_time);
+	auto ded = is_ded_time(resresv->server->server_time);
 
 	if (!ded) {
 		if (dedtime_conflict(resresv)) /* has conflict or has no duration */
 			return CROSS_DED_TIME_BOUNDRY;
 	}
 	else {
-		time_left = calc_time_left(resresv, 0);
-		finish_time = resresv->server->server_time + time_left;
+		auto time_left = calc_time_left(resresv, 0);
+		auto finish_time = resresv->server->server_time + time_left;
 
 		if (finish_time > ded_time.to)
 			return CROSS_DED_TIME_BOUNDRY;
@@ -1480,13 +1463,12 @@ dedtime_conflict(resource_resv *resresv)
 {
 	time_t start;
 	time_t end;
-	time_t duration;
 
 	if (resresv == NULL)
 		return -1;
 
 	if (resresv->start == UNSPECIFIED && resresv->end ==UNSPECIFIED) {
-		duration = calc_time_left(resresv, 0);
+		auto duration = calc_time_left(resresv, 0);
 
 		start = resresv->server->server_time;
 		end = start + duration;
@@ -1584,7 +1566,6 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 	selspec *spec = NULL;
 	place *pl = NULL;
 	int rc = 0;
-	char *grouparr[2] = {0};
 	np_cache *npc = NULL;
 	int error = 0;
 	node_partition **nodepart = NULL;
@@ -1693,6 +1674,7 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 	 * If it doesn't exist, we'll create it and add it to the cache
 	 */
 	if (resresv->place_spec->group != NULL) {
+		char *grouparr[2];
 		grouparr[0] = resresv->place_spec->group;
 		grouparr[1] = NULL;
 		npc = find_alloc_np_cache(policy, &(sinfo->npc_arr), grouparr, ninfo_arr, cmp_placement_sets);
@@ -1756,72 +1738,6 @@ check_ded_time_queue(queue_info *qinfo)
 	}
 	return rc;
 }
-
-/**
- * @brief
- *		should_check_resvs - do some simple checks to see if it is possible
- *			     for a job to interfere with reservations.
- *			     This function is called for two cases.  One we
- *			     are checking for reseservations on a specific
- *			     node, and the other is a more simple case of just
- *			     checking for reservations on the entire server
- *
- * @param[in]	sinfo	-	the server where the reservations reside
- * @param[in]	ninfo	-	to check for reservations on (may be NULL)
- * @param[in]	job	-	the job which could interfere with reservations
- *
- * @return	int
- * @retval	1	: we should check for resv conflicts
- * @retval	0	: no reservation conflicts
- * @retval	-1	: error
- */
-int
-should_check_resvs(server_info *sinfo, node_info *ninfo, resource_resv *job)
-{
-	if (sinfo == NULL || job == NULL)
-		return -1;
-
-	/* no resvs in the system - no possibility for interference */
-	if (sinfo->resvs == NULL)
-		return 0;
-
-	/* check if a job is in a reservation */
-	if (job->is_job && job->job != NULL && job->job->resv != NULL) {
-		if (job->job->resv->resv->is_running) {
-			/* if we are not checking a specific node and the job is in a
-			 * running reservation, there can't be any conflicts
-			 */
-			if (ninfo == NULL)
-				return 0;
-
-			/* we're checking a specific node, the node better be part of the
-			 * reservation the job is in
-			 */
-			if (find_node_info(job->job->resv->ninfo_arr, ninfo->name) != NULL)
-				return 0;
-			else
-				/* error case - a job in a running reservation should never be
-				 * checked to see if it can run on a node not in it's reservation
-				 */
-				return -1;
-		} else
-			/* error case - all non-running reservations are marked can_not_run at
-			 * the top of the scheduling cycle and should never make it here
-			*/
-			return -1;
-	}
-
-	/* So we made it here... We now know
-	 * 1. all of our input is kosher
-	 * 2. There are reservations in the system and the job is not in any
-	 *    any of them
-	 * We've done all the easy checks to see if we can bypass checking our
-	 * reservations... now we have to.
-	 */
-
-	return 1;
-}
-
 
 /**
  *
@@ -1896,7 +1812,6 @@ check_nonprime_queue(status *policy, queue_info *qinfo)
 enum sched_error_code
 check_prime_boundary(status *policy, resource_resv  *resresv, struct schd_error *err)
 {
-	sch_resource_t time_left;
 
 	if (resresv == NULL || policy == NULL) {
 		set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
@@ -1919,7 +1834,7 @@ check_prime_boundary(status *policy, resource_resv  *resresv, struct schd_error 
 		return SE_NONE;
 
 	if (policy->backfill_prime) {
-		time_left = calc_time_left(resresv, 0);
+		auto time_left = calc_time_left(resresv, 0);
 
 		/*
 		 *   Job has no walltime requested.  Lets be conservative and assume the

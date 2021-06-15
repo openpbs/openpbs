@@ -1196,11 +1196,6 @@ cmp_resv_state(const void *r1, const void *r2)
 void
 sort_jobs(status *policy, server_info *sinfo)
 {
-	int i = 0;
-	int job_index = 0;
-	int index = 0;
-	int count = 0;
-
 	/** sort jobs in such a way that Higher Priority jobs come on top
 	 * followed by preempted jobs and then normal jobs
 	 */
@@ -1209,17 +1204,18 @@ sort_jobs(status *policy, server_info *sinfo)
 		 * to select the next job.
 		 */
 		if (policy->by_queue || policy->round_robin) {
+			int job_index = 0;
 			/* cycle through queues and sort them on the basis of preemption priority,
 			 * preempted jobs, and fairshare usage
 			 */
-			for (; i < sinfo->num_queues; i++) {
+			for (int i = 0; i < sinfo->num_queues; i++) {
 				if (sinfo->queues[i]->sc.total > 0) {
 					qsort(sinfo->queues[i]->jobs, sinfo->queues[i]->sc.total,
 						sizeof(resource_resv*), cmp_sort);
 				}
 			}
-			for (count = 0; count != sinfo->num_queues; count++) {
-				for (index = 0; index < sinfo->queues[count]->sc.total; index++) {
+			for (int count = 0; count != sinfo->num_queues; count++) {
+				for (int index = 0; index < sinfo->queues[count]->sc.total; index++) {
 					sinfo->jobs[job_index] = sinfo->queues[count]->jobs[index];
 					job_index++;
 				}
@@ -1232,7 +1228,7 @@ sort_jobs(status *policy, server_info *sinfo)
 		}
 	}
 	else if (policy->by_queue) {
-		for (i = 0; i < sinfo->num_queues; i++) {
+		for (int i = 0; i < sinfo->num_queues; i++) {
 			qsort(sinfo->queues[i]->jobs, count_array(sinfo->queues[i]->jobs), sizeof(resource_resv *), cmp_sort);
 		}
 		qsort(sinfo->jobs, count_array(sinfo->jobs), sizeof(resource_resv*), cmp_sort);
@@ -1240,14 +1236,13 @@ sort_jobs(status *policy, server_info *sinfo)
 	else if (policy->round_robin) {
 		if (sinfo -> queue_list != NULL) {
 			int queue_list_size = count_array(sinfo->queue_list);
-			int i,j;
-			for (i = 0; i < queue_list_size; i++)
+			for (int i = 0; i < queue_list_size; i++)
 			{
 				int queue_index_size = count_array(sinfo->queue_list[i]);
-				for (j = 0; j < queue_index_size; j++)
+				for (int j = 0; j < queue_index_size; j++)
 				{
-				    qsort(sinfo->queue_list[i][j]->jobs, count_array(sinfo->queue_list[i][j]->jobs),
-					    sizeof(resource_resv *), cmp_sort);
+					qsort(sinfo->queue_list[i][j]->jobs, count_array(sinfo->queue_list[i][j]->jobs),
+						sizeof(resource_resv *), cmp_sort);
 				}
 			}
 

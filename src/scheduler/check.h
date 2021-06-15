@@ -197,17 +197,6 @@ enum sched_error_code check_prime_boundary(status *policy, resource_resv *resres
 int check_node_resources(resource_resv *resresv, node_info **ninfo_arr);
 
 /*
- *
- *	should_check_resvs - do some simple checks to see if it is possible
- *			     for a job to interfere with reservations.
- *			     This function is called for two cases.  One we
- *			     are checking for reseservations on a specific
- *			     node, and the other is a more simple case of just
- *			     checking for reservations on the entire server
- */
-int should_check_resvs(server_info *sinfo, node_info *ninfo, resource_resv *resresv);
-
-/*
  *	false_res - return a static struct of resource which is a boolean
  *		    set to false
  */
