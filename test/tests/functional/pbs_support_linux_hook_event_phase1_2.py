@@ -225,7 +225,8 @@ e.accept()
                     "---------------------->",
                     "Hook;pbs_python;Event is: EXECJOB_ATTACH",
                     "Hook;pbs_python;Requestor is: pbs_mom",
-                    "Hook;pbs_python;Requestor_host is: %s" % self.hostA,
+                    "Hook;pbs_python;Requestor_host is: %s" %
+                    self.momA.shortname,
                     "Hook;pbs_python;Vnode: [%s]-------------->" % self.hostA,
                     "Job;%s;PID =" % jid,
                     "Hook;pbs_python;Vnode: [%s]-------------->" % self.hostB,
