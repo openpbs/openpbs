@@ -2679,9 +2679,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 			cur_ind = j;
 			rsets[j++] = cur_rset;
 			rsets[j] = NULL;
-		} else
-			cur_rset = rsets[cur_ind];
-
+		}
 		resresvs[i]->ec_index = cur_ind;
 	}
 

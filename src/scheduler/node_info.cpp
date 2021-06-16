@@ -478,6 +478,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 			ninfo->partition = string_dup(attrp->value);
 			if (ninfo->partition == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
+				delete ninfo;
 				return NULL;
 			}
 		}
@@ -2585,8 +2586,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 								clear_schd_error(err);
 							}
 						}
-					}
-					else {
+					} else {
 						char reason[MAX_LOG_SIZE] = {0};
 
 						if (hostsets[i]->free_nodes == 0)
@@ -3976,7 +3976,7 @@ parse_selspec(const std::string& sspec)
 	int invalid = 0;
 
 	int num_kv;
-	struct key_value_pair *kv;
+	struct key_value_pair *kv = NULL;
 	int nkvelements = 0;
 
 	int num_chunks;
@@ -3999,10 +3999,12 @@ parse_selspec(const std::string& sspec)
 	if ((spec->chunks = static_cast<chunk **>(calloc(num_plus + 2, sizeof(chunk *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		delete spec;
+		return 0;
 	}
 
 	specbuf = string_dup(select_spec);
 	if (specbuf == NULL) {
+		delete spec;
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}

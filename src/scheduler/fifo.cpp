@@ -379,9 +379,10 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 
 		if (decayed) {
 			/* set the time to the actual time the half-life should have occurred */
-			fstree->last_decay =
-				policy->current_time - (policy->current_time -
-				sinfo->fstree->last_decay) % conf.decay_time;
+			if (fstree != NULL)
+				fstree->last_decay =
+					policy->current_time - (policy->current_time -
+					sinfo->fstree->last_decay) % conf.decay_time;
 		}
 
 		if (decayed || !last_running.empty()) {
@@ -2282,7 +2283,6 @@ next_job(status *policy, server_info *sinfo, int flag)
 				last_queue_index++;
 				i++;
 			}
-			queues_finished = 0;
 		}
 	} else if (policy->by_queue) {
 		if (!(skip & SKIP_NON_NORMAL_JOBS)) {
@@ -2571,12 +2571,12 @@ parse_sched_obj(int connector, struct batch_status *status)
 
 		if (log_dir == NULL)
 			validate_log_dir = 1;
-		else if (strcmp(log_dir, tmp_log_dir) != 0)
+		else if (tmp_log_dir != NULL && strcmp(log_dir, tmp_log_dir) != 0)
 			validate_log_dir = 1;
 
 		if (priv_dir == NULL)
 			validate_priv_dir = 1;
-		else if (strcmp(priv_dir, tmp_priv_dir) != 0)
+		else if (tmp_priv_dir != NULL && strcmp(priv_dir, tmp_priv_dir) != 0)
 			validate_priv_dir = 1;
 
 		if (!validate_log_dir && !validate_priv_dir && tmp_comment != NULL)
@@ -2637,7 +2637,7 @@ parse_sched_obj(int connector, struct batch_status *status)
 			c = 0;
 #endif
 			if (c == 0) {
-				if (chdir(tmp_priv_dir) == -1) {
+				if (tmp_priv_dir == NULL || chdir(tmp_priv_dir) == -1) {
 					strcpy(comment, "PBS failed validation checks for sched_priv directory");
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 						"PBS failed validation checks for directory %s", tmp_priv_dir);
@@ -2797,27 +2797,41 @@ set_validate_sched_attrs(int connector)
  *	None
  */
 int
-validate_running_user(char * exename) {
+validate_running_user(char *exename) {
+	char buf[128];
 	if (pbs_conf.pbs_daemon_service_user) {
 		struct passwd *user = getpwnam(pbs_conf.pbs_daemon_service_user);
 		if (user == NULL) {
-			fprintf(stderr, "%s: PBS_DAEMON_SERVICE_USER [%s] does not exist\n", exename, pbs_conf.pbs_daemon_service_user);
+			snprintf(buf, sizeof(buf), "%s: PBS_DAEMON_SERVICE_USER [%s] does not exist\n", exename, pbs_conf.pbs_daemon_service_user);
+			perror(buf);
+			return 0;
+		}
+
+		int rc = setgid(user->pw_gid);
+		if (rc != 0) {
+			snprintf(buf, sizeof(buf), "%s: Can't change group to PBS_DAEMON_SERVICE_USER's group [%d], setgid() failed.", exename, user->pw_gid);
+			perror(buf);
 			return 0;
 		}
 
 		if (geteuid() == 0) {
-			setuid(user->pw_uid);
+			int rc = setuid(user->pw_uid);
+			if (rc != 0) {
+				snprintf(buf, sizeof(buf), "%s: Can't change to PBS_DAEMON_SERVICE_USER [%s], setuid() failed.", exename, pbs_conf.pbs_daemon_service_user);
+				perror(buf);
+				return 0;
+			}
 			pbs_strncpy(pbs_current_user, pbs_conf.pbs_daemon_service_user, PBS_MAXUSER);
 		}
 
 		if (user->pw_uid != getuid()) {
-			fprintf(stderr, "%s: Must be run by PBS_DAEMON_SERVICE_USER [%s]\n", exename, pbs_conf.pbs_daemon_service_user);
+			snprintf(buf, sizeof(buf), "%s: Must be run by PBS_DAEMON_SERVICE_USER [%s]\n", exename, pbs_conf.pbs_daemon_service_user);
+			perror(buf);
 			return 0;
 		}
-		setgid(user->pw_gid);
-	}
-	else if ((geteuid() != 0) || getuid() != 0) {
-		fprintf(stderr, "%s: Must be run by PBS_DAEMON_SERVICE_USER if set or root if not set\n", exename);
+	} else if ((geteuid() != 0) || getuid() != 0) {
+		snprintf(buf, sizeof(buf), "%s: Must be run by PBS_DAEMON_SERVICE_USER if set or root if not set\n", exename);
+		perror(buf);
 		return 0;
 	}
 

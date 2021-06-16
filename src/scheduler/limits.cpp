@@ -1073,8 +1073,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 				return SE_NONE;
 			}
 		}
-	}
-	else if ((flags & CHECK_CUMULATIVE_LIMIT)) {
+	} else if ((flags & CHECK_CUMULATIVE_LIMIT)) {
 		if (!si->has_hard_limit && !qi->has_hard_limit)
 			return SE_NONE;
 		server_lim = make_limcounts(si->total_user_counts,
@@ -2532,8 +2531,8 @@ check_server_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 		return (0);
 
 	for (res = limres; res != NULL; res = res->next) {
-		resource_req *req;
-		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
+		/* If the job is not requesting the limit resource, it is not over its soft limit*/
+		if (find_resource_req(rr->resreq, res->def) == NULL)
 			continue;
 
 		if ((reskey = entlim_mk_reskey(LIM_OVERALL, allparam,
@@ -2601,8 +2600,8 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 		return (0);
 
 	for (res = limres; res != NULL; res = res->next) {
-		resource_req *req;
-		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
+		/* If the job is not requesting the limit resource, it is not over its soft limit*/
+		if (find_resource_req(rr->resreq, res->def) == NULL)
 			continue;
 
 		if ((reskey = entlim_mk_reskey(LIM_OVERALL, allparam,
@@ -2752,8 +2751,8 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 	group = rr->group;
 
 	for (res = limres; res != NULL; res = res->next) {
-		resource_req *req;
-		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
+		/* If the job is not requesting the limit resource, it is not over its soft limit*/
+		if (find_resource_req(rr->resreq, res->def) == NULL)
 			continue;
 
 		/* individual group limit check */
@@ -2923,8 +2922,8 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 	user = rr->user;
 
 	for (res = limres; res != NULL; res = res->next) {
-		resource_req *req;
-		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
+		/* If the job is not requesting the limit resource, it is not over its soft limit*/
+		if (find_resource_req(rr->resreq, res->def) == NULL)
 			continue;
 
 		/* individual user limit check */
@@ -3554,8 +3553,8 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 
 	project = rr->project;
 	for (res = limres; res != NULL; res = res->next) {
-		resource_req *req;
-		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
+		/* If the job is not requesting the limit resource, it is not over its soft limit*/
+		if (find_resource_req(rr->resreq, res->def) == NULL)
 			continue;
 
 		/* individual project limit check */

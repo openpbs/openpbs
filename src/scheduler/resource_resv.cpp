@@ -2301,7 +2301,7 @@ compare_non_consumable(schd_resource *res, resource_req *req)
 	 * req:   *   res: TRUE_FALSE
 	 */
 	if (req->type.is_boolean) {
-		if (!req->amount  && res == NULL)
+		if (!req->amount && res == NULL)
 			return 1;
 		else if (req->amount && res == NULL)
 			return 0;

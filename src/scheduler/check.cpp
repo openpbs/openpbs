@@ -491,8 +491,8 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 					break;
 				te = last_skipped_event;
 				last_skipped_event = NULL;
-				/* No need to try next segments after this event as there are no events left */
-				retry_count = 0;
+				/* No events left, this is the last time through the loop */
+				retry_count = 1;
 			/* If we have reached the front of event list or if the event is falling before min end time, break. */
 			} else if (te == initial_event || te->event_time < min_end_time)
 				break;
@@ -854,7 +854,8 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				}
 			}
 
-			if ((rc = check_prime_boundary(policy, resresv, err))) {
+			if (check_prime_boundary(policy, resresv, err) != SE_NONE) {
+				/* err is set inside check_prime_boundary() */
 				add_err(&prev_err, err);
 				if (!(flags & RETURN_ALL_ERR))
 					return NULL;
@@ -1637,14 +1638,14 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 				msvr_pset[0] = sinfo->svr_to_psets[resresv->svr_inst_id];
 
 				/* Restrict job arrays and reservations to owner server */
-				if (resresv->is_resv || resresv->job->is_array)
+				if (resresv->is_resv || (resresv->job != NULL && resresv->job->is_array))
 					msvr_pset[1] = NULL;
 				else { /* If owner's nodes don't work, use all */
 					msvr_pset[1] = sinfo->allpart;
 					msvr_pset[2] = NULL;
 				}
 				nodepart = msvr_pset;
-			} else if (resresv->is_resv || resresv->job->is_array) {
+			} else if (resresv->is_resv || (resresv->job != NULL && resresv->job->is_array)) {
 				/* No nodes associated with owner server, so reject the job array/reservation */
 				set_schd_error_codes(err, NOT_RUN, NO_NODE_RESOURCES);
 				return NULL;
@@ -1752,11 +1753,14 @@ check_ded_time_queue(queue_info *qinfo)
  * @retval	SE_NONE	: if the queue is an anytime queue or if it is a primetime
  * 					queue and its is currently primetime
  * @retval	PRIME_ONLY	: its a primetime queue and its not primetime
+ * @retval	SCHD_ERROR	error
  *
  */
 enum sched_error_code
 check_prime_queue(status *policy, queue_info *qinfo)
 {
+	if (policy == NULL || qinfo == NULL)
+		return SCHD_ERROR;
 	/* if the queue is an anytime queue, allow jobs to run */
 	if (!qinfo->is_prime_queue && !qinfo->is_nonprime_queue)
 		return SE_NONE;
