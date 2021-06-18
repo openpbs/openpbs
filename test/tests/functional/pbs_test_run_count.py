@@ -154,14 +154,14 @@ class Test_run_count(TestFunctional):
 
         a = {ATTR_J: '1-6'}
         j = Job(TEST_USER, a)
-        j.set_sleep_time(10)
+        j.set_sleep_time(20)
         jid = self.server.submit(j)
-        time.sleep(9)
+        time.sleep(15)
         self.server.expect(JOB, {ATTR_state: "R"},
                            id=j.create_subjob_id(jid, 2))
         # Create an execjob_begin hook that rejects the job
         self.create_reject_begin_hook()
-        time.sleep(8)
+        time.sleep(15)
         self.server.expect(JOB, {ATTR_state: "X"},
                            id=j.create_subjob_id(jid, 2))
 
