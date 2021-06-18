@@ -492,12 +492,7 @@ sleep 5
         """
         self.server.expect(JOB, {ATTR_state: 'R'}, offset=1, id=jid)
         rc = 0
-        jbfile = os.path.join(self.mom.pbs_conf['PBS_HOME'], 'mom_priv',
-                              'jobs', jid + '.JB')
-        printjob_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                    'bin', 'printjob')
-        cmd = [printjob_cmd, jbfile]
-        ret = self.du.run_cmd(self.mom.hostname, cmd=cmd, sudo=True)
+        ret = self.mom.printjob(jid)
         self.assertEqual(ret['rc'], 0)
         for m in ret['out']:
             if m.find(msg) != -1:
