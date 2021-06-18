@@ -90,15 +90,13 @@ create_prev_job_info(resource_resv **jobs)
 	}
 }
 
-prev_job_info::prev_job_info(const std::string& pname, char *ename, resource_req *rused): name(pname)
+prev_job_info::prev_job_info(const std::string& pname, const std::string& ename, resource_req *rused): name(pname), entity_name(ename)
 {
-	entity_name = ename;
 	resused = rused;
 }
 
-prev_job_info::prev_job_info(const prev_job_info& opj): name(opj.name)
+prev_job_info::prev_job_info(const prev_job_info& opj): name(opj.name), entity_name(opj.entity_name)
 {
-	entity_name = opj.entity_name;
 	resused = dup_resource_req_list(opj.resused);
 }
 
@@ -110,7 +108,11 @@ prev_job_info::prev_job_info(prev_job_info&& opj) noexcept: name(std::move(opj.n
 
 prev_job_info& prev_job_info::operator=(const prev_job_info& opj)
 {
-	return *this = prev_job_info(opj);
+	name = opj.name;
+	entity_name = opj.entity_name;
+	resused = dup_resource_req_list(opj.resused);
+	
+	return *this;
 }
 
 /**
