@@ -240,7 +240,7 @@ void update_soft_limits(server_info *, queue_info *, resource_resv *);
  *		the counts structure
  * @return	int
  */
-int find_preempt_bits(counts *, const char *, resource_resv *);
+int find_preempt_bits(counts *, std::string &, resource_resv *);
 #ifdef	__cplusplus
 }
 #endif

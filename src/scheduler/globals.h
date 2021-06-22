@@ -130,4 +130,5 @@ extern fairshare_head *fstree;
 
 extern bool part_tolerance;
 
+extern std::string empty_str;
 #endif	/* _GLOBALS_H */

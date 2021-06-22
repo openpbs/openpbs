@@ -78,7 +78,6 @@
  * 	dup_ind_resource_list()
  * 	dup_resource()
  * 	is_unassoc_node()
- * 	new_counts()
  * 	free_counts()
  * 	free_counts_list()
  * 	dup_counts()
@@ -2599,33 +2598,46 @@ is_unassoc_node(node_info *ninfo, void *arg)
 	return 0;
 }
 
-/**
- * @brief
- * 		new_counts - create a new counts structure and return it
- *
- * @return	new counts structure
- * @retval	NULL	: malloc failed
- *
- * @par MT-Safe:	yes
- */
-counts *
-new_counts(void)
-{
+// counts constructor
+counts::counts(const std::string &name_){
+	name = strdup(name_.c_str());
+	running = 0;
+	rescts = NULL;
+	soft_limit_preempt_bit = 0;
+	next = NULL;
+}
+// counts constructor 
+counts::counts(const char *name_){
+	name = strdup(name_);
+	running = 0;
+	rescts = NULL;
+	soft_limit_preempt_bit = 0;
+	next = NULL;
+}
 
-	counts *cts;
 
-	if ((cts = static_cast<struct counts *>(malloc(sizeof(struct counts)))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
+// counts copy constructor
+counts::counts(const counts &count_) {
+        this->name = strdup(count_.name);
+	this->running = count_.running;
+	this->rescts = dup_resource_count_list(count_.rescts);
+	this->soft_limit_preempt_bit = count_.soft_limit_preempt_bit;
+	this->next = NULL;
+}
 
-	cts->name = NULL;
-	cts->running = 0;
-	cts->rescts = NULL;
-	cts->soft_limit_preempt_bit = 0;
-	cts->next = NULL;
+// count assignment operator
+counts& counts::operator = (const counts &count_) {
+        this->name = strdup(count_.name);
+	this->running = count_.running;
+	this->rescts = dup_resource_count_list(count_.rescts);
+	this->soft_limit_preempt_bit = count_.soft_limit_preempt_bit;
+	this->next = NULL;
+	return (*this);
+}
 
-	return cts;
+counts::~counts() {
+    if (this->rescts != NULL)
+	free_resource_count_list(this->rescts);
 }
 
 /**
@@ -2643,16 +2655,7 @@ free_counts(counts *cts)
 {
 	if (cts == NULL)
 		return;
-
-	if (cts->name != NULL)
-		free(cts->name);
-
-	if (cts->rescts != NULL)
-		free_resource_count_list(cts->rescts);
-
-	cts->next = NULL;
-
-	free(cts);
+	delete (cts);
 }
 
 /**
@@ -2686,7 +2689,7 @@ free_counts_list(counts *ctslist)
  * @brief
  * 		dup_counts - duplicate a counts structure
  *
- * @param[in]	ctslist	- the counts structure to duplicate
+ * @param[in]	octs	- the counts structure to duplicate
  *
  * @return	new counts structure
  * @retval	NULL	: on error
@@ -2698,17 +2701,7 @@ dup_counts(counts *octs)
 {
 	counts *ncts;
 
-	ncts = new_counts();
-
-	if (ncts != NULL) {
-		if (octs->name != NULL)
-			ncts->name = string_dup(octs->name);
-
-		ncts->running = octs->running;
-		ncts->soft_limit_preempt_bit = octs->soft_limit_preempt_bit;
-
-		ncts->rescts = dup_resource_count_list(octs->rescts);
-	}
+	ncts = new counts(*octs);
 
 	return ncts;
 }
@@ -2778,6 +2771,12 @@ find_counts(counts *ctslist, const char *name)
 
 	return cur;
 }
+// Overloaded function
+counts *
+find_counts(counts *ctslist, std::string &name)
+{
+	return find_counts(ctslist, name.c_str());
+}
 
 /**
  * @brief
@@ -2809,10 +2808,7 @@ find_alloc_counts(counts *ctslist, const char *name)
 	}
 
 	if (cur == NULL) {
-		ncounts = new_counts();
-
-		if (ncounts != NULL)
-			ncounts->name = string_dup(name);
+		ncounts = new counts(name);
 
 		if (prev != NULL)
 			prev->next = ncounts;
@@ -2820,6 +2816,12 @@ find_alloc_counts(counts *ctslist, const char *name)
 		return ncounts;
 	} else
 		return cur;
+}
+//overloaded
+counts *
+find_alloc_counts(counts *ctslist, std::string &name)
+{
+    return find_alloc_counts(ctslist, name.c_str());
 }
 
 /**
@@ -3282,9 +3284,9 @@ update_preemption_priority(server_info *sinfo, resource_resv *resresv)
 					int usrlim = resresv->job->queue->has_user_limit || sinfo->has_user_limit;
 					int grplim = resresv->job->queue->has_grp_limit || sinfo->has_grp_limit;
 					int projlim = resresv->job->queue->has_proj_limit || sinfo->has_proj_limit;
-					if ((usrlim && (!strcmp(resresv->user, sinfo->jobs[i]->user))) ||
-					    (grplim && (!strcmp(resresv->group, sinfo->jobs[i]->group))) ||
-					    (projlim && (!strcmp(resresv->project, sinfo->jobs[i]->project))))
+					if ((usrlim && (resresv->user == sinfo->jobs[i]->user)) ||
+					    (grplim && (resresv->group == sinfo->jobs[i]->group)) ||
+					    (projlim && (resresv->project == sinfo->jobs[i]->project)))
 						set_preempt_prio(sinfo->jobs[i],
 							sinfo->jobs[i]->job->queue, sinfo);
 				}

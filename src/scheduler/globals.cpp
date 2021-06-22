@@ -202,3 +202,5 @@ fairshare_head *fstree;
 
 /* Specifies whether scheduler is operating in partition tolerance mode or not */
 bool part_tolerance = false;
+
+std::string empty_str = "";

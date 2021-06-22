@@ -127,7 +127,7 @@ int calc_time_left(resource_resv *jinfo, int use_hard_duration);
  *      cstrcmp - check string compare - compares two strings but doesn't bomb
  *                if either one is null
  */
-int cstrcmp(char *s1, char *s2);
+int cstrcmp(const char *s1, const char *s2);
 
 /*
  *      is_num - checks to see if the string is a number, size, float

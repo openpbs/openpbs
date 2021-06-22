@@ -78,7 +78,7 @@ struct holiday;
 struct prev_job_info;
 class group_info;
 struct usage_info;
-struct counts;
+class counts;
 struct nspec;
 struct node_partition;
 struct range;
@@ -113,7 +113,6 @@ typedef struct resource_req resource_req;
 typedef struct resource_count resource_count;
 typedef struct usage_info usage_info;
 typedef struct resv_info resv_info;
-typedef struct counts counts;
 typedef struct nspec nspec;
 typedef struct node_partition node_partition;
 typedef struct place place;
@@ -139,7 +138,7 @@ typedef struct th_data_dup_resresv th_data_dup_resresv;
 typedef struct th_data_query_jinfo th_data_query_jinfo;
 typedef struct th_data_free_resresv th_data_free_resresv;
 
-
+typedef std::unordered_map<std::string, counts *> counts_map;
 #ifdef NAS
 /* localmod 034 */
 /*
@@ -775,9 +774,9 @@ class resource_resv
 	bool will_use_multinode:1;	/* res resv will use multiple nodes */
 
 	const std::string name;		/* name of res resv */
-	char *user;			/* username of the owner of the res resv */
-	char *group;			/* exec group of owner of res resv */
-	char *project;			/* exec project of owner of res resv */
+	std::string user;			/* username of the owner of the res resv */
+	std::string group;			/* exec group of owner of res resv */
+	std::string project;			/* exec project of owner of res resv */
 	char *nodepart_name;		/* name of node partition to run res resv in */
 
 	long sch_priority;		/* scheduler priority of res resv */
@@ -891,13 +890,19 @@ class prev_job_info
 	~prev_job_info();
 };
 
-struct counts
+class counts
 {
+	public:
 	char *name;			/* name of entitiy */
 	int running;			/* count of running jobs in object */
 	int soft_limit_preempt_bit;	/* Place to store preempt bit if entity is over limits */
 	resource_count *rescts;		/* resources used */
 	counts *next;
+	counts(const std::string &);
+	counts(const char *);
+	counts(const counts &);
+	counts& operator=(const counts&);
+	~counts();
 };
 
 struct resource_count

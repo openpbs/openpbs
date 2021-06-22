@@ -271,12 +271,14 @@ counts *dup_counts_list(counts *ctslist);
  *      find_counts - find a counts structure by name
  */
 counts *find_counts(counts *ctslist, const char *name);
+counts *find_counts(counts *ctslist, std::string &name);
 
 /*
  *      find_alloc_counts - find a counts structure by name or allocate a new
  *                          counts, name it, and add it to the end of the list
  */
 counts *find_alloc_counts(counts *ctslist, const char *name);
+counts *find_alloc_counts(counts *ctslist, std::string &name);
 
 /*
  *      update_counts_on_run - update a counts struct on the running of a job

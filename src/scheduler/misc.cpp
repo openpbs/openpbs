@@ -643,7 +643,7 @@ calc_time_left(resource_resv *resresv, int use_hard_duration)
  *
  */
 int
-cstrcmp(char *s1, char *s2)
+cstrcmp(const char *s1, const char *s2)
 {
 	if (s1 == NULL && s2 == NULL)
 		return 0;
