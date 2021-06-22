@@ -116,27 +116,20 @@ query_resources(int pbs_sd)
 		int flags = NO_FLAGS;
 		resource_type rtype;
 		char *endp;
-		resdef *def;
 
 		attrp = cur_bs->attribs;
 
-		while (attrp != NULL) {
+		for (attrp = cur_bs->attribs; attrp != NULL; attrp = attrp->next) {
 			if (!strcmp(attrp->name, ATTR_RESC_TYPE)) {
 				int num = strtol(attrp->value, &endp, 10);
 				rtype = conv_rsc_type(num);
 			} else if (!strcmp(attrp->name, ATTR_RESC_FLAG)) {
 				flags = strtol(attrp->value, &endp, 10);
 			}
-			attrp = attrp->next;
 		}
-		def = new resdef(cur_bs->name, flags, rtype);
-		if (def == NULL) {
-			for (auto& d : tmpres)
-				delete d.second;
-			return {};
-		}
-		tmpres[def->name] = def;
+		tmpres[cur_bs->name] = new resdef(cur_bs->name, flags, rtype);
 	}
+	pbs_statfree(bs);
 
 	/**
 	 * @par Make sure all the well known resources are sent to us.
@@ -150,8 +143,6 @@ query_resources(int pbs_sd)
 			return {};
 		}
 	}
-
-	pbs_statfree(bs);
 
 	return tmpres;
 }
