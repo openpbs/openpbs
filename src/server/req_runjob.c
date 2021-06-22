@@ -1405,7 +1405,7 @@ post_sendmom(struct work_task *pwt)
 		return;
 	}
 
-	DBPRT(("post_sendmom: %s substate is %d", jobp->ji_qs.ji_jobid, get_job_substate(jobp)))
+	DBPRT(("post_sendmom: %s substate is %ld", jobp->ji_qs.ji_jobid, get_job_substate(jobp)))
 
 	if (jobp->ji_prunreq)
 		jobp->ji_prunreq = NULL;	/* set in svr_strtjob2() */

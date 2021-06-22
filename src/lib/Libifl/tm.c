@@ -67,20 +67,6 @@
  * @file	tm.c
  */
 
-/*
- ** Set up a debug print macro.
- */
-#ifdef  DEBUG
-#define DBPRT(x) \
-{ \
-	int	err = errno; \
-	printf x; \
-	errno = err; \
-}
-#else
-#define DBPRT(x)
-#endif
-
 #ifndef	MIN
 #define	MIN(a, b)	(((a) < (b)) ? (a) : (b))
 #endif

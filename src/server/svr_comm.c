@@ -474,7 +474,7 @@ ps_request(int stream, int version)
 		pdmn_info = psvr->mi_dmn_info;
 		if (pdmn_info->dmn_stream >= 0 && pdmn_info->dmn_stream != stream) {
 			DBPRT(("%s: stream %d from %s:%d already open on %d\n",
-			       __func__, stream, pmom->mi_host,
+			       __func__, stream, psvr->mi_host,
 			       ntohs(addr->sin_port), pdmn_info->dmn_stream))
 			tpp_close(pdmn_info->dmn_stream);
 			tdelete2((u_long) pdmn_info->dmn_stream, 0ul, &streams);

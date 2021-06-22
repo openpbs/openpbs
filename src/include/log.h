@@ -84,8 +84,31 @@ extern "C" {
 #define	sys_printf(...)	syslog(LOG_NOTICE, __VA_ARGS__);
 #ifdef	DEBUG
 #define	DBPRT(x)	printf x;
-#else
-#define	DBPRT(x)
+#endif
+#ifdef DBPRT_LOG
+#include <stdlib.h>
+#include <errno.h>
+#include "libutil.h"
+#define STRIP_PARENS(...) __VA_ARGS__
+#undef DBPRT
+#define	DBPRT(x) \
+	if (will_log_event(PBSEVENT_DEBUG3)) { \
+		char * msg_; \
+		int msg_len_; \
+		int save_errno_ = errno; \
+		msg_len_ = pbs_asprintf(&msg_, STRIP_PARENS x); \
+		if (msg_len_ >= 0) { \
+			if (msg_len_ > 0 && msg_[msg_len_ - 1] == '\n') { \
+				msg_[msg_len_ - 1] = '\0'; \
+			} \
+			log_record(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, msg_); \
+			free(msg_); \
+		} \
+		errno = save_errno_; \
+	}
+#endif
+#ifndef DBPRT
+#define DBPRT(x)
 #endif
 
 #define IFNAME_MAX 256

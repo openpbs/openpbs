@@ -113,6 +113,7 @@
 #undef DEBUG
 #endif /* localmod 004 */
 
+#undef DBPRT
 #ifdef DEBUG
 #ifdef NAS /* localmod 004 */
 #define DBPRT(x)	fprintf x;

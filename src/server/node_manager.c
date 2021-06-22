@@ -243,7 +243,7 @@ tinsert2(const u_long key1, const u_long key2, mominfo_t *momp, struct tree **ro
 	struct	tree	*q;
 
 	DBPRT(("tinsert2: %lu|%lu %s stream %d\n", key1, key2,
-		momp->mi_host, momp->mi_dmn_info->dmn_stream))
+		momp->mi_host, momp->mi_dmn_info ? momp->mi_dmn_info->dmn_stream : -1))
 
 	if (rootp == NULL)
 		return;
