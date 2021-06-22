@@ -147,10 +147,8 @@ class TestVerifyLogOutput(TestFunctional):
         if self.server.isUp() and self.scheduler.isUp():
             try:
                 self.scheduler.log_match("Req;;Starting Scheduling Cycle",
-                                         max_attempts=10,
                                          starttime=started_time)
                 self.scheduler.log_match("Req;;Leaving Scheduling Cycle",
-                                         max_attempts=10,
                                          starttime=started_time)
             except PtlLogMatchError:
                 self.assertFalse(True)
