@@ -57,20 +57,6 @@ class TestAcctLog(TestFunctional):
         in the job's resources_used attr or the accounting log at job end
         """
 
-        # Make sure emails are not truncated
-        try:
-            mailfile = os.environ['MAIL']
-        except KeyError:
-            self.skip_test(
-                "mail is not setup. " +
-                "Hence this step would be skipped. " +
-                "Please setup the mail.")
-        if not os.path.isfile(mailfile):
-            self.skip_test(
-                "Mail file does not exist. " +
-                "Hence this step would be skipped. " +
-                "Please check manually.")
-
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'job_history_enable': 'True'})
 
@@ -106,18 +92,6 @@ class TestAcctLog(TestFunctional):
         # Make sure the server log hasn't been truncated
         log_match = 'resources_used.foo_str=' + hstr
         self.server.log_match("%s;.*%s.*" % (jid, log_match), regexp=True)
-
-        mailpass = 0
-        for x in range(1, 5):
-            fo = open(mailfile, 'r')
-            maillog = fo.readlines()[-10:]
-            fo.close()
-            if (log_match in str(maillog)):
-                self.logger.info("Message found in " + mailfile)
-                mailpass = 1
-                break
-
-        self.assertTrue(mailpass, "Message not found in " + mailfile)
 
     def test_long_resource_reque(self):
         """
