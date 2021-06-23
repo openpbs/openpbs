@@ -447,15 +447,10 @@ class TestMaintenanceReservations(TestFunctional):
         if _mom.is_cpuset_mom():
             n = self.server.status(NODE)
             cpuset_nodes = [i['id'] for i in n if i['Mom'] == _mom.hostname]
-            reg_str = []
+            reg_str = '\(%s\[0\]:ncpus=[0-9]+\)' % _host
             if (len(cpuset_nodes) - 1) > 1:
-                for i in range(0, len(cpuset_nodes)-1):
-                    host = _host + '\[%s\]' % i
-                    match_str = '\(%s:ncpus=[0-9]+\)' % host
-                    reg_str.append(match_str)
-                reg_str = ('\+').join(reg_str)
-            else:
-                reg_str = '\(%s:ncpus=[0-9]+\)' % (_host + '\[0\]')
+                for i in range(1, len(cpuset_nodes)-1):
+                    reg_str += '\+' + '\(%s\[%s\]:ncpus=[0-9]+\)' % (_host, i)
         else:
             reg_str = "\(%s:ncpus=[0-9]+\)" % _host
         return reg_str
@@ -475,8 +470,8 @@ class TestMaintenanceReservations(TestFunctional):
         reg_expr_hostB = self.get_reg_expr(self.momB, self.hostB)
 
         self.server.manager(MGR_CMD_SET, SERVER,
-                            {'managers': '%s@*' % TEST_USER})
-        now = time.time()
+                            {'managers': (INCR, '%s@*' % TEST_USER)})
+        now = int(time.time())
         a = {'reserve_start': now + 900,
              'reserve_end': now + 5400}
         h = [self.hostA, self.hostB]
@@ -521,9 +516,9 @@ class TestMaintenanceReservations(TestFunctional):
         self.hostB = self.momB.shortname
 
         if self.momA.is_cpuset_mom():
-            self.hostA = self.hostA + '[0]'
+            self.hostA += '[0]'
         if self.momB.is_cpuset_mom():
-            self.hostB = self.hostB + '[0]'
+            self.hostB += '[0]'
 
         now = int(time.time())
         a1 = {'Resource_List.select': '1:ncpus=1',
