@@ -302,8 +302,8 @@ class selspec
 	std::unordered_set<resdef *> defs;			/* the resources requested by this select spec*/
 	chunk **chunks;
 	selspec();
-	selspec(selspec&);
-	selspec& operator=(selspec&);
+	selspec(const selspec&);
+	selspec& operator=(const selspec&);
 	~selspec();
 };
 

@@ -303,7 +303,7 @@ free_resource_resv_array(resource_resv **resresv_arr)
 }
 
 /**
- * @brie& 
+ * @brief
  *		resource_resv destructor
  *
  */
@@ -2037,7 +2037,7 @@ new_chunk()
  * @return	duplicate chunk array.
  */
 chunk **
-dup_chunk_array(chunk **old_chunk_arr)
+dup_chunk_array(const chunk * const *old_chunk_arr)
 {
 	int i;
 	int ct;
@@ -2080,7 +2080,7 @@ dup_chunk_array(chunk **old_chunk_arr)
  * @return	duplicate chunk structure.
  */
 chunk *
-dup_chunk(chunk *ochunk)
+dup_chunk(const chunk *ochunk)
 {
 	chunk *nchunk;
 
@@ -2188,7 +2188,7 @@ selspec::selspec()
  *
  * @param[in]	oldspec	-	old selspec to be copied
  */
-selspec::selspec(selspec& oldspec)
+selspec::selspec(const selspec& oldspec)
 {
 	total_chunks = oldspec.total_chunks;
 	total_cpus = oldspec.total_cpus;
@@ -2196,7 +2196,7 @@ selspec::selspec(selspec& oldspec)
 	defs = oldspec.defs;
 }
 
-selspec& selspec::operator=(selspec& oldspec)
+selspec& selspec::operator=(const selspec& oldspec)
 {
 	total_chunks = oldspec.total_chunks;
 	total_cpus = oldspec.total_cpus;

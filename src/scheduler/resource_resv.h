@@ -296,12 +296,12 @@ chunk *new_chunk();
 /*
  *	dup_chunk_array - array copy constructor for array of chunk ptrs
  */
-chunk **dup_chunk_array(chunk **old_chunk_arr);
+chunk **dup_chunk_array(const chunk * const *old_chunk_arr);
 
 /*
  *	dup_chunk - copy constructor for chunk
  */
-chunk *dup_chunk(chunk *ochunk);
+chunk *dup_chunk(const chunk *ochunk);
 
 /*
  *	free_chunk_array - array destructor for array of chunk ptrs
