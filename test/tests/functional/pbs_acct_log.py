@@ -62,10 +62,8 @@ class TestAcctLog(TestFunctional):
 
         # Create a very long string - the truncation was 2048 characters
         # 4096 is plenty big to show it
-        hstr = ""
-        for i in range(4096):
-            hstr += "1"
 
+        hstr = '1'*4096
         hook_body = "import pbs\n"
         hook_body += "e = pbs.event()\n"
         hook_body += "hstr=\'" + hstr + "\'\n"
@@ -75,7 +73,6 @@ class TestAcctLog(TestFunctional):
         self.server.create_import_hook("ep", a, hook_body)
 
         J = Job()
-        J.set_attributes({ATTR_m: 'e'})
         J.set_sleep_time(1)
         jid = self.server.submit(J)
 
