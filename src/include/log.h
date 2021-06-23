@@ -92,7 +92,7 @@ extern "C" {
 #define STRIP_PARENS(...) __VA_ARGS__
 #undef DBPRT
 #define	DBPRT(x) \
-	if (will_log_event(PBSEVENT_DEBUG3)) { \
+	if (will_log_event(PBSEVENT_DEBUGPRT)) { \
 		char * msg_; \
 		int msg_len_; \
 		int save_errno_ = errno; \
@@ -101,7 +101,7 @@ extern "C" {
 			if (msg_len_ > 0 && msg_[msg_len_ - 1] == '\n') { \
 				msg_[msg_len_ - 1] = '\0'; \
 			} \
-			log_record(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, msg_); \
+			log_record(PBSEVENT_DEBUGPRT, 0, LOG_DEBUG, __func__, msg_); \
 			free(msg_); \
 		} \
 		errno = save_errno_; \
@@ -178,6 +178,9 @@ extern void log_supported_auth_methods(char **supported_auth_methods);
 #define PBSEVENT_RESV		0x0200		/* reservation related msgs */
 #define PBSEVENT_DEBUG3		0x0400		/* less needed debug messages */
 #define PBSEVENT_DEBUG4		0x0800		/* rarely needed debugging */
+#ifndef PBSEVENT_DEBUGPRT
+#define PBSEVENT_DEBUGPRT	0x1000		/* messages from the DBPRT macro */
+#endif
 #define PBSEVENT_FORCE		0x8000		/* set to force a message */
 #define SVR_LOG_DFLT		PBSEVENT_ERROR | PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_JOB \
 				| PBSEVENT_JOB_USAGE | PBSEVENT_SECURITY | PBSEVENT_SCHED \
