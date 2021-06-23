@@ -115,11 +115,10 @@ query_resources(int pbs_sd)
 	for (cur_bs = bs; cur_bs != NULL; cur_bs = cur_bs->next) {
 		int flags = NO_FLAGS;
 		resource_type rtype;
-		char *endp;
-
-		attrp = cur_bs->attribs;
 
 		for (attrp = cur_bs->attribs; attrp != NULL; attrp = attrp->next) {
+			char *endp;
+			
 			if (!strcmp(attrp->name, ATTR_RESC_TYPE)) {
 				int num = strtol(attrp->value, &endp, 10);
 				rtype = conv_rsc_type(num);
