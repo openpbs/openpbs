@@ -528,7 +528,7 @@ class TestMaintenanceReservations(TestFunctional):
         rid1 = self.server.submit(r1)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
-                    'resv_nodes': '(%s:ncpus=1)' % self.hostA}
+                    'resv_nodes': (EQ, '(%s:ncpus=1)' % self.hostA)}
         self.server.expect(RESV, exp_attr, id=rid1)
 
         a2 = {'reserve_start': now + 60,
@@ -539,7 +539,7 @@ class TestMaintenanceReservations(TestFunctional):
         rid2 = self.server.submit(r2)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
-                    'resv_nodes': '(%s:ncpus=1)' % self.hostB}
+                    'resv_nodes': (EQ, '(%s:ncpus=1)' % self.hostB)}
         self.server.expect(RESV, exp_attr, id=rid1)
 
         a = {'Resource_List.select': '1:ncpus=1',
