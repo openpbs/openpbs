@@ -145,13 +145,10 @@ class TestVerifyLogOutput(TestFunctional):
         PBSInitServices().restart()
 
         if self.server.isUp() and self.scheduler.isUp():
-            try:
-                self.scheduler.log_match("Req;;Starting Scheduling Cycle",
-                                         starttime=started_time)
-                self.scheduler.log_match("Req;;Leaving Scheduling Cycle",
-                                         starttime=started_time)
-            except PtlLogMatchError:
-                self.assertFalse(True)
+            self.scheduler.log_match("Req;;Starting Scheduling Cycle",
+                                     starttime=started_time)
+            self.scheduler.log_match("Req;;Leaving Scheduling Cycle",
+                                     starttime=started_time)
 
     def test_supported_auth_method_msgs(self):
         """
