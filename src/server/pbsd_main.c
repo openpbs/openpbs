@@ -1449,7 +1449,7 @@ main(int argc, char **argv)
 			state = SV_STATE_DOWN;
 		}
 	}
-	DBPRT(("Server out of main loop, state is %ld\n", *state))
+	DBPRT(("Server out of main loop, state is %ld\n", state))
 
 	/* set the current seq id to the last id before final save */
 	server.sv_qs.sv_lastid = server.sv_qs.sv_jobidnumber;
