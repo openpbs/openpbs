@@ -648,7 +648,6 @@ read_usage(const char *filename, int flags, fairshare_head *fhead)
 	FILE *fp;				/* file pointer to usage file */
 	struct group_node_header head;		/* usage file header */
 	time_t last;				/* read the last sync from the file */
-	int error = 0;				/* error reading in usage header */
 
 	if (fhead == NULL || fhead->root == NULL)
 		return;
@@ -666,6 +665,8 @@ read_usage(const char *filename, int flags, fairshare_head *fhead)
 	/* read header */
 	if (fread(&head, sizeof(struct group_node_header), 1, fp) != 0) {
 		if (!strcmp(head.tag, USAGE_MAGIC)) { /* this is a header */
+			int error = 0;
+
 			if (head.version == 2) {
 				if (fread(&last, sizeof(time_t), 1, fp) != 0) {
 					/* 946713600 = 1/1/2000 00:00 - before usage version 2 existed */
@@ -676,16 +677,14 @@ read_usage(const char *filename, int flags, fairshare_head *fhead)
 				}
 				if (!error)
 					read_usage_v2(fp, flags, fhead->root);
-			}
-			else
+			} else
 				error = 1;
 
 			if (error)
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING,
 					  "fairshare usage", "Invalid usage file header");
 
-		}
-		else	 { /* original headerless usage file */
+		} else { /* original headerless usage file */
 			rewind(fp);
 			read_usage_v1(fp, fhead->root);
 		}

@@ -90,13 +90,10 @@
  * 	ok_break_chunk()
  * 	is_excl()
  * 	alloc_rest_nodepart()
- * 	set_res_on_host()
  * 	can_fit_on_vnode()
- * 	is_aoe_avail_on_vnode()
  * 	is_provisionable()
  * 	node_up_event()
  * 	node_down_event()
- * 	node_in_str()
  * 	create_node_array_from_str()
  * 	find_node_by_rank()
  * 	new_node_scratch()
@@ -223,7 +220,7 @@ query_node_info_chunk(th_data_query_ninfo *data)
 static inline th_data_query_ninfo *
 alloc_tdata_nd_query(struct batch_status *nodes, server_info *sinfo, int sidx, int eidx)
 {
-	th_data_query_ninfo *tdata = NULL;
+	th_data_query_ninfo *tdata;
 
 	tdata = static_cast<th_data_query_ninfo *>(malloc(sizeof(th_data_query_ninfo)));
 	if (tdata == NULL) {
@@ -256,20 +253,16 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	struct batch_status *nodes;		/* nodes returned from the server */
 	struct batch_status *cur_node;	/* used to cycle through nodes */
 	node_info **ninfo_arr;		/* array of nodes for scheduler's use */
-	char *err;				/* used with pbs_geterrmsg() */
 	int num_nodes = 0;			/* the number of nodes */
-	int i;
-	int j;
 	int nidx = 0;
 	static struct attrl *attrib = NULL;
-	int chunk_size;
 	th_data_query_ninfo *tdata = NULL;
 	th_task_info *task = NULL;
-	int num_tasks;
-	int th_err = 0;
 	node_info ***ninfo_arrs_tasks = NULL;
 	int tid;
-	const char *nodeattrs[] = {
+
+	if (attrib == NULL) {
+		const char *nodeattrs[] = {
 			ATTR_NODE_state,
 			ATTR_NODE_Mom,
 			ATTR_NODE_Port,
@@ -296,12 +289,10 @@ query_nodes(int pbs_sd, server_info *sinfo)
 			ATTR_NODE_last_used_time,
 			ATTR_NODE_resvs,
 			ATTR_server_inst_id,
-			NULL
-	};
+			NULL};
 
-	if (attrib == NULL) {
-		for (i = 0; nodeattrs[i] != NULL; i++) {
-			struct attrl *temp_attrl = NULL;
+		for (int i = 0; nodeattrs[i] != NULL; i++) {
+			struct attrl *temp_attrl;
 
 			temp_attrl = new_attrl();
 			temp_attrl->name = strdup(nodeattrs[i]);
@@ -313,7 +304,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 
 	/* get nodes from PBS server */
 	if ((nodes = send_statvnode(pbs_sd, NULL, attrib, NULL)) == NULL) {
-		err = pbs_geterrmsg(pbs_sd);
+		auto err = pbs_geterrmsg(pbs_sd);
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, "", "Error getting nodes: %s", err);
 		return NULL;
 	}
@@ -341,13 +332,16 @@ query_nodes(int pbs_sd, server_info *sinfo)
 
 		ninfo_arr[nidx] = NULL;
 	} else {
+		int chunk_size = num_nodes / num_threads;
+		int th_err = 0;
+		int j;
+		int num_tasks;
 		if ((ninfo_arr = static_cast<node_info **>(malloc((num_nodes + 1) * sizeof(node_info *)))) == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			pbs_statfree(nodes);
 			return NULL;
 		}
 		ninfo_arr[0] = NULL;
-		chunk_size = num_nodes / num_threads;
 		chunk_size = (chunk_size > MT_CHUNK_SIZE_MIN) ? chunk_size : MT_CHUNK_SIZE_MIN;
 		for (j = 0, num_tasks = 0; num_nodes > 0;
 				j += chunk_size, num_tasks++, num_nodes -= chunk_size) {
@@ -375,13 +369,13 @@ query_nodes(int pbs_sd, server_info *sinfo)
 			th_err = 1;
 		}
 		/* Get results from worker threads */
-		for (i = 0; i < num_tasks;) {
+		for (int i = 0; i < num_tasks;) {
 			pthread_mutex_lock(&result_lock);
 			while (ds_queue_is_empty(result_queue))
 				pthread_cond_wait(&result_cond, &result_lock);
 			while (!ds_queue_is_empty(result_queue)) {
-				task = (th_task_info *) ds_dequeue(result_queue);
-				tdata = (th_data_query_ninfo *) task->thread_data;
+				task = static_cast<th_task_info *>(ds_dequeue(result_queue));
+				tdata = static_cast<th_data_query_ninfo *>(task->thread_data);
 				if (tdata->error)
 					th_err = 1;
 				ninfo_arrs_tasks[task->task_id] = tdata->oarr;
@@ -397,11 +391,11 @@ query_nodes(int pbs_sd, server_info *sinfo)
 			return NULL;
 		}
 		/* Assemble node info objects from various threads into the ninfo_arr */
-		for (i = 0; i < num_tasks; i++) {
+		for (int i = 0; i < num_tasks; i++) {
 			if (ninfo_arrs_tasks[i] != NULL) {
 				node_info *ninfo;
 
-				for (j = 0; (ninfo = ninfo_arrs_tasks[i][j]) != NULL; j++) {
+				for (int j = 0; (ninfo = ninfo_arrs_tasks[i][j]) != NULL; j++) {
 					ninfo->rank = get_sched_rank();
 					ninfo_arr[nidx++] = ninfo;
 				}
@@ -484,6 +478,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 			ninfo->partition = string_dup(attrp->value);
 			if (ninfo->partition == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
+				delete ninfo;
 				return NULL;
 			}
 		}
@@ -744,7 +739,7 @@ free_node_info_chunk(th_data_free_ninfo *data)
 static inline th_data_free_ninfo *
 alloc_tdata_free_nodes(node_info **ninfo_arr, int sidx, int eidx)
 {
-	th_data_free_ninfo *tdata = NULL;
+	th_data_free_ninfo *tdata;
 
 	tdata = static_cast<th_data_free_ninfo *>(malloc(sizeof(th_data_free_ninfo)));
 	if (tdata == NULL) {
@@ -870,11 +865,11 @@ node_info::~node_info()
 int
 set_node_info_state(node_info *ninfo, const char *state)
 {
-	char statebuf[256];			/* used to strtok() node states */
-	char *tok;				/* used with strtok() */
-	char *saveptr;
-
 	if (ninfo != NULL && state != NULL) {
+		char statebuf[256]; /* used to strtok() node states */
+		char *tok;	    /* used with strtok() */
+		char *saveptr;
+
 		/* clear all states */
 		ninfo->is_down = ninfo->is_free = ninfo->is_unknown = 0;
 		ninfo->is_sharing = ninfo->is_busy = ninfo->is_job_busy = 0;
@@ -891,7 +886,7 @@ set_node_info_state(node_info *ninfo, const char *state)
 
 			if (add_node_state(ninfo, tok) == 1)
 				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
-					ninfo->name, "Unknown Node State: %s", tok);
+					   ninfo->name, "Unknown Node State: %s", tok);
 
 			tok = strtok_r(NULL, ",", &saveptr);
 		}
@@ -1139,13 +1134,12 @@ node_info *
 find_node_by_host(node_info **ninfo_arr, char *host)
 {
 	int i;
-	schd_resource *res;
 
 	if (ninfo_arr == NULL || host == NULL)
 		return NULL;
 
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
-		res = find_resource(ninfo_arr[i]->res, allres["host"]);
+		auto res = find_resource(ninfo_arr[i]->res, allres["host"]);
 		if (res != NULL) {
 			if (compare_res_to_str(res, host, CMP_CASELESS))
 				break;
@@ -1208,7 +1202,7 @@ static inline th_data_dup_nd_info *
 alloc_tdata_dup_nodes(unsigned int flags, server_info *nsinfo, node_info **onodes, node_info **nnodes,
 		int sidx, int eidx)
 {
-	th_data_dup_nd_info *tdata = NULL;
+	th_data_dup_nd_info *tdata;
 
 	tdata = static_cast<th_data_dup_nd_info *>(malloc(sizeof(th_data_dup_nd_info)));
 	if (tdata == NULL) {
@@ -1244,16 +1238,12 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 	node_info **nnodes;
 	int num_nodes;
 	int thread_node_ct_left;
-	int i, j;
 	schd_resource *nres = NULL;
 	schd_resource *ores = NULL;
 	schd_resource *tres = NULL;
 	node_info *ninfo = NULL;
-	char namebuf[1024];
-	int chunk_size;
 	th_data_dup_nd_info *tdata = NULL;
 	th_task_info *task = NULL;
-	int num_tasks;
 	int th_err = 0;
 	int tid;
 
@@ -1281,8 +1271,9 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 		th_err = tdata->error;
 		free(tdata);
 	} else { /* We are multithreading */
-		j = 0;
-		chunk_size = num_nodes / num_threads;
+		int j;
+		int num_tasks;
+		int chunk_size = num_nodes / num_threads;
 		chunk_size = (chunk_size > MT_CHUNK_SIZE_MIN) ? chunk_size : MT_CHUNK_SIZE_MIN;
 		for (j = 0, num_tasks = 0; thread_node_ct_left > 0;
 				num_tasks++, j+= chunk_size, thread_node_ct_left -= chunk_size) {
@@ -1306,13 +1297,13 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 		}
 
 		/* Get results from worker threads */
-		for (i = 0; i < num_tasks;) {
+		for (int i = 0; i < num_tasks;) {
 			pthread_mutex_lock(&result_lock);
 			while (ds_queue_is_empty(result_queue))
 				pthread_cond_wait(&result_cond, &result_lock);
 			while (!ds_queue_is_empty(result_queue)) {
-				task = (th_task_info *) ds_dequeue(result_queue);
-				tdata = (th_data_dup_nd_info *) task->thread_data;
+				task = static_cast<th_task_info *>(ds_dequeue(result_queue));
+				tdata = static_cast<th_data_dup_nd_info *>(task->thread_data);
 				if (tdata->error)
 					th_err = 1;
 				free(tdata);
@@ -1331,7 +1322,7 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 
 
 	if (!(flags & DUP_INDIRECT)) {
-		for (i = 0; nnodes[i] != NULL; i++) {
+		for (int i = 0; nnodes[i] != NULL; i++) {
 			/* since the node list we're duplicating may have indirect resources
 			 * which point to resources not in our node list, we need to detect it
 			 * if we are in this case, we'll redirect them locally
@@ -1348,8 +1339,10 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 						ninfo = find_node_info(onodes, nnodes[i]->name);
 						ores = find_resource(ninfo->res, nres->def);
 						if (ores->indirect_res != NULL) {
+							char namebuf[1024];
+
 							sprintf(namebuf, "@%s", nnodes[i]->name.c_str());
-							for (j = i+1; nnodes[j] != NULL; j++) {
+							for (int j = i + 1; nnodes[j] != NULL; j++) {
 								tres = find_resource(nnodes[j]->res, nres->def);
 								if (tres != NULL) {
 									if (tres->indirect_vnode_name != NULL &&
@@ -2432,25 +2425,14 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 {
 	np_cache		*npc = NULL;
 	node_partition		**hostsets = NULL;
-	const char		*host_arr[2] = {"host", NULL};
-	int			i = 0;
-	int			k = 0;
 	int			tot = 0;
-	int			c = -1;
 	nspec			**nsa = NULL;
 	nspec			**ns_head = NULL;
-	char			reason[MAX_LOG_SIZE] = {0};
 	resource_req		*req = NULL;
 	schd_resource		*res = NULL;
 	selspec			*dselspec = NULL;
-	int			do_exclhost = 0;
 	node_info		**nptr = NULL;
 	static schd_error	*failerr = NULL;
-
-
-	int rc = 0; /* true if current chunk was successfully allocated */
-	/* true if any vnode is allocated from a host - used in exclhost allocation */
-	int any_succ_rc = 0;
 
 	if (spec == NULL || ninfo_arr == NULL || pl == NULL || resresv == NULL || nspec_arr == NULL)
 		return 0;
@@ -2495,12 +2477,15 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 		hostsets = resresv->server->hostsets;
 
 	if (hostsets == NULL) {
+		const char *host_arr[2] = {"host", NULL};
+
 		npc = find_alloc_np_cache(policy, &resresv->server->npc_arr, host_arr, nptr, NULL);
 		if (npc != NULL)
 			hostsets = npc->nodepart;
 	}
 
 	if (hostsets != NULL) {
+
 		nsa = *nspec_arr;
 		ns_head = *nspec_arr;
 
@@ -2510,26 +2495,28 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 				return 0;
 		}
 
-		for (i = 0; hostsets[i] != NULL && tot != spec->total_chunks; i++) {
+		for (int i = 0; hostsets[i] != NULL && tot != spec->total_chunks; i++) {
 			/* if one vnode on a host is set to force/dflt exclhost
 			 * then they all are.  The mom makes sure of this
 			 */
 			node_info **dninfo_arr = hostsets[i]->ninfo_arr;
 			enum vnode_sharing sharing = VNS_DFLT_SHARED;
+			bool do_exclhost = false;
+			int rc = 0; /* true if current chunk was successfully allocated */
+			/* true if any vnode is allocated from a host - used in exclhost allocation */
+			int any_succ_rc = 0;
 
 			if (dninfo_arr[0] != NULL)
 				sharing = dninfo_arr[0]->sharing;
 
-			do_exclhost = 0;
 			flags &= ~EVAL_EXCLSET;
 			if (sharing == VNS_FORCE_EXCLHOST ||
 				(sharing == VNS_DFLT_EXCLHOST && pl->excl == 0 && pl->share ==0)||
 				pl->exclhost) {
-				do_exclhost = 1;
+				do_exclhost = true;
 				flags |= EVAL_EXCLSET;
 			}
 
-			rc = any_succ_rc = 0;
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 				resresv->name, "Evaluating host %s", hostsets[i]->res_val);
 
@@ -2566,7 +2553,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 			 * vnode from dninfo_arr[] so we don't allocate it again.
 			 */
 			else if (pl->vscatter) {
-				for (c = 0; dselspec->chunks[c] != NULL; c++) {
+				for (int c = 0; dselspec->chunks[c] != NULL; c++) {
 					/* setting rc=1 forces at least 1 loop of the while.  This should be
 					 * be rewritten in the do/while() style seen in the free block below
 					 */
@@ -2574,7 +2561,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 					if ((hostsets[i]->free_nodes > 0)
 						&& (check_avail_resources(hostsets[i]->res,
 						dselspec->chunks[c]->req, UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err))) {
-						for (k = 0; dninfo_arr[k] != NULL; k++)
+						for (int k = 0; dninfo_arr[k] != NULL; k++)
 							dninfo_arr[k]->nscr &= ~NSCR_VISITED;
 						while (rc > 0 && dselspec->chunks[c]->num_chunks > 0) {
 							rc = eval_simple_selspec(policy, spec->chunks[c], dninfo_arr, pl,
@@ -2599,8 +2586,9 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 								clear_schd_error(err);
 							}
 						}
-					}
-					else {
+					} else {
+						char reason[MAX_LOG_SIZE] = {0};
+
 						if (hostsets[i]->free_nodes == 0)
 							strcpy(reason, "No free nodes available");
 						else
@@ -2635,12 +2623,12 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 			* If it returns success (i.e. rc=1) we are done for this host
 			*/
 			else if (pl->scatter) {
-				for (c = 0; dselspec->chunks[c] != NULL && rc == 0; c++) {
+				for (int c = 0; dselspec->chunks[c] != NULL && rc == 0; c++) {
 					if ((hostsets[i]->free_nodes > 0)
 						&& (check_avail_resources(hostsets[i]->res,
 						dselspec->chunks[c]->req, UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err))) {
 						if (dselspec->chunks[c]->num_chunks > 0) {
-							for (k = 0; dninfo_arr[k] != NULL; k++)
+							for (int k = 0; dninfo_arr[k] != NULL; k++)
 								dninfo_arr[k]->nscr &= ~NSCR_VISITED;
 
 							rc = eval_simple_selspec(policy, spec->chunks[c],
@@ -2666,6 +2654,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						}
 					}
 					else {
+						char reason[MAX_LOG_SIZE] = {0};
+
 						if (hostsets[i]->free_nodes == 0)
 							strcpy(reason, "No free nodes available");
 						else
@@ -2712,12 +2702,12 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 					return 0;
 				}
 
-				for (c = 0; dselspec->chunks[c] != NULL; c++) {
+				for (int c = 0; dselspec->chunks[c] != NULL; c++) {
 					if ((hostsets[i]->free_nodes > 0)
 						&& (check_avail_resources(hostsets[i]->res,
 						dselspec->chunks[c]->req, UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err))) {
 						if (dselspec->chunks[c]->num_chunks >0) {
-							for (k = 0; dup_ninfo_arr[k] != NULL; k++)
+							for (int k = 0; dup_ninfo_arr[k] != NULL; k++)
 								dup_ninfo_arr[k]->nscr &= ~NSCR_VISITED;
 							do {
 								rc = eval_simple_selspec(policy, dselspec->chunks[c], dup_ninfo_arr,
@@ -2762,7 +2752,9 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						}
 					}
 					else {
-						if (hostsets[i]->free_nodes ==0)
+						char reason[MAX_LOG_SIZE] = {0};
+
+						if (hostsets[i]->free_nodes == 0)
 							strcpy(reason, "No free nodes available");
 						else
 							translate_fail_code(err, NULL, reason);
@@ -2856,7 +2848,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 	resource_req *req;
 	schd_resource *res;
 
-	if (spec == NULL || ninfo_arr == NULL)
+	if (spec == NULL || ninfo_arr == NULL || nspec_arr == NULL)
 		return 0;
 
 	/* we have a simple selspec... just pass it along */
@@ -3437,7 +3429,6 @@ is_vnode_eligible_chunk(resource_req *specreq, node_info *node,
 int
 is_powerok(node_info *node, resource_resv *resresv, schd_error *err)
 {
-	int i;
 	int ret = NO_PROVISIONING_NEEDED;
 
 	if (!resresv->is_job)
@@ -3469,7 +3460,7 @@ is_powerok(node_info *node, resource_resv *resresv, schd_error *err)
 	 * and job with EOE
 	 */
 	if (node->run_resvs_arr) {
-		for (i = 0; node->run_resvs_arr[i]; i++) {
+		for (int i = 0; node->run_resvs_arr[i]; i++) {
 			if (node->run_resvs_arr[i]->eoename == NULL) {
 				err->error_code = PROV_RESRESV_CONFLICT;
 				return NOT_PROVISIONABLE;
@@ -3508,10 +3499,6 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 	resource_req tmpreq = {0};
 	resource_req *req;
 	resource_req *newreq, *aoereq;
-	schd_resource *res;
-	sch_resource_t num;
-	sch_resource_t amount;
-	int allocated = 0;
 	long long num_chunks = 0;
 	int is_p;
 
@@ -3520,10 +3507,11 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 		return 0;
 
 	if (flags & EVAL_OKBREAK) {
+		int allocated = 0;
 		/* req is the first consumable resource at this point */
 		for (req = specreq_cons; req != NULL; req = req->next) {
 			if (req->type.is_consumable) {
-				num = req->amount;
+				auto num = req->amount;
 				tmpreq.amount = 1;
 
 				tmpreq.name = req->name;
@@ -3571,14 +3559,12 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 					if (num_chunks > num)
 						num_chunks = num;
 
-					amount = num_chunks;
-
 					if (ns != NULL) {
 						newreq = dup_resource_req(req);
 						if (newreq == NULL)
 							return 0;
 
-						newreq->amount = amount;
+						newreq->amount = num_chunks;
 
 						if (ns->ninfo == NULL) /* check if this is the first res */
 							ns->ninfo = node;
@@ -3590,18 +3576,18 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 					/* now that we have allocated some resources to this node, we need
 					 * to remove them from the requested amount
 					 */
-					req->amount -= amount;
+					req->amount -= num_chunks;
 
-					res = find_resource(node->res, req->def);
+					auto res = find_resource(node->res, req->def);
 					if (res != NULL) {
 						if (res->indirect_res != NULL)
-							res->indirect_res->assigned += amount;
+							res->indirect_res->assigned += num_chunks;
 						else
-							res->assigned += amount;
+							res->assigned += num_chunks;
 					}
 
 					/* use tmpreq to wrap the amount so we can use res_to_str */
-					tmpreq.amount = amount;
+					tmpreq.amount = num_chunks;
 
 					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, node->name,
 						"vnode allocated %s=%s", req->name, res_to_str(&tmpreq, RF_REQUEST));
@@ -3623,8 +3609,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 				pbs_strncpy(last_node_name, node->name.c_str(), sizeof(last_node_name));
 			return 1;
 		}
-	}
-	else {
+	} else {
 		num_chunks = check_resources_for_node(specreq_cons, node, resresv, err);
 		if (num_chunks > 0) {
 			is_p = is_provisionable(node, resresv, err);
@@ -3703,28 +3688,15 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 	 */
 	long long min_chunks = UNSPECIFIED;
 	long long chunks = UNSPECIFIED;   /*number of chunks which can be satisfied*/
-	int resresv_excl = 0;
-	resource_req *req;
-	schd_resource *nres;
-	schd_resource *cur_res;
-	event_list *calendar;
 
-	schd_resource *noderes;
-
-	time_t event_time = 0;
-	time_t cur_time;
 	time_t end_time;
-	int is_run_event;
 
-	nspec *ns;
 	timed_event *event;
-	unsigned int event_mask;
-	int i;
 
 	if (resreq == NULL || ninfo == NULL || err == NULL || resresv == NULL)
 		return -1;
 
-	noderes = ninfo->res;
+	auto noderes = ninfo->res;
 
 	min_chunks = check_avail_resources(noderes, resreq,
 		CHECK_ALL_BOOLS|UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err);
@@ -3732,8 +3704,8 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 	if (chunks != UNSPECIFIED && (min_chunks == SCHD_INFINITY || chunks < min_chunks))
 		min_chunks = chunks;
 
-	calendar = ninfo->server->calendar;
-	cur_time = ninfo->server->server_time;
+	auto calendar = ninfo->server->calendar;
+	auto cur_time = ninfo->server->server_time;
 	if(resresv->duration != resresv->hard_duration &&
 	   exists_resv_event(calendar, cur_time + resresv->hard_duration))
 		end_time = cur_time + calc_time_left(resresv, 1);
@@ -3755,25 +3727,24 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 		 * from t1 to t2, then the resources should be taken out at t1 and returned
 		 * at t2.
 		 */
-		nres = dup_ind_resource_list(noderes);
-		resresv_excl = is_excl(resresv->place_spec, ninfo->sharing);
+		auto nres = dup_ind_resource_list(noderes);
+		auto resresv_excl = is_excl(resresv->place_spec, ninfo->sharing);
 
 		if (nres != NULL) {
-			resource_resv *resc_resv;
-
 			/* Walk the event list by time such that the start of an event always
 			 * precedes the end of it. The event type (start or end event) is
 			 * determined, and the resources are consumed if a start event, and
 			 * released if an end event.
 			 */
 			event = get_next_event(calendar);
-			event_mask = TIMED_RUN_EVENT | TIMED_END_EVENT;
+			const auto event_mask = TIMED_RUN_EVENT | TIMED_END_EVENT;
 
 			for (event = find_init_timed_event(event, IGNORE_DISABLED_EVENTS, event_mask);
 				event != NULL && min_chunks > 0;
 				event = find_next_timed_event(event, IGNORE_DISABLED_EVENTS, event_mask)) {
-				event_time = event->event_time;
-				resc_resv = (resource_resv *) event->event_ptr;
+				auto event_time = event->event_time;
+				auto resc_resv = static_cast<resource_resv *>(event->event_ptr);
+				nspec *ns;
 
 				if (event_time < cur_time)
 					continue;
@@ -3781,18 +3752,18 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 					continue;
 
 				if (resc_resv->nspec_arr != NULL) {
+					int i;
 					for (i = 0; resc_resv->nspec_arr[i] != NULL &&
-						resc_resv->nspec_arr[i]->ninfo->rank != ninfo->rank; i++)
+							resc_resv->nspec_arr[i]->ninfo->rank != ninfo->rank; i++)
 						;
 					ns = resc_resv->nspec_arr[i];
-				}
-				else {
+				} else {
 					ns = NULL;
 					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, resresv->name,
 						"Event %s is a run/end event w/o nspec array, ignoring event", event->name.c_str());
 				}
 
-				is_run_event = (event->event_type == TIMED_RUN_EVENT);
+				auto is_run_event = (event->event_type == TIMED_RUN_EVENT);
 
 				if ((event_time < end_time) && resresv != resc_resv && ns != NULL) {
 					/* One event will need provisioning while the other will not,
@@ -3807,15 +3778,13 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 					if (is_excl(resc_resv->place_spec, ninfo->sharing) || resresv_excl) {
 						min_chunks = 0;
 					} else {
-						cur_res = nres;
-						while (cur_res != NULL) {
+						for (auto cur_res = nres; cur_res  != NULL; cur_res = cur_res->next) {
 							if (cur_res->type.is_consumable) {
-								req = find_resource_req(ns->resreq, cur_res->def);
+								auto req = find_resource_req(ns->resreq, cur_res->def);
 								if (req != NULL) {
 									cur_res->assigned += is_run_event ? req->amount : -req->amount;
 								}
 							}
-							cur_res = cur_res->next;
 						}
 						if (is_run_event) {
 							chunks = check_avail_resources(nres, resreq,
@@ -4004,11 +3973,10 @@ parse_selspec(const std::string& sspec)
 	resource_req *req_head = NULL;
 	resource_req *req_end = NULL;
 	resource_req *req;
-	int ret;
 	int invalid = 0;
 
 	int num_kv;
-	struct key_value_pair *kv;
+	struct key_value_pair *kv = NULL;
 	int nkvelements = 0;
 
 	int num_chunks;
@@ -4031,10 +3999,12 @@ parse_selspec(const std::string& sspec)
 	if ((spec->chunks = static_cast<chunk **>(calloc(num_plus + 2, sizeof(chunk *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		delete spec;
+		return 0;
 	}
 
 	specbuf = string_dup(select_spec);
 	if (specbuf == NULL) {
+		delete spec;
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
@@ -4045,9 +4015,9 @@ parse_selspec(const std::string& sspec)
 	while (tok != NULL && !invalid) {
 		tmpptr = string_dup(tok);
 #ifdef NAS /* localmod 082 */
-		ret = parse_chunk_r(tok, 0, &num_chunks, &num_kv, &nkvelements, &kv, NULL);
+		auto ret = parse_chunk_r(tok, 0, &num_chunks, &num_kv, &nkvelements, &kv, NULL);
 #else
-		ret = parse_chunk_r(tok, &num_chunks, &num_kv, &nkvelements, &kv, NULL);
+		auto ret = parse_chunk_r(tok, &num_chunks, &num_kv, &nkvelements, &kv, NULL);
 #endif /* localmod 082 */
 
 		if (!ret) {
@@ -4152,7 +4122,6 @@ int compare_chunk(chunk *c1, chunk *c2) {
  *	@retval 0 if not equal
  */
 int compare_selspec(selspec *s1, selspec *s2) {
-	int i;
 	int ret = 1;
 
 	if(s1 == NULL && s2 == NULL)
@@ -4164,7 +4133,7 @@ int compare_selspec(selspec *s1, selspec *s2) {
 		return 0;
 
 	if (s1->chunks != NULL && s2->chunks != NULL) {
-		for (i = 0; ret && s1->chunks[i] != NULL; i++) {
+		for (int i = 0; ret && s1->chunks[i] != NULL; i++) {
 			if (compare_chunk(s1->chunks[i], s2->chunks[i]) == 0)
 				ret = 0;
 		}
@@ -4334,8 +4303,10 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 		return NULL;
 	}
 
-	if ((excvndup = string_dup(execvnode)) == NULL)
+	if ((excvndup = string_dup(execvnode)) == NULL) {
+		free(nspec_arr);
 		return NULL;
+	}
 
 	simplespec = parse_plus_spec_r(excvndup, &tailptr, &hp);
 	if (hp > 0) /* simplespec starts with '(' but doesn't close */
@@ -4840,8 +4811,7 @@ is_excl(place *pl, enum vnode_sharing sharing)
 int
 alloc_rest_nodepart(nspec **nsa, node_info **ninfo_arr)
 {
-	nspec *ns;
-	int i, j;
+	int j;
 	int max_seq_num = 0;
 	if (nsa == NULL || ninfo_arr == NULL)
 		return 0;
@@ -4855,8 +4825,8 @@ alloc_rest_nodepart(nspec **nsa, node_info **ninfo_arr)
 			max_seq_num = nsa[j]->seq_num;
 	}
 
-	for (i = 0; ninfo_arr[i] != NULL; i++) {
-		ns = find_nspec(nsa, ninfo_arr[i]);
+	for (int i = 0; ninfo_arr[i] != NULL; i++) {
+		const auto ns = find_nspec(nsa, ninfo_arr[i]);
 
 		/* node not part of solution */
 		if (ns == NULL) {
@@ -4878,54 +4848,6 @@ alloc_rest_nodepart(nspec **nsa, node_info **ninfo_arr)
 
 	return 1;
 }
-
-/**
- * @brief
- *		set_res_on_host - set a resource on all the vnodes of a host
- *
- * @param[in]	res_name	-	name of the res to set
- * param[in]	res_value	-	value to set the res
- * param[in]	host	-	name of the host
- * param[in]	exclude	-	node to exclude being set
- * param[in,out]	ninfo_arr	-	array to search through
- *
- * @return	int
- * @retval	1	: on success
- * @retval	0	: on error
- *
- */
-int
-set_res_on_host(char *res_name, char *res_value,
-	char *host, node_info *exclude, node_info **ninfo_arr)
-{
-	int i;
-	schd_resource *hostres;
-	schd_resource *res;
-	int rc = 1;
-
-	if (res_name == NULL || res_value == NULL || host == NULL || ninfo_arr == NULL)
-		return 0;
-
-	for (i = 0; ninfo_arr[i] != NULL && rc; i++) {
-		if (ninfo_arr[i] != exclude) {
-			hostres = find_resource(ninfo_arr[i]->res, allres["host"]);
-
-			if (hostres != NULL) {
-				if (compare_res_to_str(hostres, host, CMP_CASELESS)) {
-					res = find_alloc_resource_by_str(ninfo_arr[i]->res, res_name);
-					if (res != NULL) {
-						if (ninfo_arr[i]->res == NULL)
-							ninfo_arr[i]->res = res;
-
-						rc = set_resource(res, res_value, RF_AVAIL);
-					}
-				}
-			}
-		}
-	}
-	return rc;
-}
-
 
 /**
  * @brief
@@ -4972,43 +4894,6 @@ can_fit_on_vnode(resource_req *req, node_info **ninfo_arr)
 				return 1;
 		}
 	}
-
-	return 0;
-}
-
-/**
- * @brief
- *		Checks if an AOE is available on a vnode
- *
- * @par Functionality:
- *		This function checks if an AOE is available on a vnode.
- *
- * @param[in]	ninfo		-	pointer to node_info
- * @param[in]	resresv		-	pointer to resource_resv
- *
- * @return	int
- * @retval	 0 : AOE not available
- * @retval	 1 : AOE available
- *
- * @par Side Effects:
- *		Unknown
- *
- * @par MT-safe: No
- *
- */
-int
-is_aoe_avail_on_vnode(node_info *ninfo, resource_resv *resresv)
-{
-	schd_resource *resp;
-
-	if (ninfo == NULL || resresv == NULL)
-		return 0;
-
-	if (resresv->aoename == NULL)
-		return 0;
-
-	if ((resp = find_resource(ninfo->res, allres["aoe"])) != NULL)
-		return is_string_in_arr(resp->str_avail, resresv->aoename);
 
 	return 0;
 }
@@ -5229,8 +5114,6 @@ node_up_event(node_info *node, void *arg)
 int
 node_down_event(node_info *node, void *arg)
 {
-	int i;
-	const char *job_state;
 	server_info *sinfo;
 
 	if (node == NULL)
@@ -5238,7 +5121,9 @@ node_down_event(node_info *node, void *arg)
 
 	sinfo = node->server;
 	if (node->job_arr != NULL) {
-		for (i = 0; node->job_arr[i] != NULL; i++) {
+		for (int i = 0; node->job_arr[i] != NULL; i++) {
+			const char *job_state;
+
 			if (node->job_arr[i]->job->can_requeue)
 				job_state = "Q";
 			else
@@ -5257,31 +5142,6 @@ node_down_event(node_info *node, void *arg)
 	update_all_nodepart(sinfo->policy, sinfo, NO_ALLPART);
 
 	return 1;
-}
-
-/**
- * @brief
- * 		filter function to check if node is in a string array of node names
- *
- * @see	node_filter
- *
- * @param[in]	node	- node to check
- * @param[in] 	strarr	- array of node names
- *
- * @returns	int
- * @retval	1	: include node in array
- * @retval	0	: don't include node in array
- */
-int
-node_in_str(node_info *node, void *strarr)
-{
-	if (node == NULL || strarr == NULL)
-		return 0;
-
-	if (is_string_in_arr((char **)strarr, node->name.c_str()))
-		return 1;
-
-	return 0;
 }
 
 /**
@@ -5452,9 +5312,9 @@ sim_exclhost_func(timed_event *te, void *arg1, void *arg2)
 	if (te == NULL || arg1 == NULL || arg2 == NULL)
 		return 0;
 
-	resresv = (resource_resv*) arg1;
-	ninfo = (node_info*) arg2;
-	future_resresv = (resource_resv*) te->event_ptr;
+	resresv = static_cast<resource_resv *>(arg1);
+	ninfo = static_cast<node_info *>(arg2);
+	future_resresv = static_cast<resource_resv *>(te->event_ptr);
 	if (find_nspec_by_rank(future_resresv->nspec_arr, ninfo->rank) ==NULL)
 		return 0; /* event does not affect the node */
 
@@ -5638,7 +5498,7 @@ static inline th_data_nd_eligible *
 alloc_tdata_nd_eligible(place *pl, resource_resv *resresv, node_info **ninfo_arr,
 		int sidx, int eidx)
 {
-	th_data_nd_eligible *tdata = NULL;
+	th_data_nd_eligible *tdata;
 
 	tdata = static_cast<th_data_nd_eligible *>(malloc(sizeof(th_data_nd_eligible)));
 	if (tdata == NULL)  {
@@ -5674,11 +5534,8 @@ void
 check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, place *pl,
 		int num_nodes, schd_error *err)
 {
-	int i, j;
 	th_data_nd_eligible *tdata = NULL;
 	th_task_info *task = NULL;
-	int chunk_size;
-	int num_tasks;
 	int tid;
 
 	if (ninfo_arr == NULL || resresv == NULL || pl == NULL || err == NULL)
@@ -5698,7 +5555,9 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 		free_schd_error(tdata->err);
 		free(tdata);
 	} else {	 /* We are multithreading */
-		chunk_size = num_nodes / num_threads;
+		int j;
+		int num_tasks;
+		int chunk_size = num_nodes / num_threads;
 		chunk_size = (chunk_size > MT_CHUNK_SIZE_MIN) ? chunk_size : MT_CHUNK_SIZE_MIN;
 		for (j = 0, num_tasks = 0; num_nodes > 0;
 				num_tasks++, j += chunk_size, num_nodes -= chunk_size) {
@@ -5719,13 +5578,13 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 		}
 
 		/* Get results from worker threads */
-		for (i = 0; i < num_tasks;) {
+		for (int i = 0; i < num_tasks;) {
 			pthread_mutex_lock(&result_lock);
 			while (ds_queue_is_empty(result_queue))
 				pthread_cond_wait(&result_cond, &result_lock);
 			while (!ds_queue_is_empty(result_queue)) {
-				task = (th_task_info *) ds_dequeue(result_queue);
-				tdata = (th_data_nd_eligible *) task->thread_data;
+				task = static_cast<th_task_info *>(ds_dequeue(result_queue));
+				tdata = static_cast<th_data_nd_eligible *>(task->thread_data);
 				if (err->status_code == SCHD_UNKWN && tdata->err->status_code != SCHD_UNKWN)
 					copy_schd_error(err, tdata->err);
 
@@ -5770,29 +5629,6 @@ node_in_partition(node_info *ninfo, char *partition)
 }
 
 /**
- * @brief
- *		node_partition_cmp - used with node_filter to filter nodes attached to a
- *		   specific partition
- *
- * @param[in]	node	-	the node we're currently filtering
- * @param[in]	arg	-	the name of the partition
- *
- * @return	int
- * @return	1	: keep the node
- * @return	0	: don't keep the node
- *
- */
-int
-node_partition_cmp(node_info *ninfo, void *arg)
-{
-	if (ninfo->partition != NULL)
-		if (!strcmp(ninfo->partition,  (char *) arg))
-			return 1;
-
-	return 0;
-}
-
-/**
  * @brief add an event to all the nodes associated to a calendar event
  * @param te - event
  * @param nspecs - nspecs[i]->node is the node to add the event to
@@ -5834,7 +5670,7 @@ int add_event_to_nodes(timed_event *te, nspec **nspecs) {
 int add_node_events(timed_event *te, void *arg1, void *arg2) {
 	if (!te->disabled) {
 		nspec **nspecs;
-		nspecs = ((resource_resv *) te->event_ptr)->nspec_arr;
+		nspecs = (static_cast<resource_resv *>(te->event_ptr))->nspec_arr;
 
 		if (add_event_to_nodes(te, nspecs) == 0)
 			return -1;

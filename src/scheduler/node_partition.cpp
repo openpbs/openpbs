@@ -388,15 +388,12 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 	node_partition **tmp_arr;
 	char buf[1024];
 	char *str;
-	int free_str = 0;
+	bool free_str = false;
 	int np_arr_size = 0;
 	static schd_resource *res;
 
 	int num_nodes;
-	int reslen;
-	int i;
 
-	schd_resource *hostres;
 	schd_resource *tmpres;
 
 	int res_i;		/* index of placement set resource name (resnames) */
@@ -405,8 +402,6 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 	int np_i;		/* index into node partition array we are creating */
 
 	static schd_resource *unset_res = NULL;
-
-	resdef *def;
 
 	queue_info **queues = NULL;
 
@@ -432,8 +427,8 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 		unset_res = new_resource();
 
 	for (res_i = 0; resnames[res_i] != NULL; res_i++) {
-		def = find_resdef(resnames[res_i]);
-		reslen = strlen(resnames[res_i]);
+		auto def = find_resdef(resnames[res_i]);
+		auto reslen = strlen(resnames[res_i]);
 		for (node_i = 0; nodes[node_i] != NULL; node_i++) {
 			if (nodes[node_i]->is_stale)
 				continue;
@@ -460,7 +455,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 					}
 					else {
 						pbs_asprintf(&str, "%s=%s", resnames[res_i], res->str_avail[val_i]);
-						free_str = 1;
+						free_str = true;
 					}
 					/* If we find the partition, we've already created it - add the node
 					 * to the existing partition.  If we don't find it, we create it.
@@ -473,7 +468,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 							if (tmp_arr == NULL) {
 								log_err(errno, __func__, MEM_ERR_MSG);
 								free_node_partition_array(np_arr);
-								if (free_str == 1)
+								if (free_str)
 									free(str);
 								return NULL;
 							}
@@ -485,7 +480,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 						if (np_arr[np_i] != NULL) {
 							if (free_str) {
 								np_arr[np_i]->name = str;
-								free_str = 0;
+								free_str = false;
 							}
 							else
 								np_arr[np_i]->name = string_dup(str);
@@ -518,7 +513,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 					}
 					if (free_str) {
 						free(str);
-						free_str = 0;
+						free_str = false;
 					}
 
 				}
@@ -535,9 +530,9 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 	 */
 
 	for (np_i = 0; np_arr[np_i] != NULL; np_i++) {
-		i = 0;
+		int i = 0;
 		np_arr[np_i]->ok_break = 1;
-		hostres = NULL;
+		schd_resource *hostres = NULL;
 
 		np_arr[np_i]->ninfo_arr =
 			static_cast<node_info **>(malloc((np_arr[np_i]->tot_nodes + 1) * sizeof(node_info *)));
@@ -688,15 +683,13 @@ update_buckets_for_node_array(node_bucket **bkts, node_info **ninfo_arr) {
 int
 node_partition_update_array(status *policy, node_partition **nodepart)
 {
-	int i;
-	int cur_rc = 0;
 	int rc = 1;
 
 	if (policy == NULL || nodepart == NULL)
 		return 0;
 
-	for (i = 0; nodepart[i] != NULL; i++) {
-		cur_rc = node_partition_update(policy, nodepart[i]);
+	for (int i = 0; nodepart[i] != NULL; i++) {
+		auto cur_rc = node_partition_update(policy, nodepart[i]);
 		if (cur_rc == 0)
 			rc = 0;
 		update_buckets_for_node_array(nodepart[i]->bkts, nodepart[i]->ninfo_arr);
@@ -1224,24 +1217,23 @@ create_specific_nodepart(status *policy, const char *name, node_info **nodes, in
  * @param[in]	sinfo	-	the server
  *
  * @return	int
- * @retval	1	: success
- * @retval	0	: failure
+ * @retval	true	: success
+ * @retval	false	: failure
  */
-int
+bool
 create_placement_sets(status *policy, server_info *sinfo)
 {
-	int i;
-	int is_success = 1;
-	const char *resstr[] = {"host", NULL};
-	int num;
+	bool is_success = true;
 
 	sinfo->allpart = create_specific_nodepart(policy, "all", sinfo->unassoc_nodes, NO_FLAGS);
 	if (sinfo->has_multi_vnode) {
+		const char *resstr[] = {"host", NULL};
+		int num;
 		sinfo->hostsets = create_node_partitions(policy, sinfo->nodes,
 			resstr, sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST, &num);
 		if (sinfo->hostsets != NULL) {
 			sinfo->num_hostsets = num;
-			for (i = 0; sinfo->nodes[i] != NULL; i++) {
+			for (int i = 0; sinfo->nodes[i] != NULL; i++) {
 				schd_resource *hostres;
 				char hostbuf[256];
 
@@ -1261,7 +1253,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 		else {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "",
 				"Failed to create host sets for server");
-			is_success = 0;
+			is_success = false;
 		}
 	}
 
@@ -1278,19 +1270,20 @@ create_placement_sets(status *policy, server_info *sinfo)
 		else {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "",
 				"Failed to create node partitions for server");
-			is_success = 0;
+			is_success = false;
 		}
 	}
 
-	for (i = 0; sinfo->queues[i] != NULL; i++) {
-		node_info **ngroup_nodes;
-		char **ngkey;
-		queue_info *qinfo = sinfo->queues[i];
+	for (int i = 0; sinfo->queues[i] != NULL; i++) {
+		auto qinfo = sinfo->queues[i];
 
 		if (qinfo->has_nodes)
 			qinfo->allpart = create_specific_nodepart(policy, "all", qinfo->nodes, NO_FLAGS);
 
 		if (sinfo->node_group_enable && (qinfo->has_nodes || qinfo->node_group_key)) {
+			node_info **ngroup_nodes;
+			char **ngkey;
+
 			if (qinfo->has_nodes)
 				ngroup_nodes = qinfo->nodes;
 			else
@@ -1311,7 +1304,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 			else {
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_QUEUE, LOG_DEBUG, qinfo->name,
 					"Failed to create node partitions for queue.");
-				is_success = 0;
+				is_success = false;
 			}
 		}
 	}
@@ -1369,9 +1362,6 @@ sort_all_nodepart(status *policy, server_info *sinfo)
 void
 update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 {
-	queue_info *qinfo;
-	int i;
-
 	if (sinfo == NULL || sinfo->queues == NULL)
 		return;
 
@@ -1402,8 +1392,8 @@ update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 	}
 
 	/* Update and resort the placement sets on the queues */
-	for (i = 0; sinfo->queues[i] != NULL; i++) {
-		qinfo = sinfo->queues[i];
+	for (int i = 0; sinfo->queues[i] != NULL; i++) {
+		auto qinfo = sinfo->queues[i];
 
 		if (sinfo->node_group_enable && qinfo->node_group_key != NULL)
 			node_partition_update_array(policy, qinfo->nodepart);

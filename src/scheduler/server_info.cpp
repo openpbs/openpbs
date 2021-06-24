@@ -69,7 +69,6 @@
  * 	create_server_arrays()
  * 	check_run_job()
  * 	check_exit_job()
- * 	check_run_resv()
  * 	check_susp_job()
  * 	check_running_job_not_in_reservation()
  * 	check_running_job_in_reservation()
@@ -101,7 +100,6 @@
  * 	create_total_counts()
  * 	update_total_counts()
  * 	update_total_counts_on_end()
- * 	refresh_total_counts()
  * 	get_sched_rank()
  * 	add_queue_to_list()
  * 	find_queue_list_by_priority()
@@ -187,11 +185,9 @@ query_server(status *pol, int pbs_sd)
 	queue_info **qinfo;		/* array of queues on the server */
 	counts *cts;			/* used to count running per user/grp */
 	int num_express_queues = 0;	/* number of express queues */
-	int i;
-	const char *errmsg;
-	resource_resv **jobs_alive;
 	status *policy;
 	int job_arrays_associated = FALSE;
+	int i;
 
 	if (pol == NULL)
 		return NULL;
@@ -204,7 +200,7 @@ query_server(status *pol, int pbs_sd)
 
 	/* get server information from pbs server */
 	if ((server = send_statserver(pbs_sd, NULL, NULL)) == NULL) {
-		errmsg = pbs_geterrmsg(pbs_sd);
+		const char *errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_NOTICE, "server_info",
@@ -301,10 +297,9 @@ query_server(status *pol, int pbs_sd)
 		qsort(sinfo->queues, sinfo->num_queues, sizeof(queue_info *),
 			cmp_queue_prio_dsc);
 	if (policy->round_robin == 1) {
-		int ret_val;
 		/* queues are already sorted in descending order of their priority */
 		for (i = 0; i < sinfo->num_queues; i++) {
-			ret_val = add_queue_to_list(&sinfo->queue_list, sinfo->queues[i]);
+			auto ret_val = add_queue_to_list(&sinfo->queue_list, sinfo->queues[i]);
 			if (ret_val == 0) {
 				sinfo->fstree = NULL;
 				free_server(sinfo);
@@ -358,8 +353,6 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 
-	jobs_alive = resource_resv_filter(sinfo->jobs, sinfo->sc.total, check_running_job_not_in_reservation, NULL, 0);
-
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		counts *allcts;
 		allcts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
@@ -367,7 +360,7 @@ query_server(status *pol, int pbs_sd)
 			sinfo->alljobcounts = allcts;
 		job_arrays_associated = TRUE;
 		/* set the user, group , project counts */
-		for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
+		for (int i = 0; sinfo->running_jobs[i] != NULL; i++) {
 			cts = find_alloc_counts(sinfo->user_counts,
 						sinfo->running_jobs[i]->user);
 			if (sinfo->user_counts == NULL)
@@ -423,6 +416,7 @@ query_server(status *pol, int pbs_sd)
 	 * nodes, which are accounted for by collect_jobs_on_nodes in
 	 * query_reservation, hence the use of the filtered list of jobs
 	 */
+	auto jobs_alive = resource_resv_filter(sinfo->jobs, sinfo->sc.total, check_running_job_not_in_reservation, NULL, 0);
 	collect_jobs_on_nodes(sinfo->nodes, jobs_alive, count_array(jobs_alive), DETECT_GHOST_JOBS);
 
 	/* Now that the job_arr is created, garbage collect the jobs */
@@ -438,7 +432,7 @@ query_server(status *pol, int pbs_sd)
 	}
 
 	for (i = 0; sinfo->nodes[i] != NULL; i++) {
-		node_info *ninfo = sinfo->nodes[i];
+		auto *ninfo = sinfo->nodes[i];
 		ninfo->nodesig = create_resource_signature(ninfo->res,
 							   policy->resdef_to_check_no_hostvnode, ADD_ALL_BOOL);
 		ninfo->nodesig_ind = add_str_to_unique_array(&(sinfo->nodesigs),
@@ -460,9 +454,7 @@ query_server(status *pol, int pbs_sd)
 	create_placement_sets(policy, sinfo);
 	if (!sinfo->node_group_enable && sinfo->node_group_key != NULL &&
 	    strcmp(sinfo->node_group_key[0], "msvr_node_group") == 0) {
-		node_partition **np = NULL;
-
-		np = create_node_partitions(policy, sinfo->unassoc_nodes,
+		auto np = create_node_partitions(policy, sinfo->unassoc_nodes,
 					    sinfo->node_group_key, NP_NONE, &sinfo->num_parts);
 
 		/* For each job, we'll need the placement set of nodes which belong to its server
@@ -695,7 +687,6 @@ query_server_dyn_res(server_info *sinfo)
 	for (const auto& dr : conf.dynamic_res) {
 		res = find_alloc_resource_by_str(sinfo->res, dr.res);
 		if (res != NULL) {
-			int ret;
 			fd_set set;
 			sigset_t allsigs;
 			pid_t pid = 0;			/* pid of child */
@@ -759,6 +750,7 @@ query_server_dyn_res(server_info *sinfo)
 
 			k = 0;
 			if (!pipe_err) {
+				int ret;
 				FD_ZERO(&set);
 				FD_SET(pdes[0], &set);
 				if (sc_attrs.server_dyn_res_alarm) {
@@ -787,8 +779,8 @@ query_server_dyn_res(server_info *sinfo)
 							pipe_err = errno;
 						} else
 							k = strlen(buf);
-						if (fp != NULL)
-							fclose(fp);
+						
+						fclose(fp);
 					} else
 						close(pdes[0]);
 				}
@@ -1665,12 +1657,6 @@ void
 update_server_on_run(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *resresv, char * job_state)
 {
-	resource_req *req;		/* used to cycle through resources to update */
-	schd_resource *res;		/* used in finding a resource to update */
-	counts *cts;			/* used in updating project/group/user counts */
-	int num_unassoc;		/* number of unassociated nodes */
-	counts *allcts;			/* used in updating counts for all jobs */
-
 	if (sinfo == NULL || resresv == NULL)
 		return;
 
@@ -1689,13 +1675,15 @@ update_server_on_run(status *policy, server_info *sinfo,
 	 *      double count them
 	 */
 	if (resresv->is_resv || (qinfo != NULL && qinfo->resv == NULL)) {
+		resource_req *req; /* used to cycle through resources to update */
+
 		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S') && (resresv->job->resreq_rel != NULL))
 			req = resresv->job->resreq_rel;
 		else
 			req = resresv->resreq;
 		while (req != NULL) {
 			if (req->type.is_consumable) {
-				res = find_resource(sinfo->res, req->def);
+				auto res = find_resource(sinfo->res, req->def);
 
 				if (res)
 					res->assigned += req->amount;
@@ -1729,7 +1717,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 					multi_node_sort);
 
 				if (sinfo->nodes != sinfo->unassoc_nodes) {
-					num_unassoc = count_array(sinfo->unassoc_nodes);
+					auto num_unassoc = count_array(sinfo->unassoc_nodes);
 					qsort(sinfo->unassoc_nodes, num_unassoc, sizeof(node_info *),
 						multi_node_sort);
 				}
@@ -1751,6 +1739,8 @@ update_server_on_run(status *policy, server_info *sinfo,
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		if (resresv->is_job) {
+			counts *cts; /* used in updating project/group/user counts */
+
 			update_total_counts(sinfo, NULL , resresv, SERVER);
 
 			cts = find_alloc_counts(sinfo->group_counts, resresv->group);
@@ -1774,7 +1764,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 
 			update_counts_on_run(cts, resresv->resreq);
 
-			allcts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
+			auto allcts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
 
 			if (sinfo->alljobcounts == NULL)
 				sinfo->alljobcounts = allcts;
@@ -1809,9 +1799,6 @@ void
 update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	resource_resv *resresv, const char *job_state)
 {
-	resource_req *req;		/* resource request from job */
-	schd_resource *res;		/* resource on server */
-
 	if (sinfo == NULL ||  resresv == NULL)
 		return;
 	if (resresv->is_job) {
@@ -1837,6 +1824,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	 *	the server
 	 */
 	if (resresv->is_resv || (qinfo != NULL && qinfo->resv == NULL)) {
+		resource_req *req; /* resource request from job */
 
 		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S') && (resresv->job->resreq_rel != NULL))
 			req = resresv->job->resreq_rel;
@@ -1844,7 +1832,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 			req = resresv->resreq;
 
 		while (req != NULL) {
-			res = find_resource(sinfo->res, req->def);
+			auto res = find_resource(sinfo->res, req->def);
 
 			if (res != NULL) {
 				res->assigned -= req->amount;
@@ -2088,26 +2076,6 @@ check_exit_job(resource_resv *job, const void *arg)
  * @param[in]	arg	-	argument (not used here)
  *
  * @return	int
- * @retval	1	: if reservation is running
- * @retval	0	: if reservation is not running.
- */
-int
-check_run_resv(resource_resv *resv, void *arg)
-{
-	if (resv->is_resv && resv->resv != NULL)
-		return resv->resv->is_running;
-
-	return 0;
-}
-
-/**
- * @brief
- * 		helper function for resource_resv_filter()
- *
- * @param[in]	job	-	resource reservation job.
- * @param[in]	arg	-	argument (not used here)
- *
- * @return	int
  * @retval	1	: if job is suspended
  * @retval	0	: if job is not suspended
  */
@@ -2299,10 +2267,9 @@ dup_server_info(server_info *osinfo)
 	}
 
 	if (osinfo->queue_list != NULL) {
-		int ret_val;
 		/* queues are already sorted in descending order of their priority */
 		for (i = 0; i < nsinfo->num_queues; i++) {
-			ret_val = add_queue_to_list(&nsinfo->queue_list, nsinfo->queues[i]);
+			auto ret_val = add_queue_to_list(&nsinfo->queue_list, nsinfo->queues[i]);
 			if (ret_val == 0) {
 				nsinfo->fstree = NULL;
 				free_server(nsinfo);
@@ -2913,22 +2880,15 @@ update_counts_on_run(counts *cts, resource_req *resreq)
 void
 update_counts_on_end(counts *cts, resource_req *resreq)
 {
-	resource_count *ctsreq;			/* rescts to update */
-	resource_req *req;			/* current in resreq */
-
 	if (cts == NULL || resreq == NULL)
 		return;
 
 	cts->running--;
 
-	req = resreq;
-	while (req != NULL) {
-		ctsreq = find_resource_count(cts->rescts, req->def);
+	for(auto req = resreq; req != NULL; req = req->next) {
+		auto ctsreq = find_resource_count(cts->rescts, req->def);
 		if (ctsreq != NULL)
 			ctsreq->amount -= req->amount;
-
-
-		req = req->next;
 	}
 }
 
@@ -3017,7 +2977,6 @@ counts_max(counts *cmax, counts *ncounts)
 void
 update_universe_on_end(status *policy, resource_resv *resresv, const char *job_state, unsigned int flags)
 {
-	int i;
 	server_info *sinfo = NULL;
 	queue_info *qinfo = NULL;
 
@@ -3045,7 +3004,6 @@ update_universe_on_end(status *policy, resource_resv *resresv, const char *job_s
 				}
 			}
 			if (need_metadata_update) {
-				int j;
 				/* Since a new resource was added to resdef_to_check, the meta data needs to be recreated.
 				 * This will happen on the next call to node_partition_update()
 				 */
@@ -3053,7 +3011,7 @@ update_universe_on_end(status *policy, resource_resv *resresv, const char *job_s
 					free_resource_list(sinfo->allpart->res);
 					sinfo->allpart->res = NULL;
 				}
-				for (j = 0; sinfo->queues[j] != NULL; j++) {
+				for (int j = 0; sinfo->queues[j] != NULL; j++) {
 					queue_info *q = sinfo->queues[j];
 					if (q->allpart != NULL) {
 						free_resource_list(q->allpart->res);
@@ -3065,7 +3023,7 @@ update_universe_on_end(status *policy, resource_resv *resresv, const char *job_s
 	}
 
 	if (resresv->ninfo_arr != NULL) {
-		for (i = 0; resresv->ninfo_arr[i] != NULL; i++)
+		for (int i = 0; resresv->ninfo_arr[i] != NULL; i++)
 			update_node_on_end(resresv->ninfo_arr[i], resresv, job_state);
 	}
 
@@ -3209,7 +3167,6 @@ set_resource(schd_resource *res, const char *val, enum resource_fields field)
 schd_resource *
 find_indirect_resource(schd_resource *res, node_info **nodes)
 {
-	node_info *ninfo;
 	schd_resource *cur_res = NULL;
 	int i;
 	int error = 0;
@@ -3222,7 +3179,7 @@ find_indirect_resource(schd_resource *res, node_info **nodes)
 
 	for (i = 0; i < max && cur_res != NULL &&
 		cur_res->indirect_vnode_name != NULL && !error; i++) {
-		ninfo = find_node_info(nodes, cur_res->indirect_vnode_name);
+		auto ninfo = find_node_info(nodes, cur_res->indirect_vnode_name);
 		if (ninfo != NULL) {
 			cur_res = find_resource(ninfo->res, cur_res->def);
 			if (cur_res == NULL) {
@@ -3319,11 +3276,9 @@ resolve_indirect_resources(node_info **nodes)
 void
 update_preemption_priority(server_info *sinfo, resource_resv *resresv)
 {
-	int i;
-
 	if (cstat.preempting && resresv->is_job) {
 		if (sinfo->has_soft_limit || resresv->job->queue->has_soft_limit) {
-			for (i = 0; sinfo->jobs[i] != NULL; i++) {
+			for (int i = 0; sinfo->jobs[i] != NULL; i++) {
 				if (sinfo->jobs[i]->job !=NULL) {
 					int usrlim = resresv->job->queue->has_user_limit || sinfo->has_user_limit;
 					int grplim = resresv->job->queue->has_grp_limit || sinfo->has_grp_limit;
@@ -3338,7 +3293,7 @@ update_preemption_priority(server_info *sinfo, resource_resv *resresv)
 
 			/* now that we've set all the preempt levels, we need to count them */
 			memset(sinfo->preempt_count, 0, NUM_PPRIO * sizeof(int));
-			for (i = 0; sinfo->running_jobs[i] != NULL; i++)
+			for (int i = 0; sinfo->running_jobs[i] != NULL; i++)
 				if (!sinfo->running_jobs[i]->job->can_not_preempt)
 					sinfo->
 					preempt_count[preempt_level(sinfo->running_jobs[i]->job->preempt)]++;
@@ -3363,7 +3318,6 @@ read_formula(void)
 	char *tmp;
 	char buf[RF_BUFSIZE];
 	size_t bufsize = RF_BUFSIZE;
-	size_t len;
 	FILE *fp;
 
 	if ((fp = fopen(FORMULA_FILENAME, "r")) == NULL) {
@@ -3384,7 +3338,7 @@ read_formula(void)
 	fgets(buf, RF_BUFSIZE, fp);
 
 	while (fgets(buf, RF_BUFSIZE, fp) != NULL) {
-		len = strlen(form) + strlen(buf);
+		auto len = strlen(form) + strlen(buf);
 		if (len > bufsize) {
 			tmp = static_cast<char *>(realloc(form, len*2 + 1));
 			if (tmp == NULL) {
@@ -3630,46 +3584,6 @@ update_total_counts_on_end(server_info *si, queue_info* qi,
 
 /**
  * @brief
- * 		refresh_total_counts - This function releases memory allocated
- *	    for total_*_counts structure in server_info and queue_info and
- *	    then reassigns again by duplicating it from running counts list.
- *
- * @param[in,out]	sinfo	-	server_info structure used to get all the
- *                          	total_*_counts and free them.
- *
- * @return	void
- */
-void
-refresh_total_counts(server_info *sinfo)
-{
-	int i = 0;
-	if (sinfo != NULL) {
-		free_counts_list(sinfo->total_group_counts);
-		sinfo->total_group_counts = NULL;
-		free_counts_list(sinfo->total_user_counts);
-		sinfo->total_user_counts = NULL;
-		free_counts_list(sinfo->total_project_counts);
-		sinfo->total_project_counts = NULL;
-		free_counts_list(sinfo->total_alljobcounts);
-		sinfo->total_alljobcounts = NULL;
-		create_total_counts(sinfo, NULL, NULL, SERVER);
-		for (; i < sinfo->num_queues; i++) {
-			free_counts_list(sinfo->queues[i]->total_group_counts);
-			sinfo->queues[i]->total_group_counts = NULL;
-			free_counts_list(sinfo->queues[i]->total_user_counts);
-			sinfo->queues[i]->total_user_counts = NULL;
-			free_counts_list(sinfo->queues[i]->total_project_counts);
-			sinfo->queues[i]->total_project_counts = NULL;
-			free_counts_list(sinfo->queues[i]->total_alljobcounts);
-			sinfo->queues[i]->total_alljobcounts = NULL;
-			create_total_counts(NULL, sinfo->queues[i], NULL, QUEUE);
-		}
-	}
-	return;
-}
-
-/**
- * @brief
  * 		get a unique rank to uniquely identify an object
  *
  * @return	int
@@ -3799,14 +3713,11 @@ struct queue_info **append_to_queue_list(queue_info ***list, queue_info *add)
 void
 add_req_list_to_assn(schd_resource *reslist, resource_req *reqlist)
 {
-	schd_resource *r;
-	resource_req *req;
-
 	if(reslist == NULL || reqlist == NULL)
 		return;
 
-	for(req = reqlist; req != NULL; req = req->next) {
-		r = find_resource(reslist, req->def);
+	for(auto req = reqlist; req != NULL; req = req->next) {
+		auto r = find_resource(reslist, req->def);
 		if(r != NULL && r->type.is_consumable)
 			r->assigned += req->amount;
 	}

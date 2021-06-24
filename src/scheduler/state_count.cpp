@@ -102,10 +102,8 @@ init_state_count(state_count *sc)
 void
 count_states(resource_resv **jobs, state_count *sc)
 {
-	int i;
-
 	if (jobs != NULL) {
-		for (i = 0; jobs[i] != NULL; i++) {
+		for (int i = 0; jobs[i] != NULL; i++) {
 			if (jobs[i]->job != NULL) {
 				if (jobs[i]->job->is_queued)
 					sc->queued++;

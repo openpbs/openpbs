@@ -61,7 +61,7 @@ pbs_bitmap_alloc(pbs_bitmap *pbm, unsigned long num_bits)
 	unsigned long *tmp_bits;
 	long prev_longs;
 
-	if(num_bits <= 0)
+	if(num_bits == 0)
 		return NULL;
 
 	if(pbm == NULL) {

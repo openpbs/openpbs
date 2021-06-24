@@ -302,7 +302,8 @@ class selspec
 	std::unordered_set<resdef *> defs;			/* the resources requested by this select spec*/
 	chunk **chunks;
 	selspec();
-	selspec(selspec&);
+	selspec(const selspec&);
+	selspec& operator=(const selspec&);
 	~selspec();
 };
 
@@ -537,7 +538,7 @@ class queue_info
 	int backfill_depth;		/* total allowable topjobs in this queue*/
 	char *partition;		/* partition to which queue belongs to */
 
-	queue_info(char *);
+	explicit queue_info(const char *);
 	queue_info(queue_info&, server_info *);
 	~queue_info();
 };
@@ -723,7 +724,7 @@ struct node_info
 	node_partition **np_arr;	/* array of node partitions node is in */
 	char *svr_inst_id;
 
-	node_info(const std::string& name);
+	explicit node_info(const std::string& name);
 	~node_info();
 };
 
@@ -815,7 +816,7 @@ class resource_resv
 	timed_event *run_event;		   /* run event in calendar */
 	timed_event *end_event;		   /* end event in calendar */
 
-	resource_resv(const std::string& rname);
+	explicit resource_resv(const std::string& rname);
 	~resource_resv();
 };
 

@@ -420,10 +420,9 @@ std::unordered_set<resdef *>
 resstr_to_resdef(const std::unordered_set<std::string>& resstr)
 {
 	std::unordered_set<resdef *> defs;
-	resdef *def;
 
 	for (const auto& str : resstr) {
-		def = find_resdef(str);
+		auto def = find_resdef(str);
 		if (def != NULL)
 			defs.insert(def);
 		else {
@@ -438,10 +437,9 @@ std::unordered_set<resdef *>
 resstr_to_resdef(const char * const* resstr)
 {
 	std::unordered_set<resdef *> defs;
-	resdef *def;
 
 	for (int i = 0; resstr[i] != NULL; i++) {
-		def = find_resdef(resstr[i]);
+		auto def = find_resdef(resstr[i]);
 		if (def != NULL)
 			defs.insert(def);
 		else {

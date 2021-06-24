@@ -128,13 +128,10 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	/* peer server descriptor */
 	int peer_sd = 0;
 
-	int i, j, qidx;
+	int i, qidx;
 	int num_queues = 0;
 
 	int err = 0;			/* an error has occurred */
-
-	/* used for pbs_geterrmsg() */
-	const char *errmsg;
 
 	schd_error *sch_err;
 
@@ -148,7 +145,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 	/* get queue info from PBS server */
 	if ((queues = send_statqueue(pbs_sd, NULL, NULL, NULL)) == NULL) {
-		errmsg = pbs_geterrmsg(pbs_sd);
+		const char *errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";
 	log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_QUEUE, LOG_NOTICE, "queue_info",
@@ -174,7 +171,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 	cur_queue = queues;
 
-	for (i = 0, qidx=0; cur_queue != NULL && !err; i++) {
+	for (i = 0, qidx = 0; cur_queue != NULL && !err; i++) {
 		/* convert queue information from batch_status to queue_info */
 		if ((qinfo = query_queue_info(policy, cur_queue, sinfo)) == NULL) {
 			free_schd_error(sch_err);
@@ -225,9 +222,8 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 				qinfo->jobs = query_jobs(policy, pbs_sd, qinfo, NULL, qinfo->name);
 
 				for (auto& pq : conf.peer_queues) {
-					int peer_on = 1;
-
 					if (qinfo->name == pq.local_queue) {
+						int peer_on = 1;
 						/* Locally-peered queues reuse the scheduler's connection */
 						if (pq.remote_server.empty()) {
 							peer_sd = pbs_sd;
@@ -274,7 +270,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 					if (qinfo->running_jobs != NULL) {
 						/* set the user and group counts */
-						for (j = 0; qinfo->running_jobs[j] != NULL; j++) {
+						for (int j = 0; qinfo->running_jobs[j] != NULL; j++) {
 							cts = find_alloc_counts(qinfo->user_counts,
 								qinfo->running_jobs[j]->user);
 							if (qinfo->user_counts == NULL)
@@ -319,8 +315,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	pbs_statfree(queues);
 	free_schd_error(sch_err);
 	if (err) {
-		if (qinfo_arr != NULL)
-			free_queues(qinfo_arr);
+		free_queues(qinfo_arr);
 
 		return NULL;
 	}
@@ -508,7 +503,7 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 }
 
 // queue_info constructor
-queue_info::queue_info(char *qname): name(qname)
+queue_info::queue_info(const char *qname): name(qname)
 {
 	is_started = 0;
 	is_exec = 0;
@@ -608,9 +603,6 @@ void
 update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 {
 	resource_req *req;
-	schd_resource *res;
-	counts *cts;
-	counts *allcts;
 
 	if (qinfo == NULL || resresv == NULL)
 		return;
@@ -639,7 +631,7 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 		req = resresv->resreq;
 
 	while (req != NULL) {
-		res = find_resource(qinfo->qres, req->def);
+		auto res = find_resource(qinfo->qres, req->def);
 
 		if (res != NULL)
 			res->assigned += req->amount;
@@ -651,7 +643,9 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 
 	if (qinfo->has_soft_limit || qinfo->has_hard_limit) {
 
-		if (resresv->is_job && resresv->job !=NULL) {
+		if (resresv->is_job && resresv->job != NULL) {
+			counts *cts;
+
 			update_total_counts(NULL, qinfo, resresv, QUEUE);
 
 			cts = find_alloc_counts(qinfo->group_counts, resresv->group);
@@ -675,7 +669,7 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 
 			update_counts_on_run(cts, resresv->resreq);
 
-			allcts = find_alloc_counts(qinfo->alljobcounts, PBS_ALL_ENTITY);
+			auto allcts = find_alloc_counts(qinfo->alljobcounts, PBS_ALL_ENTITY);
 
 			if (qinfo->alljobcounts == NULL)
 				qinfo->alljobcounts = allcts;
@@ -703,12 +697,10 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
  *
  */
 void
-update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
-	const char *job_state)
+update_queue_on_end(queue_info *qinfo, resource_resv *resresv, const char *job_state)
 {
 	schd_resource *res = NULL;			/* resource from queue */
 	resource_req *req = NULL;			/* resource request from job */
-	counts *cts;					/* update user/group counts */
 
 	if (qinfo == NULL || resresv == NULL)
 		return;
@@ -750,7 +742,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 	if (qinfo->has_soft_limit || qinfo->has_hard_limit) {
 		if (is_resresv_running(resresv)) {
 			update_total_counts_on_end(NULL, qinfo, resresv , QUEUE);
-			cts = find_counts(qinfo->group_counts, resresv->group);
+			auto cts = find_counts(qinfo->group_counts, resresv->group);
 
 			if (cts != NULL)
 				update_counts_on_end(cts, resresv->resreq);
@@ -837,7 +829,7 @@ dup_queues(queue_info **oqueues, server_info *nsinfo)
  * @param[in]	nsinfo	-	the server which owns the duplicated queue
  *
  */
-queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.name)
+queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.name), sc(oqinfo.sc)
 {
 	server = nsinfo;
 
@@ -857,7 +849,6 @@ queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.nam
 	has_grp_limit = oqinfo.has_grp_limit;
 	has_proj_limit = oqinfo.has_proj_limit;
 	has_all_limit = oqinfo.has_all_limit;
-	sc = oqinfo.sc;
 	liminfo = lim_dup_liminfo(oqinfo.liminfo);
 	priority = oqinfo.priority;
 	num_parts = oqinfo.num_parts;
