@@ -1089,8 +1089,9 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		 * the job is not transiting (though it may have been) and
 		 * is not running, so abort it.
 		 */
-
-		abortjob = 1; /* set flag to abort job after mail sent */
+		if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob)) {
+			abortjob = 1; /* set flag to abort job after mail sent */
+		}
 	}
 	/*
 	 * Log delete and if requesting client is not job owner, send mail.
@@ -1098,7 +1099,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 
 	acct_del_write(pjob->ji_qs.ji_jobid, pjob, preq, 0);
 
-	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) && !forcedel)
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob)
 		chk_array_doneness(pjob);
 	else if (abortjob) {
 		if (check_job_state(pjob, JOB_STATE_LTR_EXITING))
