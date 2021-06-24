@@ -248,4 +248,6 @@ int validate_running_user(char *exename);
 
 int send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char *execvnode, char *svr_id_job);
 
+struct batch_status *send_statsched(int virtual_fd, struct attrl *attrib, char *extend);
+
 #endif	/* _FIFO_H */

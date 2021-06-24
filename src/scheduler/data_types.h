@@ -76,7 +76,7 @@ struct resource_req;
 struct resource_count;
 struct holiday;
 struct prev_job_info;
-struct group_info;
+class group_info;
 struct usage_info;
 struct counts;
 struct nspec;
@@ -90,7 +90,7 @@ class selspec;
 class resdef;
 struct event_list;
 struct status;
-struct fairshare_head;
+class fairshare_head;
 struct node_scratch;
 struct te_list;
 struct node_bucket;
@@ -112,7 +112,6 @@ typedef struct schd_resource schd_resource;
 typedef struct resource_req resource_req;
 typedef struct resource_count resource_count;
 typedef struct usage_info usage_info;
-typedef struct group_info group_info;
 typedef struct resv_info resv_info;
 typedef struct counts counts;
 typedef struct nspec nspec;
@@ -123,7 +122,6 @@ typedef struct np_cache np_cache;
 typedef struct chunk chunk;
 typedef struct timed_event timed_event;
 typedef struct event_list event_list;
-typedef struct fairshare_head fairshare_head;
 typedef struct node_scratch node_scratch;
 typedef struct resresv_set resresv_set;
 typedef struct te_list te_list;
@@ -304,7 +302,8 @@ class selspec
 	std::unordered_set<resdef *> defs;			/* the resources requested by this select spec*/
 	chunk **chunks;
 	selspec();
-	selspec(selspec&);
+	selspec(const selspec&);
+	selspec& operator=(const selspec&);
 	~selspec();
 };
 
@@ -539,7 +538,7 @@ class queue_info
 	int backfill_depth;		/* total allowable topjobs in this queue*/
 	char *partition;		/* partition to which queue belongs to */
 
-	queue_info(char *);
+	explicit queue_info(const char *);
 	queue_info(queue_info&, server_info *);
 	~queue_info();
 };
@@ -570,6 +569,7 @@ struct job_info
 
 	bool is_provisioning:1;	/* job is provisioning */
 	bool is_preempted:1;	/* job is preempted */
+	bool is_prerunning:1;		/* Job in prerunning substate */
 	bool topjob_ineligible:1;	/* Job is ineligible to be a top job */
 
 	char *job_name;			/* job name attribute (qsub -N) */
@@ -724,7 +724,7 @@ struct node_info
 	node_partition **np_arr;	/* array of node partitions node is in */
 	char *svr_inst_id;
 
-	node_info(const std::string& name);
+	explicit node_info(const std::string& name);
 	~node_info();
 };
 
@@ -816,7 +816,7 @@ class resource_resv
 	timed_event *run_event;		   /* run event in calendar */
 	timed_event *end_event;		   /* end event in calendar */
 
-	resource_resv(const std::string& rname);
+	explicit resource_resv(const std::string& rname);
 	~resource_resv();
 };
 
@@ -881,10 +881,10 @@ class resdef
 class prev_job_info
 {
 	public:
-	const std::string name;	/* name of job */
+	std::string name;	/* name of job */
 	std::string entity_name;	/* fair share entity of job */
 	resource_req *resused;	/* resources used by the job */
-	prev_job_info(const std::string& pname, char *ename, resource_req *rused);
+	prev_job_info(const std::string& pname, const std::string& ename, resource_req *rused);
 	prev_job_info(const prev_job_info &);
 	prev_job_info(prev_job_info &&) noexcept;
 	prev_job_info& operator=(const prev_job_info&);
@@ -912,23 +912,21 @@ struct resource_count
 /* global data types */
 
 /* fairshare head structure */
-struct fairshare_head
+class fairshare_head
 {
+	public:
 	group_info *root;			/* root of fairshare tree */
 	time_t last_decay;			/* last time tree was decayed */
+	fairshare_head();
+	fairshare_head(fairshare_head&);
+	fairshare_head& operator=(fairshare_head&);
+	~fairshare_head();
 };
 
-/* a path from the root to a group_info in the tree */
-struct group_path
+class group_info
 {
-	group_info *ginfo;
-	struct group_path *next;
-};
-
-
-struct group_info
-{
-	char *name;				/* name of user/group */
+	public:
+	const std::string name;				/* name of user/group */
 	int resgroup;				/* resgroup the group is in */
 	int cresgroup;				/* resgroup of the children of group */
 	int shares;				/* number of shares this group has */
@@ -944,11 +942,13 @@ struct group_info
 	usage_t temp_usage;			/* usage plus any temporary usage */
 	float usage_factor;			/* usage calculation taking parent's usage into account: number between 0 and 1 */
 
-	struct group_path *gpath;		/* path from the root of the tree */
+	std::vector<group_info *> gpath;	/* path from the root of the tree */
 
 	group_info *parent;			/* parent node */
 	group_info *sibling;			/* sibling node */
 	group_info *child;			/* child node */
+	group_info(const std::string& gname);
+	group_info(group_info&);
 };
 
 /**

@@ -183,11 +183,17 @@ class TestPbsnodes(TestFunctional):
         j.set_sleep_time(1)
         jid = self.server.submit(j)
         self.server.accounting_match("E;%s;" % jid)
-        prev = self.server.status(NODE, 'last_used_time')[0]['last_used_time']
+        if self.mom.is_cpuset_mom():
+            i = 1
+        else:
+            i = 0
+
+        prev = self.server.status(NODE, 'last_used_time')[i]['last_used_time']
         self.logger.info("Restarting server")
         self.server.restart()
         self.assertTrue(self.server.isUp(), 'Failed to restart Server Daemon')
-        now = self.server.status(NODE, 'last_used_time')[0]['last_used_time']
+
+        now = self.server.status(NODE, 'last_used_time')[i]['last_used_time']
         self.logger.info("Before: " + prev + ". After: " + now + ".")
         self.assertEqual(prev.strip(), now.strip(),
                          'Last used time mismatch after server restart')

@@ -128,4 +128,6 @@ extern char *cmp_aoename;
 
 extern fairshare_head *fstree;
 
+extern bool part_tolerance;
+
 #endif	/* _GLOBALS_H */

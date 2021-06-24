@@ -58,11 +58,6 @@ class TestPBSSnapshot(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
 
-        # Create a custom resource called 'ngpus'
-        # This will help us test parts of PBSSnapUtils which handle resources
-        attr = {"type": "long", "flag": "nh"}
-        self.server.manager(MGR_CMD_CREATE, RSC, attr, id="ngpus", sudo=True)
-
         # Check whether pbs_snapshot is accessible
         try:
             self.pbs_snapshot_path = os.path.join(

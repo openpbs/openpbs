@@ -75,7 +75,7 @@
 #include "resource.h"
 #include "pbs_internal.h"
 
-config::config() 
+config::config() : fairshare_res("cput"), fairshare_ent("euser")
 {
 	prime_rr = 0;
 	non_prime_rr = 0;
@@ -111,8 +111,6 @@ config::config()
 	prime_spill = 0;
 	nonprime_spill = 0;
 	decay_time = 86400;
-	fairshare_res = "cput";
-	fairshare_ent = "euser";
 	ignore_res.insert("mpiprocs");
 	ignore_res.insert("ompthreads");
 	memset(prime, 0, sizeof(prime));
@@ -161,18 +159,7 @@ parse_config(const char *fname)
 	FILE *fp;			/* file pointer to config file */
 	char *buf = NULL;
 	int buf_size = 0;
-	char errbuf[1024];		/* buffer for reporting errors */
-	char *config_name;		/* parse first word of line */
-	char *config_value;		/* parsed second word - right after colen (:) */
-	char *prime_value;		/* optional third word */
-	char *tok;			/* used with strtok() */
-	const char *obsolete[2];		/* used to log messages for obsolete params */
-	int num = -1;			/* used to convert string -> integer */
-	char *endp;			/* used for strtol() */
-	bool error = false;		/* boolean: is there an error? */
-	enum prime_time prime;		/* used to convert string -> prime value */
 	int linenum = 0;		/* the current line number in the file */
-	int i;
 
 	/* resource type for validity checking */
 	struct resource_type type;
@@ -198,26 +185,29 @@ parse_config(const char *fname)
 
 	/* auto-set any internally needed config values before reading the file */
 	while (pbs_fgets_extend(&buf, &buf_size, fp) != NULL) {
+		bool error = false;
+		const char *obsolete[2] = {0};
+		auto prime = PT_ALL;
+		char errbuf[1024];
 		errbuf[0] = '\0';
 		linenum++;
-		error = false;
-		obsolete[0] = obsolete[1] = NULL;
-		prime = PT_ALL;
-		num = -1;
 
 		/* skip blank lines and comments */
-		if (!error && !skip_line(buf)) {
-			config_name = scan(buf, ':');
-			config_value = scan(NULL, 0);
-			prime_value = scan(NULL, 0);
+		if (!skip_line(buf)) {
+			auto config_name = scan(buf, ':');
+			auto config_value = scan(NULL, 0);
+			auto prime_value = scan(NULL, 0);
+			char *endp;
 			if (config_name != NULL && config_value != NULL) {
+				long num = -1;
+				;
 				if (strcasecmp(config_value, "true") == 0) {
 					/* value is true */
 					num = 1;
 				} else if (strcasecmp(config_value, "false") == 0) {
 					/* value is false */
 					num = 0;
-				} else if (isdigit((int)config_value[0])) {
+				} else if (isdigit((int) config_value[0])) {
 					/* value is number */
 					num = strtol(config_value, &endp, 10);
 				}
@@ -419,7 +409,7 @@ parse_config(const char *fname)
 				else if (!strcmp(config_name, PARSE_NONPRIMETIME_PREFIX)) {
 					tmpconf.npt_prefix = config_value;
 				} else if (!strcmp(config_name, PARSE_SMP_CLUSTER_DIST)) {
-					for (i = 0; i < HIGH_SMP_DIST; i++)
+					for (int i = 0; i < HIGH_SMP_DIST; i++)
 						if (!strcmp(smp_cluster_info[i].str, config_value)) {
 							if (prime == PRIME || prime == PT_ALL)
 								tmpconf.prime_smp_dist = (enum smp_cluster_dist) smp_cluster_info[i].value;
@@ -438,7 +428,7 @@ parse_config(const char *fname)
 				} else if (!strcmp(config_name, PARSE_JOB_SORT_KEY)) {
 					sort_info si;
 
-					tok = strtok(config_value, DELIM);
+					auto tok = strtok(config_value, DELIM);
 
 					if (tok != NULL) {
 						si.res_name = tok;
@@ -480,7 +470,7 @@ parse_config(const char *fname)
 					}
 				} else if (!strcmp(config_name, PARSE_NODE_SORT_KEY)) {
 					sort_info si;
-					tok = strtok(config_value, DELIM);
+					auto tok = strtok(config_value, DELIM);
 
 					if (tok != NULL) {
 						si.res_name = tok;
@@ -538,13 +528,10 @@ parse_config(const char *fname)
 							pbs_strncpy(errbuf, "Invalid node_sort_key", sizeof(errbuf));
 					}
 				} else if (!strcmp(config_name, PARSE_SERVER_DYN_RES)) {
-					char *res;
-					char *command_line;
-					char *filename;
 					/* get the resource name */
-					tok = strtok(config_value, DELIM);
+					auto tok = strtok(config_value, DELIM);
 					if (tok != NULL) {
-						res = tok;
+						auto res = tok;
 
 						/* tok is the rest of the config_value string - the program */
 						tok = strtok(NULL, "");
@@ -553,8 +540,8 @@ parse_config(const char *fname)
 
 						if (tok != NULL && tok[0] == '!') {
 							tok++;
-							command_line = tok;
-							filename = get_script_name(tok);
+							auto command_line = tok;
+							auto filename = get_script_name(tok);
 							if (filename == NULL) {
 								snprintf(errbuf, sizeof(errbuf), "server_dyn_res script %s does not exist", tok);
 								error = true;
@@ -594,15 +581,12 @@ parse_config(const char *fname)
 					if (prime == NON_PRIME || prime == PT_ALL)
 						tmpconf.non_prime_node_sort.push_back(si);
 				} else if (!strcmp(config_name, PARSE_PEER_QUEUE)) {
-					const char *lqueue;
-					const char *rqueue;
-					const char *rserver;
-					lqueue = strtok(config_value, DELIM);
+					auto lqueue = strtok(config_value, DELIM);
 					if (lqueue != NULL) {
-						rqueue = strtok(NULL, "@");
+						auto rqueue = strtok(NULL, "@");
 						if (rqueue != NULL) {
 							while (isspace(*rqueue)) rqueue++;
-							rserver = strtok(NULL, DELIM);
+							const char *rserver = strtok(NULL, DELIM);
 							if (rserver == NULL)
 								rserver = "";
 							if (!error)
@@ -744,7 +728,6 @@ scan(char *str, char target)
 					 * passed in to str
 					 */
 	char *ptr;			/* pointer used to search through the str */
-	char quote;			/* pointer used to store the quote ' or " */
 	char *start;
 
 	if (str == NULL && isp == NULL)
@@ -765,7 +748,7 @@ scan(char *str, char target)
 
 	if (*ptr != '\0') {
 		if (*ptr == '\"' || *ptr == '\'') {
-			quote = *ptr;
+			auto quote = *ptr;
 			start = ++ptr;
 			while (*ptr != '\0' && *ptr != quote)
 				ptr++;
@@ -803,14 +786,13 @@ int
 preempt_bit_field(char *plist)
 {
 	int bitfield = 0;
-	int obitfield;
 	int i;
 	char *tok;
 
 	tok = strtok(plist, "+");
 
 	while (tok != NULL) {
-		obitfield = bitfield;
+		auto obitfield = bitfield;
 		for (i = 0; i < PREEMPT_HIGH; i++) {
 			if (!strcmp(preempt_prio_info[i].str, tok))
 				bitfield |= PREEMPT_TO_BIT(preempt_prio_info[i].value);

@@ -156,12 +156,6 @@ void update_node_on_run(nspec *ns, resource_resv *resresv, const char *job_state
 int node_queue_cmp(node_info *ninfo, void *arg);
 
 /*
- *      node_partition_cmp - used with node_filter to filter nodes attached to a
- *                           specific partition
- */
-int node_partition_cmp(node_info *ninfo, void *arg);
-
-/*
  *      update_node_on_end - update a node when a job ends
  */
 void update_node_on_end(node_info *ninfo, resource_resv *resresv, const char *job_state);
@@ -488,22 +482,6 @@ int is_exclhost(place *pl, enum vnode_sharing sharing);
 int alloc_rest_nodepart(nspec **nsa, node_info **ninfo_arr);
 
 /*
- *	set_res_on_host - set a resource on all the vnodes of a host
- *
- *	  res_name  - name of the res to set
- *	  res_value - value to set the res
- *	  host      - name of the host
- *	  exclude   - node to exclude from being set
- *	  ninfo_arr - array to search through
- *
- *	returns 1 on success 0 on error
- */
-int
-set_res_on_host(char *res_name, char *res_value,
-	char *host, node_info *exclude, node_info **ninfo_arr);
-
-
-/*
  *	can_fit_on_vnode - see if a chunk fit on one vnode in node list
  *
  *	  req - requested resources to compare to nodes
@@ -513,17 +491,6 @@ set_res_on_host(char *res_name, char *res_value,
  *		0: chunk can not fit / error
  */
 int can_fit_on_vnode(resource_req *req,  node_info **ninfo_arr);
-
-
-/*
- *      is_aoe_avail_on_vnode - it first finds if aoe is available in node's
- *                              available list
- *
- *      return : 0 if aoe not available on node
- *             : 1 if aoe available
- *
- */
-int is_aoe_avail_on_vnode(node_info *ninfo, resource_resv *resresv);
 
 /*
  *      is_eoe_avail_on_vnode - it first finds if eoe is available in node's
@@ -612,6 +579,8 @@ node_info **add_node_to_array(node_info **ninfo_arr, node_info *node);
 int add_event_to_nodes(timed_event *te, nspec **nspecs);
 
 int add_node_events(timed_event *te, void *arg1, void *arg2);
+
+struct batch_status *send_statvnode(int virtual_fd, char *id, struct attrl *attrib, char *extend);
 
 /*
  * Find a node by its hostname

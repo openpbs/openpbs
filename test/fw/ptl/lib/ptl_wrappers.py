@@ -2245,7 +2245,7 @@ class Wrappers(PBSService):
         :raises: PbsManagerError
         """
 
-        if cmd == MGR_CMD_DELETE and obj_type == NODE:
+        if cmd == MGR_CMD_DELETE and obj_type == NODE and id != '@default':
             for cmom, momobj in self.moms.items():
                 if momobj.is_cpuset_mom():
                     self.skipTest("Do not delete nodes on cpuset moms")
@@ -2254,7 +2254,7 @@ class Wrappers(PBSService):
                 id is not None and obj_type == NODE):
             for cmom, momobj in self.moms.items():
                 cpuset_nodes = []
-                if momobj.is_cpuset_mom():
+                if momobj.is_cpuset_mom() and attrib:
                     momobj.check_mem_request(attrib)
                     if len(attrib) == 0:
                         return True

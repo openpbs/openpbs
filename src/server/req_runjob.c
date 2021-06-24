@@ -303,7 +303,7 @@ need_to_run_elsewhere(struct batch_request *preq)
 		if ((pnode = find_alien_node(vname)))
 			svr_id = get_nattr_str(pnode, ND_ATR_server_inst_id);
 		else
-			send_nodestat_req();
+			send_nodestat_req(CACHE_MISS);
 	}
 
 	free(vname);
@@ -1405,7 +1405,7 @@ post_sendmom(struct work_task *pwt)
 		return;
 	}
 
-	DBPRT(("post_sendmom: %s substate is %d", jobp->ji_qs.ji_jobid, get_job_substate(jobp)))
+	DBPRT(("post_sendmom: %s substate is %ld", jobp->ji_qs.ji_jobid, get_job_substate(jobp)))
 
 	if (jobp->ji_prunreq)
 		jobp->ji_prunreq = NULL;	/* set in svr_strtjob2() */
@@ -1485,7 +1485,7 @@ post_sendmom(struct work_task *pwt)
 			r = SEND_JOB_HOOK_REJECT_DELETEJOB;
 			break;
 		case PBSE_SISCOMM:
-			send_nodestat_req();
+			send_nodestat_req(CACHE_MISS);
 		default:
 			r = SEND_JOB_FATAL;
 			break;

@@ -762,7 +762,6 @@ e.accept()
         else:
             self.server.expect(JOB, {ATTR_state: 'B'}, id=j_id)
 
-    @skipOnCpuSet
     def test_max_run_subjobs_basic(self):
         """
         Test that if a job is submitted with 'max_run_subjobs' attribute
@@ -770,7 +769,7 @@ e.accept()
         """
 
         a = {'resources_available.ncpus': 8}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        self.mom.create_vnodes(a, 1)
         j = Job(attrs={ATTR_J: '1-20%2'})
         j_id = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'B'}, id=j_id)
@@ -782,7 +781,6 @@ e.accept()
         msg = "Number of concurrent running subjobs limit reached"
         self.scheduler.log_match(j_id + ';' + msg)
 
-    @skipOnCpuSet
     def test_max_run_subjobs_calendar(self):
         """
         Test that if a job is submitted with 'max_run_subjobs' attribute
@@ -790,7 +788,7 @@ e.accept()
         """
 
         a = {'resources_available.ncpus': 8}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        self.mom.create_vnodes(a, 1)
         a = {'backfill_depth': '2'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.scheduler.set_sched_config({'strict_ordering': 'True'})
@@ -817,13 +815,12 @@ e.accept()
                                         fmt="%a %b %d %H:%M:%S %Y")
         self.assertAlmostEqual(stime + 300, est, 1)
 
-    @skipOnCpuSet
     def test_max_run_subjobs_queuejob_hook(self):
         """
         Test that a queuejob hook is able to set max_run_subjobs attribute.
         """
         a = {'resources_available.ncpus': 8}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        self.mom.create_vnodes(a, 1)
 
         self.create_max_run_subjobs_hook(3, "queuejob", "h1", self.qjh)
         j1 = Job(attrs={ATTR_J: '1-20'})
@@ -839,14 +836,13 @@ e.accept()
         self.assertIn("Attribute has to be set on an array job",
                       e.exception.msg[0])
 
-    @skipOnCpuSet
     def test_max_run_subjobs_modifyjob_hook(self):
         """
         Submit array job with large max_run_subjobs limit see if modifyjob
         modifies it.
         """
         a = {'resources_available.ncpus': 20}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        self.mom.create_vnodes(a, 1)
 
         self.create_max_run_subjobs_hook(3, "modifyjob", "h1", self.mjh)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
@@ -868,7 +864,6 @@ e.accept()
         self.assertIn("Attribute has to be set on an array job",
                       e.exception.msg[0])
 
-    @skipOnCpuSet
     def test_max_run_subjobs_preemption(self):
         """
         Submit array job with max_run_subjobs limit and see if such a job
@@ -881,7 +876,7 @@ e.accept()
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "wq2")
 
         a = {'resources_available.ncpus': 8}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        self.mom.create_vnodes(a, 1)
 
         a = {'Resource_List.select': 'ncpus=2'}
         j = Job(attrs=a)
@@ -896,14 +891,13 @@ e.accept()
         self.server.expect(JOB, {'job_state=R': 4}, extend='t')
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-    @skipOnCpuSet
     def test_max_run_subjobs_qrun(self):
         """
         Submit array job with max_run_subjobs limit and see if such a job
         is run using qrun, max_run_subjobs limit is ignored.
         """
         a = {'resources_available.ncpus': 8}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        self.mom.create_vnodes(a, 1)
 
         a = {'Resource_List.select': 'ncpus=2'}
         j = Job(attrs=a)
@@ -924,7 +918,6 @@ e.accept()
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=subjid_4)
 
-    @skipOnCpuSet
     def test_max_run_subjobs_suspend(self):
         """
         Submit array job with max_run_subjobs limit and see if such a job
@@ -933,7 +926,7 @@ e.accept()
         """
 
         a = {'resources_available.ncpus': 8}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        self.mom.create_vnodes(a, 1)
 
         a = {ATTR_J: '1-20%3', 'Resource_List.select': 'ncpus=2'}
         j_arr = Job(attrs=a)
@@ -948,7 +941,6 @@ e.accept()
         subjid_4 = j_arr.create_subjob_id(jid_arr, 4)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=subjid_4)
 
-    @skipOnCpuSet
     def test_max_run_subjobs_eligible_time(self):
         """
         Test that array jobs hitting max_run_subjobs limit still
@@ -956,7 +948,7 @@ e.accept()
         """
 
         a = {'resources_available.ncpus': 8}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        self.mom.create_vnodes(a, 1)
 
         a = {'eligible_time_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
@@ -990,7 +982,7 @@ e.accept()
                                 'bin', 'qsub')
 
         cmd = [qsub_cmd, '-J1-4%2', '-Wmax_run_subjobs=4', '--',
-               '/bin/sleep 100']
+               self.mom.sleep_cmd, '100']
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
         self.assertNotEqual(rv['rc'], 0, 'qsub must fail')
         msg = "qsub: multiple max_run_subjobs values found"

@@ -52,8 +52,6 @@
  * 	find_resource_resv()
  * 	find_resource_resv_by_indrank()
  * 	find_resource_resv_by_time()
- * 	find_resource_resv_func()
- * 	cmp_job_arrays()
  * 	is_resource_resv_valid()
  * 	dup_resource_req_list()
  * 	dup_resource_req()
@@ -217,7 +215,7 @@ free_resource_resv_array_chunk(th_data_free_resresv *data)
 static inline th_data_free_resresv *
 alloc_tdata_free_rr_arr(resource_resv **resresv_arr, int sidx, int eidx)
 {
-	th_data_free_resresv *tdata = NULL;
+	th_data_free_resresv *tdata;
 
 	tdata = static_cast<th_data_free_resresv *>(malloc(sizeof(th_data_free_resresv)));
 	if (tdata == NULL) {
@@ -398,7 +396,7 @@ static inline th_data_dup_resresv *
 alloc_tdata_dup_nodes(resource_resv **oresresv_arr, resource_resv **nresresv_arr, server_info *nsinfo,
 		queue_info *nqinfo, int sidx, int eidx)
 {
-	th_data_dup_resresv *tdata = NULL;
+	th_data_dup_resresv *tdata;
 
 	tdata = static_cast<th_data_dup_resresv *>(malloc(sizeof(th_data_dup_resresv)));
 	if (tdata == NULL) {
@@ -433,11 +431,8 @@ dup_resource_resv_array(resource_resv **oresresv_arr,
 	server_info *nsinfo, queue_info *nqinfo)
 {
 	resource_resv **nresresv_arr;
-	int i, j;
-	int chunk_size;
 	th_data_dup_resresv *tdata = NULL;
 	th_task_info *task = NULL;
-	int num_tasks;
 	int num_resresv;
 	int thread_job_ct_left;
 	int th_err = 0;
@@ -466,10 +461,11 @@ dup_resource_resv_array(resource_resv **oresresv_arr,
 			free(tdata);
 		}
 	} else { /* We are multithreading */
-		chunk_size = num_resresv / num_threads;
+		int num_tasks = 0;
+		int chunk_size = num_resresv / num_threads;
 		chunk_size = (chunk_size > MT_CHUNK_SIZE_MIN)? chunk_size: MT_CHUNK_SIZE_MIN;
 		chunk_size = (chunk_size < MT_CHUNK_SIZE_MAX)? chunk_size: MT_CHUNK_SIZE_MAX;
-		for (j = 0, num_tasks = 0; thread_job_ct_left > 0;
+		for (int j = 0; thread_job_ct_left > 0;
 				num_tasks++, j += chunk_size, thread_job_ct_left -= chunk_size) {
 			tdata = alloc_tdata_dup_nodes(oresresv_arr, nresresv_arr, nsinfo, nqinfo, j, j + chunk_size - 1);
 			if (tdata == NULL) {
@@ -485,13 +481,13 @@ dup_resource_resv_array(resource_resv **oresresv_arr,
 		}
 
 		/* Get results from worker threads */
-		for (i = 0; i < num_tasks;) {
+		for (int i = 0; i < num_tasks;) {
 			pthread_mutex_lock(&result_lock);
 			while (ds_queue_is_empty(result_queue))
 				pthread_cond_wait(&result_cond, &result_lock);
 			while (!ds_queue_is_empty(result_queue)) {
-				task = (th_task_info *) ds_dequeue(result_queue);
-				tdata = (th_data_dup_resresv *) task->thread_data;
+				task = static_cast<th_task_info *>(ds_dequeue(result_queue));
+				tdata = static_cast<th_data_dup_resresv *>(task->thread_data);
 				if (tdata->error)
 					th_err = 1;
 				free(tdata);
@@ -723,62 +719,6 @@ find_resource_resv_by_time(resource_resv **resresv_arr, const std::string& name,
 	}
 
 	return resresv_arr[i];
-}
-
-/**
- * @brief
- * 		find a resource resv by calling a caller provided comparison function
- *
- * @param[in]	resresv_arr - array of resource_resvs to search
- * @param[in]	fn int cmp_func(resource_resv *rl, void *cmp_arg)
- * @param[in]	cmp_arg - opaque argument for cmp_func()
- *
- * @return found resource_resv or NULL
- *
- */
-resource_resv *
-find_resource_resv_func(resource_resv **resresv_arr,
-	int (*cmp_func)(resource_resv*, void*), void *cmp_arg)
-{
-	int i;
-	if (resresv_arr == NULL || cmp_func == NULL || cmp_arg == NULL)
-		return NULL;
-
-	for (i = 0; resresv_arr[i] != NULL &&
-		cmp_func(resresv_arr[i], cmp_arg) == 0; i++)
-		;
-	return resresv_arr[i];
-}
-
-/**
- * @brief
- * 		function used by find_resource_resv_func to see if two subjobs are
- *	 	 part of the same job array (e.g., 1234[])
- *
- * @param[in]	resresv	-	resource_resv structure
- * @param[in]	arg	-	argument resource reservation.
- */
-int
-cmp_job_arrays(resource_resv *resresv, void *arg)
-{
-	resource_resv *argresv;
-
-	if (resresv == NULL || arg == NULL)
-		return 0;
-
-	argresv = (resource_resv *) arg;
-
-	if (resresv->job == NULL || argresv->job ==NULL)
-		return 0;
-
-	/* if one is not a subjob = no match */
-	if (resresv->job->array_id.empty() || argresv->job->array_id.empty())
-		return 0;
-
-	if (resresv->job->array_id == argresv->job->array_id)
-		return 1;
-
-	return 0;
 }
 
 /**
@@ -1391,11 +1331,11 @@ set_resource_req(resource_req *req, const char *val)
 void
 free_resource_req_list(resource_req *list)
 {
-	resource_req *resreq, *tmp;
+	resource_req *resreq;
 
 	resreq = list;
 	while (resreq != NULL) {
-		tmp = resreq;
+		auto tmp = resreq;
 		resreq = resreq->next;
 		free_resource_req(tmp);
 	}
@@ -1412,11 +1352,11 @@ free_resource_req_list(resource_req *list)
 void
 free_resource_count_list(resource_count *list)
 {
-	resource_count *rcount, *tmp;
+	resource_count *rcount;
 
 	rcount = list;
 	while (rcount != NULL) {
-		tmp = rcount;
+		auto tmp = rcount;
 		rcount = rcount->next;
 		free_resource_count(tmp);
 	}
@@ -1469,7 +1409,7 @@ compare_resource_req(resource_req *req1, resource_req *req2) {
 
 	if (req1 == NULL && req2 == NULL)
 		return 1;
-	else if (req1 == NULL || req1 == NULL)
+	else if (req1 == NULL || req2 == NULL)
 		return 0;
 
 	if (req1->type.is_consumable || req1->type.is_boolean)
@@ -1546,17 +1486,15 @@ compare_resource_req_list(resource_req *req1, resource_req *req2, std::unordered
 void
 update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 {
-	int ns_size;
 	queue_info *resv_queue;
 	int ret;
-	int i;
 
 	if (resresv == NULL || nspec_arr == NULL)
 		return;
 
 	if (resresv->is_job) {
 		if (resresv->job->is_suspended) {
-			for (ns_size = 0; nspec_arr[ns_size] != NULL; ns_size++)
+			for (int ns_size = 0; nspec_arr[ns_size] != NULL; ns_size++)
 				nspec_arr[ns_size]->ninfo->num_susp_jobs--;
 			if (resresv->job->resreleased != NULL) {
 				free_nspecs(resresv->job->resreleased);
@@ -1579,7 +1517,7 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 		resresv->job->accrue_type = JOB_RUNNING;
 
 		if (resresv->aoename != NULL) {
-			for (i = 0; nspec_arr[i] != NULL; i++) {
+			for (int i = 0; nspec_arr[i] != NULL; i++) {
 				if (nspec_arr[i]->go_provision) {
 					resresv->job->is_provisioning = 1;
 					break;
@@ -1592,7 +1530,7 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 			resresv->execselect = parse_selspec(selectspec);
 		}
 		if (resresv->job->dependent_jobs != NULL) {
-			for (i = 0; resresv->job->dependent_jobs[i] != NULL; i++) {
+			for (int i = 0; resresv->job->dependent_jobs[i] != NULL; i++) {
 				/* Mark all runone jobs as "can not run" */
 				resresv->job->dependent_jobs[i]->can_not_run = 1;
 			}
@@ -2099,7 +2037,7 @@ new_chunk()
  * @return	duplicate chunk array.
  */
 chunk **
-dup_chunk_array(chunk **old_chunk_arr)
+dup_chunk_array(const chunk * const *old_chunk_arr)
 {
 	int i;
 	int ct;
@@ -2142,7 +2080,7 @@ dup_chunk_array(chunk **old_chunk_arr)
  * @return	duplicate chunk structure.
  */
 chunk *
-dup_chunk(chunk *ochunk)
+dup_chunk(const chunk *ochunk)
 {
 	chunk *nchunk;
 
@@ -2250,12 +2188,21 @@ selspec::selspec()
  *
  * @param[in]	oldspec	-	old selspec to be copied
  */
-selspec::selspec(selspec& oldspec)
+selspec::selspec(const selspec& oldspec)
 {
 	total_chunks = oldspec.total_chunks;
 	total_cpus = oldspec.total_cpus;
 	chunks = dup_chunk_array(oldspec.chunks);
 	defs = oldspec.defs;
+}
+
+selspec& selspec::operator=(const selspec& oldspec)
+{
+	total_chunks = oldspec.total_chunks;
+	total_cpus = oldspec.total_cpus;
+	chunks = dup_chunk_array(oldspec.chunks);
+	defs = oldspec.defs;
+	return *this;
 }
 
 /**
@@ -2354,7 +2301,7 @@ compare_non_consumable(schd_resource *res, resource_req *req)
 	 * req:   *   res: TRUE_FALSE
 	 */
 	if (req->type.is_boolean) {
-		if (!req->amount  && res == NULL)
+		if (!req->amount && res == NULL)
 			return 1;
 		else if (req->amount && res == NULL)
 			return 0;

@@ -190,7 +190,6 @@ class TestCalendaring(TestFunctional):
         msg = jid3 + ';Job is a top job and will run at'
         self.scheduler.log_match(msg)
 
-    @skipOnCpuSet
     def test_topjob_bucket(self):
         """
         In this test we test that a bucket job will be calendared to start
@@ -199,7 +198,7 @@ class TestCalendaring(TestFunctional):
 
         self.scheduler.set_sched_config({'strict_ordering': 'true all'})
         a = {'resources_available.ncpus': 2}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        self.mom.create_vnodes(a, 1)
 
         res_req = {'Resource_List.select': '1:ncpus=1',
                    'Resource_List.walltime': 30}

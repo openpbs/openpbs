@@ -102,7 +102,7 @@ query_resources(int pbs_sd)
 	struct attrl *attrp;			/* iterate over resource fields */
 	std::unordered_map<std::string, resdef *> tmpres;
 
-	if ((bs = pbs_statrsc(pbs_sd, NULL, NULL, const_cast<char *>("p"))) == NULL) {
+	if ((bs = send_statrsc(pbs_sd, NULL, NULL, const_cast<char *>("p"))) == NULL) {
 		const char *errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";
@@ -115,28 +115,20 @@ query_resources(int pbs_sd)
 	for (cur_bs = bs; cur_bs != NULL; cur_bs = cur_bs->next) {
 		int flags = NO_FLAGS;
 		resource_type rtype;
-		char *endp;
-		resdef *def;
 
-		attrp = cur_bs->attribs;
-
-		while (attrp != NULL) {
+		for (attrp = cur_bs->attribs; attrp != NULL; attrp = attrp->next) {
+			char *endp;
+			
 			if (!strcmp(attrp->name, ATTR_RESC_TYPE)) {
 				int num = strtol(attrp->value, &endp, 10);
 				rtype = conv_rsc_type(num);
 			} else if (!strcmp(attrp->name, ATTR_RESC_FLAG)) {
 				flags = strtol(attrp->value, &endp, 10);
 			}
-			attrp = attrp->next;
 		}
-		def = new resdef(cur_bs->name, flags, rtype);
-		if (def == NULL) {
-			for (auto& d : tmpres)
-				delete d.second;
-			return {};
-		}
-		tmpres[def->name] = def;
+		tmpres[cur_bs->name] = new resdef(cur_bs->name, flags, rtype);
 	}
+	pbs_statfree(bs);
 
 	/**
 	 * @par Make sure all the well known resources are sent to us.
@@ -150,8 +142,6 @@ query_resources(int pbs_sd)
 			return {};
 		}
 	}
-
-	pbs_statfree(bs);
 
 	return tmpres;
 }
@@ -430,10 +420,9 @@ std::unordered_set<resdef *>
 resstr_to_resdef(const std::unordered_set<std::string>& resstr)
 {
 	std::unordered_set<resdef *> defs;
-	resdef *def;
 
 	for (const auto& str : resstr) {
-		def = find_resdef(str);
+		auto def = find_resdef(str);
 		if (def != NULL)
 			defs.insert(def);
 		else {
@@ -448,10 +437,9 @@ std::unordered_set<resdef *>
 resstr_to_resdef(const char * const* resstr)
 {
 	std::unordered_set<resdef *> defs;
-	resdef *def;
 
 	for (int i = 0; resstr[i] != NULL; i++) {
-		def = find_resdef(resstr[i]);
+		auto def = find_resdef(resstr[i]);
 		if (def != NULL)
 			defs.insert(def);
 		else {

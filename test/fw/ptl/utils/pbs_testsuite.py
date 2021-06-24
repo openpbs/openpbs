@@ -1575,7 +1575,8 @@ class PBSTestSuite(unittest.TestCase):
         if enabled_cpuset:
             time.sleep(4)
         a = {'state': 'free'}
-        self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+        self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname,
+                            runas=ROOT_USER)
         if enabled_cpuset:
             # In order to avoid intermingling CF/HK/PY file copies from the
             # create node and those caused by the following call, wait

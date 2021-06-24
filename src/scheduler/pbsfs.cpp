@@ -249,15 +249,15 @@ main(int argc, char *argv[])
 			}
 			switch (compare_path(ginfo->gpath, ginfo2->gpath)) {
 				case -1:
-					printf("%s\n", ginfo->name);
+					printf("%s\n", ginfo->name.c_str());
 					break;
 
 				case 0:
-					printf("%s == %s\n", ginfo->name, ginfo2->name);
+					printf("%s == %s\n", ginfo->name.c_str(), ginfo2->name.c_str());
 					break;
 
 				case 1:
-					printf("%s\n", ginfo2->name);
+					printf("%s\n", ginfo2->name.c_str());
 			}
 		}
 		else if (flags & FS_GET)
@@ -293,7 +293,6 @@ main(int argc, char *argv[])
 static void
 print_fairshare_entity(group_info *ginfo)
 {
-	struct group_path *gp;
 	printf(
 		"fairshare entity: %s\n"
 		"Resgroup		: %d\n"
@@ -303,7 +302,7 @@ print_fairshare_entity(group_info *ginfo)
 		"fairshare_tree_usage	: %f\n"
 		"usage			: %.0lf (%s)\n"
 		"usage/perc		: %.0lf\n",
-		ginfo->name,
+		ginfo->name.c_str(),
 		ginfo->resgroup,
 		ginfo->cresgroup,
 		ginfo->shares,
@@ -313,12 +312,12 @@ print_fairshare_entity(group_info *ginfo)
 		ginfo->tree_percentage == 0 ? -1 : ginfo->usage / ginfo->tree_percentage);
 
 	printf("Path from root: \n");
-	for (gp = ginfo->gpath; gp != NULL; gp = gp->next) {
+	for (const auto& gp : ginfo->gpath) {
 		printf("%-10s: %5d %10.0f / %5.3f = %.0f\n",
-			gp->ginfo->name, gp->ginfo->cresgroup,
-			gp->ginfo->usage, gp->ginfo->tree_percentage,
-			gp->ginfo->tree_percentage == 0 ? -1 :
-			gp->ginfo->usage / gp->ginfo->tree_percentage);
+			gp->name.c_str(), gp->cresgroup,
+			gp->usage, gp->tree_percentage,
+			gp->tree_percentage == 0 ? -1 :
+			gp->usage / gp->tree_percentage);
 	}
 }
 
@@ -343,11 +342,11 @@ print_fairshare(group_info *root, int level)
 		printf(
 			"%-10s: Grp: %-5d  cgrp: %-5d"
 			"Shares: %-6d Usage: %-6.0lf Perc: %6.3f%%\n",
-			root->name, root->resgroup, root->cresgroup, root->shares,
+			root->name.c_str(), root->resgroup, root->cresgroup, root->shares,
 			root->usage, (root->tree_percentage * 100));
 	}
 	else
-		printf("%*s%s(%d)\n", level, " ", root->name, root->cresgroup);
+		printf("%*s%s(%d)\n", level, " ", root->name.c_str(), root->cresgroup);
 
 	print_fairshare(root->child, level >= 0 ? level + 5 : -1);
 	print_fairshare(root->sibling, level);

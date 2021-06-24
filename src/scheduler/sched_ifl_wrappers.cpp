@@ -52,6 +52,30 @@
 
 
 /**
+ * @brief	Handle partition tolerance related issues
+ * 			Right now, just checks if pbs_errno was set to PBSE_NOSERVER and clears it if
+ * 			partition tolerance is on
+ *
+ * @param	ret	-	original return value of IFL
+ * @return	void *
+ * @retval	original return value of IFL if no error, or error is due to a server being down
+ * @retval	NULL if error or a server went down in the middle of the cycle
+ */
+static void *
+handle_part_tolerance(void *ret)
+{
+	if (got_sigpipe)
+		return NULL;
+
+	if (pbs_errno == PBSE_NOSERVER && part_tolerance) {
+		/* In partition tolerance mode, one/more servers can be down, so clear this error */
+		pbs_errno = PBSE_NONE;
+	}
+
+	return ret;
+}
+
+/**
  * @brief	Send the relevant runjob request to server
  *
  * @param[in]	virtual_sd	-	virtual sd for the cluster
@@ -153,7 +177,16 @@ send_attr_updates(int virtual_sd, resource_resv *resresv, struct attrl *pattr)
 preempt_job_info *
 send_preempt_jobs(int virtual_sd, char **preempt_jobs_list)
 {
-    return pbs_preempt_jobs(virtual_sd, preempt_jobs_list);
+	preempt_job_info *ret;
+
+    ret = pbs_preempt_jobs(virtual_sd, preempt_jobs_list);
+
+	if (handle_part_tolerance(ret) == NULL) {
+		free(ret);
+		return NULL;
+	}
+
+	return ret;
 }
 
 /**
@@ -164,14 +197,21 @@ send_preempt_jobs(int virtual_sd, char **preempt_jobs_list)
  * @param[in]	signal - the signal to send (e.g - "resume")
  * @param[in]	extend - extend data for signaljob
  *
- * @return	preempt_job_info *
- * @retval	return value of pbs_preempt_jobs
+ * @return	int
+ * @retval	0 for success, 1 for error
  */
 int
 send_sigjob(int virtual_sd, resource_resv *resresv, const char *signal, char *extend)
 {
-	return pbs_sigjob(get_svr_inst_fd(virtual_sd, resresv->svr_inst_id),
+	int ret = 0;
+
+	ret = pbs_sigjob(get_svr_inst_fd(virtual_sd, resresv->svr_inst_id),
 			  const_cast<char *>(resresv->name.c_str()), const_cast<char *>(signal), extend);
+
+	if (handle_part_tolerance(&ret) == NULL)
+		return 1;
+
+	return ret;
 }
 
 /**
@@ -190,6 +230,179 @@ send_sigjob(int virtual_sd, resource_resv *resresv, const char *signal, char *ex
 int
 send_confirmresv(int virtual_sd, resource_resv *resv, const char *location, unsigned long start, const char *extend)
 {
-	return pbs_confirmresv(get_svr_inst_fd(virtual_sd, resv->svr_inst_id),
+	int ret = 0;
+
+	ret = pbs_confirmresv(get_svr_inst_fd(virtual_sd, resv->svr_inst_id),
 		const_cast<char *>(resv->name.c_str()), const_cast<char *>(location), start, const_cast<char *>(extend));	
+
+	if (handle_part_tolerance(&ret) == NULL)
+		return 1;
+
+	return ret;
+}
+
+/**
+ * @brief	Wrapper for pbs_selstat
+ *
+ * @param[in] c - communication handle
+ * @param[in] attrib - pointer to attropl structure(selection criteria)
+ * @param[in] extend - extend string to encode req
+ * @param[in] rattrib - list of attributes to return
+ *
+ * @return	struct batch_status *
+ * @retval	list of queried jobs
+ * @retval	NULL for error
+ */
+struct batch_status *
+send_selstat(int virtual_fd, struct attropl *attrib, struct attrl *rattrib, char *extend)
+{
+	auto ret = pbs_selstat(virtual_fd, attrib, rattrib, extend);
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
+}
+
+/**
+ * @brief	Wrapper for pbs_statvnode
+ *
+ * @param[in] c - communication handle
+ * @param[in] id - object id
+ * @param[in] attrib - pointer to attribute list
+ * @param[in] extend - extend string for encoding req
+ *
+ * @return	struct batch_status *
+ * @retval	list of queried nodes
+ * @retval	NULL for error
+ */
+struct batch_status *
+send_statvnode(int virtual_fd, char *id, struct attrl *attrib, char *extend)
+{
+	auto ret = pbs_statvnode(virtual_fd, id, attrib, extend);
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
+}
+
+/**
+ * @brief	Wrapper for pbs_statsched
+ *
+ * @param[in] c - communication handle
+ * @param[in] attrib - pointer to attribute list
+ * @param[in] extend - extend string for encoding req
+ *
+ * @return	struct batch_status *
+ * @retval	list of queried scheds
+ * @retval	NULL for error
+ */
+struct batch_status *
+send_statsched(int virtual_fd, struct attrl *attrib, char *extend)
+{
+	auto ret = pbs_statsched(virtual_fd, attrib, extend);
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
+}
+
+/**
+ * @brief	Wrapper for pbs_statque
+ *
+ * @param[in] c - communication handle
+ * @param[in] id - object id
+ * @param[in] attrib - pointer to attribute list
+ * @param[in] extend - extend string for encoding req
+ *
+ * @return	struct batch_status *
+ * @retval	list of queried queues
+ * @retval	NULL for error
+ */
+struct batch_status *
+send_statqueue(int virtual_fd, char *id, struct attrl *attrib, char *extend)
+{
+	auto ret = pbs_statque(virtual_fd, id, attrib, extend);
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
+}
+
+/**
+ * @brief	Wrapper for pbs_statserver
+ *
+ * @param[in] c - communication handle
+ * @param[in] attrib - pointer to attribute list
+ * @param[in] extend - extend string for encoding req
+ *
+ * @return	struct batch_status *
+ * @retval	batch_status for server (aggregated in case of multi-server)
+ * @retval	NULL for error
+ */
+struct batch_status *
+send_statserver(int virtual_fd, struct attrl *attrib, char *extend)
+{
+	auto ret = pbs_statserver(virtual_fd, attrib, extend);
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
+}
+
+/**
+ * @brief	Wrapper for pbs_statrsc
+ *
+ * @param[in] c - communication handle
+ * @param[in] id - object id
+ * @param[in] attrib - pointer to attribute list
+ * @param[in] extend - extend string for encoding req
+ *
+ * @return	struct batch_status *
+ * @retval	list of resources
+ * @retval	NULL for error
+ */
+struct batch_status *
+send_statrsc(int virtual_fd, char *id, struct attrl *attrib, char *extend)
+{
+	auto ret = pbs_statrsc(virtual_fd, id, attrib, extend);
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
+}
+
+/**
+ * @brief	Wrapper for pbs_statresv
+ *
+ * @param[in] c - communication handle
+ * @param[in] id - object id
+ * @param[in] attrib - pointer to attribute list
+ * @param[in] extend - extend string for encoding req
+ *
+ * @return	struct batch_status *
+ * @retval	list of reservations
+ * @retval	NULL for error
+ */
+struct batch_status *
+send_statresv(int virtual_fd, char *id, struct attrl *attrib, char *extend)
+{
+	auto ret = pbs_statresv(virtual_fd, id, attrib, extend);
+	if (handle_part_tolerance(ret) == NULL) {
+		pbs_statfree(ret);
+		return NULL;
+	}
+
+	return ret;
 }

@@ -223,21 +223,20 @@ class PTLJsonData(object):
                         test_status = "FAIL"
                     m_sum = []
                     for i in range(len(m)):
-                        sum_mean = 0
+                        sum_mean = []
                         sum_std = []
                         sum_min = []
                         sum_max = []
                         record = []
                         if "test_measure" in m[i].keys():
                             if len(t_sum) > i:
-                                sum_mean = m[i]["test_data"]['mean'] + \
-                                    t_sum[i][0]
+                                sum_mean.extend(t_sum[i][0])
                                 sum_std.extend(t_sum[i][1])
                                 sum_min.extend(t_sum[i][2])
                                 sum_max.extend(t_sum[i][3])
                             else:
                                 measurements_data.append(m[i])
-                                sum_mean = m[i]["test_data"]['mean']
+                                sum_mean.append(m[i]["test_data"]['mean'])
                             sum_std.append(m[i]["test_data"]['mean'])
                             sum_min.append(m[i]["test_data"]['minimum'])
                             sum_max.append(m[i]["test_data"]['maximum'])
@@ -261,17 +260,30 @@ class PTLJsonData(object):
                             m_data['test_measure'] = measure
                             m_data['unit'] = measurements_data[i]['unit']
                             m_data['test_data'] = {}
-                            div = count
-                            m_data['test_data']['mean'] = t_sum[i][0] / div
                             if len(t_sum[i][1]) < 2:
-                                m_data['test_data']['std_dev'] = 0
+                                std_dev = 0
                             else:
                                 std_dev = statistics.stdev(t_sum[i][1])
-                                m_data['test_data']['std_dev'] = std_dev
+                            mean = statistics.mean(t_sum[i][1])
+                            lowv = mean - (std_dev * 2)
+                            uppv = mean + (std_dev * 2)
+                            new_list = [x for x in t_sum[i]
+                                        [1] if x > lowv and x < uppv]
+                            if len(new_list) == 0:
+                                new_list = t_sum[i][1]
+                            else:
+                                mean = statistics.mean(new_list)
+                                std_dev = statistics.stdev(new_list)
                             minimum = min(t_sum[i][2])
                             maximum = max(t_sum[i][3])
+                            m_data['test_data']['std_dev'] = std_dev
+                            m_data['test_data']['mean'] = mean
                             m_data['test_data']['minimum'] = minimum
                             m_data['test_data']['maximum'] = maximum
+                            m_data['test_data']['samples_considered'] = len(
+                                new_list)
+                            m_data['test_data']['total_samples'] = len(
+                                t_sum[i][1])
                         m_list.append(m_data)
                     m_avg['testsuites'][tsname]['testcases'][tcname] = m_list
         data_json["avg_measurements"] = m_avg

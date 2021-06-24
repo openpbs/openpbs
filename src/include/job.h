@@ -798,6 +798,7 @@ task_find	(job		*pjob,
  */
 #define JOB_SVFLG_AdmSuspd 0x200000 /* Job is suspended for maintenance */
 #define JOB_SVFLG_RescUpdt_Rqd 0x400000 /* Broadcast of rsc usage is required */
+#define JOB_SVFLG_AlienJob 0x800000 /* job is owned by another server in a msvr setup */
 
 #define MAIL_NONE  (int)'n'
 #define MAIL_ABORT (int)'a'

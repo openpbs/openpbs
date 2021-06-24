@@ -243,7 +243,7 @@ tinsert2(const u_long key1, const u_long key2, mominfo_t *momp, struct tree **ro
 	struct	tree	*q;
 
 	DBPRT(("tinsert2: %lu|%lu %s stream %d\n", key1, key2,
-		momp->mi_host, momp->mi_dmn_info->dmn_stream))
+		momp->mi_host, momp->mi_dmn_info ? momp->mi_dmn_info->dmn_stream : -1))
 
 	if (rootp == NULL)
 		return;
@@ -2418,6 +2418,7 @@ discard_job(job *pjob, char *txt, int noack)
 	struct pbsnode *pnode;
 	int	 rc;
 	int	 rver;
+	int	broadcast = 0;
 
 	/* We're about to discard the job, reply to a preemption.
 	 * This serves as a catch all just incase the code doesn't reply on its own.
@@ -2486,18 +2487,25 @@ discard_job(job *pjob, char *txt, int noack)
 				}
 				nmom++;
 			}
-		}
+		} else
+			broadcast = 1;
 		pn = parse_plus_spec(NULL, &rc);
 	}
+
+	/* Get run version of this job */
+	rver = get_jattr_long(pjob, JOB_ATR_run_version);
+
+	/* ask each peer server to handle discard job for its share of moms running the job */
+	if (broadcast && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_AlienJob))
+		ps_send_discard(pjob->ji_qs.ji_jobid,
+				get_jattr_str(pjob, JOB_ATR_exec_vnode),
+				get_jattr_str(pjob, JOB_ATR_exec_host), rver);
 
 	/* unless "noack", attach discard array to the job */
 	if (noack == 0)
 		pjob->ji_discard = pdsc;
 	else
 		pjob->ji_discard = NULL;
-
-	/* Get run vervion of this job */
-	rver = get_jattr_long(pjob, JOB_ATR_run_version);
 
 	/* Send discard message to each Mom that is up or mark the entry down */
 	for (i = 0; i < nmom; i++) {
@@ -6536,7 +6544,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			*/
 			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 				   pjob->ji_qs.ji_jobid, "Unknown node received");
-			send_nodestat_req();
+			send_nodestat_req(CACHE_MISS);
 			return PBSE_UNKNODE;
 		}
 
@@ -6612,7 +6620,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 						   presv->ri_qs.ri_resvID, "Unknown node %s received", vname);
 				free(execvncopy);
 				rc = PBSE_UNKNODE;
-				send_nodestat_req();
+				send_nodestat_req(CACHE_MISS);
 				goto end;
 			}
 
@@ -6704,7 +6712,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 							   pjob->ji_qs.ji_jobid, "Unknown node %s received", peh);
 						free(phowl);
 						free(execvncopy);
-						send_nodestat_req();
+						send_nodestat_req(CACHE_MISS);
 						return (PBSE_UNKNODE);
 					}
 					if ((phowl + ndindex)->hw_pnd->nd_moms)

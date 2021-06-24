@@ -318,6 +318,9 @@ log_msvr_stat()
 void
 update_msvr_stat(ulong val, msvr_stat_type_t type)
 {
+	if (type < 0 || type >= END_OF_STAT)
+		return;
+
 	msvr_stat.stat[type] += val;
 
 	log_msvr_stat();
@@ -612,8 +615,11 @@ connect_to_peersvr(void *psvr)
 	if (send_connect(psvr) < 0)
 		return -1;
 
-	if (resc_upd_reqd && svr_info->ps_pending_replies)
-		mcast_resc_update_all(psvr);
+	if (resc_upd_reqd) {
+		if (svr_info->ps_pending_replies)
+			mcast_resc_update_all(psvr);
+		send_nodestat_req(-1);
+	}
 
 	return 0;
 }
@@ -848,6 +854,46 @@ req_resc_update(int stream, pbs_list_head *ru_head, void *psvr)
 }
 
 /**
+ * @brief open a multicast fd for peer servers corresponds to execvnode
+ * 
+ * @param[in] exec_vnode - exec vnode
+ * 
+ * @return int
+ * @retval -1 : for failure
+ */
+int
+open_ps_mtfd_for_execvnode(char *exec_vnode)
+{
+	int mtfd = -1;
+	char *chunk;
+	int rc = 0;
+	char *noden;
+	int nelem;
+	struct key_value_pair *pkvp;
+	struct pbsnode *pnode;
+
+	for (chunk = parse_plus_spec(exec_vnode, &rc);
+	     chunk && !rc; chunk = parse_plus_spec(NULL, &rc)) {
+
+		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
+
+			if ((pnode = find_nodebyname(noden)))
+				continue;
+
+			if ((pnode = find_alien_node(noden)) == NULL) {
+				/* Broadcast when we dont have the node cache */
+				close_streams(mtfd, rc);
+				mtfd = open_ps_mtfd();
+				return mtfd;
+			} else
+				mcast_add(get_peersvr_from_svrid(get_nattr_str(pnode, ND_ATR_server_inst_id)), &mtfd, TRUE);
+		}
+	}
+
+	return mtfd;
+}
+
+/**
  * @brief open a multicast fd for all peer servers which are up
  * 
  * @return int
@@ -1027,6 +1073,10 @@ update_node_cache(int stream, struct batch_status *bstat)
 	clear_node_cache(psvr);
 
 	init_node_from_bstat(bstat, psvr);
+
+	/* Trigger default scheduler to schedule the job which has failed due
+	to missing vnode cache information */
+	set_scheduler_flag(SCH_SCHEDULE_NEW, dflt_scheduler);
 
 	return 0;
 }

@@ -2090,7 +2090,7 @@ class TestReservations(TestFunctional):
         jids = [jid1, jid2]
         for job in jids:
             self.server.expect(JOB, 'queue', op=UNSET, id=job)
-        exp_attrib = {'job_state': 'F', 'substate': '91'}
+        exp_attrib = {'job_state': 'F'}
         for jid in jids:
             self.server.expect(JOB, exp_attrib, id=jid, extend='x')
         # Verify all the PBS daemons are up and running upon resv completion
@@ -2446,22 +2446,24 @@ class TestReservations(TestFunctional):
         """
 
         self.common_config()
-
         a = {'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
-        start = int(time.time()) + 300
-        end = int(time.time()) + 1200
+        start1 = int(time.time()) + 3600
+        end1 = int(time.time()) + 7200
+        start2 = int(time.time()) + 1800
+        end2 = int(time.time()) + 5400
+
         srid = self.submit_reservation(user=TEST_USER,
                                        select='2:ncpus=4',
                                        rrule='FREQ=DAILY;COUNT=2',
-                                       start=start,
-                                       end=end)
+                                       start=start1,
+                                       end=end1)
 
         arid = self.submit_reservation(user=TEST_USER,
                                        select='2:ncpus=4',
-                                       start=start,
-                                       end=end)
+                                       start=start2,
+                                       end=end2)
         self.scheduler.run_scheduling_cycle()
         self.server.expect(RESV, {'reserve_state':
                                   (MATCH_RE, 'RESV_CONFIRMED|2')},

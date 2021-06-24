@@ -287,6 +287,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             previous_state = line_dict['v.state_hex']
             previous_lsct = line_dict['v.lsct']
 
+    @skipOnCpuSet
     def test_hook_state_changes_00(self):
         """
         Test: induce a variety of vnode state changes with debug turned on
@@ -342,7 +343,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             start_time = time.time()
             self.logger.debug("    ***offline mom:%s" % mom)
             self.server.manager(MGR_CMD_SET, NODE, {'state': (INCR,
-                                'offline')},
+                                                              'offline')},
                                 id=mom.shortname)
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
@@ -351,7 +352,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             start_time = time.time()
             self.logger.debug("    ***online mom:%s" % mom)
             self.server.manager(MGR_CMD_SET, NODE, {'state': (DECR,
-                                'offline')},
+                                                              'offline')},
                                 id=mom.shortname)
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
@@ -367,7 +368,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             }
             self.logger.debug("    ***reserve & release mom:%s" % mom)
             rid = self.server.submit(Reservation(ROOT_USER, attrs,
-                                     hosts=[mom.shortname]))
+                                                 hosts=[mom.shortname]))
             self.logger.debug("rid=%s" % rid)
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
@@ -442,6 +443,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                                       starttime=start_time)
         self.logger.debug("---- %s TEST ENDED ----" % get_method_name(self))
 
+    @skipOnCpuSet
     @tags('smoke')
     def test_hook_state_changes_01(self):
         """
@@ -485,6 +487,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
         self.logger.debug("---- %s TEST ENDED ----" % get_method_name(self))
 
+    @skipOnCpuSet
     def test_hook_state_changes_02(self):
         """
         Test:  stop and start the pbs server; look for proper log messages

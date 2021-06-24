@@ -247,10 +247,10 @@ is_timed(event_ptr_t *event_ptr)
 	if (event_ptr == NULL)
 		return 0;
 
-	if (((resource_resv *) event_ptr)->start == UNSPECIFIED)
+	if ((static_cast<resource_resv *>(event_ptr))->start == UNSPECIFIED)
 		return 0;
 
-	if (((resource_resv *) event_ptr)->end  == UNSPECIFIED)
+	if ((static_cast<resource_resv *>(event_ptr))->end  == UNSPECIFIED)
 		return 0;
 
 	return 1;
@@ -300,7 +300,6 @@ next_event(server_info *sinfo, int advance)
 	timed_event *te;
 	timed_event *pe;
 	event_list *calendar;
-	event_func_t func;
 
 	if (sinfo == NULL || sinfo->calendar == NULL)
 		return NULL;
@@ -326,6 +325,8 @@ next_event(server_info *sinfo, int advance)
 			if (te == NULL ||
 				(*calendar->current_time <= sinfo->policy->prime_status_end &&
 				sinfo->policy->prime_status_end < te->event_time)) {
+				event_func_t func;
+
 				if (sinfo->policy->is_prime)
 					func = (event_func_t) init_non_prime_time;
 				else
@@ -586,13 +587,13 @@ perform_event(status *policy, timed_event *event)
 
 	switch (event->event_type) {
 		case TIMED_END_EVENT:	/* event_ptr type: (resource_resv *) */
-			resresv = (resource_resv *) event->event_ptr;
+			resresv = static_cast<resource_resv *>(event->event_ptr);
 			update_universe_on_end(policy, resresv, "X", NO_ALLPART);
 
 			sprintf(logbuf, "%s end point", resresv->is_job ? "job":"reservation");
 			break;
 		case TIMED_RUN_EVENT:	/* event_ptr type: (resource_resv *) */
-			resresv = (resource_resv *) event->event_ptr;
+			resresv = static_cast<resource_resv *>(event->event_ptr);
 			if (sim_run_update_resresv(policy, resresv, NULL, NO_ALLPART) <= 0) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 					event->name, "Simulation: Event failed to be run");
@@ -658,25 +659,6 @@ exists_run_event(event_list *calendar, time_t end)
 }
 
 /**
- * @brief
- * 		returns 1 if there is a run event before the end time on a node
- * @param[in]	ninfo - the node to check for
- * @param[in]	search between now and end
- */
-int
-exists_run_event_on_node(node_info *ninfo, time_t end)
-{
-	if (ninfo == NULL || ninfo->node_events == NULL)
-		return 0;
-
-	/* node_events contains an ordered list of run events.  We only have the check the first one */
-	if (ninfo->node_events->event->event_time < end)
-		return 1;
-
-	return 0;
-}
-
-/**
  * @brief finds if there is a reservation run event between now and 'end'
  * @param[in] calendar - the calendar to search
  * @param[in] end - when to stop searching
@@ -701,7 +683,7 @@ exists_resv_event(event_list *calendar, time_t end)
 	for (te = te_list; te != NULL && te->event_time <= end;
 		te = find_next_timed_event(te, 0, TIMED_RUN_EVENT)) {
 		if (te->event_type == TIMED_RUN_EVENT) {
-			resource_resv *resresv = (resource_resv *)te->event_ptr;
+			resource_resv *resresv = static_cast<resource_resv *>(te->event_ptr);
 			if(resresv->is_resv)
 				return 1;
 		}
@@ -739,7 +721,6 @@ calc_run_time(const std::string& name, server_info *sinfo, int flags)
 	schd_error *err = NULL;
 	timed_event *te_start;
 	timed_event *te_end;
-	int desc;
 	nspec **ns = NULL;
 	unsigned int ok_flags = NO_ALLPART;
 	queue_info *qinfo = NULL;
@@ -771,7 +752,7 @@ calc_run_time(const std::string& name, server_info *sinfo, int flags)
 		 * because it's being simulated/updated in simulate_events()
 		 */
 
-		desc = describe_simret(ret);
+		auto desc = describe_simret(ret);
 		if (desc > 0 || (desc == 0 && policy_change_info(sinfo, resresv))) {
 			clear_schd_error(err);
 			ns = is_ok_to_run(sinfo->policy, sinfo, qinfo, resresv, ok_flags, err);
@@ -1313,7 +1294,7 @@ find_event_ptr(timed_event *ote, server_info *nsinfo)
 	switch (ote->event_type) {
 		case TIMED_RUN_EVENT:
 		case TIMED_END_EVENT:
-			oep = (resource_resv *) ote->event_ptr;
+			oep = static_cast<resource_resv *>(ote->event_ptr);
 			if (oep->is_resv)
 				event_ptr =
 					find_resource_resv_by_time(nsinfo->all_resresv,
@@ -1339,7 +1320,7 @@ find_event_ptr(timed_event *ote, server_info *nsinfo)
 		case TIMED_NODE_DOWN_EVENT:
 		case TIMED_NODE_UP_EVENT:
 			event_ptr = find_node_info(nsinfo->nodes,
-				((node_info*)(ote->event_ptr))->name);
+				static_cast<node_info*>(ote->event_ptr)->name);
 			break;
 		default:
 			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__,
@@ -1401,9 +1382,9 @@ free_timed_event(timed_event *te)
 		return;
 	if (te->event_ptr != NULL) {
 		if (te->event_type & TIMED_RUN_EVENT)
-			((resource_resv *)te->event_ptr)->run_event = NULL;
+			static_cast<resource_resv *>(te->event_ptr)->run_event = NULL;
 		if (te->event_type & TIMED_END_EVENT)
-			((resource_resv *)te->event_ptr)->end_event = NULL;
+			static_cast<resource_resv *>(te->event_ptr)->end_event = NULL;
 	}
 
 	delete te;
@@ -1616,9 +1597,9 @@ create_event(enum timed_event_types event_type,
 	te->event_func_arg = event_func_arg;
 
 	if (event_type & TIMED_RUN_EVENT)
-		((resource_resv *)event_ptr)->run_event = te;
+		static_cast<resource_resv *>(event_ptr)->run_event = te;
 	if (event_type & TIMED_END_EVENT)
-		((resource_resv *)event_ptr)->end_event = te;
+		static_cast<resource_resv *>(event_ptr)->end_event = te;
 
 	if (determine_event_name(te) == 0) {
 		free_timed_event(te);
@@ -1654,7 +1635,7 @@ determine_event_name(timed_event *te)
 	switch (te->event_type) {
 		case TIMED_RUN_EVENT:
 		case TIMED_END_EVENT:
-			te->name = ((resource_resv*) te->event_ptr)->name;
+			te->name = static_cast<resource_resv*>(te->event_ptr)->name;
 			break;
 		case TIMED_POLICY_EVENT:
 			name = policy_change_to_str(te);
@@ -1671,7 +1652,7 @@ determine_event_name(timed_event *te)
 			break;
 		case TIMED_NODE_UP_EVENT:
 		case TIMED_NODE_DOWN_EVENT:
-			te->name = ((node_info*) te->event_ptr)->name;
+			te->name = static_cast<node_info*>(te->event_ptr)->name;
 			break;
 		default:
 			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
@@ -1731,19 +1712,16 @@ dedtime_change(status *policy, void  *arg)
 int
 add_dedtime_events(event_list *elist, status *policy)
 {
-	timed_event *te_start;
-	timed_event *te_end;
-
 	if (elist == NULL)
 		return 0;
 
 
 	for (const auto& dt : conf.ded_time) {
-		te_start = create_event(TIMED_DED_START_EVENT, dt.from, policy, (event_func_t) dedtime_change, (void *) DEDTIME_START);
+		auto te_start = create_event(TIMED_DED_START_EVENT, dt.from, policy, (event_func_t) dedtime_change, (void *) DEDTIME_START);
 		if (te_start == NULL)
 			return 0;
 
-		te_end = create_event(TIMED_DED_END_EVENT, dt.to, policy, (event_func_t) dedtime_change, (void *) DEDTIME_END);
+		auto te_end = create_event(TIMED_DED_END_EVENT, dt.to, policy, (event_func_t) dedtime_change, (void *) DEDTIME_END);
 		if (te_end == NULL) {
 			free_timed_event(te_start);
 			return 0;
@@ -1790,11 +1768,9 @@ simulate_resmin(schd_resource *reslist, time_t end, event_list *calendar,
 
 	schd_resource *cur_res;
 	schd_resource *cur_resmin;
-	resource_req *req;
 	schd_resource *res;
 	schd_resource *resmin = NULL;
 	timed_event *te;
-	resource_resv *resresv;
 	unsigned int event_mask = (TIMED_RUN_EVENT | TIMED_END_EVENT);
 
 	if (reslist == NULL)
@@ -1826,12 +1802,10 @@ simulate_resmin(schd_resource *reslist, time_t end, event_list *calendar,
 	for (te = find_init_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask);
 		te != NULL && (end == 0 || te->event_time < end);
 		te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
-		resresv = (resource_resv *) te->event_ptr;
+		auto resresv = static_cast<resource_resv *>(te->event_ptr);
 		if (incl_arr == NULL || find_resource_resv_by_indrank(incl_arr, -1, resresv->rank) !=NULL) {
 			if (resresv != exclude) {
-				req = resresv->resreq;
-
-				for (; req != NULL; req = req->next) {
+				for (auto req = resresv->resreq; req != NULL; req = req->next) {
 					if (req->type.is_consumable) {
 						cur_res = find_alloc_resource(res, req->def);
 
@@ -1904,7 +1878,6 @@ policy_change_to_str(timed_event *te)
 int
 policy_change_info(server_info *sinfo, resource_resv *resresv)
 {
-	int i;
 	status *policy;
 
 	if (sinfo == NULL || sinfo->policy == NULL)
@@ -1948,21 +1921,21 @@ policy_change_info(server_info *sinfo, resource_resv *resresv)
 
 	if (sinfo->queues != NULL) {
 		if (policy->is_ded_time && sinfo->has_ded_queue) {
-			for (i = 0; sinfo->queues[i] != NULL; i++) {
+			for (int i = 0; sinfo->queues[i] != NULL; i++) {
 				if (sinfo->queues[i]->is_ded_queue &&
 					sinfo->queues[i]->jobs !=NULL)
 					return 1;
 			}
 		}
 		if (policy->is_prime == PRIME && sinfo->has_prime_queue) {
-			for (i = 0; sinfo->queues[i] != NULL; i++) {
+			for (int i = 0; sinfo->queues[i] != NULL; i++) {
 				if (sinfo->queues[i]->is_prime_queue &&
 					sinfo->queues[i]->jobs !=NULL)
 					return 1;
 			}
 		}
 		if (policy->is_prime == NON_PRIME && sinfo->has_nonprime_queue) {
-			for (i = 0; sinfo->queues[i] != NULL; i++) {
+			for (int i = 0; sinfo->queues[i] != NULL; i++) {
 				if (sinfo->queues[i]->is_nonprime_queue &&
 					sinfo->queues[i]->jobs !=NULL)
 					return 1;

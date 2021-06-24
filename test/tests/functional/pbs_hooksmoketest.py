@@ -54,7 +54,7 @@ class TestHookSmokeTest(TestFunctional):
 
         self.script = []
         self.script += ['echo Hello World\n']
-        self.script += ['/bin/sleep 30\n']
+        self.script += ['%s 30\n' % (self.mom.sleep_cmd)]
         if self.du.get_platform() == "cray" or \
            self.du.get_platform() == "craysim":
             self.script += ['aprun -b -B /bin/sleep 10']

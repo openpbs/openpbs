@@ -580,7 +580,8 @@ class Server(Wrappers):
         Remove all the nodes from PBS
         """
         try:
-            self.manager(MGR_CMD_DELETE, VNODE, id="@default")
+            self.manager(MGR_CMD_DELETE, VNODE, id="@default",
+                         runas=ROOT_USER)
         except PbsManagerError as e:
             if "Unknown node" not in e.msg[0]:
                 raise
@@ -2255,7 +2256,7 @@ class Server(Wrappers):
                 try:
                     fs_info = self.schedulers[
                         self.dflt_sched_name
-                    ].query_fairshare(
+                    ].fairshare.query_fairshare(
                         name=job[entity])
                     if fs_info is not None and 'TREEROOT' in fs_info.perc:
                         f_value['fair_share_perc'] = \

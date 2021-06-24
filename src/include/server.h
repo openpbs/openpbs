@@ -238,7 +238,7 @@ int connect_to_peersvr(void *);
 bool is_peersvr(void *);
 void mcast_resc_usage(psvr_ru_t *, int);
 int open_ps_mtfd(void);
-void send_nodestat_req(void);
+void send_nodestat_req(enum msvr_stats_type);
 void req_peer_svr_ack(int);
 void *pending_ack_svr(void);
 psvr_ru_t *init_psvr_ru(job *, int, char *, bool);
@@ -254,6 +254,8 @@ void clean_saved_rsc(void*);
 int process_status_reply(int);
 void *get_peersvr_from_svrid(char *);
 void update_msvr_stat(unsigned long, msvr_stat_type_t);
+int ps_send_discard(char *, char *, char *, int);
+int open_ps_mtfd_for_execvnode(char *);
 
 /* end of multi-svr functions */
 

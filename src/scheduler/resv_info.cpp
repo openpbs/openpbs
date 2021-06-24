@@ -101,13 +101,10 @@ struct batch_status *
 stat_resvs(int pbs_sd)
 {
 	struct batch_status *resvs;
-	/* used for pbs_geterrmsg() */
-	const char *errmsg;
-
 	/* get the reservation info from the PBS server */
-	if ((resvs = pbs_statresv(pbs_sd, NULL, NULL, NULL)) == NULL) {
+	if ((resvs = send_statresv(pbs_sd, NULL, NULL, NULL)) == NULL) {
 		if (pbs_errno) {
-			errmsg = pbs_geterrmsg(pbs_sd);
+			const char *errmsg = pbs_geterrmsg(pbs_sd);
 			if (errmsg == NULL)
 				errmsg = "";
 			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_NOTICE, "resv_info",
@@ -194,7 +191,6 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 		int ignore_resv = 0;
 		clear_schd_error(err);
 		struct attrl	*attrp = NULL;
-		resource_resv **jobs_in_reservations;
 		/* Check if this reservation belongs to this scheduler */
 		for (attrp = cur_resv->attribs; attrp != NULL; attrp = attrp->next) {
 			if (strcmp(attrp->name, ATTR_partition) == 0) {
@@ -366,7 +362,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 						}
 					}
 				}
-				jobs_in_reservations = resource_resv_filter(resresv->resv->resv_queue->jobs,
+				auto jobs_in_reservations = resource_resv_filter(resresv->resv->resv_queue->jobs,
 									    count_array(resresv->resv->resv_queue->jobs),
 									    check_running_job_in_reservation, NULL, 0);
 				collect_jobs_on_nodes(resresv->resv->resv_nodes, jobs_in_reservations,
@@ -402,19 +398,17 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 		if (resresv->resv->is_standing &&
 			(resresv->resv->resv_state != RESV_UNCONFIRMED)) {
 			resource_resv *resresv_ocr = NULL; /* the occurrence's resource_resv */
-			char *execvnodes_seq = NULL; /* confirmed execvnodes sequence string */
+			char *execvnodes_seq; /* confirmed execvnodes sequence string */
 			char **execvnode_ptr = NULL;
 			char **tofree = NULL;
 			resource_resv **tmp = NULL;
 			time_t dtstart;
-			time_t next;
 			char *rrule = NULL;
 			char *tz = NULL;
-			struct tm* loc_time;
 			char start_time[128];
 			int count = 0;
 			int occr_count; /* occurrences count as reported by execvnodes_seq */
-			int occr_idx = 1; /* the occurrence index of a standing reservation */
+			int occr_idx; /* the occurrence index of a standing reservation */
 			int degraded_idx; /* index corrected to account for reconfirmation */
 
 			/* occr_idx refers to the soonest occurrence to run or currently running
@@ -501,7 +495,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 				 * The last argument (j+1) indicates the occurrence index from dtstart
 				 * starting at 1. Returns dtstart if it's an advance reservation.
 				 */
-				next = get_occurrence(rrule, dtstart, tz, j + 1);
+				auto next = get_occurrence(rrule, dtstart, tz, j + 1);
 
 				/* Duplicate the "master" resv only for subsequent occurrences */
 				if (j == 0)
@@ -571,7 +565,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 				resresv_arr[idx++] = resresv_ocr;
 				resresv_arr[idx] = NULL;
 
-				loc_time = localtime(&resresv_ocr->start);
+				auto loc_time = localtime(&resresv_ocr->start);
 				strftime(start_time, sizeof(start_time), "%Y%m%d-%H:%M:%S", loc_time);
 
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_DEBUG, resresv->name,
@@ -765,15 +759,13 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 	 *
 	 */
 	if (advresv->resv->select_orig != NULL) {
-		int i;
 		int j = 0;
-		int sel_orig_num, sel_num;
 		char *sel_orig_str, *sel_str;
-		sel_num = strtol(advresv->select->chunks[j]->str_chunk, &sel_str, 10);
+		auto sel_num = strtol(advresv->select->chunks[j]->str_chunk, &sel_str, 10);
 
-		for (i = 0; advresv->resv->select_orig->chunks[i] != NULL; i++) {
+		for (int i = 0; advresv->resv->select_orig->chunks[i] != NULL; i++) {
 			chunk *chk = advresv->resv->select_orig->chunks[i];
-			sel_orig_num = strtol(chk->str_chunk, &sel_orig_str, 10);
+			auto sel_orig_num = strtol(chk->str_chunk, &sel_orig_str, 10);
 			if (strcmp(sel_orig_str, sel_str) == 0 && sel_num <= sel_orig_num) {
 				advresv->select->chunks[j++]->seq_num = chk->seq_num;
 				if (advresv->select->chunks[j] != NULL)
@@ -1182,27 +1174,20 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 								nresv_copy->select = new selspec(*nresv_copy->resv->select_standing);
 							}
 						}
-						/* Duplication deep-copies node info array. This array gets
-						 * overwritten and needs to be freed. This is an alternative
-						 * to creating another duplication function that only duplicates
-						 * the required fields.
-						 */
-						release_nodes(nresv_copy);
-
-						nresv_copy->resv->orig_nspec_arr = parse_execvnode(occr_execvnodes_arr[j], sinfo, nresv_copy->select);
-						nresv_copy->nspec_arr = combine_nspec_array(nresv_copy->resv->orig_nspec_arr);
-						nresv_copy->ninfo_arr = create_node_array_from_nspec(nresv_copy->nspec_arr);
-						nresv_copy->resv->resv_nodes = create_resv_nodes(nresv_copy->nspec_arr, sinfo);
 					}
+					release_nodes(nresv_copy);
+
+					nresv_copy->resv->orig_nspec_arr = parse_execvnode(occr_execvnodes_arr[j], sinfo, nresv_copy->select);
+					nresv_copy->nspec_arr = combine_nspec_array(nresv_copy->resv->orig_nspec_arr);
+					nresv_copy->ninfo_arr = create_node_array_from_nspec(nresv_copy->nspec_arr);
+					nresv_copy->resv->resv_nodes = create_resv_nodes(nresv_copy->nspec_arr, sinfo);
 
 					/* Note that the sequence of occurrence dates and time are determined
 					 * during confirm_reservation and set to the reservation in the
 					 * simulated server
 					 */
 					nresv_copy->start = nresv->resv->occr_start_arr[j];
-
-					/* update start time, duration, and execvnodes of the occurrence */
-					nresv_copy->end = nresv_copy->start + nresv_copy->duration ;
+					nresv_copy->end = nresv_copy->start + nresv_copy->duration;
 
 					/* Only add the occurrence to the real universe if we are not
 					 * processing a degraded reservation as otherwise, the resources
@@ -1359,12 +1344,11 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 {
 	time_t sim_time;			/* time in simulation */
 	unsigned int simrc = TIMED_NOEVENT;	/* ret code from simulate_events() */
-	schd_error *err = NULL;
+	schd_error *err;
 	int pbsrc = 0;				/* return code from pbs_confirmresv() */
 	enum resv_conf rconf = RESV_CONFIRM_SUCCESS; /* assume reconf success */
 	char logmsg[MAX_LOG_SIZE];
 	char logmsg2[MAX_LOG_SIZE];
-	const char *errmsg;
 
 	nspec **ns = NULL;
 	resource_resv *nresv = unconf_resv;
@@ -1374,11 +1358,9 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 	resource_resv *nresv_parent = nresv;	/* the "original" / parent reservation */
 
 	int confirmd_occr = 0;			/* the number of confirmed occurrence(s) */
-	int j, cur_count;
+	int cur_count;
 
-	int tot_vnodes = 0;			/* total number of vnodes associated to the reservation */
 	int vnodes_down = 0;			/* the number of vnodes that are down */
-	char names_of_down_vnodes[MAXVNODELIST] = "";  /* the list of down vnodes */
 
 	/* resv_start_time is used both for calculating the time of an ASAP
 	 * reservation and to keep track of the start time of the first occurrence
@@ -1445,8 +1427,9 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 	 * be added to the server info such that the duplicated server info has up to
 	 * date information.
 	 */
-	for (j = 0, cur_count = 0; j < occr_count && rconf == RESV_CONFIRM_SUCCESS;
-		j++, cur_count = j) {
+	cur_count = 0;
+	for (int j = 0; j < occr_count && rconf == RESV_CONFIRM_SUCCESS;
+	     j++, cur_count = j) {
 		/* Get the start time of the next occurrence.
 		 * See call to same function in query_reservations for a more in-depth
 		 * description.
@@ -1649,7 +1632,6 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 	/* Finished simulating occurrences now time to confirm if ok. Currently
 	 * the confirmation is an all or nothing process but may come to change. */
 	if (confirmd_occr == occr_count) {
-		char confirm_msg[LOG_BUF_SIZE] = {0};
 		/* We either confirm a standing or advance reservation, the standing
 		 * has a special sequence of execvnodes while the advance has a single
 		 * execvnode. The sequence of execvnodes is created by concatenating
@@ -1664,6 +1646,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG, nresv_parent->name, "Invalid execvnode_seq while confirming reservation");
 			rconf = RESV_CONFIRM_RETRY;
 		} else {
+			char confirm_msg[LOG_BUF_SIZE] = {0};
 
 			log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
 				"Confirming %d Occurrences", occr_count);
@@ -1698,7 +1681,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
 				"PBS Failed to confirm resv: %s", logmsg);
 		else {
-			errmsg = pbs_geterrmsg(pbs_sd);
+			const char *errmsg = pbs_geterrmsg(pbs_sd);
 			if (errmsg == NULL)
 				errmsg = "";
 			log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
@@ -1709,8 +1692,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		if (nresv_parent->resv->resv_substate == RESV_DEGRADED) {
 			if (vnodes_down >= 0)
 				log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
-					"Reservation is in degraded mode, %d out of %d vnodes are unavailable; %s",
-					vnodes_down, tot_vnodes, names_of_down_vnodes);
+					"Reservation is in degraded mode");
 
 			/* we failed to confirm the degraded reservation but we still need to
 			 * set the remaining occurrences start time to avoid looking at them
@@ -1904,9 +1886,9 @@ ralter_reduce_chunks(resource_resv *resv)
 				return -1;
 
 		} else {
-			int tot_num_chunks = 0;
 			int chk_diff = chks_orig[i]->num_chunks - chks[j]->num_chunks;
 			if (chk_diff > 0) {
+				int tot_num_chunks = 0;
 				/* First remove nodes that are unavailable */
 				num_chks = ralter_remove_nodes(resv, start_of_chunk, chks_orig[i]->seq_num, chk_diff, -1);
 				if (num_chks == -1)
@@ -2098,12 +2080,12 @@ create_resv_nodes(nspec **nspec_arr, server_info *sinfo)
 	node_info **nodes = NULL;
 	schd_resource *res;
 	resource_req *req;
-	int i;
 
 	if (nspec_arr != NULL) {
+		int i;
 		for (i = 0; nspec_arr[i] != NULL; i++)
 			;
-		nodes = static_cast<node_info **>(malloc((i+1) * sizeof(node_info *)));
+		nodes = static_cast<node_info **>(malloc((i + 1) * sizeof(node_info *)));
 		if (nodes != NULL) {
 			for (i = 0; nspec_arr[i] != NULL; i++) {
 				/* please note - the new duplicated nodes will NOT be part
@@ -2143,29 +2125,6 @@ create_resv_nodes(nspec **nspec_arr, server_info *sinfo)
 }
 
 /**
- * @brief end a running reservation on its nodes.  This is used so we can assign
- * 		them back to a running reservation when reconfirming it.
- *
- * @param[in] resv - the reservation
- * @param[in] all_nodes - The server's nodes list
- *
- * @return void
- */
-void
-end_resv_on_nodes(resource_resv *resv, node_info **all_nodes)
-{
-	node_info **resv_nodes = NULL;
-	node_info *ninfo = NULL;
-	int i;
-
-	resv_nodes = resv->ninfo_arr;
-	for (i = 0; resv_nodes[i] != NULL; i++) {
-		ninfo = find_node_by_indrank(all_nodes, resv_nodes[i]->node_ind, resv_nodes[i]->rank);
-		update_node_on_end(ninfo, resv, NULL);
-	}
-}
-
-/**
  * @brief - adjust resources on nodes belonging to a reservation that is
  *	    running and is either degraded or being altered.  We need to free
  * 	    the resources on these nodes so the resources are available for
@@ -2179,16 +2138,12 @@ end_resv_on_nodes(resource_resv *resv, node_info **all_nodes)
 void
 release_running_resv_nodes(resource_resv *resv, server_info *sinfo)
 {
-	int i = 0;
-	node_info **resv_nodes = NULL;
-	node_info *ninfo = NULL;
-
 	if (resv == NULL || sinfo == NULL )
 		return;
 	if (resv->resv->is_running && (resv->resv->resv_substate == RESV_DEGRADED || resv->resv->resv_state == RESV_BEING_ALTERED)) {
-		resv_nodes = resv->ninfo_arr;
-		for (i = 0; resv_nodes[i] != NULL; i++) {
-			ninfo = find_node_by_indrank(sinfo->nodes, resv_nodes[i]->node_ind, resv_nodes[i]->rank);
+		auto resv_nodes = resv->ninfo_arr;
+		for (int i = 0; resv_nodes[i] != NULL; i++) {
+			auto ninfo = find_node_by_indrank(sinfo->nodes, resv_nodes[i]->node_ind, resv_nodes[i]->rank);
 			update_node_on_end(ninfo, resv, NULL);
 		}
 		sinfo->pset_metadata_stale = 1;

@@ -121,7 +121,7 @@ class TestOfflineVnode(TestFunctional):
             elif nd.is_cpuset_mom() is True:
                 vnl = self.server.status(NODE)
                 vlist = [x['id'] for x in vnl if x['id'] !=
-                         vn.shortname]
+                         self.mom.shortname]
             else:
                 vlist = [vn + "[0]", vn + "[1]"]
             for v1 in vlist:

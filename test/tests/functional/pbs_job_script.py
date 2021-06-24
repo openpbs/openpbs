@@ -58,7 +58,7 @@ class TestPbsJobScript(TestFunctional):
 
         scr = []
         scr += [selstr + '\n']
-        scr += ['/bin/sleep 100\n']
+        scr += ['%s 100\n' % (self.mom.sleep_cmd)]
 
         j = Job()
         j.create_script(scr)

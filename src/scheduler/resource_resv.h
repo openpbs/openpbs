@@ -296,12 +296,12 @@ chunk *new_chunk();
 /*
  *	dup_chunk_array - array copy constructor for array of chunk ptrs
  */
-chunk **dup_chunk_array(chunk **old_chunk_arr);
+chunk **dup_chunk_array(const chunk * const *old_chunk_arr);
 
 /*
  *	dup_chunk - copy constructor for chunk
  */
-chunk *dup_chunk(chunk *ochunk);
+chunk *dup_chunk(const chunk *ochunk);
 
 /*
  *	free_chunk_array - array destructor for array of chunk ptrs
@@ -312,28 +312,6 @@ void free_chunk_array(chunk **chunk_arr);
  *	free_chunk - destructor for chunk
  */
 void free_chunk(chunk *ch);
-
-/*
- *
- * find a resource resv by calling a caller provided comparison function
- *
- *	resresv_arr - array of resource_resvs to search
- *	int cmp_func(resource_resv *rl, void *cmp_arg)
- *	cmp_arg - opaque argument for cmp_func()
- *
- * return found resource_resv or NULL
- *
- */
-resource_resv *
-find_resource_resv_func(resource_resv **resresv_arr,
-	int (*cmp_func)(resource_resv*, void*), void *cmp_arg);
-/*
- *
- * function used by find_resource_resv_func to see if two subjobs are
- * part of the same job array (e.g., 1234[])
- *
- */
-int cmp_job_arrays(resource_resv *resresv, void *arg);
 
 /*
  * create_resource_req - create a new resource_req

@@ -174,7 +174,8 @@ class Test_RootOwnedScript(TestFunctional):
         # Job script
         test = []
         test += ['#PBS -l select=ncpus=1\n']
-        test += ['%s -j $PBS_JOBID -P -s /bin/sleep 30\n' % pbs_attach]
+        test += ['%s -j $PBS_JOBID -P -s %s 30\n' %
+                 (pbs_attach, self.mom.sleep_cmd)]
 
         # Submit a job
         j = Job(ROOT_USER)
