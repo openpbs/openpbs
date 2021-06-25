@@ -440,6 +440,21 @@ class TestMaintenanceReservations(TestFunctional):
                     'reserve_substate': 2}
         self.server.expect(RESV, exp_attr, id=rid1)
 
+    def get_reg_expr(self, _mom, _host):
+        """
+        This function forms the match string based on cpuset mom
+        """
+        if _mom.is_cpuset_mom():
+            n = self.server.status(NODE)
+            cpuset_nodes = [i['id'] for i in n if i['Mom'] == _mom.hostname]
+            reg_str = '\(%s\[0\]:ncpus=[0-9]+\)' % _host
+            if (len(cpuset_nodes) - 1) > 1:
+                for i in range(1, len(cpuset_nodes)-1):
+                    reg_str += '\+' + '\(%s\[%s\]:ncpus=[0-9]+\)' % (_host, i)
+        else:
+            reg_str = "\(%s:ncpus=[0-9]+\)" % _host
+        return reg_str
+
     @requirements(num_moms=2)
     def test_maintenance_two_hosts(self):
         """
@@ -447,29 +462,26 @@ class TestMaintenanceReservations(TestFunctional):
         Test the crafted resv_nodes, select, and place.
         Two moms (-p "servers=M1,moms=M1:M2") are needed for this test.
         """
-        if len(self.moms) != 2:
-            cmt = "need 2 mom hosts: -p servers=<m1>,moms=<m1>:<m2>"
-            self.skip_test(reason=cmt)
-
-        now = int(time.time())
-
-        self.server.manager(MGR_CMD_SET, SERVER,
-                            {'managers': '%s@*' % TEST_USER})
-
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
+        self.hostA = self.momA.shortname
+        self.hostB = self.momB.shortname
+        reg_expr_hostA = self.get_reg_expr(self.momA, self.hostA)
+        reg_expr_hostB = self.get_reg_expr(self.momB, self.hostB)
 
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'managers': (INCR, '%s@*' % TEST_USER)})
+        now = int(time.time())
         a = {'reserve_start': now + 900,
              'reserve_end': now + 5400}
-        h = [self.momA.shortname, self.momB.shortname]
+        h = [self.hostA, self.hostB]
         r = Reservation(TEST_USER, attrs=a, hosts=h)
 
         rid = self.server.submit(r)
 
-        possibility1 = "\(%s:ncpus=[0-9]+\)\+\(%s:ncpus=[0-9]+\)" \
-                       % (self.momA.shortname, self.momB.shortname)
-        possibility2 = "\(%s:ncpus=[0-9]+\)\+\(%s:ncpus=[0-9]+\)" \
-                       % (self.momB.shortname, self.momA.shortname)
+        possibility1 = reg_expr_hostA + '\+' + reg_expr_hostB
+        possibility2 = reg_expr_hostB + '\+' + reg_expr_hostA
+
         resv_nodes_re = "%s|%s" % (possibility1, possibility2)
 
         possibility1 = "host=%s:ncpus=[0-9]+\+host=%s:ncpus=[0-9]+" \
@@ -493,12 +505,6 @@ class TestMaintenanceReservations(TestFunctional):
         reservations. Test if the jobs will run on correct nodes.
         Two moms (-p "servers=M1,moms=M1:M2") are needed for this test.
         """
-        if len(self.moms) != 2:
-            cmt = "need 2 mom hosts: -p servers=<m1>,moms=<m1>:<m2>"
-            self.skip_test(reason=cmt)
-
-        now = int(time.time())
-
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'managers': (INCR, '%s@*' % TEST_USER)})
         self.server.manager(MGR_CMD_SET, SERVER,
@@ -506,7 +512,15 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
+        self.hostA = self.momA.shortname
+        self.hostB = self.momB.shortname
 
+        if self.momA.is_cpuset_mom():
+            self.hostA += '[0]'
+        if self.momB.is_cpuset_mom():
+            self.hostB += '[0]'
+
+        now = int(time.time())
         a1 = {'Resource_List.select': '1:ncpus=1',
               'reserve_start': now + 60,
               'reserve_end': now + 7200}
@@ -514,7 +528,7 @@ class TestMaintenanceReservations(TestFunctional):
         rid1 = self.server.submit(r1)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
-                    'resv_nodes': '(%s:ncpus=1)' % self.momA.shortname}
+                    'resv_nodes': (EQ, '(%s:ncpus=1)' % self.hostA)}
         self.server.expect(RESV, exp_attr, id=rid1)
 
         a2 = {'reserve_start': now + 60,
@@ -525,7 +539,7 @@ class TestMaintenanceReservations(TestFunctional):
         rid2 = self.server.submit(r2)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
-                    'resv_nodes': '(%s:ncpus=1)' % self.momB.shortname}
+                    'resv_nodes': (EQ, '(%s:ncpus=1)' % self.hostB)}
         self.server.expect(RESV, exp_attr, id=rid1)
 
         a = {'Resource_List.select': '1:ncpus=1',
@@ -552,11 +566,11 @@ class TestMaintenanceReservations(TestFunctional):
         self.server.expect(RESV, exp_attr, id=rid2)
 
         exp_attr = {'job_state': 'R',
-                    'exec_vnode': "(%s:ncpus=1)" % self.momB.shortname}
+                    'exec_vnode': "(%s:ncpus=1)" % self.hostB}
         self.server.expect(JOB, exp_attr, id=jid1)
 
         exp_attr = {'job_state': 'R',
-                    'exec_vnode': "(%s:ncpus=1)" % self.momA.shortname}
+                    'exec_vnode': "(%s:ncpus=1)" % self.hostA}
         self.server.expect(JOB, exp_attr, id=jid2)
 
     @requirements(num_moms=2)
