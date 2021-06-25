@@ -152,7 +152,7 @@ scheduling_cycle_bare(int sd, const sched_cmd *cmd)
 	update_cycle_status(cstat, 0);
 
 	/* create the server / queue / job / node structures */
-	if ((sinfo = query_server(&cstat, sd)) == NULL) {
+	if ((sinfo = query_universe(&cstat, sd)) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			  "", "Problem with creating server data structure");
 		end_cycle_tasks(sinfo);

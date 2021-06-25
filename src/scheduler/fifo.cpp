@@ -277,7 +277,7 @@ update_cycle_status(status& policy, time_t current_time)
 				"It is %s.  It will end at <UNKNOWN>", primetime);
 	}
 
-	// Will be set in query_server()
+	// Will be set in query_universe()
 	policy.resdef_to_check_no_hostvnode.clear();
 	policy.resdef_to_check_noncons.clear();
 	policy.resdef_to_check_rassn.clear();
@@ -293,7 +293,7 @@ update_cycle_status(status& policy, time_t current_time)
  * 		prep the scheduling cycle.  Do tasks that have to happen prior
  *		to the consideration of the first job.  This includes any
  *		periodic upkeep (like fairshare), or any prep to the queried
- *		data that needed to happen post query_server() (like preemption)
+ *		data that needed to happen post query_universe() (like preemption)
  *
  * @param[in]	policy	-	policy info
  * @param[in]	pbs_sd		connection descriptor to pbs_server
@@ -606,7 +606,7 @@ scheduling_cycle(int sd, const sched_cmd *cmd)
 	do_hard_cycle_interrupt = 0;
 #endif /* localmod 030 */
 	/* create the server / queue / job / node structures */
-	if ((sinfo = query_server(&cstat, sd)) == NULL) {
+	if ((sinfo = query_universe(&cstat, sd)) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			  "", "Problem with creating server data structure");
 		end_cycle_tasks(sinfo);
