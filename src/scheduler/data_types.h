@@ -431,19 +431,19 @@ struct server_info
 	 */
 	int preempt_count[NUM_PPRIO + 1];
 
-	counts *group_counts;		/* group resource and running counts */
-	counts *project_counts;		/* project resource and running counts */
-	counts *user_counts;		/* user resource and running counts */
-	counts *alljobcounts;		/* overall resource and running counts */
+	counts_map group_counts;		/* group resource and running counts */
+	counts_map project_counts;		/* project resource and running counts */
+	counts_map user_counts;		/* user resource and running counts */
+	counts_map alljobcounts;		/* overall resource and running counts */
 
 	/*
 	 * Resource/Run counts list to store counts for all jobs which
 	 * are running/queued/suspended.
 	 */
-	counts *total_group_counts;
-	counts *total_project_counts;
-	counts *total_user_counts;
-	counts *total_alljobcounts;
+	counts_map total_group_counts;
+	counts_map total_project_counts;
+	counts_map total_user_counts;
+	counts_map total_alljobcounts;
 
 	node_partition **nodepart;	/* array pointers to node partitions */
 	int num_parts;			/* number of node partitions(node_group_key) */
@@ -516,18 +516,18 @@ class queue_info
 	resource_resv **jobs;		/* array of jobs that reside in queue */
 	resource_resv **running_jobs;	/* array of jobs in the running state */
 	node_info **nodes;		/* array of nodes associated with the queue */
-	counts *group_counts;		/* group resource and running counts */
-	counts *project_counts;		/* project resource and running counts */
-	counts *user_counts;		/* user resource and running counts */
-	counts *alljobcounts;		/* overall resource and running counts */
+	counts_map group_counts;		/* group resource and running counts */
+	counts_map project_counts;		/* project resource and running counts */
+	counts_map user_counts;		/* user resource and running counts */
+	counts_map alljobcounts;		/* overall resource and running counts */
 	/*
 	 * Resource/Run counts list to store counts for all jobs which
 	 * are running/queued/suspended.
 	 */
-	counts *total_group_counts;
-	counts *total_project_counts;
-	counts *total_user_counts;
-	counts *total_alljobcounts;
+	counts_map total_group_counts;
+	counts_map total_project_counts;
+	counts_map total_user_counts;
+	counts_map total_alljobcounts;
 
 	char **node_group_key;		/* node grouping resources */
 	struct node_partition **nodepart; /* array pointers to node partitions */
@@ -690,8 +690,8 @@ struct node_info
 
 	int priority;			/* node priority */
 
-	counts *group_counts;		/* group resource and running counts */
-	counts *user_counts;		/* user resource and running counts */
+	counts_map group_counts;	/* group resource and running counts */
+	counts_map user_counts;		/* user resource and running counts */
 
 	int max_running;		/* max number of jobs on the node */
 	int max_user_run;		/* max number of jobs running by a user */
@@ -893,15 +893,13 @@ class prev_job_info
 class counts
 {
 	public:
-	char *name;			/* name of entitiy */
+	std::string name;		/* name of entitiy */
 	int running;			/* count of running jobs in object */
 	int soft_limit_preempt_bit;	/* Place to store preempt bit if entity is over limits */
 	resource_count *rescts;		/* resources used */
-	counts *next;
 	counts(const std::string &);
-	counts(const char *);
 	counts(const counts &);
-	counts& operator=(const counts&);
+	counts& operator=(const counts &);
 	~counts();
 };
 

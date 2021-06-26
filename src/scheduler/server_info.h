@@ -255,7 +255,7 @@ void free_counts(counts *cts);
 /*
  *      free_counts_list - free a list of counts structures
  */
-void free_counts_list(counts *ctslist);
+void free_counts_list(counts_map &ctslist);
 
 /*
  *      dup_counts - duplicate a counts structure
@@ -263,22 +263,20 @@ void free_counts_list(counts *ctslist);
 counts *dup_counts(counts *octs);
 
 /*
- *      dup_counts_list - duplicate a counts list
+ *	dup_counts_map - duplicate counts_map
  */
-counts *dup_counts_list(counts *ctslist);
+counts_map dup_counts_map (counts_map &omap);
 
 /*
  *      find_counts - find a counts structure by name
  */
-counts *find_counts(counts *ctslist, const char *name);
-counts *find_counts(counts *ctslist, std::string &name);
+counts *find_counts(counts_map &ctslist, const std::string &name);
 
 /*
  *      find_alloc_counts - find a counts structure by name or allocate a new
  *                          counts, name it, and add it to the end of the list
  */
-counts *find_alloc_counts(counts *ctslist, const char *name);
-counts *find_alloc_counts(counts *ctslist, std::string &name);
+counts *find_alloc_counts(counts_map &ctslist, const std::string &name);
 
 /*
  *      update_counts_on_run - update a counts struct on the running of a job
@@ -296,13 +294,14 @@ void update_counts_on_end(counts *cts, resource_req *resreq);
  *			max, we free the old, and dup the new and attach it
  *			in.
  *
- *	  \param cmax    - current max
+ *	  \param cmax    - current max that will be updated.
  *	  \param new     - new counts lists.  If anything in this list is
  *			   greater than the cur_max, it needs to be dup'd.
  *
- *	  returns the new max or NULL on error
+ *	  returns void
  */
-counts *counts_max(counts *cmax, counts *ncounts);
+void counts_max(counts_map &cmax, counts_map &ncounts);
+void counts_max(counts_map &cmax, counts *ncounts);
 
 /*
  *      check_run_job - function used by resource_resv_filter to filter out

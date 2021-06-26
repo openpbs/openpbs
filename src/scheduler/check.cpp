@@ -1386,15 +1386,15 @@ dynamic_avail(schd_resource *res)
  * @return	resource amount
  */
 sch_resource_t
-find_counts_elm(counts *cts_list, const std::string &name, resdef *rdef, counts **cnt, resource_count **rcount)
+find_counts_elm(counts_map &cts_list, const std::string &name, resdef *rdef, counts **cnt, resource_count **rcount)
 {
 	resource_count *res_lim;
 	counts *cts;
 
-	if (cts_list == NULL || name == empty_str)
+	if (name == empty_str)
 		return 0;
 
-	if ((cts = find_counts(cts_list, name.c_str())) != NULL) {
+	if ((cts = find_counts(cts_list, name)) != NULL) {
 		if (cnt != NULL)
 			*cnt = cts;
 		if (rdef == NULL)

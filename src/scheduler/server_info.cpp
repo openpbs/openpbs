@@ -81,7 +81,7 @@
  * 	free_counts()
  * 	free_counts_list()
  * 	dup_counts()
- * 	dup_counts_list()
+ * 	dup_counts_map()
  * 	find_counts()
  * 	find_alloc_counts()
  * 	update_counts_on_run()
@@ -346,32 +346,22 @@ query_server(status *pol, int pbs_sd)
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		counts *allcts;
-		allcts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
-		if (sinfo->alljobcounts == NULL)
-			sinfo->alljobcounts = allcts;
+		allcts = find_alloc_counts(sinfo->alljobcounts, std::string(PBS_ALL_ENTITY));
 		job_arrays_associated = TRUE;
 		/* set the user, group , project counts */
 		for (int i = 0; sinfo->running_jobs[i] != NULL; i++) {
 			cts = find_alloc_counts(sinfo->user_counts,
 						sinfo->running_jobs[i]->user);
-			if (sinfo->user_counts == NULL)
-				sinfo->user_counts = cts;
 
 			update_counts_on_run(cts, sinfo->running_jobs[i]->resreq);
 
 			cts = find_alloc_counts(sinfo->group_counts,
 						sinfo->running_jobs[i]->group);
 
-			if (sinfo->group_counts == NULL)
-				sinfo->group_counts = cts;
-
 			update_counts_on_run(cts, sinfo->running_jobs[i]->resreq);
 
 			cts = find_alloc_counts(sinfo->project_counts,
 						sinfo->running_jobs[i]->project);
-
-			if (sinfo->project_counts == NULL)
-				sinfo->project_counts = cts;
 
 			update_counts_on_run(cts, sinfo->running_jobs[i]->resreq);
 
@@ -1043,22 +1033,14 @@ free_server_info(server_info *sinfo)
 		sinfo->unassoc_nodes = NULL;
 	else if (sinfo->unassoc_nodes != NULL)
 		free(sinfo->unassoc_nodes);
-	if (sinfo->alljobcounts != NULL)
-		free_counts_list(sinfo->alljobcounts);
-	if (sinfo->group_counts != NULL)
-		free_counts_list(sinfo->group_counts);
-	if (sinfo->project_counts != NULL)
-		free_counts_list(sinfo->project_counts);
-	if (sinfo->user_counts != NULL)
-		free_counts_list(sinfo->user_counts);
-	if (sinfo->total_alljobcounts != NULL)
-		free_counts_list(sinfo->total_alljobcounts);
-	if (sinfo->total_group_counts != NULL)
-		free_counts_list(sinfo->total_group_counts);
-	if (sinfo->total_project_counts != NULL)
-		free_counts_list(sinfo->total_project_counts);
-	if (sinfo->total_user_counts != NULL)
-		free_counts_list(sinfo->total_user_counts);
+	free_counts_list(sinfo->alljobcounts);
+	free_counts_list(sinfo->group_counts);
+	free_counts_list(sinfo->project_counts);
+	free_counts_list(sinfo->user_counts);
+	free_counts_list(sinfo->total_alljobcounts);
+	free_counts_list(sinfo->total_group_counts);
+	free_counts_list(sinfo->total_project_counts);
+	free_counts_list(sinfo->total_user_counts);
 	if (sinfo->nodepart != NULL)
 		free_node_partition_array(sinfo->nodepart);
 	if (sinfo->allpart)
@@ -1216,14 +1198,6 @@ new_server_info(int limallocflag)
 	sinfo->nodes = NULL;
 	sinfo->unassoc_nodes = NULL;
 	sinfo->resvs = NULL;
-	sinfo->alljobcounts = NULL;
-	sinfo->group_counts = NULL;
-	sinfo->project_counts = NULL;
-	sinfo->user_counts = NULL;
-	sinfo->total_alljobcounts = NULL;
-	sinfo->total_group_counts = NULL;
-	sinfo->total_project_counts = NULL;
-	sinfo->total_user_counts = NULL;
 	sinfo->nodepart = NULL;
 	sinfo->allpart = NULL;
 	sinfo->hostsets = NULL;
@@ -1742,31 +1716,15 @@ update_server_on_run(status *policy, server_info *sinfo,
 			update_total_counts(sinfo, NULL , resresv, SERVER);
 
 			cts = find_alloc_counts(sinfo->group_counts, resresv->group);
-
-			if (sinfo->group_counts == NULL)
-				sinfo->group_counts = cts;
-
 			update_counts_on_run(cts, resresv->resreq);
 
 			cts = find_alloc_counts(sinfo->project_counts, resresv->project);
-
-			if (sinfo->project_counts == NULL)
-				sinfo->project_counts = cts;
-
 			update_counts_on_run(cts, resresv->resreq);
 
 			cts = find_alloc_counts(sinfo->user_counts, resresv->user);
-
-			if (sinfo->user_counts == NULL)
-				sinfo->user_counts = cts;
-
 			update_counts_on_run(cts, resresv->resreq);
 
-			auto allcts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
-
-			if (sinfo->alljobcounts == NULL)
-				sinfo->alljobcounts = allcts;
-
+			auto allcts = find_alloc_counts(sinfo->alljobcounts, std::string(PBS_ALL_ENTITY));
 			update_counts_on_run(allcts, resresv->resreq);
 		}
 	}
@@ -1874,7 +1832,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 			if (cts != NULL)
 				update_counts_on_end(cts, resresv->resreq);
 
-			cts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
+			cts = find_alloc_counts(sinfo->alljobcounts, std::string(PBS_ALL_ENTITY));
 
 			if (cts != NULL)
 				update_counts_on_end(cts, resresv->resreq);
@@ -2223,14 +2181,14 @@ dup_server_info(server_info *osinfo)
 	nsinfo->liminfo = lim_dup_liminfo(osinfo->liminfo);
 	nsinfo->server_time = osinfo->server_time;
 	nsinfo->res = dup_resource_list(osinfo->res);
-	nsinfo->alljobcounts = dup_counts_list(osinfo->alljobcounts);
-	nsinfo->group_counts = dup_counts_list(osinfo->group_counts);
-	nsinfo->project_counts = dup_counts_list(osinfo->project_counts);
-	nsinfo->user_counts = dup_counts_list(osinfo->user_counts);
-	nsinfo->total_alljobcounts = dup_counts_list(osinfo->total_alljobcounts);
-	nsinfo->total_group_counts = dup_counts_list(osinfo->total_group_counts);
-	nsinfo->total_project_counts = dup_counts_list(osinfo->total_project_counts);
-	nsinfo->total_user_counts = dup_counts_list(osinfo->total_user_counts);
+	nsinfo->alljobcounts = dup_counts_map(osinfo->alljobcounts);
+	nsinfo->group_counts = dup_counts_map(osinfo->group_counts);
+	nsinfo->project_counts = dup_counts_map(osinfo->project_counts);
+	nsinfo->user_counts = dup_counts_map(osinfo->user_counts);
+	nsinfo->total_alljobcounts = dup_counts_map(osinfo->total_alljobcounts);
+	nsinfo->total_group_counts = dup_counts_map(osinfo->total_group_counts);
+	nsinfo->total_project_counts = dup_counts_map(osinfo->total_project_counts);
+	nsinfo->total_user_counts = dup_counts_map(osinfo->total_user_counts);
 	nsinfo->node_group_key = dup_string_arr(osinfo->node_group_key);
 	nsinfo->nodesigs = dup_string_arr(osinfo->nodesigs);
 
@@ -2600,44 +2558,33 @@ is_unassoc_node(node_info *ninfo, void *arg)
 
 // counts constructor
 counts::counts(const std::string &name_){
-	name = strdup(name_.c_str());
+	name = name_;
 	running = 0;
 	rescts = NULL;
 	soft_limit_preempt_bit = 0;
-	next = NULL;
 }
-// counts constructor 
-counts::counts(const char *name_){
-	name = strdup(name_);
-	running = 0;
-	rescts = NULL;
-	soft_limit_preempt_bit = 0;
-	next = NULL;
-}
-
 
 // counts copy constructor
 counts::counts(const counts &count_) {
-        this->name = strdup(count_.name);
-	this->running = count_.running;
-	this->rescts = dup_resource_count_list(count_.rescts);
-	this->soft_limit_preempt_bit = count_.soft_limit_preempt_bit;
-	this->next = NULL;
+        name = count_.name;
+	running = count_.running;
+	rescts = dup_resource_count_list(count_.rescts);
+	soft_limit_preempt_bit = count_.soft_limit_preempt_bit;
 }
 
 // count assignment operator
 counts& counts::operator = (const counts &count_) {
-        this->name = strdup(count_.name);
+        this->name = count_.name;
 	this->running = count_.running;
 	this->rescts = dup_resource_count_list(count_.rescts);
 	this->soft_limit_preempt_bit = count_.soft_limit_preempt_bit;
-	this->next = NULL;
 	return (*this);
 }
 
+// destructor
 counts::~counts() {
-    if (this->rescts != NULL)
-	free_resource_count_list(this->rescts);
+    if (rescts != NULL)
+	free_resource_count_list(rescts);
 }
 
 /**
@@ -2669,19 +2616,10 @@ free_counts(counts *cts)
  * @par MT-Safe:	no
  */
 void
-free_counts_list(counts *ctslist)
+free_counts_list(counts_map &ctslist)
 {
-	counts *prev, *cur;
-
-	if (ctslist == NULL)
-		return;
-
-	cur = prev = ctslist;
-
-	while (cur != NULL) {
-		prev = cur->next;
-		free_counts(cur);
-		cur = prev;
+	for (auto it: ctslist) {
+		free_counts(it.second);
 	}
 }
 
@@ -2705,43 +2643,20 @@ dup_counts(counts *octs)
 
 	return ncts;
 }
-
 /**
  * @brief
- * 		dup_counts_list - duplicate a counts list
+ * 		dup_counts - duplicate a counts map
  *
- * @param[in]	octs - the counts structure to duplicate
+ * @param[in]	omap	- the counts map to duplicate
  *
- * @return	duplicated counts list
- * @retval	NULL	: error
- *
- * @par MT-Safe:	no
+ * @return	new counts_map
  */
-counts *
-dup_counts_list(counts *ctslist)
+counts_map dup_counts_map(counts_map &omap)
 {
-	counts *cur;
-	counts *nhead;
-	counts *prev;
-	counts *ncts;
-
-	nhead = NULL;
-	prev = NULL;
-	cur = ctslist;
-
-	while (cur != NULL) {
-		if ((ncts = dup_counts(cur)) != NULL) {
-			if (nhead == NULL)
-				nhead = ncts;
-			else
-				prev->next = ncts;
-
-			prev = ncts;
-		}
-		cur = cur->next;
-	}
-
-	return nhead;
+    counts_map nmap;
+    for (auto iter: omap)
+	    nmap[iter.first] = new counts(*(iter.second));
+    return nmap;
 }
 
 /**
@@ -2757,25 +2672,12 @@ dup_counts_list(counts *ctslist)
  * @par MT-Safe:	no
  */
 counts *
-find_counts(counts *ctslist, const char *name)
+find_counts(counts_map &ctslist, const std::string &name)
 {
-	counts *cur;
-
-	if (ctslist == NULL || name == NULL)
+	auto ret = ctslist.find(name);
+	if (ret == ctslist.end())
 		return NULL;
-
-	cur = ctslist;
-
-	while (cur != NULL && strcmp(cur->name, name))
-		cur = cur->next;
-
-	return cur;
-}
-// Overloaded function
-counts *
-find_counts(counts *ctslist, std::string &name)
-{
-	return find_counts(ctslist, name.c_str());
+	return ret->second;
 }
 
 /**
@@ -2783,7 +2685,7 @@ find_counts(counts *ctslist, std::string &name)
  * 		find_alloc_counts - find a counts structure by name or allocate
  *		 a new counts, name it, and add it to the end of the list
  *
- * @param[in]	ctslist - the counts list to search
+ * @param[in]	ctslist - the counts map to search
  * @param[in]	name 	- the name to find
  *
  * @return	found or newly-allocated counts structure
@@ -2792,36 +2694,16 @@ find_counts(counts *ctslist, std::string &name)
  * @par MT-Safe:	no
  */
 counts *
-find_alloc_counts(counts *ctslist, const char *name)
+find_alloc_counts(counts_map &ctslist, const std::string &name)
 {
-	counts *cur, *prev;
-	counts *ncounts;
+	counts *ret;
 
-	if (name == NULL)
-		return NULL;
-
-	prev = cur = ctslist;
-
-	while (cur != NULL && strcmp(cur->name, name)) {
-		prev = cur;
-		cur = cur->next;
+	ret = find_counts(ctslist, name);
+	if (ret == NULL) {
+		ctslist[name] = new counts(name);
+		return ctslist[name];
 	}
-
-	if (cur == NULL) {
-		ncounts = new counts(name);
-
-		if (prev != NULL)
-			prev->next = ncounts;
-
-		return ncounts;
-	} else
-		return cur;
-}
-//overloaded
-counts *
-find_alloc_counts(counts *ctslist, std::string &name)
-{
-    return find_alloc_counts(ctslist, name.c_str());
+	return ret;
 }
 
 /**
@@ -2900,52 +2782,48 @@ update_counts_on_end(counts *cts, resource_req *resreq)
  *		than the current max, we free the old, and dup the new
  *		and attach it in.
  *
- * @param[in]	cmax - current max
+ * @param[in/out]	cmax - current max
  * @param[in]	new  - new counts lists.  If anything in this list is
  *						greater than the cur_max, it needs to be dup'd.
  *
- * @return	the new max
- * @retval	NULL : error
+ * @return	void
  */
-counts *
-counts_max(counts *cmax, counts *ncounts)
+void
+counts_max(counts_map &cmax, counts_map &ncounts)
 {
-	counts *cur;
 	counts *cur_fmax;
-	counts *cmax_head;
 	resource_count *cur_res;
 	resource_count *cur_res_max;
 
-	if (ncounts == NULL)
-		return cmax;
+	if (ncounts.size() == 0)
+		return;
 
-	if (cmax == NULL)
-		return dup_counts_list(ncounts);
+	if (cmax.size() == 0) {
+		cmax = ncounts;
+		return;
+	}
 
-	cmax_head = cmax;
-
-	for (cur = ncounts; cur != NULL; cur = cur->next) {
-		cur_fmax = find_counts(cmax, cur->name);
+	for (auto cur: ncounts) {
+		cur_fmax = find_counts(cmax, cur.first);
 		if (cur_fmax == NULL) {
-			cur_fmax = dup_counts(cur);
+			cur_fmax = dup_counts(cur.second);
 			if (cur_fmax == NULL) {
-				free_counts_list(cmax_head);
-				return NULL;
+				free_counts_list(cmax);
+				return;
 			}
+			cmax[cur.first] = cur_fmax;
 
-			cur_fmax->next = cmax_head;
-			cmax_head = cur_fmax;
 		} else {
-			if (cur->running > cur_fmax->running)
-				cur_fmax->running = cur->running;
+			if (cur.second->running > cur_fmax->running)
+				cur_fmax->running = cur.second->running;
 
-			for (cur_res = cur->rescts; cur_res != NULL; cur_res = cur_res->next) {
+			for (cur_res = cur.second->rescts; cur_res != NULL; cur_res = cur_res->next) {
 				cur_res_max = find_resource_count(cur_fmax->rescts, cur_res->def);
 				if (cur_res_max == NULL) {
 					cur_res_max = dup_resource_count(cur_res);
 					if (cur_res_max == NULL) {
-						free_counts_list(cmax_head);
-						return NULL;
+						free_counts_list(cmax);
+						return;
 					}
 
 					cur_res_max->next = cur_fmax->rescts;
@@ -2957,7 +2835,48 @@ counts_max(counts *cmax, counts *ncounts)
 			}
 		}
 	}
-	return cmax_head;
+}
+
+// overloaded 
+void
+counts_max(counts_map &cmax, counts *ncounts)
+{
+	counts *cur_fmax;
+	resource_count *cur_res;
+	resource_count *cur_res_max;
+
+	if (ncounts == NULL)
+		return;
+
+	if (cmax.size() == 0) {
+	    cmax[ncounts->name] = dup_counts(ncounts);
+	    return;
+	}
+	cur_fmax = find_counts(cmax, ncounts->name);
+	if (cur_fmax == NULL) {
+		cmax[ncounts->name] = dup_counts(ncounts);
+		return;
+	} else {
+		if (ncounts->running > cur_fmax->running)
+			cur_fmax->running = ncounts->running;
+		for (cur_res = ncounts->rescts; cur_res != NULL; cur_res = cur_res->next) {
+			cur_res_max = find_resource_count(cur_fmax->rescts, cur_res->def);
+			if (cur_res_max == NULL) {
+				cur_res_max = dup_resource_count(cur_res);
+				if (cur_res_max == NULL) {
+					free_counts_list(cmax);
+					return;
+				}
+
+				cur_res_max->next = cur_fmax->rescts;
+				cur_fmax->rescts = cur_res_max;
+			} else {
+				if (cur_res->amount > cur_res_max->amount)
+					cur_res_max->amount = cur_res->amount;
+			}
+		}
+	}
+	return;
 }
 
 /**
@@ -3429,69 +3348,55 @@ create_total_counts(server_info *sinfo, queue_info *qinfo,
 	resource_resv *resresv, int mode)
 {
 	if (mode == SERVER || mode == ALL) {
-		if (sinfo->total_group_counts == NULL) {
-			if (sinfo->group_counts != NULL)
-				sinfo->total_group_counts = dup_counts_list(
-					sinfo->group_counts);
+		if (sinfo->total_group_counts.size() == 0) {
+			if (sinfo->group_counts.size() != 0)
+				sinfo->total_group_counts = dup_counts_map(sinfo->group_counts);
 			else if (resresv != NULL)
-				sinfo->total_group_counts = find_alloc_counts(
-					sinfo->total_group_counts, resresv->group);
+				find_alloc_counts(sinfo->total_group_counts, resresv->group);
 		}
-		if (sinfo->total_user_counts == NULL) {
-			if (sinfo->user_counts != NULL)
-				sinfo->total_user_counts = dup_counts_list(
-					sinfo->user_counts);
+		if (sinfo->total_user_counts.size() == 0) {
+			if (sinfo->user_counts.size() != 0)
+				sinfo->total_user_counts = dup_counts_map(sinfo->user_counts);
 			else if (resresv != NULL)
-				sinfo->total_user_counts = find_alloc_counts(
-					sinfo->total_user_counts, resresv->user);
+				find_alloc_counts(sinfo->total_user_counts, resresv->user);
 		}
-		if (sinfo->total_project_counts == NULL) {
-			if (sinfo->project_counts != NULL)
-				sinfo->total_project_counts = dup_counts_list(
-					sinfo->project_counts);
+		if (sinfo->total_project_counts.size() == 0) {
+			if (sinfo->project_counts.size() != 0)
+				sinfo->total_project_counts = dup_counts_map(sinfo->project_counts);
 			else if (resresv != NULL)
-				sinfo->total_project_counts = find_alloc_counts(
-					sinfo->total_project_counts, resresv->project);
+				find_alloc_counts(sinfo->total_project_counts, resresv->project);
 		}
-		if (sinfo->total_alljobcounts == NULL) {
-			if (sinfo->alljobcounts != NULL)
-				sinfo->total_alljobcounts = dup_counts_list(sinfo->alljobcounts);
+		if (sinfo->total_alljobcounts.size() == 0) {
+			if (sinfo->alljobcounts.size() != 0)
+				sinfo->total_alljobcounts = dup_counts_map(sinfo->alljobcounts);
 			else
-				sinfo->total_alljobcounts = find_alloc_counts(
-					sinfo->total_alljobcounts, PBS_ALL_ENTITY);
+				find_alloc_counts(sinfo->total_alljobcounts, std::string(PBS_ALL_ENTITY));
 		}
 	}
 	if (mode == QUEUE || mode == ALL) {
-		if (qinfo->total_group_counts == NULL) {
-			if (qinfo->group_counts != NULL)
-				qinfo->total_group_counts = dup_counts_list(
-					qinfo->group_counts);
+		if (qinfo->total_group_counts.size() == 0) {
+			if (qinfo->group_counts.size() != 0)
+				qinfo->total_group_counts = dup_counts_map(qinfo->group_counts);
 			else if (resresv != NULL)
-				qinfo->total_group_counts = find_alloc_counts(
-					qinfo->total_group_counts, resresv->group);
+				find_alloc_counts(qinfo->total_group_counts, resresv->group);
 		}
-		if (qinfo->total_user_counts == NULL) {
-			if (qinfo->user_counts != NULL)
-				qinfo->total_user_counts = dup_counts_list(
-					qinfo->user_counts);
+		if (qinfo->total_user_counts.size() == 0) {
+			if (qinfo->user_counts.size() != 0)
+				qinfo->total_user_counts = dup_counts_map(qinfo->user_counts);
 			else if (resresv != NULL)
-				qinfo->total_user_counts = find_alloc_counts(
-					qinfo->total_user_counts, resresv->user);
+				find_alloc_counts(qinfo->total_user_counts, resresv->user);
 		}
-		if (qinfo->total_project_counts == NULL) {
-			if (qinfo->project_counts != NULL)
-				qinfo->total_project_counts = dup_counts_list(
-					qinfo->project_counts);
+		if (qinfo->total_project_counts.size() == 0) {
+			if (qinfo->project_counts.size() != 0)
+				qinfo->total_project_counts = dup_counts_map(qinfo->project_counts);
 			else if (resresv != NULL)
-				qinfo->total_project_counts = find_alloc_counts(
-					qinfo->total_project_counts, resresv->project);
+				find_alloc_counts(qinfo->total_project_counts, resresv->project);
 		}
-		if (qinfo->total_alljobcounts == NULL) {
-			if (qinfo->alljobcounts != NULL)
-				qinfo->total_alljobcounts = dup_counts_list(qinfo->alljobcounts);
+		if (qinfo->total_alljobcounts.size() == 0) {
+			if (qinfo->alljobcounts.size() != 0)
+				qinfo->total_alljobcounts = dup_counts_map(qinfo->alljobcounts);
 			else if (resresv != NULL)
-				qinfo->total_alljobcounts = find_alloc_counts(
-					qinfo->total_alljobcounts, PBS_ALL_ENTITY);
+				find_alloc_counts(qinfo->total_alljobcounts, std::string(PBS_ALL_ENTITY));
 		}
 	}
 	return;
@@ -3515,28 +3420,19 @@ void
 update_total_counts(server_info *si, queue_info* qi,
 	resource_resv *rr, int mode)
 {
-	counts *cts = NULL;
 	create_total_counts(si, qi, rr, mode);
 	if (((mode == SERVER) || (mode == ALL)) &&
 		((si != NULL) && si->has_hard_limit)) {
-		cts = si->total_group_counts;
-		update_counts_on_run(find_alloc_counts(cts, rr->group), rr->resreq);
-		cts = si->total_project_counts;
-		update_counts_on_run(find_alloc_counts(cts, rr->project), rr->resreq);
-		cts = si->total_alljobcounts;
-		update_counts_on_run(cts, rr->resreq);
-		cts = si->total_user_counts;
-		update_counts_on_run(find_alloc_counts(cts, rr->user), rr->resreq);
+		update_counts_on_run(find_alloc_counts(si->total_group_counts, rr->group), rr->resreq);
+		update_counts_on_run(find_alloc_counts(si->total_project_counts, rr->project), rr->resreq);
+		update_counts_on_run(find_alloc_counts(si->total_alljobcounts, std::string(PBS_ALL_ENTITY)), rr->resreq);
+		update_counts_on_run(find_alloc_counts(si->total_user_counts, rr->user), rr->resreq);
 	} else if (((mode == QUEUE) || (mode == ALL)) &&
 		((qi != NULL) && qi->has_hard_limit)) {
-		cts = qi->total_group_counts;
-		update_counts_on_run(find_alloc_counts(cts, rr->group), rr->resreq);
-		cts = qi->total_project_counts;
-		update_counts_on_run(find_alloc_counts(cts, rr->project), rr->resreq);
-		cts = qi->total_alljobcounts;
-		update_counts_on_run(cts, rr->resreq);
-		cts = qi->total_user_counts;
-		update_counts_on_run(find_alloc_counts(cts, rr->user), rr->resreq);
+		update_counts_on_run(find_alloc_counts(qi->total_group_counts, rr->group), rr->resreq);
+		update_counts_on_run(find_alloc_counts(qi->total_project_counts, rr->project), rr->resreq);
+		update_counts_on_run(find_alloc_counts(qi->total_alljobcounts, std::string(PBS_ALL_ENTITY)), rr->resreq);
+		update_counts_on_run(find_alloc_counts(qi->total_user_counts, rr->user), rr->resreq);
 	}
 }
 
@@ -3558,29 +3454,52 @@ void
 update_total_counts_on_end(server_info *si, queue_info* qi,
 	resource_resv *rr, int mode)
 {
-	counts *cts = NULL;
 	create_total_counts(si, qi, rr, mode);
 	if (((mode == SERVER) || (mode == ALL)) &&
 		((si != NULL) && si->has_hard_limit)) {
-		cts = si->total_group_counts;
-		update_counts_on_end(find_alloc_counts(cts, rr->group), rr->resreq);
-		cts = si->total_project_counts;
-		update_counts_on_end(find_alloc_counts(cts, rr->project), rr->resreq);
-		cts = si->total_alljobcounts;
-		update_counts_on_end(cts, rr->resreq);
-		cts = si->total_user_counts;
-		update_counts_on_end(find_alloc_counts(cts, rr->user), rr->resreq);
+		update_counts_on_end(find_alloc_counts(si->total_group_counts, rr->group), rr->resreq);
+		update_counts_on_end(find_alloc_counts(si->total_project_counts, rr->project), rr->resreq);
+		update_counts_on_end(find_alloc_counts(si->total_alljobcounts, std::string(PBS_ALL_ENTITY)), rr->resreq);
+		update_counts_on_end(find_alloc_counts(si->total_user_counts, rr->user), rr->resreq);
 	} else if (((mode == QUEUE) || (mode == ALL)) &&
 		((qi != NULL) &&  qi->has_hard_limit)) {
-		cts = qi->total_group_counts;
-		update_counts_on_end(find_alloc_counts(cts, rr->group), rr->resreq);
-		cts = qi->total_project_counts;
-		update_counts_on_end(find_alloc_counts(cts, rr->project), rr->resreq);
-		cts = qi->total_alljobcounts;
-		update_counts_on_end(cts, rr->resreq);
-		cts = qi->total_user_counts;
-		update_counts_on_end(find_alloc_counts(cts, rr->user), rr->resreq);
+		update_counts_on_end(find_alloc_counts(qi->total_group_counts, rr->group), rr->resreq);
+		update_counts_on_end(find_alloc_counts(qi->total_project_counts, rr->project), rr->resreq);
+		update_counts_on_end(find_alloc_counts(qi->total_alljobcounts, std::string(PBS_ALL_ENTITY)), rr->resreq);
+		update_counts_on_end(find_alloc_counts(qi->total_user_counts, rr->user), rr->resreq);
 	}
+}
+
+/**
+ * @brief
+ * 		refresh_total_counts - This function releases memory allocated
+ *	    for total_*_counts structure in server_info and queue_info and
+ *	    then reassigns again by duplicating it from running counts list.
+ *
+ * @param[in,out]	sinfo	-	server_info structure used to get all the
+ *					total_*_counts and free them.
+ *
+ * @return	void
+ */
+void
+refresh_total_counts(server_info *sinfo)
+{
+	int i = 0;
+	if (sinfo != NULL) {
+		free_counts_list(sinfo->total_group_counts);
+		free_counts_list(sinfo->total_user_counts);
+		free_counts_list(sinfo->total_project_counts);
+		free_counts_list(sinfo->total_alljobcounts);
+		create_total_counts(sinfo, NULL, NULL, SERVER);
+		for (; i < sinfo->num_queues; i++) {
+			free_counts_list(sinfo->queues[i]->total_group_counts);
+			free_counts_list(sinfo->queues[i]->total_user_counts);
+			free_counts_list(sinfo->queues[i]->total_project_counts);
+			free_counts_list(sinfo->queues[i]->total_alljobcounts);
+			create_total_counts(NULL, sinfo->queues[i], NULL, QUEUE);
+		}
+	}
+	return;
 }
 
 /**

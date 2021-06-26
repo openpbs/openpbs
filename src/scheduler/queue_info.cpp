@@ -250,34 +250,21 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 				if (qinfo->has_soft_limit || qinfo->has_hard_limit) {
 					counts *allcts;
 					allcts = find_alloc_counts(qinfo->alljobcounts,
-						PBS_ALL_ENTITY);
-					if (qinfo->alljobcounts == NULL)
-						qinfo->alljobcounts = allcts;
+						std::string(PBS_ALL_ENTITY));
 
 					if (qinfo->running_jobs != NULL) {
 						/* set the user and group counts */
 						for (int j = 0; qinfo->running_jobs[j] != NULL; j++) {
 							cts = find_alloc_counts(qinfo->user_counts,
 								qinfo->running_jobs[j]->user);
-							if (qinfo->user_counts == NULL)
-								qinfo->user_counts = cts;
-
 							update_counts_on_run(cts, qinfo->running_jobs[j]->resreq);
 
 							cts = find_alloc_counts(qinfo->group_counts,
 								qinfo->running_jobs[j]->group);
-
-							if (qinfo->group_counts == NULL)
-								qinfo->group_counts = cts;
-
 							update_counts_on_run(cts, qinfo->running_jobs[j]->resreq);
 
 							cts = find_alloc_counts(qinfo->project_counts,
 								qinfo->running_jobs[j]->project);
-
-							if (qinfo->project_counts == NULL)
-								qinfo->project_counts = cts;
-
 							update_counts_on_run(cts, qinfo->running_jobs[j]->resreq);
 
 							update_counts_on_run(allcts, qinfo->running_jobs[j]->resreq);
@@ -514,14 +501,6 @@ queue_info::queue_info(const char *qname): name(qname)
 	server = NULL;
 	resv = NULL;
 	nodes = NULL;
-	alljobcounts = NULL;
-	group_counts = NULL;
-	project_counts = NULL;
-	user_counts = NULL;
-	total_alljobcounts = NULL;
-	total_group_counts = NULL;
-	total_project_counts = NULL;
-	total_user_counts = NULL;
 	nodepart = NULL;
 	node_group_key = NULL;
 	allpart = NULL;
@@ -648,31 +627,15 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 			update_total_counts(NULL, qinfo, resresv, QUEUE);
 
 			cts = find_alloc_counts(qinfo->group_counts, resresv->group);
-
-			if (qinfo->group_counts == NULL)
-				qinfo->group_counts = cts;
-
 			update_counts_on_run(cts, resresv->resreq);
 
 			cts = find_alloc_counts(qinfo->project_counts, resresv->project);
-
-			if (qinfo->project_counts == NULL)
-				qinfo->project_counts = cts;
-
 			update_counts_on_run(cts, resresv->resreq);
 
 			cts = find_alloc_counts(qinfo->user_counts, resresv->user);
-
-			if (qinfo->user_counts == NULL)
-				qinfo->user_counts = cts;
-
 			update_counts_on_run(cts, resresv->resreq);
 
-			auto allcts = find_alloc_counts(qinfo->alljobcounts, PBS_ALL_ENTITY);
-
-			if (qinfo->alljobcounts == NULL)
-				qinfo->alljobcounts = allcts;
-
+			auto allcts = find_alloc_counts(qinfo->alljobcounts, std::string(PBS_ALL_ENTITY));
 			update_counts_on_run(allcts, resresv->resreq);
 		}
 	}
@@ -742,24 +705,16 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv, const char *job_s
 		if (is_resresv_running(resresv)) {
 			update_total_counts_on_end(NULL, qinfo, resresv , QUEUE);
 			auto cts = find_counts(qinfo->group_counts, resresv->group);
-
-			if (cts != NULL)
-				update_counts_on_end(cts, resresv->resreq);
+			update_counts_on_end(cts, resresv->resreq);
 
 			cts = find_counts(qinfo->project_counts, resresv->project);
-
-			if (cts != NULL)
-				update_counts_on_end(cts, resresv->resreq);
+			update_counts_on_end(cts, resresv->resreq);
 
 			cts = find_counts(qinfo->user_counts, resresv->user);
+			update_counts_on_end(cts, resresv->resreq);
 
-			if (cts != NULL)
-				update_counts_on_end(cts, resresv->resreq);
-
-			cts = find_alloc_counts(qinfo->alljobcounts, PBS_ALL_ENTITY);
-
-			if (cts != NULL)
-				update_counts_on_end(cts, resresv->resreq);
+			cts = find_alloc_counts(qinfo->alljobcounts, std::string(PBS_ALL_ENTITY));
+			update_counts_on_end(cts, resresv->resreq);
 		}
 	}
 }
@@ -867,14 +822,14 @@ queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.nam
 #endif
 
 	qres = dup_resource_list(oqinfo.qres);
-	alljobcounts = dup_counts_list(oqinfo.alljobcounts);
-	group_counts = dup_counts_list(oqinfo.group_counts);
-	project_counts = dup_counts_list(oqinfo.project_counts);
-	user_counts = dup_counts_list(oqinfo.user_counts);
-	total_alljobcounts = dup_counts_list(oqinfo.total_alljobcounts);
-	total_group_counts = dup_counts_list(oqinfo.total_group_counts);
-	total_project_counts = dup_counts_list(oqinfo.total_project_counts);
-	total_user_counts = dup_counts_list(oqinfo.total_user_counts);
+	alljobcounts = dup_counts_map(oqinfo.alljobcounts);
+	group_counts = dup_counts_map(oqinfo.group_counts);
+	project_counts = dup_counts_map(oqinfo.project_counts);
+	user_counts = dup_counts_map(oqinfo.user_counts);
+	total_alljobcounts = dup_counts_map(oqinfo.total_alljobcounts);
+	total_group_counts = dup_counts_map(oqinfo.total_group_counts);
+	total_project_counts = dup_counts_map(oqinfo.total_project_counts);
+	total_user_counts = dup_counts_map(oqinfo.total_user_counts);
 	nodepart = dup_node_partition_array(oqinfo.nodepart, nsinfo);
 	allpart = dup_node_partition(oqinfo.allpart, nsinfo);
 	node_group_key = dup_string_arr(oqinfo.node_group_key);

@@ -670,8 +670,6 @@ node_info::node_info(const std::string& nname): name(nname)
 	run_resvs_arr = NULL;
 	res = NULL;
 	server = NULL;
-	group_counts = NULL;
-	user_counts = NULL;
 
 	max_running = SCHD_INFINITY;
 	max_user_run = SCHD_INFINITY;
@@ -1448,8 +1446,8 @@ dup_node_info(node_info *onode, server_info *nsinfo, unsigned int flags)
 	nnode->max_user_run = onode->max_user_run;
 	nnode->max_group_run = onode->max_group_run;
 
-	nnode->group_counts = dup_counts_list(onode->group_counts);
-	nnode->user_counts = dup_counts_list(onode->user_counts);
+	nnode->group_counts = dup_counts_map(onode->group_counts);
+	nnode->user_counts = dup_counts_map(onode->user_counts);
 
 	set_current_aoe(nnode, onode->current_aoe);
 	set_current_eoe(nnode, onode->current_eoe);
@@ -1634,19 +1632,13 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 					if (find_resource_resv_by_indrank(ninfo_arr[i]->job_arr,
 						-1, job->rank) == NULL) {
 						if (ninfo_arr[i]->has_hard_limit) {
-						cts = find_alloc_counts(ninfo_arr[i]->group_counts,
-							job->group);
-						if (ninfo_arr[i]->group_counts == NULL)
-							ninfo_arr[i]->group_counts = cts;
+							cts = find_alloc_counts(ninfo_arr[i]->group_counts,
+								job->group);
+							update_counts_on_run(cts, job->resreq);
 
-						update_counts_on_run(cts, job->resreq);
-
-						cts = find_alloc_counts(ninfo_arr[i]->user_counts,
-							job->user);
-						if (ninfo_arr[i]->user_counts == NULL)
-							ninfo_arr[i]->user_counts = cts;
-
-						update_counts_on_run(cts, job->resreq);
+							cts = find_alloc_counts(ninfo_arr[i]->user_counts,
+								job->user);
+							update_counts_on_run(cts, job->resreq);
 						}
 
 						ninfo_arr[i]->job_arr[k] = job;
@@ -1791,17 +1783,9 @@ update_node_on_run(nspec *ns, resource_resv *resresv, const char *job_state)
 
 	if (ninfo->has_hard_limit && resresv->is_job) {
 		cts = find_alloc_counts(ninfo->group_counts, resresv->group);
-
-		if (ninfo->group_counts == NULL)
-			ninfo->group_counts = cts;
-
 		update_counts_on_run(cts, ns->resreq);
 
 		cts = find_alloc_counts(ninfo->user_counts, resresv->user);
-
-		if (ninfo->user_counts == NULL)
-			ninfo->user_counts = cts;
-
 		update_counts_on_run(cts, ns->resreq);
 	}
 
