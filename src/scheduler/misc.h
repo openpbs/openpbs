@@ -112,6 +112,7 @@ int calc_time_left_STF(resource_resv *resresv, sch_resource_t* min_time_left);
  *
  */
 enum match_string_array_ret match_string_array(const char * const *strarr1, const char * const *strarr2);
+enum match_string_array_ret match_string_array(const string_vector &strarr1, const string_vector &strarr2);
 
 /*
  * convert a string array into a printable string
@@ -273,4 +274,8 @@ void free_ptr_array (void *inp);
 void log_eventf(int eventtype, int objclass, int sev, const std::string& objname, const char *fmt, ...);
 void log_event(int eventtype, int objclass, int sev, const std::string& objname, const char *text);
 
+/*
+ * overloaded  break_comma_list function
+ */
+string_vector break_comma_list(const std::string &list);
 #endif	/* _MISC_H */

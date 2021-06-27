@@ -406,7 +406,7 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 			}
 		}
 		else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
-			qinfo->node_group_key = break_comma_list(attrp->value);
+			qinfo->node_group_key = break_comma_list(std::string(attrp->value));
 		else if (!strcmp(attrp->name, ATTR_rescavail)) { /* resources_available*/
 #ifdef NAS
 			/* localmod 040 */
@@ -502,7 +502,6 @@ queue_info::queue_info(const char *qname): name(qname)
 	resv = NULL;
 	nodes = NULL;
 	nodepart = NULL;
-	node_group_key = NULL;
 	allpart = NULL;
 	num_parts = 0;
 	num_topjobs = 0;
@@ -735,7 +734,6 @@ queue_info::~queue_info()
 	free_counts_list(total_user_counts);
 	free_node_partition_array(nodepart);
 	free_node_partition(allpart);
-	free_string_array(node_group_key);
 	lim_free_liminfo(liminfo);
 	free(partition);
 }
@@ -832,7 +830,7 @@ queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.nam
 	total_user_counts = dup_counts_map(oqinfo.total_user_counts);
 	nodepart = dup_node_partition_array(oqinfo.nodepart, nsinfo);
 	allpart = dup_node_partition(oqinfo.allpart, nsinfo);
-	node_group_key = dup_string_arr(oqinfo.node_group_key);
+	node_group_key = oqinfo.node_group_key;
 
 	if (oqinfo.resv != NULL) {
 		resv = find_resource_resv_by_indrank(nsinfo->resvs, oqinfo.resv->resresv_ind, oqinfo.resv->rank);

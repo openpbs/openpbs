@@ -1077,7 +1077,7 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 	 * If it doesn't exist, we'll create it and add it to the cache
 	 */
 	if (resresv->place_spec->group != NULL) {
-		char *grouparr[2] = {0};
+		string_vector groupvec{resresv->place_spec->group};
 		np_cache *npc = NULL;
 		node_info **ninfo_arr;
 
@@ -1086,9 +1086,7 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 		else
 			ninfo_arr = sinfo->unassoc_nodes;
 
-		grouparr[0] = resresv->place_spec->group;
-		grouparr[1] = NULL;
-		npc = find_alloc_np_cache(policy, &(sinfo->npc_arr), grouparr, ninfo_arr, cmp_placement_sets);
+		npc = find_alloc_np_cache(policy, &(sinfo->npc_arr), groupvec, ninfo_arr, cmp_placement_sets);
 		if (npc != NULL)
 			nodepart = npc->nodepart;
 	}

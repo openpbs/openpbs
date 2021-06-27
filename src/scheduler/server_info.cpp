@@ -437,8 +437,8 @@ query_server(status *pol, int pbs_sd)
 	 * we don't want to account for resources consumed by ghost jobs
 	 */
 	create_placement_sets(policy, sinfo);
-	if (!sinfo->node_group_enable && sinfo->node_group_key != NULL &&
-	    strcmp(sinfo->node_group_key[0], "msvr_node_group") == 0) {
+	if (!sinfo->node_group_enable && !sinfo->node_group_key.empty() &&
+	    (sinfo->node_group_key[0] == std::string("msvr_node_group"))) {
 		auto np = create_node_partitions(policy, sinfo->unassoc_nodes,
 					    sinfo->node_group_key, NP_NONE, &sinfo->num_parts);
 
@@ -552,7 +552,7 @@ query_server_info(status *pol, struct batch_status *server)
 			else
 				sinfo->node_group_enable = 0;
 		} else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
-			sinfo->node_group_key = break_comma_list(attrp->value);
+			sinfo->node_group_key = break_comma_list(std::string(attrp->value));
 		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {	/* Deprecated */
 			sinfo->job_sort_formula = read_formula();
 			if (policy->sort_by->size() > 1) /* 0 is the formula itself */
@@ -641,9 +641,9 @@ query_server_info(status *pol, struct batch_status *server)
 	site_set_share_head(sinfo);
 #endif /* localmod 034 */
 
-	if (sinfo->node_group_key == NULL && get_num_servers() > 1) {
+	if (sinfo->node_group_key.empty() && get_num_servers() > 1) {
 		/* Set node_group_key to msvr_node_group for server local placement */
-		sinfo->node_group_key = break_comma_list(const_cast<char *>("msvr_node_group"));
+		sinfo->node_group_key = break_comma_list(std::string("msvr_node_group"));
 
 		/* This will ensure that create_placement_sets doesn't create placement sets,
 		 * we'll create directly by calling create_node_partitions
@@ -1053,8 +1053,6 @@ free_server_info(server_info *sinfo)
 		free_string_array(sinfo->nodesigs);
 	if (sinfo->npc_arr != NULL)
 		free_np_cache_array(sinfo->npc_arr);
-	if (sinfo->node_group_key != NULL)
-		free_string_array(sinfo->node_group_key);
 	if (sinfo->calendar != NULL)
 		free_event_list(sinfo->calendar);
 	if (sinfo->policy != NULL)
@@ -1202,7 +1200,6 @@ new_server_info(int limallocflag)
 	sinfo->allpart = NULL;
 	sinfo->hostsets = NULL;
 	sinfo->nodesigs = NULL;
-	sinfo->node_group_key = NULL;
 	sinfo->npc_arr = NULL;
 	sinfo->qrun_job = NULL;
 	sinfo->policy = NULL;
@@ -2189,7 +2186,7 @@ dup_server_info(server_info *osinfo)
 	nsinfo->total_group_counts = dup_counts_map(osinfo->total_group_counts);
 	nsinfo->total_project_counts = dup_counts_map(osinfo->total_project_counts);
 	nsinfo->total_user_counts = dup_counts_map(osinfo->total_user_counts);
-	nsinfo->node_group_key = dup_string_arr(osinfo->node_group_key);
+	nsinfo->node_group_key = osinfo->node_group_key;
 	nsinfo->nodesigs = dup_string_arr(osinfo->nodesigs);
 
 	nsinfo->policy = dup_status(osinfo->policy);

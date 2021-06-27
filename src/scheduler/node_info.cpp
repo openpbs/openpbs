@@ -2461,7 +2461,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 		hostsets = resresv->server->hostsets;
 
 	if (hostsets == NULL) {
-		const char *host_arr[2] = {"host", NULL};
+		string_vector		host_arr{"host"};
 
 		npc = find_alloc_np_cache(policy, &resresv->server->npc_arr, host_arr, nptr, NULL);
 		if (npc != NULL)
@@ -5070,7 +5070,7 @@ node_up_event(node_info *node, void *arg)
 		set_node_info_state(node, ND_free);
 
 	sinfo = node->server;
-	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
+	if (sinfo->node_group_enable && !sinfo->node_group_key.empty()) {
 		node_partition_update_array(sinfo->policy, sinfo->nodepart);
 		qsort(sinfo->nodepart, sinfo->num_parts,
 			sizeof(node_partition *), cmp_placement_sets);
@@ -5118,7 +5118,7 @@ node_down_event(node_info *node, void *arg)
 
 	set_node_info_state(node, ND_down);
 
-	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
+	if (sinfo->node_group_enable && !sinfo->node_group_key.empty()) {
 		node_partition_update_array(sinfo->policy, sinfo->nodepart);
 		qsort(sinfo->nodepart, sinfo->num_parts,
 			sizeof(node_partition *), cmp_placement_sets);

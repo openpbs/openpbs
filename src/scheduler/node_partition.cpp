@@ -317,7 +317,7 @@ copy_node_partition_ptr_array(node_partition **onp_arr, node_partition **new_nps
  *
  */
 node_partition *
-find_node_partition(node_partition **np_arr, char *name)
+find_node_partition(node_partition **np_arr, const char *name)
 {
 	int i;
 	if (np_arr == NULL || name == NULL)
@@ -327,6 +327,12 @@ find_node_partition(node_partition **np_arr, char *name)
 		;
 
 	return np_arr[i];
+}
+// overloaded
+node_partition *
+find_node_partition(node_partition **np_arr, const std::string &name)
+{
+	return (find_node_partition(np_arr, name.c_str()));
 }
 
 /**
@@ -381,14 +387,11 @@ find_node_partition_by_rank(node_partition **np_arr, int rank)
  *
  */
 node_partition **
-create_node_partitions(status *policy, node_info **nodes, const char * const *resnames, unsigned int flags, int *num_parts)
+create_node_partitions(status *policy, node_info **nodes, const string_vector &resnames, unsigned int flags, int *num_parts)
 {
 	node_partition **np_arr;
 	node_partition *np;
 	node_partition **tmp_arr;
-	char buf[1024];
-	char *str;
-	bool free_str = false;
 	int np_arr_size = 0;
 	static schd_resource *res;
 
@@ -396,16 +399,16 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 
 	schd_resource *tmpres;
 
-	int res_i;		/* index of placement set resource name (resnames) */
 	int val_i;		/* index of placement set resource value */
 	int node_i;		/* index into nodes array */
 	int np_i;		/* index into node partition array we are creating */
 
 	static schd_resource *unset_res = NULL;
+	std::string unset_resname;
 
 	queue_info **queues = NULL;
 
-	if (nodes == NULL || resnames == NULL)
+	if (nodes == NULL || resnames.empty())
 		return NULL;
 
 	if (nodes[0] != NULL && nodes[0]->server != NULL)
@@ -426,9 +429,8 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 	if (flags & NP_CREATE_REST && unset_res == NULL)
 		unset_res = new_resource();
 
-	for (res_i = 0; resnames[res_i] != NULL; res_i++) {
-		auto def = find_resdef(resnames[res_i]);
-		auto reslen = strlen(resnames[res_i]);
+	for (auto &res_i: resnames) {
+		auto def = find_resdef(res_i);
 		for (node_i = 0; nodes[node_i] != NULL; node_i++) {
 			if (nodes[node_i]->is_stale)
 				continue;
@@ -436,7 +438,8 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 			res = find_resource(nodes[node_i]->res, def);
 
 			if (res == NULL && (flags & NP_CREATE_REST)) {
-				unset_res->name = resnames[res_i];
+				unset_resname = res_i;
+				unset_res->name = unset_resname.c_str();
 				if (set_resource(unset_res, "\"\"", RF_AVAIL) == 0) {
 					free_node_partition_array(np_arr);
 					return NULL;
@@ -448,15 +451,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 				if (res->indirect_res != NULL)
 					res = res->indirect_res;
 				for (val_i = 0; res->str_avail[val_i] != NULL; val_i++) {
-					/* 2: 1 for '=' 1 for '\0' */
-					if (reslen + strlen(res->str_avail[val_i]) + 2 < 1024) {
-						sprintf(buf, "%s=%s", resnames[res_i], res->str_avail[val_i]);
-						str = buf;
-					}
-					else {
-						pbs_asprintf(&str, "%s=%s", resnames[res_i], res->str_avail[val_i]);
-						free_str = true;
-					}
+					std::string str = res_i + '=' + res->str_avail[val_i];
 					/* If we find the partition, we've already created it - add the node
 					 * to the existing partition.  If we don't find it, we create it.
 					 */
@@ -468,8 +463,6 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 							if (tmp_arr == NULL) {
 								log_err(errno, __func__, MEM_ERR_MSG);
 								free_node_partition_array(np_arr);
-								if (free_str)
-									free(str);
 								return NULL;
 							}
 							np_arr = tmp_arr;
@@ -478,13 +471,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 
 						np_arr[np_i] = new_node_partition();
 						if (np_arr[np_i] != NULL) {
-							if (free_str) {
-								np_arr[np_i]->name = str;
-								free_str = false;
-							}
-							else
-								np_arr[np_i]->name = string_dup(str);
-
+							np_arr[np_i]->name = string_dup(str.c_str());
 							np_arr[np_i]->def = def;
 							np_arr[np_i]->res_val = string_dup(res->str_avail[val_i]);
 							np_arr[np_i]->tot_nodes = 1;
@@ -511,11 +498,6 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 						if (nodes[node_i]->is_free)
 							np->free_nodes++;
 					}
-					if (free_str) {
-						free(str);
-						free_str = false;
-					}
-
 				}
 			}
 			/* else we ignore nodes without the node partition resource set
@@ -780,7 +762,7 @@ new_np_cache(void)
 		return NULL;
 	}
 
-	npc->resnames = NULL;
+	npc->resnames = {};
 	npc->ninfo_arr = NULL;
 	npc->nodepart = NULL;
 	npc->num_parts = UNSPECIFIED;
@@ -822,9 +804,6 @@ free_np_cache(np_cache *npc)
 	if (npc == NULL)
 		return;
 
-	if (npc->resnames != NULL)
-		free_string_array(npc->resnames);
-
 	if (npc->nodepart != NULL)
 		free_node_partition_array(npc->nodepart);
 
@@ -852,11 +831,11 @@ free_np_cache(np_cache *npc)
  */
 np_cache *
 find_np_cache(np_cache **npc_arr,
-	const char * const *resnames, node_info **ninfo_arr)
+	const string_vector &resnames, node_info **ninfo_arr)
 {
 	int i;
 
-	if (npc_arr == NULL || resnames == NULL || ninfo_arr == NULL)
+	if (npc_arr == NULL || resnames.empty() || ninfo_arr == NULL)
 		return NULL;
 
 	for (i = 0; npc_arr[i] != NULL; i++) {
@@ -891,7 +870,7 @@ find_np_cache(np_cache **npc_arr,
  */
 np_cache *
 find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
-	const char * const *resnames, node_info **ninfo_arr,
+	const string_vector &resnames, node_info **ninfo_arr,
 	int (*sort_func)(const void *, const void *))
 {
 	node_partition **nodepart = NULL;
@@ -899,7 +878,7 @@ find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
 	np_cache *npc = NULL;
 	int error = 0;
 
-	if (resnames == NULL || ninfo_arr == NULL || pnpc_arr == NULL)
+	if (resnames.empty() || ninfo_arr == NULL || pnpc_arr == NULL)
 		return NULL;
 
 	npc = find_np_cache(*pnpc_arr, resnames, ninfo_arr);
@@ -919,10 +898,10 @@ find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
 			npc = new_np_cache();
 			if (npc != NULL) {
 				npc->ninfo_arr = ninfo_arr;
-				npc->resnames = dup_string_arr(const_cast<char **>(resnames));
+				npc->resnames = resnames;
 				npc->num_parts = num_parts;
 				npc->nodepart = nodepart;
-				if (npc->resnames == NULL || add_np_cache(pnpc_arr, npc) ==0) {
+				if (npc->resnames.empty() || add_np_cache(pnpc_arr, npc) ==0) {
 					free_np_cache(npc);
 					error = 1;
 				}
@@ -1227,7 +1206,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 
 	sinfo->allpart = create_specific_nodepart(policy, "all", sinfo->unassoc_nodes, NO_FLAGS);
 	if (sinfo->has_multi_vnode) {
-		const char *resstr[] = {"host", NULL};
+		const string_vector resstr{"host"};
 		int num;
 		sinfo->hostsets = create_node_partitions(policy, sinfo->nodes,
 			resstr, sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST, &num);
@@ -1257,7 +1236,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 		}
 	}
 
-	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
+	if (sinfo->node_group_enable && !sinfo->node_group_key.empty()) {
 		sinfo->nodepart = create_node_partitions(policy, sinfo->unassoc_nodes,
 			sinfo->node_group_key,
 			sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST,
@@ -1280,16 +1259,16 @@ create_placement_sets(status *policy, server_info *sinfo)
 		if (qinfo->has_nodes)
 			qinfo->allpart = create_specific_nodepart(policy, "all", qinfo->nodes, NO_FLAGS);
 
-		if (sinfo->node_group_enable && (qinfo->has_nodes || qinfo->node_group_key)) {
+		if (sinfo->node_group_enable && (qinfo->has_nodes || !qinfo->node_group_key.empty())) {
 			node_info **ngroup_nodes;
-			char **ngkey;
+			string_vector ngkey;
 
 			if (qinfo->has_nodes)
 				ngroup_nodes = qinfo->nodes;
 			else
 				ngroup_nodes = sinfo->unassoc_nodes;
 
-			if(qinfo->node_group_key)
+			if (!qinfo->node_group_key.empty())
 				ngkey = qinfo->node_group_key;
 			else
 				ngkey = sinfo->node_group_key;
@@ -1325,14 +1304,14 @@ sort_all_nodepart(status *policy, server_info *sinfo)
 	if (policy == NULL || sinfo == NULL || sinfo->queues == NULL)
 		return;
 
-	if (sinfo->node_group_enable && sinfo->node_group_key != NULL)
+	if (sinfo->node_group_enable && !sinfo->node_group_key.empty())
 		qsort(sinfo->nodepart, sinfo->num_parts,
 		      sizeof(node_partition *), cmp_placement_sets);
 
 	for (i = 0; sinfo->queues[i] != NULL; i++) {
 		queue_info *qinfo = sinfo->queues[i];
 
-		if (sinfo->node_group_enable && qinfo->node_group_key != NULL)
+		if (sinfo->node_group_enable && !qinfo->node_group_key.empty())
 			qsort(qinfo->nodepart, qinfo->num_parts,
 			      sizeof(node_partition *), cmp_placement_sets);
 	}
@@ -1368,7 +1347,7 @@ update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 	if(sinfo->allpart == NULL)
 		return;
 
-	if (sinfo->node_group_enable && sinfo->node_group_key != NULL)
+	if (sinfo->node_group_enable && !sinfo->node_group_key.empty())
 		node_partition_update_array(policy, sinfo->nodepart);
 
 	if (pbs_conf.pbs_num_servers > 1) {	/* Update svr_to_psets for multi-server */
@@ -1395,7 +1374,7 @@ update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 	for (int i = 0; sinfo->queues[i] != NULL; i++) {
 		auto qinfo = sinfo->queues[i];
 
-		if (sinfo->node_group_enable && qinfo->node_group_key != NULL)
+		if (sinfo->node_group_enable && !qinfo->node_group_key.empty())
 			node_partition_update_array(policy, qinfo->nodepart);
 
 		if ((flags & NO_ALLPART) == 0) {

@@ -139,6 +139,7 @@ typedef struct th_data_query_jinfo th_data_query_jinfo;
 typedef struct th_data_free_resresv th_data_free_resresv;
 
 typedef std::unordered_map<std::string, counts *> counts_map;
+typedef std::vector<std::string> string_vector;
 #ifdef NAS
 /* localmod 034 */
 /*
@@ -409,7 +410,7 @@ struct server_info
 	int num_nodes;			/* number of nodes associated with the server */
 	int num_resvs;			/* number of reservations on the server */
 	int num_preempted;		/* number of jobs currently preempted */
-	char **node_group_key;		/* the node grouping resources */
+	string_vector node_group_key;		/* the node grouping resources */
 	state_count sc;			/* number of jobs in each state */
 	queue_info **queues;		/* array of queues */
 	queue_info ***queue_list;	/* 3 dimensional array, used to order jobs in round_robin */
@@ -529,7 +530,7 @@ class queue_info
 	counts_map total_user_counts;
 	counts_map total_alljobcounts;
 
-	char **node_group_key;		/* node grouping resources */
+	string_vector node_group_key;		/* node grouping resources */
 	struct node_partition **nodepart; /* array pointers to node partitions */
 	struct node_partition *allpart;   /* partition w/ all nodes assoc with queue*/
 	int num_parts;			/* number of node partitions(node_group_key) */
@@ -977,13 +978,13 @@ struct node_partition
 {
 	bool ok_break:1;	/* OK to break up chunks on this node part */
 	bool excl:1;		/* partition should be allocated exclusively */
-	char *name;			/* res_name=res_val */
+	char *name;		/* res_name=res_val */
 	/* name of resource and value which define the node partition */
 	resdef *def;
 	char *res_val;
 	int tot_nodes;		/* the total number of nodes  */
 	int free_nodes;		/* the number of nodes in state Free  */
-	schd_resource *res;		/* total amount of resources in node part */
+	schd_resource *res;	/* total amount of resources in node part */
 	node_info **ninfo_arr;	/* array of pointers to node structures  */
 	node_bucket **bkts;	/* node buckets for node part */
 	int rank;		/* unique numeric identifier for node partition */
@@ -991,9 +992,9 @@ struct node_partition
 
 struct np_cache
 {
-	char **resnames;		/* resource names used to create partitions */
-	node_info **ninfo_arr;	/* ptr to array of nodes used to create pools */
-	int num_parts;		/* number of partitions in nodepart */
+	string_vector resnames;		/* resource names used to create partitions */
+	node_info **ninfo_arr;		/* ptr to array of nodes used to create pools */
+	int num_parts;			/* number of partitions in nodepart */
 	node_partition **nodepart;	/* node partitions */
 };
 

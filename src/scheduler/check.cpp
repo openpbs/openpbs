@@ -1675,9 +1675,7 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 	 * If it doesn't exist, we'll create it and add it to the cache
 	 */
 	if (resresv->place_spec->group != NULL) {
-		char *grouparr[2];
-		grouparr[0] = resresv->place_spec->group;
-		grouparr[1] = NULL;
+		string_vector grouparr {resresv->place_spec->group};
 		npc = find_alloc_np_cache(policy, &(sinfo->npc_arr), grouparr, ninfo_arr, cmp_placement_sets);
 		if (npc != NULL)
 			nodepart = npc->nodepart;
