@@ -777,18 +777,13 @@ new_np_cache(void)
  * @param[in,out]	npc_arr	-	np cashe array.
  */
 void
-free_np_cache_array(np_cache **npc_arr)
+free_np_cache_array(np_cache_vector &npc_arr)
 {
-	int i;
-
-	if (npc_arr == NULL)
+	if (npc_arr.empty())
 		return;
 
-	for (i = 0; npc_arr[i] != NULL; i++)
-		free_np_cache(npc_arr[i]);
-
-	free(npc_arr);
-
+	for (auto elem: npc_arr)
+		free_np_cache(elem);
 	return;
 }
 
@@ -830,21 +825,19 @@ free_np_cache(np_cache *npc)
  *
  */
 np_cache *
-find_np_cache(np_cache **npc_arr,
+find_np_cache(const np_cache_vector &npc_arr,
 	const string_vector &resnames, node_info **ninfo_arr)
 {
-	int i;
-
-	if (npc_arr == NULL || resnames.empty() || ninfo_arr == NULL)
+	if (npc_arr.empty() || resnames.empty() || ninfo_arr == NULL)
 		return NULL;
 
-	for (i = 0; npc_arr[i] != NULL; i++) {
-		if (npc_arr[i]->ninfo_arr == ninfo_arr &&
-			match_string_array(npc_arr[i]->resnames, resnames) == SA_FULL_MATCH)
-			break;
+	for (auto elem: npc_arr) {
+		if (elem->ninfo_arr == ninfo_arr &&
+			match_string_array(elem->resnames, resnames) == SA_FULL_MATCH)
+			return elem;
 	}
 
-	return npc_arr[i];
+	return NULL;
 }
 
 /**
@@ -869,7 +862,7 @@ find_np_cache(np_cache **npc_arr,
  *
  */
 np_cache *
-find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
+find_alloc_np_cache(status *policy, np_cache_vector &pnpc_arr,
 	const string_vector &resnames, node_info **ninfo_arr,
 	int (*sort_func)(const void *, const void *))
 {
@@ -878,10 +871,10 @@ find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
 	np_cache *npc = NULL;
 	int error = 0;
 
-	if (resnames.empty() || ninfo_arr == NULL || pnpc_arr == NULL)
+	if (resnames.empty() || ninfo_arr == NULL || pnpc_arr.empty())
 		return NULL;
 
-	npc = find_np_cache(*pnpc_arr, resnames, ninfo_arr);
+	npc = find_np_cache(pnpc_arr, resnames, ninfo_arr);
 
 	if (npc == NULL) {
 		int flags = NP_NO_ADD_NP_ARR;
@@ -901,10 +894,11 @@ find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
 				npc->resnames = resnames;
 				npc->num_parts = num_parts;
 				npc->nodepart = nodepart;
-				if (npc->resnames.empty() || add_np_cache(pnpc_arr, npc) ==0) {
+				if (npc->resnames.empty()) {
 					free_np_cache(npc);
 					error = 1;
 				}
+				pnpc_arr.push_back(npc);
 			}
 			else {
 				free_node_partition_array(nodepart);

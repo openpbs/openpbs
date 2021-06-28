@@ -2462,8 +2462,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 
 	if (hostsets == NULL) {
 		string_vector		host_arr{"host"};
-
-		npc = find_alloc_np_cache(policy, &resresv->server->npc_arr, host_arr, nptr, NULL);
+		npc = find_alloc_np_cache(policy, resresv->server->npc_arr, host_arr, nptr, NULL);
 		if (npc != NULL)
 			hostsets = npc->nodepart;
 	}

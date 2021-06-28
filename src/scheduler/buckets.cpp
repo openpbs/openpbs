@@ -1086,7 +1086,7 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 		else
 			ninfo_arr = sinfo->unassoc_nodes;
 
-		npc = find_alloc_np_cache(policy, &(sinfo->npc_arr), groupvec, ninfo_arr, cmp_placement_sets);
+		npc = find_alloc_np_cache(policy, sinfo->npc_arr, groupvec, ninfo_arr, cmp_placement_sets);
 		if (npc != NULL)
 			nodepart = npc->nodepart;
 	}

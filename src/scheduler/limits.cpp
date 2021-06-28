@@ -1561,7 +1561,7 @@ check_queue_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 	used = find_counts_elm(cts, group, NULL, NULL, NULL);
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 		"group %s max_*group_run (%d, %d), used %d",
-		group, max_group_run, max_gengroup_run, used);
+		group.c_str(), max_group_run, max_gengroup_run, used);
 
 	if (max_group_run != SCHD_INFINITY) {
 		if (max_group_run <= used) {

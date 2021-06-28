@@ -166,7 +166,7 @@ np_cache *new_np_cache(void);
 /*
  *	free_np_cache_array - destructor for array
  */
-void free_np_cache_array(np_cache **npc_arr);
+void free_np_cache_array(np_cache_vector &npc_arr);
 
 /*
  *	free_np_cache - destructor
@@ -195,7 +195,7 @@ find_np_cache(np_cache **npc_arr,
  *			      does not exist, create it and add it to the list
  */
 np_cache *
-find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
+find_alloc_np_cache(status *policy, np_cache_vector &pnpc_arr,
 	const string_vector &resnames, node_info **ninfo_arr,
 	int (*sort_func)(const void *, const void *));
 /*

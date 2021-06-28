@@ -140,6 +140,7 @@ typedef struct th_data_free_resresv th_data_free_resresv;
 
 typedef std::unordered_map<std::string, counts *> counts_map;
 typedef std::vector<std::string> string_vector;
+typedef std::vector<np_cache *> np_cache_vector;
 #ifdef NAS
 /* localmod 034 */
 /*
@@ -459,7 +460,7 @@ struct server_info
 	 * be duplicated.  It would be difficult to duplicate correctly, and it is
 	 * just a cache.  It will be regenerated when needed
 	 */
-	np_cache **npc_arr;
+	np_cache_vector npc_arr;
 
 	resource_resv *qrun_job;	/* used if running a job via qrun request */
 	/* policy structure for the server.  This is an easy storage location for
