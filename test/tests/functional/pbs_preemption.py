@@ -189,6 +189,11 @@ exit 1
         """
         Test that when checkpoint fails, a job is correctly requeued
         """
+        # no checkpoint script, should requeue
+        self.submit_and_preempt_jobs(preempt_order='CR')
+        self.server.cleanup_jobs()
+
+        # checkpoint script fails, should requeue
         self.mom.add_checkpoint_abort_script(body=self.chk_script_fail)
         self.submit_and_preempt_jobs(preempt_order='CR')
 
@@ -821,3 +826,8 @@ exit 3
         self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
         self.server.expect(JOB, {'job_state=R': 5})
         self.server.expect(JOB, {'job_state=S': 1})
+    
+    def test_chkpt_restart(self):
+        """
+        Test that if checkpointing is not set up, that the job is requeued
+        """
