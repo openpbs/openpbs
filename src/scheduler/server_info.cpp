@@ -115,6 +115,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 
+#include <algorithm>
 #include "pbs_entlim.h"
 #include "pbs_ifl.h"
 #include "pbs_error.h"
@@ -252,7 +253,8 @@ query_server(status *pol, int pbs_sd)
 			multi_node_sort);
 
 	/* get the queues */
-	if ((sinfo->queues = query_queues(policy, pbs_sd, sinfo)) == NULL) {
+	sinfo->queues = query_queues(policy, pbs_sd, sinfo);
+	if (sinfo->queues.empty()) {
 		pbs_statfree(server);
 		sinfo->fstree = NULL;
 		free_server(sinfo);
@@ -269,11 +271,10 @@ query_server(status *pol, int pbs_sd)
 	/* count the queues and total up the individual queue states
 	 * for server totals. (total up all the state_count structs)
 	 */
-	for (int i = 0; sinfo->queues[i] != NULL; i++) {
-		sinfo->num_queues++;
-		total_states(&(sinfo->sc), &(sinfo->queues[i]->sc));
+	for (auto qinfo: sinfo->queues) {
+		total_states(&(sinfo->sc), &(qinfo->sc));
 
-		if (sinfo->queues[i]->priority >= sc_attrs.preempt_queue_prio)
+		if (qinfo->priority >= sc_attrs.preempt_queue_prio)
 			num_express_queues++;
 	}
 
@@ -285,12 +286,11 @@ query_server(status *pol, int pbs_sd)
 	 * in the case we don't sort the jobs and don't have by_queue turned on
 	 */
 	if ((policy->round_robin == 1) || (policy->by_queue == 1))
-		qsort(sinfo->queues, sinfo->num_queues, sizeof(queue_info *),
-			cmp_queue_prio_dsc);
+		std::sort(sinfo->queues.begin(), sinfo->queues.end(), cmp_queue_prio_dsc);
 	if (policy->round_robin == 1) {
 		/* queues are already sorted in descending order of their priority */
-		for (i = 0; i < sinfo->num_queues; i++) {
-			auto ret_val = add_queue_to_list(&sinfo->queue_list, sinfo->queues[i]);
+		for (auto queue: sinfo->queues) {
+			auto ret_val = add_queue_to_list(&sinfo->queue_list, queue);
 			if (ret_val == 0) {
 				sinfo->fstree = NULL;
 				free_server(sinfo);
@@ -499,10 +499,7 @@ query_server_info(status *pol, struct batch_status *server)
 	if (sinfo->liminfo == NULL)
 		return NULL;
 
-	if ((sinfo->name = string_dup(server->name)) == NULL) {
-		free_server_info(sinfo);
-		return NULL;
-	}
+	sinfo->name = std::string(server->name);
 
 	if ((sinfo->policy = dup_status(pol)) == NULL) {
 		free_server_info(sinfo);
@@ -1018,8 +1015,6 @@ dup_server_psets(std::unordered_map<std::string, node_partition *>& spsets, serv
 void
 free_server_info(server_info *sinfo)
 {
-	if (sinfo->name != NULL)
-		free(sinfo->name);
 	if (sinfo->jobs != NULL)
 		free(sinfo->jobs);
 	if (sinfo->all_resresv != NULL)
@@ -1184,9 +1179,9 @@ new_server_info(int limallocflag)
 	sinfo->use_hard_duration = 0;
 	sinfo->pset_metadata_stale = 0;
 	sinfo->num_parts = 0;
-	sinfo->name = NULL;
+	sinfo->name = empty_str;
 	sinfo->res = NULL;
-	sinfo->queues = NULL;
+	sinfo->queues = {};
 	sinfo->queue_list = NULL;
 	sinfo->jobs = NULL;
 	sinfo->all_resresv = NULL;
@@ -1206,7 +1201,6 @@ new_server_info(int limallocflag)
 	sinfo->equiv_classes = NULL;
 	sinfo->buckets = NULL;
 	sinfo->unordered_nodes = NULL;
-	sinfo->num_queues = 0;
 	sinfo->num_nodes = 0;
 	sinfo->num_resvs = 0;
 	sinfo->num_hostsets = 0;
@@ -1695,10 +1689,8 @@ update_server_on_run(status *policy, server_info *sinfo,
 		/* We're running a job or reservation, which will affect the cached data.
 		 * We'll flush the cache and rebuild it if needed
 		 */
-		if (!sinfo->npc_arr.empty()) {
+		if (!sinfo->npc_arr.empty())
 			free_np_cache_array(sinfo->npc_arr);
-			sinfo->npc_arr = {};
-		}
 
 
 		/* a new job has been run, update running jobs array */
@@ -1803,10 +1795,8 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	/* We're ending a job or reservation, which will affect the cached data.
 	 * We'll flush the cache and rebuild it if needed
 	 */
-	if (!sinfo->npc_arr.empty()) {
+	if (!sinfo->npc_arr.empty())
 		free_np_cache_array(sinfo->npc_arr);
-		sinfo->npc_arr = {};
-	}
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		if (resresv->is_job && resresv->job->is_running) {
@@ -1857,7 +1847,6 @@ copy_server_arrays(server_info *nsinfo, server_info *osinfo)
 	resource_resv **resresv_arr;	/* used as source array to copy */
 	int i = 0;
 	int j = 0;
-	int index;
 
 	if (nsinfo == NULL || osinfo == NULL)
 		return 0;
@@ -1874,8 +1863,8 @@ copy_server_arrays(server_info *nsinfo, server_info *osinfo)
 		return 0;
 	}
 
-	for (index = 0; nsinfo->queues[index] != NULL; index++) {
-		resresv_arr = nsinfo->queues[index]->jobs;
+	for (auto queue: nsinfo->queues) {
+		resresv_arr = queue->jobs;
 
 		if (resresv_arr != NULL) {
 			for (i = 0; resresv_arr[i] != NULL; i++, j++)
@@ -1911,7 +1900,6 @@ copy_server_arrays(server_info *nsinfo, server_info *osinfo)
 int
 create_server_arrays(server_info *sinfo)
 {
-	queue_info **qinfo;		/* used to cycle through the array of queues */
 	resource_resv **job_arr;	/* used in copying jobs to job array */
 	resource_resv **all_arr;	/* used in copying jobs to job/resv array */
 	resource_resv **resresv_arr;	/* used as source array to copy */
@@ -1929,9 +1917,8 @@ create_server_arrays(server_info *sinfo)
 		return 0;
 	}
 
-	qinfo = sinfo->queues;
-	while (*qinfo != NULL) {
-		resresv_arr = (*qinfo)->jobs;
+	for (auto queue: sinfo->queues) {
+		resresv_arr = queue->jobs;
 
 		if (resresv_arr != NULL) {
 			for (j = 0; resresv_arr[j] != NULL; j++, i++) {
@@ -1944,7 +1931,6 @@ create_server_arrays(server_info *sinfo)
 				return 0;
 			}
 		}
-		qinfo++;
 	}
 	job_arr[i] = NULL;
 
@@ -2139,7 +2125,7 @@ server_info *
 dup_server_info(server_info *osinfo)
 {
 	server_info *nsinfo;		/* scheduler internal form of server info */
-	int i;
+	unsigned int i;
 
 	if (osinfo == NULL)
 		return NULL;
@@ -2173,7 +2159,7 @@ dup_server_info(server_info *osinfo)
 	nsinfo->power_provisioning = osinfo->power_provisioning;
 	nsinfo->use_hard_duration = osinfo->use_hard_duration;
 	nsinfo->pset_metadata_stale = osinfo->pset_metadata_stale;
-	nsinfo->name = string_dup(osinfo->name);
+	nsinfo->name = osinfo->name;
 	nsinfo->liminfo = lim_dup_liminfo(osinfo->liminfo);
 	nsinfo->server_time = osinfo->server_time;
 	nsinfo->res = dup_resource_list(osinfo->res);
@@ -2212,15 +2198,15 @@ dup_server_info(server_info *osinfo)
 #endif /* localmod 053 */
 
 	/* duplicate the queues */
-	nsinfo->num_queues = osinfo->num_queues;
-	if ((nsinfo->queues = dup_queues(osinfo->queues, nsinfo)) == NULL) {
+	nsinfo->queues = dup_queues(osinfo->queues, nsinfo);
+	if (nsinfo->queues.empty()) {
 		free_server(nsinfo);
 		return NULL;
 	}
 
 	if (osinfo->queue_list != NULL) {
 		/* queues are already sorted in descending order of their priority */
-		for (i = 0; i < nsinfo->num_queues; i++) {
+		for (i = 0; i < nsinfo->queues.size(); i++) {
 			auto ret_val = add_queue_to_list(&nsinfo->queue_list, nsinfo->queues[i]);
 			if (ret_val == 0) {
 				nsinfo->fstree = NULL;
@@ -2927,11 +2913,10 @@ update_universe_on_end(status *policy, resource_resv *resresv, const char *job_s
 					free_resource_list(sinfo->allpart->res);
 					sinfo->allpart->res = NULL;
 				}
-				for (int j = 0; sinfo->queues[j] != NULL; j++) {
-					queue_info *q = sinfo->queues[j];
-					if (q->allpart != NULL) {
-						free_resource_list(q->allpart->res);
-						q->allpart->res = NULL;
+				for (auto queue: sinfo->queues) {
+					if (queue->allpart != NULL) {
+						free_resource_list(queue->allpart->res);
+						queue->allpart->res = NULL;
 					}
 				}
 			}
@@ -3480,19 +3465,18 @@ update_total_counts_on_end(server_info *si, queue_info* qi,
 void
 refresh_total_counts(server_info *sinfo)
 {
-	int i = 0;
 	if (sinfo != NULL) {
 		free_counts_list(sinfo->total_group_counts);
 		free_counts_list(sinfo->total_user_counts);
 		free_counts_list(sinfo->total_project_counts);
 		free_counts_list(sinfo->total_alljobcounts);
 		create_total_counts(sinfo, NULL, NULL, SERVER);
-		for (; i < sinfo->num_queues; i++) {
-			free_counts_list(sinfo->queues[i]->total_group_counts);
-			free_counts_list(sinfo->queues[i]->total_user_counts);
-			free_counts_list(sinfo->queues[i]->total_project_counts);
-			free_counts_list(sinfo->queues[i]->total_alljobcounts);
-			create_total_counts(NULL, sinfo->queues[i], NULL, QUEUE);
+		for (auto queue: sinfo->queues) {
+			free_counts_list(queue->total_group_counts);
+			free_counts_list(queue->total_user_counts);
+			free_counts_list(queue->total_project_counts);
+			free_counts_list(queue->total_alljobcounts);
+			create_total_counts(NULL, queue, NULL, QUEUE);
 		}
 	}
 	return;

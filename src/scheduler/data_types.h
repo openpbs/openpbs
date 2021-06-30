@@ -141,6 +141,7 @@ typedef struct th_data_free_resresv th_data_free_resresv;
 typedef std::unordered_map<std::string, counts *> counts_map;
 typedef std::vector<std::string> string_vector;
 typedef std::vector<np_cache *> np_cache_vector;
+typedef std::vector<queue_info *> qinfo_vector;
 #ifdef NAS
 /* localmod 034 */
 /*
@@ -404,16 +405,15 @@ struct server_info
 	bool has_nonCPU_licenses:1;	/* server has non-CPU (e.g. socket-based) licenses */
 	bool use_hard_duration:1;	/* use hard duration when creating the calendar */
 	bool pset_metadata_stale:1;	/* The placement set meta data is stale and needs to be regenerated before the next use */
-	char *name;			/* name of server */
+	std::string name;		/* name of server */
 	struct schd_resource *res;	/* list of resources */
 	void *liminfo;			/* limit storage information */
-	int num_queues;			/* number of queues that reside on the server */
 	int num_nodes;			/* number of nodes associated with the server */
 	int num_resvs;			/* number of reservations on the server */
 	int num_preempted;		/* number of jobs currently preempted */
 	string_vector node_group_key;		/* the node grouping resources */
 	state_count sc;			/* number of jobs in each state */
-	queue_info **queues;		/* array of queues */
+	qinfo_vector queues;		/* array of queues */
 	queue_info ***queue_list;	/* 3 dimensional array, used to order jobs in round_robin */
 	node_info **nodes;		/* array of nodes associated with the server */
 	node_info **unassoc_nodes;	/* array of nodes not associated with queues */
@@ -991,12 +991,17 @@ struct node_partition
 	int rank;		/* unique numeric identifier for node partition */
 };
 
-struct np_cache
+class np_cache
 {
+	public:
 	string_vector resnames;		/* resource names used to create partitions */
 	node_info **ninfo_arr;		/* ptr to array of nodes used to create pools */
 	int num_parts;			/* number of partitions in nodepart */
 	node_partition **nodepart;	/* node partitions */
+	np_cache();
+	np_cache(const np_cache &);
+	np_cache& operator=(const np_cache &);
+	~np_cache();
 };
 
 /* header to usage file.  Needs to be EXACTLY the same size as a

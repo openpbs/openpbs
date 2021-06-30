@@ -393,7 +393,7 @@ char *create_node_bucket_name(status *policy, node_bucket *nb) {
  * @retval NULL on error
  */
 node_bucket **
-create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsigned int flags) {
+create_node_buckets(status *policy, node_info **nodes, qinfo_vector &queues, unsigned int flags) {
 	int i;
 	int j = 0;
 	node_bucket **buckets = NULL;
@@ -421,7 +421,7 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsi
 		if (nodes[i]->is_down || nodes[i]->is_offline || node_ind == -1 || nodes[i]->lic_lock == 0)
 			continue;
 
-		if (queues != NULL && !nodes[i]->queue_name.empty())
+		if (!queues.empty() && !nodes[i]->queue_name.empty())
 			qinfo = find_queue_info(queues, nodes[i]->queue_name);
 
 		bkt_ind = find_node_bucket_ind(buckets, nodes[i]->res, qinfo, nodes[i]->priority);
