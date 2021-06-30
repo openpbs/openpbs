@@ -826,8 +826,3 @@ exit 3
         self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
         self.server.expect(JOB, {'job_state=R': 5})
         self.server.expect(JOB, {'job_state=S': 1})
-    
-    def test_chkpt_restart(self):
-        """
-        Test that if checkpointing is not set up, that the job is requeued
-        """
