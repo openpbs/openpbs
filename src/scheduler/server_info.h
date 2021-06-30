@@ -52,10 +52,10 @@ enum counts_on_run {
 	ALL
 };
 /*
- *      query_universe - creates a structure of arrays consisting of a server
+ *      query_server - creates a structure of arrays consisting of a server
  *                      and all the queues and jobs that reside in that server
  */
-server_info *query_universe(status *policy, int pbs_sd);
+server_info *query_server(status *policy, int pbs_sd);
 
 /*
  *	query_server_info - collect information out of a statserver call

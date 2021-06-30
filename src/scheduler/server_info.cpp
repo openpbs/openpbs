@@ -160,7 +160,7 @@ extern char **environ;
  *		and all the queues and jobs that reside in that server
  *
  * @par Order of Query
- *		query_universe()
+ *		query_server()
  *      -> query_sched()
  *	 	-> query_nodes()
  *	 	-> query_queues()
@@ -176,7 +176,7 @@ extern char **environ;
  *
  */
 server_info *
-query_universe(status *pol, int pbs_sd)
+query_server(status *pol, int pbs_sd)
 {
 	struct batch_status *server;	/* info about the server */
 	struct batch_status *bs_resvs;	/* batch status of the reservations */
@@ -423,7 +423,10 @@ query_universe(status *pol, int pbs_sd)
 		return NULL;
 	}
 
-	/* Clean up some node tasks which we couldn't do in query_nodes() because we didn't have everything we needed */
+	/* Ideally we'd query everything about a node in query_node().  We query
+	 * nodes very early on in the query process.  Not all the information
+	 * necessary for a node is available at that time.  We need to delay it till here.
+	 */
 	for (i = 0; sinfo->nodes[i] != NULL; i++) {
 		auto *ninfo = sinfo->nodes[i];
 		ninfo->nodesig = create_resource_signature(ninfo->res,

@@ -916,6 +916,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
  *		query_job - takes info from a batch_status about a job and
  *			 converts it into a resource_resv struct
  *
+ * 	  @param[in] pbs_sd - connection descriptor to the server
  *	  @param[in] job - batch_status struct of job
  *	  @param[in] qinfo - queue where job resides
  *	  @param[out] err - returns error info
@@ -5259,6 +5260,7 @@ int associate_array_parent(resource_resv *pjob, server_info *sinfo) {
  *
  * 	@param[in] pbs_sd - used to set estimated.soft_walltime
  * 	@param[in] resresv - the job
+ * 	@param[in] server_time - current time in cycle
  * 
  * 	@return void
  */
