@@ -53,10 +53,10 @@
 #define IF_NEG_THEN_ZERO(a) (((a)>=(0))?(a):(0))
 
 /* multipliers [bw] means either btye or word */
-#define KILO		1024UL		/* number of [bw] in a kilo[bw] */
-#define MEGATOKILO	1024UL		/* number of mega[bw] in a kilo[bw] */
-#define GIGATOKILO	1048576UL	/* number of giga[bw] in a kilo[bw] */
-#define TERATOKILO	1073741824UL	/* number of tera[bw] in a kilo[bw] */
+#define KILO		1024L		/* number of [bw] in a kilo[bw] */
+#define MEGATOKILO	1024L		/* number of mega[bw] in a kilo[bw] */
+#define GIGATOKILO	1048576L	/* number of giga[bw] in a kilo[bw] */
+#define TERATOKILO	1073741824L	/* number of tera[bw] in a kilo[bw] */
 
 /* extra constants */
 #define FREE_DEEP 1		/* constant to pass to free_*_list */

@@ -115,7 +115,6 @@ int
 schedinit(int nthreads)
 {
 	char zone_dir[MAXPATHLEN];
-	struct tm *tmptr;
 
 #ifdef PYTHON
 	const char *errstr;
@@ -135,7 +134,7 @@ schedinit(int nthreads)
 		init_non_prime_time(&cstat, NULL);
 
 	if (conf.holiday_year != 0) {
-		tmptr = localtime(&cstat.current_time);
+		auto tmptr = localtime(&cstat.current_time);
 		if ((tmptr != NULL) && ((tmptr->tm_year + 1900) > conf.holiday_year))
 			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE,
 				"The holiday file is out of date; please update it.");
@@ -144,7 +143,7 @@ schedinit(int nthreads)
 	parse_ded_file(DEDTIME_FILE);
 
 	if (fstree != NULL)
-		free_fairshare_head(fstree);
+		delete fstree;
 	/* preload the static members to the fairshare tree */
 	fstree = preload_tree();
 	if (fstree != NULL) {
@@ -226,8 +225,6 @@ update_cycle_status(status& policy, time_t current_time)
 {
 	bool dedtime;			/* is it dedtime? */
 	enum prime_time prime;		/* current prime time status */
-	struct tm *ptm;
-	struct tm *tmptr;
 	const char *primetime;
 
 	if (current_time == 0)
@@ -256,7 +253,7 @@ update_cycle_status(status& policy, time_t current_time)
 		init_non_prime_time(&policy, NULL);
 
 	if (conf.holiday_year != 0) {
-		tmptr = localtime(&policy.current_time);
+		auto tmptr = localtime(&policy.current_time);
 		if ((tmptr != NULL) && ((tmptr->tm_year + 1900) > conf.holiday_year))
 			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_NOTICE,
 				  HOLIDAYS_FILE, "The holiday file is out of date; please update it.");
@@ -267,7 +264,7 @@ update_cycle_status(status& policy, time_t current_time)
 	if (policy.prime_status_end == SCHD_INFINITY)
 		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "", "It is %s.  It will never end", primetime);
 	else {
-		ptm = localtime(&(policy.prime_status_end));
+		auto ptm = localtime(&(policy.prime_status_end));
 		if (ptm != NULL) {
 			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "",
 				"It is %s.  It will end in %ld seconds at %02d/%02d/%04d %02d:%02d:%02d",
@@ -314,11 +311,7 @@ int
 init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 {
 	group_info *user = NULL;	/* the user for the running jobs of the last cycle */
-	char decayed = 0;		/* boolean: have we decayed usage? */
-	time_t t;			/* used in decaying fair share */
-	usage_t delta;			/* the usage between last sch cycle and now */
 	static schd_error *err;
-	int i;
 
 	if (err == NULL) {
 		err = new_schd_error();
@@ -328,7 +321,8 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 
 	if ((policy->fair_share || sinfo->job_sort_formula != NULL) && sinfo->fstree != NULL) {
 		FILE *fp;
-		int resort = 0;
+		bool decayed = false;
+		bool resort = false;
 		if ((fp = fopen(USAGE_TOUCH, "r")) != NULL) {
 			fclose(fp);
 			reset_usage(fstree->root);
@@ -336,7 +330,7 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 			if (fstree->last_decay == 0)
 				fstree->last_decay = policy->current_time;
 			remove(USAGE_TOUCH);
-			resort = 1;
+			resort = true;
 		}
 		if (!last_running.empty() && sinfo->running_jobs != NULL) {
 			/* add the usage which was accumulated between the last cycle and this
@@ -351,16 +345,16 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 
 					if (rj != NULL && rj->job != NULL && !rj->job->is_prerunning) {
 						/* just in case the delta is negative just add 0 */
-						delta = formula_evaluate(conf.fairshare_res.c_str(), rj, rj->job->resused) -
+						auto delta = formula_evaluate(conf.fairshare_res.c_str(), rj, rj->job->resused) -
 							formula_evaluate(conf.fairshare_res.c_str(), rj, lj.resused);
 
 						delta = IF_NEG_THEN_ZERO(delta);
 
 						;
-						for (auto gpath = user->gpath; gpath != NULL; gpath = gpath->next)
-							gpath->ginfo->usage += delta;
+						for (auto& g : user->gpath)
+							g->usage += delta;
 
-						resort = 1;
+						resort = true;
 					}
 				}
 			}
@@ -371,7 +365,7 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 		 * passed.  If this is the case, perform as many decays as necessary
 		 */
 
-		t = policy->current_time;
+		auto t = policy->current_time;
 		while (conf.decay_time != SCHD_INFINITY &&
 			(t - sinfo->fstree->last_decay) > conf.decay_time) {
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
@@ -379,15 +373,16 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 			if (fstree != NULL)
 				decay_fairshare_tree(sinfo->fstree->root);
 			t -= conf.decay_time;
-			decayed = 1;
-			resort = 1;
+			decayed = true;
+			resort = true;
 		}
 
 		if (decayed) {
 			/* set the time to the actual time the half-life should have occurred */
-			fstree->last_decay =
-				policy->current_time - (policy->current_time -
-				sinfo->fstree->last_decay) % conf.decay_time;
+			if (fstree != NULL)
+				fstree->last_decay =
+					policy->current_time - (policy->current_time -
+					sinfo->fstree->last_decay) % conf.decay_time;
 		}
 
 		if (decayed || !last_running.empty()) {
@@ -411,13 +406,13 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 	 * is updated for all running jobs
 	 */
 	if ((sinfo->running_jobs != NULL) && (policy->preempting)) {
-		for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
+		for (int i = 0; sinfo->running_jobs[i] != NULL; i++) {
 			if (sinfo->running_jobs[i]->job->resv_id == NULL)
 				update_soft_limits(sinfo, sinfo->running_jobs[i]->job->queue, sinfo->running_jobs[i]);
 		}
 	}
 	if (sinfo->jobs != NULL) {
-		for (i = 0; sinfo->jobs[i] != NULL; i++) {
+		for (int i = 0; sinfo->jobs[i] != NULL; i++) {
 			resource_resv *resresv = sinfo->jobs[i];
 			if (resresv->job != NULL) {
 				if (policy->preempting) {
@@ -816,7 +811,6 @@ get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 int
 main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 {
-	queue_info *qinfo;		/* ptr to queue that job is in */
 	resource_resv *njob;		/* ptr to the next job to see if it can run */
 	int rc = 0;			/* return code to the function */
 	int num_topjobs = 0;		/* number of jobs we've added to the calendar */
@@ -862,6 +856,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		(njob = next_job(policy, sinfo, sort_again)) != NULL; i++) {
 		int should_use_buckets;		/* Should use node buckets for a job */
 		unsigned int flags = NO_FLAGS;	/* flags to is_ok_to_run @see is_ok_to_run() */
+		auto qinfo = njob->job->queue;
 
 #ifdef NAS /* localmod 030 */
 		if (check_for_cycle_interrupt(1)) {
@@ -872,7 +867,6 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		rc = 0;
 		comment[0] = '\0';
 		log_msg[0] = '\0';
-		qinfo = njob->job->queue;
 		sort_again = SORTED;
 
 		clear_schd_error(err);
@@ -947,14 +941,13 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, njob->name, "Leaving scheduling cycle because of an internal error.");
 		}
 		else if (rc != SUCCESS && rc != RUN_FAILURE) {
-			int cal_rc;
 #ifdef NAS /* localmod 034 */
 			int bf_rc;
-			if ((bf_rc = site_should_backfill_with_job(policy, sinfo, njob, num_topjobs, num_topjobs_per_queues, err)))
+			if ((bf_rc = site_should_backfill_with_job(policy, sinfo, njob, num_topjobs, num_topjobs_per_queues, err))) {
 #else
 			if (should_backfill_with_job(policy, sinfo, njob, num_topjobs) != 0) {
 #endif
-				cal_rc = add_job_to_calendar(sd, policy, sinfo, njob, should_use_buckets);
+				auto cal_rc = add_job_to_calendar(sd, policy, sinfo, njob, should_use_buckets);
 
 				if (cal_rc > 0) { /* Success! */
 #ifdef NAS /* localmod 034 */
@@ -1181,11 +1174,10 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
 	char log_buf[MAX_LOG_SIZE];		/* buffer for log message */
 	int ret = 1;				/* return code for function */
 
-
-	job->can_not_run = 1;
-
 	if ((job == NULL) || (err == NULL) || (job->job == NULL))
 		return ret;
+
+	job->can_not_run = 1;
 
 	if (translate_fail_code(err, comment_buf, log_buf)) {
 		/* don't attempt to update the comment on a remote job and on an array job */
@@ -1234,8 +1226,6 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
 int
 run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, schd_error *err)
 {
-	char buf[100];	/* used to assemble queue@localserver */
-	const char *errbuf;		/* comes from pbs_geterrmsg() */
 	int rc = 0;
 
 	if (rjob == NULL || rjob->job == NULL || err == NULL)
@@ -1248,6 +1238,8 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, s
 	}
 
 	if (rjob->is_peer_ob) {
+		char buf[100]; /* used to assemble queue@localserver */
+
 		if (strchr(rjob->server->name, (int) ':') == NULL) {
 #ifdef NAS /* localmod 005 */
 			sprintf(buf, "%s@%s:%u", rjob->job->queue->name.c_str(),
@@ -1292,7 +1284,9 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, s
 	}
 
 	if (rc) {
+		const char *errbuf; /* comes from pbs_geterrmsg() */
 		char buf[MAX_LOG_SIZE];
+
 		set_schd_error_codes(err, NOT_RUN, RUN_FAILURE);
 		errbuf = pbs_geterrmsg(get_svr_inst_fd(pbs_sd, rjob->svr_inst_id));
 		if (errbuf == NULL)
@@ -1373,26 +1367,24 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 {
 	int ret = 0;				/* return code */
 	int pbsrc;				/* return codes from pbs IFL calls */
-	char buf[COMMENT_BUF_SIZE] = {'\0'};		/* generic buffer - comments & logging*/
-	int num_nspec;
 
 	/* used for jobs with nodes resource */
 	nspec **ns = NULL;
 	nspec **orig_ns = NULL;
 	char *execvnode = NULL;
-	int i;
 
 	/* used for resresv array */
 	resource_resv *array = NULL;		/* used to hold array ptr */
 
 	unsigned int eval_flags = NO_FLAGS;	/* flags to pass to eval_selspec() */
-	timed_event *te;			/* used to create timed events */
 	resource_resv *rr;
-	const char *err_txt = NULL;
 	char old_state = 0;
 
-	if (resresv == NULL || sinfo == NULL)
-		ret = -1;
+	if (resresv == NULL || sinfo == NULL) {
+		clear_schd_error(err);
+		set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
+		return -1;
+	}
 
 	if (resresv->is_job && qinfo == NULL)
 		ret = -1;
@@ -1416,7 +1408,8 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			if (!pbsrc)
 				ret = 1;
 			else {
-				err_txt = pbse_to_txt(pbsrc);
+				char buf[COMMENT_BUF_SIZE] = {'\0'}; /* generic buffer - comments & logging*/
+				const char *err_txt = pbse_to_txt(pbsrc);
 				if (err_txt == NULL)
 					err_txt = "";
 				clear_schd_error(err);
@@ -1494,7 +1487,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			}
 #endif
 
-			num_nspec = count_array(orig_ns);
+			auto num_nspec = count_array(orig_ns);
 			if (num_nspec > 1)
 				qsort(orig_ns, num_nspec, sizeof(nspec *), cmp_nspec);
 
@@ -1521,7 +1514,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 					printf("%04d-%02d-%02d %02d:%02d:%02d %s %s %s\n",
 						ptm->tm_year+1900, ptm->tm_mon+1, ptm->tm_mday,
 						ptm->tm_hour, ptm->tm_min, ptm->tm_sec,
-						"Running", resresv->name,
+						"Running", resresv->name.c_str(),
 						execvnode != NULL ? execvnode : "(NULL)");
 					fflush(stdout);
 #endif /* localmod 031 */
@@ -1593,7 +1586,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		update_resresv_on_run(rr, ns);
 
 		if ((flags & RURR_ADD_END_EVENT)) {
-			te = create_event(TIMED_END_EVENT, rr->end, rr, NULL, NULL);
+			auto te = create_event(TIMED_END_EVENT, rr->end, rr, NULL, NULL);
 			if (te == NULL) {
 				set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 				return -1;
@@ -1618,12 +1611,11 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 
 		if (ns != NULL) {
 			int sort_nodepart = 0;
-			for (i = 0; ns[i] != NULL; i++) {
-				int j;
+			for (int i = 0; ns[i] != NULL; i++) {
 				update_node_on_run(ns[i], rr, &old_state);
 				if (ns[i]->ninfo->np_arr != NULL) {
 					node_partition **npar = ns[i]->ninfo->np_arr;
-					for (j = 0; npar[j] != NULL; j++) {
+					for (int j = 0; npar[j] != NULL; j++) {
 						modify_resource_list(npar[j]->res, ns[i]->resreq, SCHD_INCR);
 						if (!ns[i]->ninfo->is_free)
 							npar[j]->free_nodes--;
@@ -1862,12 +1854,6 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 	resource_resv *bjob;		/* job pointer which becomes the topjob*/
 	resource_resv *tjob;		/* temporary job pointer for job arrays */
 	time_t start_time;		/* calculated start time of topjob */
-	char *exec;			/* used to hold execvnode for topjob */
-	timed_event *te_start;	/* start event for topjob */
-	timed_event *te_end;		/* end event for topjob */
-	timed_event *nexte;
-	char log_buf[MAX_LOG_SIZE];
-	int i;
 
 	if (policy == NULL || sinfo == NULL ||
 		topjob == NULL || topjob->job == NULL)
@@ -1877,7 +1863,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		/* if the job is in the calendar, then there is nothing to do
 		 * Note: We only ever look from now into the future
 		 */
-		nexte = get_next_event(sinfo->calendar);
+		auto nexte = get_next_event(sinfo->calendar);
 		if (find_timed_event(nexte, topjob->name, IGNORE_DISABLED_EVENTS, TIMED_NOEVENT, 0) != NULL)
 			return 1;
 	}
@@ -1903,6 +1889,9 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		start_time = calc_run_time(njob->name, nsinfo, SIM_RUN_JOB);
 
 	if (start_time > 0) {
+		char *exec;	       /* used to hold execvnode for topjob */
+		char log_buf[MAX_LOG_SIZE];
+
 		/* If our top job is a job array, we don't backfill around the
 		 * parent array... rather a subjob.  Normally subjobs don't actually
 		 * exist until they are started.  In our case here, we need to create
@@ -1940,7 +1929,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 			printf("%04d-%02d-%02d %02d:%02d:%02d %s %s %s\n",
 				ptm->tm_year+1900, ptm->tm_mon+1, ptm->tm_mday,
 				ptm->tm_hour, ptm->tm_min, ptm->tm_sec,
-				"Backfill", njob->name, exec);
+				"Backfill", njob->name.c_str(), exec);
 #endif /* localmod 068 */
 			if (bjob->nspec_arr != NULL)
 				free_nspecs(bjob->nspec_arr);
@@ -1973,14 +1962,14 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		bjob->start = start_time;
 		bjob->end = start_time + bjob->duration;
 
-		te_start = create_event(TIMED_RUN_EVENT, bjob->start, bjob, NULL, NULL);
+		auto te_start = create_event(TIMED_RUN_EVENT, bjob->start, bjob, NULL, NULL);
 		if (te_start == NULL) {
 			free_server(nsinfo);
 			return 0;
 		}
 		add_event(sinfo->calendar, te_start);
 
-		te_end = create_event(TIMED_END_EVENT, bjob->end, bjob, NULL, NULL);
+		auto te_end = create_event(TIMED_END_EVENT, bjob->end, bjob, NULL, NULL);
 		if (te_end == NULL) {
 			free_server(nsinfo);
 			return 0;
@@ -1994,7 +1983,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		}
 
 
-		for (i = 0; bjob->nspec_arr[i] != NULL; i++) {
+		for (int i = 0; bjob->nspec_arr[i] != NULL; i++) {
 			int ind = bjob->nspec_arr[i]->ninfo->node_ind;
 			add_te_list(&(bjob->nspec_arr[i]->ninfo->node_events), te_start);
 
@@ -2021,7 +2010,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 			 */
 			update_usage_on_run(bjob);
 			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, bjob->name,
-				"Fairshare usage of entity %s increased due to job becoming a top job.", bjob->job->ginfo->name);
+				"Fairshare usage of entity %s increased due to job becoming a top job.", bjob->job->ginfo->name.c_str());
 		}
 
 		sprintf(log_buf, "Job is a top job and will run at %s",
@@ -2141,36 +2130,6 @@ find_non_normal_job_ind(resource_resv **jobs, int start_index) {
 	return -1;
 }
 
-#ifdef NAS
-/**
- * @return
- *		find_susp_job - find a suspended job
- *
- * @param[in]	jobs	-	the array of jobs
- *
- * @return	first suspended job or NULL if there aren't any.
- *
- */
-resource_resv *
-find_susp_job(resource_resv **jobs) {
-	int i;
-
-	if (jobs == NULL)
-		return NULL;
-
-	for(i = 0; jobs[i] != NULL; i++) {
-		if (jobs[i]->job != NULL) {
-			if (jobs[i]->job->is_suspended) {
-				return jobs[i];
-			}
-		}
-	}
-	return NULL;
-}
-#endif
-
-
-
 /**
  * @brief
  * 		find the next job to be considered to run by the scheduler
@@ -2210,10 +2169,6 @@ next_job(status *policy, server_info *sinfo, int flag)
 	static int sort_status = MAY_RESORT_JOBS; /* to decide whether to sort jobs or not */
 	static int queue_list_size; /* Count of number of priority levels in queue_list */
 	resource_resv *rjob = NULL;		/* the job to return */
-	int i = 0;
-	int queues_finished = 0;
-	int queue_index_size = 0;
-	int j = 0;
 	int ind = -1;
 
 	if ((policy == NULL) || (sinfo == NULL))
@@ -2286,11 +2241,14 @@ next_job(status *policy, server_info *sinfo, int flag)
 		/* last_index refers to a priority level as shown in diagram
 		 * above.
 		 */
-		i = last_queue_index;
+		int i = last_queue_index;
+
 		while((rjob == NULL) && (i < queue_list_size)) {
 			/* Calculating number of queues at this priority level */
-			queue_index_size = count_array(sinfo->queue_list[i]);
-			for (j = last_queue; j < queue_index_size; j++) {
+			int queue_index_size = count_array(sinfo->queue_list[i]);
+			int queues_finished = 0;
+
+			for (int j = last_queue; j < queue_index_size; j++) {
 				ind = find_runnable_resresv_ind(sinfo->queue_list[i][j]->jobs, 0);
 				if(ind != -1)
 					rjob = sinfo->queue_list[i][j]->jobs[ind];
@@ -2325,7 +2283,6 @@ next_job(status *policy, server_info *sinfo, int flag)
 				last_queue_index++;
 				i++;
 			}
-			queues_finished = 0;
 		}
 	} else if (policy->by_queue) {
 		if (!(skip & SKIP_NON_NORMAL_JOBS)) {
@@ -2614,12 +2571,12 @@ parse_sched_obj(int connector, struct batch_status *status)
 
 		if (log_dir == NULL)
 			validate_log_dir = 1;
-		else if (strcmp(log_dir, tmp_log_dir) != 0)
+		else if (tmp_log_dir != NULL && strcmp(log_dir, tmp_log_dir) != 0)
 			validate_log_dir = 1;
 
 		if (priv_dir == NULL)
 			validate_priv_dir = 1;
-		else if (strcmp(priv_dir, tmp_priv_dir) != 0)
+		else if (tmp_priv_dir != NULL && strcmp(priv_dir, tmp_priv_dir) != 0)
 			validate_priv_dir = 1;
 
 		if (!validate_log_dir && !validate_priv_dir && tmp_comment != NULL)
@@ -2666,9 +2623,9 @@ parse_sched_obj(int connector, struct batch_status *status)
 		}
 
 		if (validate_priv_dir) {
-			int c = -1;
+			int c;
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-				c  = chk_file_sec_user(tmp_priv_dir, 1, 0, S_IWGRP|S_IWOTH, 1, getuid());
+				c = chk_file_sec_user(tmp_priv_dir, 1, 0, S_IWGRP|S_IWOTH, 1, getuid());
 				c |= chk_file_sec_user(pbs_conf.pbs_environment, 0, 0, S_IWGRP|S_IWOTH, 0, getuid());
 				if (c != 0) {
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
@@ -2676,9 +2633,11 @@ parse_sched_obj(int connector, struct batch_status *status)
 					strcpy(comment, "PBS failed validation checks for sched_priv directory");
 					priv_dir_update_fail = 1;
 				}
-#endif  /* not DEBUG and not NO_SECURITY_CHECK */
+#else  /* not DEBUG and not NO_SECURITY_CHECK */
+			c = 0;
+#endif
 			if (c == 0) {
-				if (chdir(tmp_priv_dir) == -1) {
+				if (tmp_priv_dir == NULL || chdir(tmp_priv_dir) == -1) {
 					strcpy(comment, "PBS failed validation checks for sched_priv directory");
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 						"PBS failed validation checks for directory %s", tmp_priv_dir);
@@ -2708,7 +2667,6 @@ parse_sched_obj(int connector, struct batch_status *status)
 					}
 				}
 			}
-
 		}
 
 
@@ -2839,27 +2797,41 @@ set_validate_sched_attrs(int connector)
  *	None
  */
 int
-validate_running_user(char * exename) {
+validate_running_user(char *exename) {
+	char buf[128];
 	if (pbs_conf.pbs_daemon_service_user) {
 		struct passwd *user = getpwnam(pbs_conf.pbs_daemon_service_user);
 		if (user == NULL) {
-			fprintf(stderr, "%s: PBS_DAEMON_SERVICE_USER [%s] does not exist\n", exename, pbs_conf.pbs_daemon_service_user);
+			snprintf(buf, sizeof(buf), "%s: PBS_DAEMON_SERVICE_USER [%s] does not exist\n", exename, pbs_conf.pbs_daemon_service_user);
+			perror(buf);
+			return 0;
+		}
+
+		int rc = setgid(user->pw_gid);
+		if (rc != 0) {
+			snprintf(buf, sizeof(buf), "%s: Can't change group to PBS_DAEMON_SERVICE_USER's group [%d], setgid() failed.", exename, user->pw_gid);
+			perror(buf);
 			return 0;
 		}
 
 		if (geteuid() == 0) {
-			setuid(user->pw_uid);
+			int rc = setuid(user->pw_uid);
+			if (rc != 0) {
+				snprintf(buf, sizeof(buf), "%s: Can't change to PBS_DAEMON_SERVICE_USER [%s], setuid() failed.", exename, pbs_conf.pbs_daemon_service_user);
+				perror(buf);
+				return 0;
+			}
 			pbs_strncpy(pbs_current_user, pbs_conf.pbs_daemon_service_user, PBS_MAXUSER);
 		}
 
 		if (user->pw_uid != getuid()) {
-			fprintf(stderr, "%s: Must be run by PBS_DAEMON_SERVICE_USER [%s]\n", exename, pbs_conf.pbs_daemon_service_user);
+			snprintf(buf, sizeof(buf), "%s: Must be run by PBS_DAEMON_SERVICE_USER [%s]\n", exename, pbs_conf.pbs_daemon_service_user);
+			perror(buf);
 			return 0;
 		}
-		setgid(user->pw_gid);
-	}
-	else if ((geteuid() != 0) || getuid() != 0) {
-		fprintf(stderr, "%s: Must be run by PBS_DAEMON_SERVICE_USER if set or root if not set\n", exename);
+	} else if ((geteuid() != 0) || getuid() != 0) {
+		snprintf(buf, sizeof(buf), "%s: Must be run by PBS_DAEMON_SERVICE_USER if set or root if not set\n", exename);
+		perror(buf);
 		return 0;
 	}
 

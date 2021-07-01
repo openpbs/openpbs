@@ -50,24 +50,15 @@ void add_child(group_info *ginfo, group_info *parent);
  *      find_group_info - recursive function to find a ginfo in the
  resgroup tree
  */
-group_info *find_group_info(const char *name, group_info *root);
+group_info *find_group_info(const std::string& name, group_info *root);
 
 /*
  *      find_alloc_ginfo - trys to find a ginfo in the fair share tree.  If it
  *                        can not find the ginfo, then allocate a new one and
  *                        add it to the "unknown" group
  */
-group_info *find_alloc_ginfo(const char *name, group_info *root);
+group_info *find_alloc_ginfo(const std::string& name, group_info *root);
 
-
-/*
- *      new_group_info - allocate a new group_info struct and initalize it
- */
-#ifdef NAS /* localmod 005 */
-group_info * new_group_info(void);
-#else
-group_info * new_group_info();
-#endif /* localmod 005 */
 
 /*
  *
@@ -99,12 +90,7 @@ int parse_group(const char *fname, group_info *root);
  *	return new head and root of a fairshare tree
  *
  */
-#ifdef NAS /* localmod 005 */
 fairshare_head *preload_tree(void);
-#else
-fairshare_head *preload_tree();
-#endif /* localmod 005 */
-
 
 /*
  *      count_shares - count the shares in the current resource group
@@ -159,29 +145,15 @@ int read_usage_v1(FILE *fp, group_info *root);
 int read_usage_v2(FILE *fp, int flags, group_info *root);
 
 /*
- *      new_group_path - create a new group_path structure and init it
- */
-#ifdef NAS /* localmod 005 */
-struct group_path *new_group_path(void);
-#else
-struct group_path *new_group_path();
-#endif /* localmod 005 */
-
-/*
- *      free_group_path_list - free a entire group path list
- */
-void free_group_path_list(struct group_path *gp);
-
-/*
  *      create_group_path - create a path from the root to the leaf of the tree
  */
-struct group_path *create_group_path(group_info *ginfo);
+std::vector<group_info *> create_group_path(group_info *ginfo);
 
 /*
  *      compare_path - compare two group_path's and see which is more
  *                     deserving to run
  */
-int compare_path(struct group_path *gp1, struct group_path *gp2);
+int compare_path(std::vector<group_info *>& gp1, std::vector<group_info *>& gp2);
 
 /*
  *      over_fs_usage - return true of a entity has used more then their
@@ -205,35 +177,6 @@ group_info *dup_fairshare_tree(group_info *root, group_info *nparent);
  *	free_fairshare_tree - free the entire fairshare tree
  */
 void free_fairshare_tree(group_info *root);
-
-/*
- *	free_fairshare_node - free the data associated with
- *			      a single fairshare tree node
- */
-void free_fairshare_node(group_info *node);
-
-/*
- *	new_fairshare_head - constructor
- */
-#ifdef NAS /* localmod 005 */
-fairshare_head *new_fairshare_head(void);
-#else
-fairshare_head *new_fairshare_head();
-#endif /* localmod 005 */
-
-/*
- *	dup_fairshare_head - copy constructor for fairshare_head
- *
- *	  ofhead - fairshare_head to dup
- *
- *	return duplicated fairshare_head
- */
-fairshare_head *dup_fairshare_head(fairshare_head *ofead);
-
-/*
- *	free_fairshare_head - destructor for fairshare_head
- */
-void free_fairshare_head(fairshare_head *fhead);
 
 /*
  *

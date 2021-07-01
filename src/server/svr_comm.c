@@ -311,6 +311,112 @@ send_nodestat_req(enum msvr_stats_type type)
 }
 
 /**
+ * @brief broadcast discard job request to peer servers
+ * 
+ * @param[in] jobid - job id
+ * @param execvnode - job's exec vnode
+ * @param exechost - job's exec host
+ * @param rver - job run version
+ * 
+ * @return int 
+ * @retval 0: success
+ * @retval !0: failure
+ */
+int
+ps_send_discard(char *jobid, char *execvnode, char *exechost, int rver)
+{
+	int mtfd = -1;
+	int rc;
+
+	if (!exechost)
+		return -1;
+
+	mtfd = open_ps_mtfd_for_execvnode(execvnode);
+	if (mtfd == -1)
+		return -1;
+
+	rc = ps_compose(mtfd, PS_DISCARD_JOB);
+	if (rc != DIS_SUCCESS)
+		goto err;
+
+	if ((rc = diswcs(mtfd, jobid, strlen(jobid))) != 0)
+		goto err;
+
+	if ((rc = diswcs(mtfd, execvnode, strlen(execvnode))) != 0)
+		goto err;
+
+	if ((rc = diswcs(mtfd, exechost, strlen(exechost))) != 0)
+		goto err;
+
+	if ((rc = diswsi(mtfd, rver)) != 0)
+		goto err;
+
+	if ((rc = dis_flush(mtfd)) != DIS_SUCCESS)
+		goto err;
+
+	return 0;
+
+err:
+	log_errf(pbs_errno, __func__, "%s from stream %d",
+		 dis_emsg[rc], mtfd);
+	stream_eof(mtfd, rc, "write_err");
+	return PBSE_PROTOCOL;
+}
+
+/**
+ * @brief process the discard job request from peer server
+ * 
+ * @param[in] c - connection stream.
+ * @return int
+ * @retval 0 : success
+ * @reval !0 : DIS error
+ */
+static int
+ps_process_discard_job(int c)
+{
+	size_t sz;
+	int rc;
+	char *jid = NULL;
+	char *execvnode = NULL;
+	char *exechost = NULL;
+	long rver;
+	job *pjob = NULL;
+
+	jid = disrcs(c, &sz, &rc);
+	if (rc)
+		goto end;
+
+	execvnode = disrcs(c, &sz, &rc);
+	if (rc)
+		goto end;
+
+	exechost = disrcs(c, &sz, &rc);
+	if (rc)
+		goto end;
+
+	rver = disrsi(c, &rc);
+	if (rc)
+		goto end;
+
+	pjob = calloc(1, sizeof(job));
+	pbs_strncpy(pjob->ji_qs.ji_jobid, jid, sizeof(pjob->ji_qs.ji_jobid));
+	pjob->ji_qs.ji_svrflags |= JOB_SVFLG_AlienJob;
+	set_jattr_str_slim(pjob, JOB_ATR_exec_vnode, execvnode, NULL);
+	set_jattr_str_slim(pjob, JOB_ATR_exec_host, exechost, NULL);
+	set_jattr_l_slim(pjob, JOB_ATR_run_version, rver, SET);
+
+	discard_job(pjob, "Discard request for non local job", 1);
+
+end:
+	free(pjob);
+	free(exechost);
+	free(execvnode);
+	free(jid);
+
+	return rc;
+}
+
+/**
  * @brief
  * 		Input is coming from peer server over a TPP stream.
  *
@@ -368,7 +474,7 @@ ps_request(int stream, int version)
 		pdmn_info = psvr->mi_dmn_info;
 		if (pdmn_info->dmn_stream >= 0 && pdmn_info->dmn_stream != stream) {
 			DBPRT(("%s: stream %d from %s:%d already open on %d\n",
-			       __func__, stream, pmom->mi_host,
+			       __func__, stream, psvr->mi_host,
 			       ntohs(addr->sin_port), pdmn_info->dmn_stream))
 			tpp_close(pdmn_info->dmn_stream);
 			tdelete2((u_long) pdmn_info->dmn_stream, 0ul, &streams);
@@ -416,6 +522,12 @@ found:
 
 	case PS_STAT_RPLY:
 		rc = process_status_reply(stream);
+		if (rc != 0)
+			goto err;
+		break;
+	
+	case PS_DISCARD_JOB:
+		rc = ps_process_discard_job(stream);
 		if (rc != 0)
 			goto err;
 		break;

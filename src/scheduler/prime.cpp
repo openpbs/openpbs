@@ -185,7 +185,7 @@ enum prime_time check_prime(enum days d, struct tm *t)
 	 *  in which case the current time is NONPRIME only between NP and P
 	 *  This case also captures the setting of identical Prime and Nonprime times in the "holidays" file
 	 */
-	else if (npt <= pt) {
+	else if (npt < pt) {
 		if (npt <= ct && ct < pt)
 			prime = NON_PRIME;
 		else prime = PRIME;
@@ -488,11 +488,6 @@ parse_holidays(const char *fname)
 int
 load_day(enum days d, enum prime_time pr, const char *tok)
 {
-	int num;		/* used to convert string -> integer */
-	int hours;		/* used to convert 4 digit HHMM into hours */
-	int mins;		/* used to convert 4 digit HHMM into minutes */
-	char *endp;		/* used wtih strtol() */
-
 	if (tok != NULL) {
 		if (!strcmp(tok, "all") || !strcmp(tok, "ALL")) {
 			if (pr == NON_PRIME && conf.prime[d][PRIME].all == TRUE) {
@@ -515,11 +510,12 @@ load_day(enum days d, enum prime_time pr, const char *tok)
 			conf.prime[d][pr].min = static_cast<unsigned int>(UNSPECIFIED);
 			conf.prime[d][pr].none = TRUE;
 		} else {
-			num = strtol(tok, &endp, 10);
+			char *endp; /* used wtih strtol() */
+			auto num = strtol(tok, &endp, 10);
 			if (*endp == '\0') {
 				/* num is a 4 digit number of the time HHMM */
-				mins = num % 100;
-				hours = num / 100;
+				auto mins = num % 100;
+				auto hours = num / 100;
 				conf.prime[d][pr].hour = hours;
 				conf.prime[d][pr].min = mins;
 			}

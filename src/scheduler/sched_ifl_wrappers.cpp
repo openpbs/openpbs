@@ -256,9 +256,7 @@ send_confirmresv(int virtual_sd, resource_resv *resv, const char *location, unsi
 struct batch_status *
 send_selstat(int virtual_fd, struct attropl *attrib, struct attrl *rattrib, char *extend)
 {
-	struct batch_status *ret = NULL;
-
-	ret = pbs_selstat(virtual_fd, attrib, rattrib, extend);
+	auto ret = pbs_selstat(virtual_fd, attrib, rattrib, extend);
 	if (handle_part_tolerance(ret) == NULL) {
 		pbs_statfree(ret);
 		return NULL;
@@ -282,9 +280,7 @@ send_selstat(int virtual_fd, struct attropl *attrib, struct attrl *rattrib, char
 struct batch_status *
 send_statvnode(int virtual_fd, char *id, struct attrl *attrib, char *extend)
 {
-	struct batch_status *ret = NULL;
-
-	ret = pbs_statvnode(virtual_fd, id, attrib, extend);
+	auto ret = pbs_statvnode(virtual_fd, id, attrib, extend);
 	if (handle_part_tolerance(ret) == NULL) {
 		pbs_statfree(ret);
 		return NULL;
@@ -307,9 +303,7 @@ send_statvnode(int virtual_fd, char *id, struct attrl *attrib, char *extend)
 struct batch_status *
 send_statsched(int virtual_fd, struct attrl *attrib, char *extend)
 {
-	struct batch_status *ret = NULL;
-
-	ret = pbs_statsched(virtual_fd, attrib, extend);
+	auto ret = pbs_statsched(virtual_fd, attrib, extend);
 	if (handle_part_tolerance(ret) == NULL) {
 		pbs_statfree(ret);
 		return NULL;
@@ -333,9 +327,7 @@ send_statsched(int virtual_fd, struct attrl *attrib, char *extend)
 struct batch_status *
 send_statqueue(int virtual_fd, char *id, struct attrl *attrib, char *extend)
 {
-	struct batch_status *ret = NULL;
-
-	ret = pbs_statque(virtual_fd, id, attrib, extend);
+	auto ret = pbs_statque(virtual_fd, id, attrib, extend);
 	if (handle_part_tolerance(ret) == NULL) {
 		pbs_statfree(ret);
 		return NULL;
@@ -358,9 +350,7 @@ send_statqueue(int virtual_fd, char *id, struct attrl *attrib, char *extend)
 struct batch_status *
 send_statserver(int virtual_fd, struct attrl *attrib, char *extend)
 {
-	struct batch_status *ret = NULL;
-
-	ret = pbs_statserver(virtual_fd, attrib, extend);
+	auto ret = pbs_statserver(virtual_fd, attrib, extend);
 	if (handle_part_tolerance(ret) == NULL) {
 		pbs_statfree(ret);
 		return NULL;
@@ -384,9 +374,7 @@ send_statserver(int virtual_fd, struct attrl *attrib, char *extend)
 struct batch_status *
 send_statrsc(int virtual_fd, char *id, struct attrl *attrib, char *extend)
 {
-	struct batch_status *ret = NULL;
-
-	ret = pbs_statrsc(virtual_fd, id, attrib, extend);
+	auto ret = pbs_statrsc(virtual_fd, id, attrib, extend);
 	if (handle_part_tolerance(ret) == NULL) {
 		pbs_statfree(ret);
 		return NULL;
@@ -410,9 +398,7 @@ send_statrsc(int virtual_fd, char *id, struct attrl *attrib, char *extend)
 struct batch_status *
 send_statresv(int virtual_fd, char *id, struct attrl *attrib, char *extend)
 {
-	struct batch_status *ret = NULL;
-
-	ret = pbs_statresv(virtual_fd, id, attrib, extend);
+	auto ret = pbs_statresv(virtual_fd, id, attrib, extend);
 	if (handle_part_tolerance(ret) == NULL) {
 		pbs_statfree(ret);
 		return NULL;

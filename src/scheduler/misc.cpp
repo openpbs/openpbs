@@ -321,12 +321,13 @@ void
 schdlogerr(int event, int event_class, int sev, const std::string& name, const char *text,
 	schd_error *err)
 {
-	char logbuf[MAX_LOG_SIZE];
 
 	if (err == NULL)
 		return;
 
 	if (will_log_event(event)) {
+		char logbuf[MAX_LOG_SIZE];
+
 		translate_fail_code(err, NULL, logbuf);
 		if (text == NULL)
 			log_event(event, event_class, sev, name, logbuf);
@@ -445,27 +446,6 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 	return new_arr;
 }
 
-
-/**
- * @brief
- *		match_string_to_array - see if a string array contains a single string
- *
- * @param[in]	strarr	-	the string array to search
- * @param[in]	str	-	the string to find
- *
- * @return	value from match_string_array()
- *
- */
-enum match_string_array_ret match_string_to_array(const char *str, const char * const *strarr)
-{
-	const char *mockarr[2];
-
-	mockarr[0] = str;
-	mockarr[1] = NULL;
-
-	return match_string_array(strarr, mockarr);
-}
-
 /**
  * @brief
  * 		match two NULL terminated string arrays
@@ -554,37 +534,6 @@ string_array_to_str(char **strarr)
 	return arrbuf;
 }
 
-/**
- * @brief
- *		string_array_verify - verify two string arrays are equal
- *
- * @param[in]	sa1	-	string array 1
- * @param[in]	sa2	-	string array 2
- *
- * @return	int
- * @retval	0	: array equal
- *					number of the first unequal string
- * @retval	(unsigned) -1	: on error
- *
- */
-unsigned string_array_verify(char **sa1, char **sa2)
-{
-	int i;
-
-	if (sa1 == NULL && sa2 == NULL)
-		return 0;
-
-	if (sa1 == NULL || sa2 == NULL)
-		return (unsigned) -1;
-
-	for (i = 0; sa1[i] != NULL && sa2[i] != NULL && !cstrcmp(sa1[i], sa2[i]); i++)
-		;
-
-	if (sa1[i] != NULL || sa2[i] != NULL)
-		return i + 1;
-
-	return 0;
-}
 /**
  * @brief
  * 		calc_used_walltime - calculate the  used amount of a resource resv
@@ -725,7 +674,6 @@ int
 is_num(const char *str)
 {
 	int i;
-	char c;
 	int colon_count = 0;
 	int str_len = -1;
 
@@ -747,7 +695,7 @@ is_num(const char *str)
 
 	/* is the string a size type resource like 'mem' */
 	if ((i == (str_len - 2)) || (i == (str_len - 1))) {
-		c = tolower(str[i]);
+		auto c = tolower(str[i]);
 		if (c == 'k' || c == 'm' || c == 'g' || c == 't') {
 			c = tolower(str[i+1]);
 			if (c == 'b' || c == 'w' || c == '\0')
@@ -847,7 +795,7 @@ dup_array(void *ptr)
 int
 remove_ptr_from_array(void *arr, void *ptr)
 {
-	int i, j;
+	int i;
 	void **parr;
 
 	if (arr == NULL || ptr == NULL)
@@ -859,7 +807,7 @@ remove_ptr_from_array(void *arr, void *ptr)
 		;
 
 	if (parr[i] != NULL) {
-		for (j = i; parr[j] != NULL; j++)
+		for (int j = i; parr[j] != NULL; j++)
 			parr[j] = parr[j + 1];
 		return 1;
 	}
@@ -902,42 +850,6 @@ add_ptr_to_array(void *ptr_arr, void *ptr)
 		arr[cnt] = NULL;
 	}
 	return arr;
-}
-
-
-/**
- * @brief
- *		remove_str_from_array - remove a string from a ptr list and move
- *				the rest of the pointers up to fill the hole
- *				Pointer array size will not change - an extra
- *				NULL is added to the end
- *
- *	  arr - pointer array
- *	  str - string  to remove from array
- *
- *	returns non-zero if the str was successfully removed from the array
- *		zero if the array has not been modified
- *
- */
-int
-remove_str_from_array(char **arr, char *str)
-{
-	int i, j;
-
-	if (arr == NULL || str == NULL)
-		return 0;
-
-	for (i = 0; arr[i] != NULL && (strcmp(arr[i], str) != 0); i++)
-		;
-
-	if (arr[i] != NULL) {
-		free(arr[i]);
-		for (j = i; arr[j] != NULL; j++)
-			arr[j] = arr[j + 1];
-		return 1;
-	}
-
-	return 0;
 }
 
 /**
@@ -1494,14 +1406,14 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 
 	switch (fld) {
 		case RF_REQUEST:
-			req = (resource_req *) p;
+			req = static_cast<resource_req *>(p);
 			rt = &(req->type);
 			str = req->res_str;
 			amount = req->amount;
 			break;
 
 		case RF_DIRECT_AVAIL:
-			res = (schd_resource *) p;
+			res = static_cast<schd_resource *>(p);
 			if (res->indirect_res != NULL) {
 				if (flags & NOEXPAND)
 					snprintf(*buf, *bufsize, "@");
@@ -1520,7 +1432,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 			}
 			/* if not indirect, fall through normally */
 		case RF_AVAIL:
-			res = (schd_resource *) p;
+			res = static_cast<schd_resource *>(p);
 			if (res->indirect_res != NULL)
 				res = res->indirect_res;
 			rt = &(res->type);
@@ -1533,7 +1445,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 			break;
 
 		case RF_ASSN:
-			res = (schd_resource *) p;
+			res = static_cast<schd_resource *>(p);
 			rt = &(res->type);
 			str = res->str_assigned;
 			amount = res->assigned;
@@ -1560,19 +1472,11 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 		if (amount == 0) /* need to special case 0 or it falls into tb case */
 			snprintf(localbuf, sizeof(localbuf), "0kb");
 		else if (((long)amount % TERATOKILO) == 0)
-#ifdef NAS /* localmod 005 */
-			snprintf(localbuf, sizeof(localbuf), "%ldtb", (long)(amount/TERATOKILO));
+			snprintf(localbuf, sizeof(localbuf), "%ldtb", (long) (amount/TERATOKILO));
 		else if (((long)amount % GIGATOKILO) == 0)
-			snprintf(localbuf, sizeof(localbuf), "%ldgb", (long)(amount/GIGATOKILO));
+			snprintf(localbuf, sizeof(localbuf), "%ldgb", (long) (amount/GIGATOKILO));
 		else if (((long)amount % MEGATOKILO) == 0)
-			snprintf(localbuf, sizeof(localbuf), "%ldmb", (long)(amount/MEGATOKILO));
-#else
-			snprintf(localbuf, sizeof(localbuf), "%ldtb", ((long) amount/TERATOKILO));
-		else if (((long)amount % GIGATOKILO) == 0)
-			snprintf(localbuf, sizeof(localbuf), "%ldgb", ((long) amount/GIGATOKILO));
-		else if (((long)amount % MEGATOKILO) == 0)
-			snprintf(localbuf, sizeof(localbuf), "%ldmb", ((long) amount/MEGATOKILO));
-#endif /* localmod 005 */
+			snprintf(localbuf, sizeof(localbuf), "%ldmb", (long) (amount/MEGATOKILO));
 		else
 			snprintf(localbuf, sizeof(localbuf), "%ldkb", (long) amount);
 		if (flags & NOEXPAND)

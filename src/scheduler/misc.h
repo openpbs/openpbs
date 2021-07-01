@@ -102,11 +102,6 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 int calc_time_left_STF(resource_resv *resresv, sch_resource_t* min_time_left);
 
 /*
- *      string_array_verify - verify two string arrays are equal
- */
-unsigned string_array_verify(char **sa1, char **sa2);
-
-/*
  *
  *	match_string_array - match two NULL terminated string arrays
  *
@@ -117,15 +112,6 @@ unsigned string_array_verify(char **sa1, char **sa2);
  *
  */
 enum match_string_array_ret match_string_array(const char * const *strarr1, const char * const *strarr2);
-
-/*
- *
- *	match_string_to_array - see if a string array contains a single string
- *
- *	returns value from match_string_array()
- *
- */
-enum match_string_array_ret match_string_to_array(const char *str, const char * const *strarr);
 
 /*
  * convert a string array into a printable string
@@ -181,17 +167,6 @@ int remove_ptr_from_array(void *arr, void *ptr);
  * @retval NULL on error
  */
 void *add_ptr_to_array(void *ptr_arr, void *ptr);
-
-/*
- *	remove_str_from_array - remove a string from a ptr list and move
- *				the rest of the pointers up to fill the hole
- *				Pointer array size will not change - an extra
- *				NULL is added to the end
- *
- *	returns non-zero if the str was successfully removed from the array
- *		zero if the array has not been modified
- */
-int remove_str_from_array(char **arr, char *str);
 
 /*
  *      is_valid_pbs_name - is str a valid pbs username (POSIX.1 + ' ')

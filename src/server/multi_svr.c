@@ -320,7 +320,7 @@ update_msvr_stat(ulong val, msvr_stat_type_t type)
 {
 	if (type < 0 || type >= END_OF_STAT)
 		return;
-		
+
 	msvr_stat.stat[type] += val;
 
 	log_msvr_stat();
@@ -851,6 +851,46 @@ req_resc_update(int stream, pbs_list_head *ru_head, void *psvr)
 	*/
 	if (op == INCR)
 		send_command(stream, PS_RSC_UPDATE_ACK);
+}
+
+/**
+ * @brief open a multicast fd for peer servers corresponds to execvnode
+ * 
+ * @param[in] exec_vnode - exec vnode
+ * 
+ * @return int
+ * @retval -1 : for failure
+ */
+int
+open_ps_mtfd_for_execvnode(char *exec_vnode)
+{
+	int mtfd = -1;
+	char *chunk;
+	int rc = 0;
+	char *noden;
+	int nelem;
+	struct key_value_pair *pkvp;
+	struct pbsnode *pnode;
+
+	for (chunk = parse_plus_spec(exec_vnode, &rc);
+	     chunk && !rc; chunk = parse_plus_spec(NULL, &rc)) {
+
+		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
+
+			if ((pnode = find_nodebyname(noden)))
+				continue;
+
+			if ((pnode = find_alien_node(noden)) == NULL) {
+				/* Broadcast when we dont have the node cache */
+				close_streams(mtfd, rc);
+				mtfd = open_ps_mtfd();
+				return mtfd;
+			} else
+				mcast_add(get_peersvr_from_svrid(get_nattr_str(pnode, ND_ATR_server_inst_id)), &mtfd, TRUE);
+		}
+	}
+
+	return mtfd;
 }
 
 /**

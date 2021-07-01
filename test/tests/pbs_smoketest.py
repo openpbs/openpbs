@@ -1304,16 +1304,16 @@ class SmokeTest(PBSTestSuite):
         self.server.delete(j1id)
 
         # query fairshare and check usage
-        fs1 = self.scheduler.query_fairshare(name=str(TEST_USER1))
+        fs1 = self.scheduler.fairshare.query_fairshare(name=str(TEST_USER1))
         self.logger.info('Checking ' + str(fs1.usage) + " == 3")
         self.assertEqual(fs1.usage, 3)
-        fs2 = self.scheduler.query_fairshare(name=str(TEST_USER2))
+        fs2 = self.scheduler.fairshare.query_fairshare(name=str(TEST_USER2))
         self.logger.info('Checking ' + str(fs2.usage) + " == 3")
         self.assertEqual(fs2.usage, 3)
-        fs3 = self.scheduler.query_fairshare(name=str(TEST_USER3))
+        fs3 = self.scheduler.fairshare.query_fairshare(name=str(TEST_USER3))
         self.logger.info('Checking ' + str(fs3.usage) + " == 3")
         self.assertEqual(fs3.usage, 3)
-        fs4 = self.scheduler.query_fairshare(name=str(TEST_USER4))
+        fs4 = self.scheduler.fairshare.query_fairshare(name=str(TEST_USER4))
         self.logger.info('Checking ' + str(fs4.usage) + " == 1")
         self.assertEqual(fs4.usage, 1)
 
@@ -1349,16 +1349,16 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         # query fairshare and check usage
-        fs1 = self.scheduler.query_fairshare(name=str(TEST_USER1))
+        fs1 = self.scheduler.fairshare.query_fairshare(name=str(TEST_USER1))
         self.logger.info('Checking ' + str(fs1.usage) + " == 5")
         self.assertEqual(fs1.usage, 5)
-        fs2 = self.scheduler.query_fairshare(name=str(TEST_USER2))
+        fs2 = self.scheduler.fairshare.query_fairshare(name=str(TEST_USER2))
         self.logger.info('Checking ' + str(fs2.usage) + " == 5")
         self.assertEqual(fs2.usage, 5)
-        fs3 = self.scheduler.query_fairshare(name=str(TEST_USER3))
+        fs3 = self.scheduler.fairshare.query_fairshare(name=str(TEST_USER3))
         self.logger.info('Checking ' + str(fs3.usage) + " == 3")
         self.assertEqual(fs3.usage, 3)
-        fs4 = self.scheduler.query_fairshare(name=str(TEST_USER4))
+        fs4 = self.scheduler.fairshare.query_fairshare(name=str(TEST_USER4))
         self.logger.info('Checking ' + str(fs4.usage) + " == 3")
         self.assertEqual(fs4.usage, 3)
 

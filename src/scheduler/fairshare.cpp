@@ -64,16 +64,9 @@
  * 	read_usage()
  * 	read_usage_v1()
  * 	read_usage_v2()
- * 	new_group_path()
- * 	free_group_path_list()
- * 	create_group_path()
  * 	over_fs_usage()
  * 	dup_fairshare_tree()
  * 	free_fairshare_tree()
- * 	free_fairshare_node()
- * 	new_fairshare_head()
- * 	dup_fairshare_head()
- * 	free_fairshare_head()
  * 	reset_temp_usage()
  *
  */
@@ -159,10 +152,10 @@ add_unknown(group_info *ginfo, group_info *root)
  *
  */
 group_info *
-find_group_info(const char *name, group_info *root)
+find_group_info(const std::string& name, group_info *root)
 {
 	group_info *ginfo;		/* the found group */
-	if (root == NULL || name == NULL || !strcmp(name, root->name))
+	if (root == NULL || name == root->name)
 		return root;
 
 	ginfo = find_group_info(name, root->sibling);
@@ -185,20 +178,19 @@ find_group_info(const char *name, group_info *root)
  *
  */
 group_info *
-find_alloc_ginfo(const char *name, group_info *root)
+find_alloc_ginfo(const std::string& name, group_info *root)
 {
 	group_info *ginfo;		/* the found group or allocated group */
 
-	if (name == NULL || root == NULL)
+	if (root == NULL)
 		return NULL;
 
 	ginfo = find_group_info(name, root);
 
 	if (ginfo == NULL) {
-		if ((ginfo = new_group_info()) == NULL)
+		if ((ginfo = new group_info(name)) == NULL)
 			return NULL;
 
-		ginfo->name = string_dup(name);
 		ginfo->shares = 1;
 		add_unknown(ginfo, root);
 	}
@@ -212,32 +204,19 @@ find_alloc_ginfo(const char *name, group_info *root)
  * @return	a ptr to the new group_info
  *
  */
-group_info *
-new_group_info()
+group_info::group_info(const std::string& gname) : name(gname)
 {
-	group_info *ngi;		/* the new group */
-
-	if ((ngi = static_cast<group_info *>(malloc(sizeof(group_info)))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-
-	ngi->name = NULL;
-	ngi->resgroup = UNSPECIFIED;
-	ngi->cresgroup = UNSPECIFIED;
-	ngi->shares = UNSPECIFIED;
-	ngi->tree_percentage = 0.0;
-	ngi->group_percentage = 0.0;
-	ngi->usage = FAIRSHARE_MIN_USAGE;
-	ngi->temp_usage = FAIRSHARE_MIN_USAGE;
-	ngi->usage_factor = 0.0;
-	ngi->gpath = NULL;
-	ngi->parent = NULL;
-	ngi->sibling = NULL;
-	ngi->child = NULL;
-
-	return ngi;
-}
+	resgroup = UNSPECIFIED;
+	cresgroup = UNSPECIFIED;
+	shares = UNSPECIFIED;
+	tree_percentage = 0.0;
+	group_percentage = 0.0;
+	usage = FAIRSHARE_MIN_USAGE;
+	temp_usage = FAIRSHARE_MIN_USAGE;
+	usage_factor = 0.0;
+	parent = NULL;
+	sibling = NULL;
+	child = NULL;}
 
 /**
  * @brief
@@ -312,9 +291,8 @@ parse_group(const char *fname, group_info *root)
 					if (*endp == '\0') {
 						cgroup = strtol(cgrouptok, &endp, 10);
 						if (*endp == '\0') {
-							if ((new_ginfo = new_group_info()) == NULL)
+							if ((new_ginfo = new group_info(nametok)) == NULL)
 								return 0;
-							new_ginfo->name = string_dup(nametok);
 							new_ginfo->resgroup = ginfo->cresgroup;
 							new_ginfo->cresgroup = cgroup;
 							new_ginfo->shares = shares;
@@ -366,34 +344,23 @@ preload_tree()
 	group_info *root;
 	group_info *unknown;		/* pointer to the "unknown" group */
 
-	if ((head = new_fairshare_head()) == NULL)
+	if ((head = new fairshare_head()) == NULL)
 		return 0;
 
-	if ((root = new_group_info()) == NULL) {
-		free_fairshare_head(head);
-		return 0;
-	}
+	root = new group_info(FAIRSHARE_ROOT_NAME);
+
 
 	head->root = root;
-
-	if ((root->name = string_dup(FAIRSHARE_ROOT_NAME)) == NULL) {
-		free_fairshare_head(head);
-		return NULL;
-	}
 
 	root->resgroup = -1;
 	root->cresgroup = 0;
 	root->tree_percentage = 1.0;
 
-	if ((unknown = new_group_info()) == NULL) {
-		free_fairshare_head(head);
+	if ((unknown = new group_info(UNKNOWN_GROUP_NAME)) == NULL) {
+		delete head;
 		return NULL;
 	}
-	if ((unknown->name = string_dup(UNKNOWN_GROUP_NAME)) == NULL) {
-		free_fairshare_node(unknown);
-		free_fairshare_head(head);
-		return NULL;
-	}
+
 	unknown->shares = conf.unknown_shares;
 	unknown->resgroup = 0;
 	unknown->cresgroup = 1;
@@ -484,7 +451,6 @@ void
 update_usage_on_run(resource_resv *resresv)
 {
 	usage_t u;
-	struct group_path *gpath;
 
 	if (resresv == NULL)
 		return;
@@ -494,11 +460,8 @@ update_usage_on_run(resource_resv *resresv)
 
 	u = formula_evaluate(conf.fairshare_res.c_str(), resresv, resresv->resreq);
 	if (resresv->job->ginfo !=NULL) {
-		gpath = resresv->job->ginfo->gpath;
-		while (gpath != NULL) {
-			gpath->ginfo->temp_usage += u;
-			gpath = gpath->next;
-		}
+		for (auto& g : resresv->job->ginfo->gpath)
+			g->temp_usage += u;
 	}
 	else
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, resresv->name,
@@ -531,8 +494,8 @@ decay_fairshare_tree(group_info *root)
 
 /**
  * @brief
- *		compare_path - compare two group_path's and see which is more
- *		       deserving to run
+ *		compare_path - compare two group paths and see which is more
+ *				deserving to run
  * @par
  *		comparison: usage / priority
  *
@@ -546,45 +509,34 @@ decay_fairshare_tree(group_info *root)
  *
  */
 int
-compare_path(struct group_path *gp1, struct group_path *gp2)
+compare_path(std::vector<group_info *>& gp1, std::vector<group_info *>& gp2)
 {
-	struct group_path *cur1, *cur2;
 	double curval1, curval2;
 	int rc = 0;
+	int len;
 
-	if (gp1 == NULL && gp2 == NULL)
-		return 0;
-
-	if (gp1 != NULL && gp2 == NULL)
-		return -1;
-
-	if (gp1 == NULL && gp2 != NULL)
-		return 1;
-
-
-	cur1 = gp1;
-	cur2 = gp2;
-
-	while (cur1 != NULL && cur2 != NULL && rc == 0  ) {
-		if (cur1 != cur2) {
-			if (cur1->ginfo->tree_percentage <= 0 && cur2->ginfo->tree_percentage> 0)
+	if (gp1.size() > gp2.size())
+		len = gp2.size();
+	else
+		len = gp1.size();
+	
+	for (int i = 0; rc == 0 && i < len; i++) {
+		if (gp1[i] != gp2[i]) {
+			if (gp1[i]->tree_percentage <= 0 && gp2[i]->tree_percentage > 0)
 				return 1;
-			if (cur1->ginfo->tree_percentage > 0 && cur2->ginfo->tree_percentage<= 0)
+			if (gp1[i]->tree_percentage > 0 && gp2[i]->tree_percentage <= 0)
 				return -1;
-			if (cur1->ginfo->tree_percentage <= 0 && cur2->ginfo->tree_percentage<= 0)
+			if (gp1[i]->tree_percentage <= 0 && gp2[i]->tree_percentage <= 0)
 				return 0;
 
-			curval1 = cur1->ginfo->temp_usage / cur1->ginfo->tree_percentage;
-			curval2 = cur2->ginfo->temp_usage / cur2->ginfo->tree_percentage;
+			curval1 = gp1[i]->temp_usage / gp1[i]->tree_percentage;
+			curval2 = gp2[i]->temp_usage / gp2[i]->tree_percentage;
 
 			if (curval1 < curval2)
 				rc = -1;
 			else if (curval2 < curval1)
 				rc = 1;
 		}
-
-		cur1 = cur1->next;
-		cur2 = cur2->next;
 	}
 
 	return rc;
@@ -665,10 +617,10 @@ rec_write_usage(group_info *root, FILE *fp)
 #ifdef NAS /* localmod 043 */
 	if (root->child == NULL) {
 #else
-	if (root->usage != 1 && root->child == NULL && strcmp(root->name, UNKNOWN_GROUP_NAME) != 0) {
+	if (root->usage != 1 && root->child == NULL && root->name != UNKNOWN_GROUP_NAME) {
 #endif /* localmod 043 */
 		memset(&grp, 0, sizeof(struct group_node_usage_v2));
-		snprintf(grp.name, sizeof(grp.name), "%s", root->name);
+		snprintf(grp.name, sizeof(grp.name), "%s", root->name.c_str());
 		grp.usage = root->usage;
 
 		fwrite(&grp, sizeof(struct group_node_usage_v2), 1, fp);
@@ -696,7 +648,6 @@ read_usage(const char *filename, int flags, fairshare_head *fhead)
 	FILE *fp;				/* file pointer to usage file */
 	struct group_node_header head;		/* usage file header */
 	time_t last;				/* read the last sync from the file */
-	int error = 0;				/* error reading in usage header */
 
 	if (fhead == NULL || fhead->root == NULL)
 		return;
@@ -714,6 +665,8 @@ read_usage(const char *filename, int flags, fairshare_head *fhead)
 	/* read header */
 	if (fread(&head, sizeof(struct group_node_header), 1, fp) != 0) {
 		if (!strcmp(head.tag, USAGE_MAGIC)) { /* this is a header */
+			int error = 0;
+
 			if (head.version == 2) {
 				if (fread(&last, sizeof(time_t), 1, fp) != 0) {
 					/* 946713600 = 1/1/2000 00:00 - before usage version 2 existed */
@@ -724,16 +677,14 @@ read_usage(const char *filename, int flags, fairshare_head *fhead)
 				}
 				if (!error)
 					read_usage_v2(fp, flags, fhead->root);
-			}
-			else
+			} else
 				error = 1;
 
 			if (error)
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING,
 					  "fairshare usage", "Invalid usage file header");
 
-		}
-		else	 { /* original headerless usage file */
+		} else { /* original headerless usage file */
 			rewind(fp);
 			read_usage_v1(fp, fhead->root);
 		}
@@ -759,7 +710,6 @@ read_usage_v1(FILE *fp, group_info *root)
 {
 	struct group_node_usage_v1 grp;
 	group_info *ginfo;
-	struct group_path *gpath;
 
 	if (fp == NULL)
 		return 0;
@@ -771,12 +721,12 @@ read_usage_v1(FILE *fp, group_info *root)
 				ginfo->usage = grp.usage;
 				ginfo->temp_usage = grp.usage;
 				if (ginfo->child == NULL) {
-					gpath = ginfo->gpath;
 					/* add usage down the path from the root to our parent */
-					while (gpath->next != NULL) {
-						gpath->ginfo->usage += grp.usage;
-						gpath->ginfo->temp_usage += grp.usage;
-						gpath = gpath->next;
+					for (auto& g : ginfo->gpath) {
+						if (g == ginfo)
+							break;
+						g->usage += grp.usage;
+						g->temp_usage += grp.usage;
 					}
 				}
 			}
@@ -806,7 +756,6 @@ read_usage_v2(FILE *fp, int flags, group_info *root)
 {
 	struct group_node_usage_v2 grp;
 	group_info *ginfo;
-	struct group_path *gpath;
 
 	if (fp == NULL)
 		return 0;
@@ -826,12 +775,12 @@ read_usage_v2(FILE *fp, int flags, group_info *root)
 				ginfo->usage = grp.usage;
 				ginfo->temp_usage = grp.usage;
 				if (ginfo->child == NULL) {
-					gpath = ginfo->gpath;
 					/* add usage down the path from the root to our parent */
-					while (gpath->next != NULL) {
-						gpath->ginfo->usage += grp.usage;
-						gpath->ginfo->temp_usage += grp.usage;
-						gpath = gpath->next;
+					for (auto& g : ginfo->gpath) {
+						if (g == ginfo)
+							break;
+						g->usage += grp.usage;
+						g->temp_usage += grp.usage;
 					}
 				}
 			}
@@ -846,53 +795,6 @@ read_usage_v2(FILE *fp, int flags, group_info *root)
 
 /**
  * @brief
- *		new_group_path - create a new group_path structure and init it
- *
- * @return	the new group_pathj
- */
-struct group_path *new_group_path()
-{
-	struct group_path *ngp;
-
-	if ((ngp = static_cast<group_path *>(malloc(sizeof(struct group_path)))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-
-	ngp->ginfo = NULL;
-	ngp->next = NULL;
-
-	return ngp;
-}
-
-/**
- * @brief
- *		free_group_path_list - free a entire group path list
- *
- * @param[in]	gp	-	the head of the group path list
- *
- * @return nothing
- */
-void
-free_group_path_list(struct group_path *gp)
-{
-	struct group_path *next;
-	struct group_path *cur;
-
-	if (gp == NULL)
-		return;
-
-	cur = gp;
-
-	while (cur != NULL) {
-		next = cur->next;
-		free(cur);
-		cur = next;
-	}
-}
-
-/**
- * @brief
  *		create_group_path - create a path from the root to the leaf of the tree
  *
  * @param[in]	ginfo - the group_root to create the path from
@@ -900,31 +802,18 @@ free_group_path_list(struct group_path *gp)
  * @return path
  *
  */
-struct group_path *create_group_path(group_info *ginfo)
+std::vector<group_info *> create_group_path(group_info *ginfo)
 {
-	struct group_path *ret;	/* what is returned from recursive call */
-	struct group_path *cur;	/* used to find the end of the path */
+	struct group_info *cur;
+	std::vector<group_info *> gpath;
 
 	if (ginfo == NULL)
-		return NULL;
+		return {};
 
-	ret = create_group_path(ginfo->parent);
+	for (cur = ginfo; cur != NULL; cur = cur->parent)
+		gpath.insert(gpath.begin(), cur);
 
-	if (ret != NULL) {
-		cur = ret;
-
-		while (cur->next != NULL)
-			cur = cur->next;
-
-		cur->next = new_group_path();
-		cur->next->ginfo = ginfo;
-	}
-	else {
-		ret = new_group_path();
-		ret->ginfo = ginfo;
-	}
-
-	return ret;
+	return gpath;
 }
 
 /**
@@ -944,7 +833,22 @@ struct group_path *create_group_path(group_info *ginfo)
 int
 over_fs_usage(group_info *ginfo)
 {
-	return ginfo->gpath->ginfo->usage * ginfo->tree_percentage < ginfo->usage;
+	return ginfo->gpath[0]->usage * ginfo->tree_percentage < ginfo->usage;
+}
+
+group_info::group_info(group_info& root) : name(root.name)
+{
+	resgroup = root.resgroup;
+	cresgroup = root.cresgroup;
+	shares = root.shares;
+	tree_percentage = root.tree_percentage;
+	group_percentage = root.group_percentage;
+	usage = root.usage;
+	usage_factor = root.usage_factor;
+	temp_usage = root.temp_usage;
+	sibling = NULL;
+	child = NULL;
+	parent = NULL;
 }
 
 /**
@@ -963,26 +867,10 @@ dup_fairshare_tree(group_info *root, group_info *nparent)
 	if (root == NULL)
 		return NULL;
 
-	nroot = new_group_info();
+	nroot = new group_info(*root);
 
 	if (nroot == NULL)
 		return NULL;
-
-
-	nroot->resgroup = root->resgroup;
-	nroot->cresgroup = root->cresgroup;
-	nroot->shares = root->shares;
-	nroot->tree_percentage = root->tree_percentage;
-	nroot->group_percentage = root->group_percentage;
-	nroot->usage = root->usage;
-	nroot->usage_factor = root->usage_factor;
-	nroot->temp_usage = root->temp_usage;
-	nroot->name = string_dup(root->name);
-
-	if (nroot->name == NULL) {
-		free_fairshare_node(nroot);
-		return NULL;
-	}
 
 	add_child(nroot, nparent);
 
@@ -1007,44 +895,18 @@ free_fairshare_tree(group_info *root)
 
 	free_fairshare_tree(root->sibling);
 	free_fairshare_tree(root->child);
-	free_fairshare_node(root);
-}
-
-/**
- * @brief
- *		free the data associated with a single fairshare tree node
- *
- * @param[in,out]	root	-	single fairshare tree node
- */
-void
-free_fairshare_node(group_info *node)
-{
-	if (node == NULL)
-		return;
-
-	free(node->name);
-	free_group_path_list(node->gpath);
-	free(node);
+	delete root;
 }
 
 /**
  * @brief
  * 		constructor for fairshare head
  */
-fairshare_head *
-new_fairshare_head()
+
+fairshare_head::fairshare_head()
 {
-	fairshare_head *fhead;
-
-	if ((fhead = static_cast<fairshare_head *>(malloc(sizeof(fairshare_head)))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-
-	fhead->root = NULL;
-	fhead->last_decay = 0;
-
-	return fhead;
+	root = NULL;
+	last_decay = 0;
 }
 
 /**
@@ -1054,29 +916,23 @@ new_fairshare_head()
  * @param[in]	ofhead	-	fairshare_head to dup
  *
  * @return	duplicated fairshare_head
- * @retval	NULL	: fail
+ * @retval	NULL	: fail 
  */
-fairshare_head *
-dup_fairshare_head(fairshare_head *ofhead)
+fairshare_head::fairshare_head(fairshare_head& ofhead)
 {
-	fairshare_head *nfhead;
+	last_decay = ofhead.last_decay;
+	root = dup_fairshare_tree(ofhead.root, NULL);
+}
 
-	if (ofhead == NULL)
-		return NULL;
-
-	nfhead = new_fairshare_head();
-
-	if (nfhead == NULL)
-		return NULL;
-
-	nfhead->last_decay = ofhead->last_decay;
-	nfhead->root = dup_fairshare_tree(ofhead->root, NULL);
-	if (nfhead->root == NULL) {
-		free_fairshare_head(nfhead);
-		return NULL;
-	}
-
-	return nfhead;
+/**
+ * @brief copy assignment operator for fairshare_head
+ */
+fairshare_head& fairshare_head::operator=(fairshare_head& ofhead)
+{
+	free_fairshare_tree(root);
+	last_decay = ofhead.last_decay;
+	root = dup_fairshare_tree(ofhead.root, NULL);
+	return *this;
 }
 
 /**
@@ -1085,15 +941,9 @@ dup_fairshare_head(fairshare_head *ofhead)
  *
  * @param[in]	fhead	-	fairshare_head to be freed.
  */
-void
-free_fairshare_head(fairshare_head *fhead)
+fairshare_head::~fairshare_head()
 {
-	if (fhead == NULL)
-		return;
-
-	free_fairshare_tree(fhead->root);
-
-	free(fhead);
+	free_fairshare_tree(root);
 }
 
 /**

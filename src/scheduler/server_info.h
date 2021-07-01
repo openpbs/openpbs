@@ -152,12 +152,6 @@ int copy_server_arrays(server_info *nsinfo, server_info *osinfo);
 int check_exit_job(resource_resv *job, const void *arg);
 
 /*
- *      check_run_resv - function used by resv_filter to filter out
- *                       non-running reservations
- */
-int check_run_resv(resource_resv *resv, const void *arg);
-
-/*
  *
  *	check_susp_job - function used by job_filter to filter out jobs
  *			   which are suspended
@@ -418,12 +412,6 @@ update_total_counts(server_info *si, queue_info* qi,
 void
 update_total_counts_on_end(server_info *si, queue_info* qi,
 	resource_resv *rr, int mode);
-
-/*
- * Refreshes total counts list for server & queue by deleting the
- * old structures and duplicating new one from running counts
- */
-void refresh_total_counts(server_info *sinfo);
 
 /**
  * @brief - get a unique rank to uniquely identify an object

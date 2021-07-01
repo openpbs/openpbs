@@ -775,7 +775,7 @@ free_limcounts(limcounts *lc)
 static limcounts *
 make_limcounts(counts *user, counts *group, counts *project, counts *all)
 {
-	limcounts *lc = NULL;
+	limcounts *lc;
 	lc = new_limcounts();
 	if (lc == NULL)
 		return NULL;
@@ -835,12 +835,6 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 	limcounts *que_counts_max = NULL;
 	limcounts *server_lim = NULL;
 	limcounts *queue_lim = NULL;
-	timed_event *te;
-	resource_resv *te_rr;
-	long time_left;
-	long end;
-	int error = 0;
-	unsigned int event_mask;
 	counts *cts;
 	schd_error *prev_err = NULL;
 
@@ -854,12 +848,15 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 	 * We do not need to run into the same loop again.
 	 */
 	if (si->calendar != NULL && !(flags & CHECK_CUMULATIVE_LIMIT)) {
+		long time_left;
 		if (rr->duration != rr->hard_duration &&
-		   exists_resv_event(si->calendar, si->server_time + rr->hard_duration))
+		    exists_resv_event(si->calendar, si->server_time + rr->hard_duration))
 			time_left = calc_time_left(rr, 1);
 		else
 			time_left = calc_time_left(rr, 0);
-		end = si->server_time + time_left;
+
+		auto end = si->server_time + time_left;
+
 		if (exists_run_event(si->calendar, end)) {
 			if (si->has_hard_limit) {
 				svr_counts_max = make_limcounts(si->user_counts,
@@ -903,12 +900,13 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 				}
 			}
 
-			te = get_next_event(si->calendar);
-			event_mask = TIMED_RUN_EVENT|TIMED_END_EVENT;
+			auto te = get_next_event(si->calendar);
+			const auto event_mask = TIMED_RUN_EVENT|TIMED_END_EVENT;
+			bool error = false;
 			for (te = find_init_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask);
-				te != NULL && te->event_time < end;
-				te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
-				te_rr = (resource_resv *) te->event_ptr;
+			     te != NULL && te->event_time < end;
+			     te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
+				auto te_rr = static_cast<resource_resv *>(te->event_ptr);
 				if ((te_rr != rr) && te_rr->is_job) {
 					if (te->event_type == TIMED_RUN_EVENT) {
 						if (svr_counts != NULL) {
@@ -919,7 +917,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 							svr_counts_max->user =
 								counts_max(svr_counts_max->user, cts);
 							if (svr_counts_max->user == NULL) {
-								error = 1;
+								error = true;
 								break;
 							}
 
@@ -930,7 +928,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 							svr_counts_max->group =
 								counts_max(svr_counts_max->group, cts);
 							if (svr_counts_max->group == NULL) {
-								error = 1;
+								error = true;
 								break;
 							}
 
@@ -941,7 +939,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 							svr_counts_max->project =
 								counts_max(svr_counts_max->project, cts);
 							if (svr_counts_max->project == NULL) {
-								error = 1;
+								error = true;
 								break;
 							}
 
@@ -949,7 +947,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 							svr_counts_max->all =
 								counts_max(svr_counts_max->all, svr_counts->all);
 							if (svr_counts_max->all == NULL) {
-								error = 1;
+								error = true;
 								break;
 							}
 						}
@@ -964,7 +962,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 									que_counts_max->user =
 										counts_max(que_counts_max->user, cts);
 									if (que_counts_max->user == NULL) {
-										error = 1;
+										error = true;
 										break;
 									}
 
@@ -975,7 +973,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 									que_counts_max->group =
 										counts_max(que_counts_max->group, cts);
 									if (que_counts_max->group == NULL) {
-										error = 1;
+										error = true;
 										break;
 									}
 
@@ -986,15 +984,14 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 									que_counts_max->project =
 										counts_max(que_counts_max->project, cts);
 									if (que_counts_max->project == NULL) {
-										error = 1;
+										error = true;
 										break;
 									}
 
 									update_counts_on_run(que_counts->all, te_rr->resreq);
-									que_counts_max->all =
-										counts_max(que_counts_max->all, que_counts->all);
+									que_counts_max->all = counts_max(que_counts_max->all, que_counts->all);
 									if (que_counts_max->all == NULL) {
-										error = 1;
+										error = true;
 										break;
 									}
 								}
@@ -1076,8 +1073,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 				return SE_NONE;
 			}
 		}
-	}
-	else if ((flags & CHECK_CUMULATIVE_LIMIT)) {
+	} else if ((flags & CHECK_CUMULATIVE_LIMIT)) {
 		if (!si->has_hard_limit && !qi->has_hard_limit)
 			return SE_NONE;
 		server_lim = make_limcounts(si->total_user_counts,
@@ -1165,7 +1161,6 @@ int find_preempt_bits(counts *entity_counts, const char *entity_name, resource_r
 {
 	counts *cnt = NULL;
 	resource_count *res_c;
-	resource_req *req;
 	int rc = 0;
 
 	if (entity_counts == NULL || entity_name == NULL)
@@ -1177,7 +1172,7 @@ int find_preempt_bits(counts *entity_counts, const char *entity_name, resource_r
 
 	rc |= cnt->soft_limit_preempt_bit;
 	for (res_c = cnt->rescts; res_c != NULL; res_c = res_c->next) {
-		req = find_resource_req(rr->resreq, res_c->def);
+		auto req = find_resource_req(rr->resreq, res_c->def);
 		if (req != NULL)
 			rc |= res_c->soft_limit_preempt_bit;
 	}
@@ -1764,7 +1759,6 @@ check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 	sch_resource_t	used;
 	schd_resource	*res;
 	resource_count	*used_res;
-	resource_req	*req;
 	counts		*c;
 	counts		*cts = NULL;
 
@@ -1781,6 +1775,7 @@ check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 		return (0);
 
 	for (res = limres; res != NULL; res = res->next) {
+		resource_req *req;
 		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
 			continue;
 
@@ -1838,7 +1833,6 @@ check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 	sch_resource_t	used;
 	schd_resource	*res;
 	resource_count	*used_res;
-	resource_req	*req;
 	counts		*c;
 	counts		*cts = NULL;
 
@@ -1855,6 +1849,8 @@ check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 		return (0);
 
 	for (res = limres; res != NULL; res = res->next) {
+		resource_req *req;
+
 		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
 			continue;
 
@@ -2525,7 +2521,6 @@ check_server_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 	sch_resource_t	used;
 	schd_resource	*res;
 	resource_count	*used_res;
-	resource_req	*req;
 	counts		*c;
 
 	if ((si == NULL) || (rr == NULL))
@@ -2536,7 +2531,8 @@ check_server_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 		return (0);
 
 	for (res = limres; res != NULL; res = res->next) {
-		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
+		/* If the job is not requesting the limit resource, it is not over its soft limit*/
+		if (find_resource_req(rr->resreq, res->def) == NULL)
 			continue;
 
 		if ((reskey = entlim_mk_reskey(LIM_OVERALL, allparam,
@@ -2594,7 +2590,6 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 	sch_resource_t	used;
 	schd_resource	*res;
 	resource_count	*used_res;
-	resource_req	*req;
 	counts		*c;
 
 	if ((qi == NULL) || (rr == NULL))
@@ -2605,7 +2600,8 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 		return (0);
 
 	for (res = limres; res != NULL; res = res->next) {
-		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
+		/* If the job is not requesting the limit resource, it is not over its soft limit*/
+		if (find_resource_req(rr->resreq, res->def) == NULL)
 			continue;
 
 		if ((reskey = entlim_mk_reskey(LIM_OVERALL, allparam,
@@ -2657,13 +2653,11 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
  * @retval	-1	: on error
  */
 static int
-check_max_group_res(resource_resv *rr, counts *cts_list,
-	resdef **rdef, void *limitctx)
+check_max_group_res(resource_resv *rr, counts *cts_list, resdef **rdef, void *limitctx)
 {
 	char		*groupreskey;
 	char		*gengroupreskey;
-	char		*group = rr->group;
-	resource_req	*req;
+	char		*group;
 	schd_resource	*res;
 	sch_resource_t	max_group_res;
 	sch_resource_t	max_gengroup_res;
@@ -2674,7 +2668,10 @@ check_max_group_res(resource_resv *rr, counts *cts_list,
 	if ((limres == NULL) || (rr->resreq == NULL))
 		return (0);
 
+	group = rr->group;
+
 	for (res = limres; res != NULL; res = res->next) {
+		resource_req *req;
 		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
 			continue;
 
@@ -2738,8 +2735,7 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 {
 	char		*groupreskey;
 	char		*gengroupreskey;
-	char		*group = rr->group;
-	resource_req	*req;
+	char		*group;
 	schd_resource	*res;
 	sch_resource_t	max_group_res_soft;
 	sch_resource_t	max_gengroup_res_soft;
@@ -2752,8 +2748,11 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 	if ((limres == NULL) || (rr->resreq == NULL))
 		return (0);
 
+	group = rr->group;
+
 	for (res = limres; res != NULL; res = res->next) {
-		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
+		/* If the job is not requesting the limit resource, it is not over its soft limit*/
+		if (find_resource_req(rr->resreq, res->def) == NULL)
 			continue;
 
 		/* individual group limit check */
@@ -2826,8 +2825,7 @@ check_max_user_res(resource_resv *rr, counts *cts_list, resdef **rdef,
 {
 	char		*userreskey;
 	char		*genuserreskey;
-	char		*user = rr->user;
-	resource_req	*req;
+	char		*user;
 	schd_resource	*res;
 	sch_resource_t	max_user_res;
 	sch_resource_t	max_genuser_res;
@@ -2838,7 +2836,11 @@ check_max_user_res(resource_resv *rr, counts *cts_list, resdef **rdef,
 	if ((limres == NULL) || (rr->resreq == NULL))
 		return (0);
 
+	user = rr->user;
+
 	for (res = limres; res != NULL; res = res->next) {
+		resource_req *req;
+
 		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
 			continue;
 
@@ -2904,8 +2906,7 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 {
 	char		*userreskey;
 	char		*genuserreskey;
-	char		*user = rr->user;
-	resource_req	*req;
+	char		*user;
 	schd_resource	*res;
 	sch_resource_t	max_user_res_soft;
 	sch_resource_t	max_genuser_res_soft;
@@ -2918,8 +2919,11 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 	if ((limres == NULL) || (rr->resreq == NULL))
 		return (0);
 
+	user = rr->user;
+
 	for (res = limres; res != NULL; res = res->next) {
-		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
+		/* If the job is not requesting the limit resource, it is not over its soft limit*/
+		if (find_resource_req(rr->resreq, res->def) == NULL)
 			continue;
 
 		/* individual user limit check */
@@ -3180,7 +3184,6 @@ static void *
 lim_dup_ctx(void *ctx)
 {
 	void *newctx;
-	const char *newval;
 	char *key = NULL;
 	char *value = NULL;
 
@@ -3190,6 +3193,7 @@ lim_dup_ctx(void *ctx)
 	}
 
 	while ((value = static_cast<char *>(entlim_get_next(ctx, (void **)&key))) != NULL) {
+		const char *newval;
 		if ((newval = strdup(value)) == NULL) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, "strdup value failed");
 			(void) entlim_free_ctx(newctx, free);
@@ -3457,7 +3461,6 @@ check_max_project_res(resource_resv *rr, counts *cts_list,
 {
 	char		*projectreskey;
 	char		*genprojectreskey;
-	resource_req	*req;
 	schd_resource	*res;
 	char		*project;
 	sch_resource_t	max_project_res;
@@ -3471,6 +3474,7 @@ check_max_project_res(resource_resv *rr, counts *cts_list,
 
 	project = rr->project;
 	for (res = limres; res != NULL; res = res->next) {
+		resource_req *req;
 		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
 			continue;
 
@@ -3535,7 +3539,6 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 	char		*projectreskey;
 	char		*genprojectreskey;
 	char		*project;
-	resource_req	*req;
 	schd_resource	*res;
 	sch_resource_t	max_project_res_soft;
 	sch_resource_t	max_genproject_res_soft;
@@ -3550,7 +3553,8 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 
 	project = rr->project;
 	for (res = limres; res != NULL; res = res->next) {
-		if ((req = find_resource_req(rr->resreq, res->def)) == NULL)
+		/* If the job is not requesting the limit resource, it is not over its soft limit*/
+		if (find_resource_req(rr->resreq, res->def) == NULL)
 			continue;
 
 		/* individual project limit check */
