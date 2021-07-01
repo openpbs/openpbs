@@ -180,8 +180,8 @@ class MoM(PBSService):
             return None
         return os.path.join(*argv)
 
-    def rm(self, hostname=None, path=None, sudo=False, runas=None,
-            recursive=False, force=False, logerr=True, as_script=False):
+    def rm(self, path=None, sudo=False, runas=None, recursive=False,
+           force=False, logerr=True, as_script=False):
         """
         :param path: the path to the files or directories to remove
                      for more than one files or directories pass as
@@ -208,9 +208,9 @@ class MoM(PBSService):
                           wildcard in path list. Defaults to False.
         :type as_script: boolean
         """
-        return self.du.rm(hostname=hostname, path=path, sudo=sudo, runas=runas,
-                          recursive=recursive, force=force, logerr=logerr,
-                          as_script=as_script)
+        return self.du.rm(hostname=self.hostname, path=path, sudo=sudo,
+                          runas=runas, recursive=recursive, force=force,
+                          logerr=logerr, as_script=as_script)
 
     def listdir(self, path=None, sudo=False, runas=None, fullpath=True):
         """
