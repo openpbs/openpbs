@@ -966,10 +966,8 @@ tpp_post_cmd(int tfd, char cmd, tpp_packet_t *pkt)
 		/* data associated that needs to be sent out, put directly into target mbox */
 		/* write to worker threads send pipe */
 		rc = tpp_mbox_post(&conn->send_mbox, tfd, cmd, (void*) pkt, pkt->totlen);
-		if (rc != 0) {
-			tpp_unlock_rwlock(&cons_array_lock);
+		if (rc != 0)
 			return rc;
-		}
 	}
 
 	/* write to worker threads send pipe, to wakeup thread */

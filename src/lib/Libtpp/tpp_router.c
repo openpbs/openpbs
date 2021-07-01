@@ -856,14 +856,16 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			 * ie, remove from routers_idx tree
 			 **/
 			tpp_write_lock(&router_lock);
+			
 			pbs_idx_delete(routers_idx, &r->router_addr);
-			tpp_unlock_rwlock(&router_lock);
-
 			/*
 			 * context will be freed and deleted by router_close_handler
 			 * so just free router structure itself
 			 */
 			free_router(r);
+
+			tpp_unlock_rwlock(&router_lock);
+
 		}
 
 		return 0;
