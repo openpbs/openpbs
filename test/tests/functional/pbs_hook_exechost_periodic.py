@@ -125,8 +125,7 @@ class TestHookExechostPeriodic(TestFunctional):
         msg1 = "%s;Not allowed to update vnode '%s'," % (self.momA.hostname,
                                                          self.hostB)
         exp_msg1 = msg1 + common_msg
-        exp_msg2 = "%s;autocreated vnode %s" % (self.momA.hostname,
-                                                other_node)
+        exp_msg2 = "autocreated vnode %s" % other_node
         msg2 = "%s;Updated vnode %s's resource " % (self.momA.hostname,
                                                     other_node)
         exp_msg3 = msg2 + common_msg2
