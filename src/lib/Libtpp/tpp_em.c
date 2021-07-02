@@ -927,6 +927,8 @@ int
 tpp_mbox_init(tpp_mbox_t *mbox, char *name, int size)
 {
 	tpp_init_lock(&mbox->mbox_mutex);
+	tpp_lock(&mbox->mbox_mutex);
+
 	TPP_QUE_CLEAR(&mbox->mbox_queue);
 
 	snprintf(mbox->mbox_name, sizeof(mbox->mbox_name), "%s", name);
@@ -936,6 +938,7 @@ tpp_mbox_init(tpp_mbox_t *mbox, char *name, int size)
 #ifdef HAVE_SYS_EVENTFD_H
 	if ((mbox->mbox_eventfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)) == -1) {
 		tpp_log(LOG_CRIT, __func__, "eventfd() error, errno=%d", errno);
+		tpp_unlock(&mbox->mbox_mutex);
 		return -1;
 	}
 #else
@@ -948,6 +951,7 @@ tpp_mbox_init(tpp_mbox_t *mbox, char *name, int size)
 	 */
 	if (tpp_pipe_cr(mbox->mbox_pipe) != 0) {
 		tpp_log(LOG_CRIT, __func__, "pipe() error, errno=%d", errno);
+		tpp_unlock(&mbox->mbox_mutex);
 		return -1;
 	}
 	/* set the cmd pipe to nonblocking now
@@ -958,6 +962,7 @@ tpp_mbox_init(tpp_mbox_t *mbox, char *name, int size)
 	tpp_set_close_on_exec(mbox->mbox_pipe[0]);
 	tpp_set_close_on_exec(mbox->mbox_pipe[1]);
 #endif
+	tpp_unlock(&mbox->mbox_mutex);
 	return 0;
 }
 

@@ -258,8 +258,7 @@ send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 		}
 	}
 	pbs_idx_free_ctx(idx_ctx);
-	tpp_unlock_rwlock(&router_lock);
-
+	
 	while ((pkt = (tpp_packet_t *) tpp_deque(&leaf_packets))) {
 		if (tpp_transport_vsend(target->conn_fd, pkt) != 0) {
 			tpp_log(LOG_ERR, __func__, "Send leaves to pbs_comm %s failed", target->router_name);
@@ -273,7 +272,6 @@ send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 err:
 	/* we jump to the error block only before starting to send, so safe to clear the queue */
 	tpp_log(LOG_CRIT, __func__, "Error sending leaves to router %s", target->router_name);
-	tpp_unlock_rwlock(&router_lock);
 
 	pbs_idx_free_ctx(idx_ctx);
 
@@ -297,8 +295,8 @@ err:
  * @retval  0 - Success
  *
  * @par Side Effects:
- *	This routine expects to be called with the "router_lock" locked and
- *	will unlock the router_lock before exiting.
+ *	This function is not guarded by an lock around it. So it should be called 
+ *  under a lock
  *
  * @par MT-safe: No
  *
@@ -319,12 +317,10 @@ broadcast_to_my_routers(tpp_chunk_t *chunks, int count, int origin_tfd)
 		if (tpp_enque(&router_list, r) == NULL) {
 			tpp_log(LOG_CRIT, __func__, "Out of memory enqueuing to router_list");
 			pbs_idx_free_ctx(idx_ctx);
-			tpp_unlock_rwlock(&router_lock);
 			goto err;
 		}
 	}
 	pbs_idx_free_ctx(idx_ctx);
-	tpp_unlock_rwlock(&router_lock);
 
 	while ((r = (tpp_router_t *) tpp_deque(&router_list))) {
 		int j;
@@ -374,8 +370,8 @@ err:
  *	None
  *
  * @note
- *   This function is not guarded by an lock around it. So it could get invoked
- *   concurrently by multiple threads.
+ *   This function is not guarded by an lock around it. So it should be called 
+ *   under a lock
  *
  * @par MT-safe: No
  *
@@ -395,7 +391,6 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 	else
 		traverse_idx = this_router->my_leaves_idx;
 
-	tpp_read_lock(&router_lock);
 	while (pbs_idx_find(traverse_idx, NULL, (void **)&l, &idx_ctx) == PBS_IDX_RET_OK) {
 		/*
 		 * leaf directly connected to me? and not myself
@@ -410,13 +405,11 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 			if (tpp_enque(&leaf_list, l) == NULL) {
 				tpp_log(LOG_CRIT, __func__, "Out of memory enqueuing to leaf_list");
 				pbs_idx_free_ctx(idx_ctx);
-				tpp_unlock_rwlock(&router_lock);
 				goto err;
 			}
 		}
 	}
 	pbs_idx_free_ctx(idx_ctx);
-	tpp_unlock_rwlock(&router_lock);
 
 	while ((l = (tpp_leaf_t *) tpp_deque(&leaf_list))) {
 		int j;
@@ -484,6 +477,8 @@ router_send_ctl_join(int tfd, void *data, void *c)
 			tpp_log(LOG_CRIT, NULL, "tfd=%d, pbs_comm %s accepted connection", tfd, r->router_name);
 
 			rc = send_leaves_to_router(this_router, r);
+
+			tpp_unlock_rwlock(&router_lock);
 		} else {
 			tpp_log(LOG_CRIT, __func__, "Failed to send JOIN packet/send leaves to pbs_comm %s", this_router->router_name);
 			tpp_transport_close(r->conn_fd);
@@ -663,8 +658,9 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			 * broadcast leave pkt to other routers,
 			 * except from where it came from
 			 */
-			tpp_read_lock(&router_lock); /* below routine expects to be called under lock */
-			broadcast_to_my_routers(chunks, 2, tfd); /* this routine unlocks the lock */
+			tpp_read_lock(&router_lock);
+			broadcast_to_my_routers(chunks, 2, tfd);
+			tpp_unlock_rwlock(&router_lock);
 
 			tpp_log(LOG_CRIT, NULL, "tfd=%d, Connection from leaf %s down", tfd, tpp_netaddr(&l->leaf_addrs[0]));
 		}
@@ -682,10 +678,6 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			tpp_log(LOG_CRIT, __func__, "tfd=%d, Failed to delete address from my_leaves %s", tfd, tpp_netaddr(&l->leaf_addrs[0]));
 			tpp_unlock_rwlock(&router_lock);
 			return -1;
-		}
-
-		if (hop == 1) {
-			l->conn_fd = -1; /* reset my direct connection fd to -1 since its closing */
 		}
 
 		if (l->num_routers > 0) {
@@ -713,19 +705,12 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			pbs_idx_delete(my_leaves_notify_idx, &l->leaf_addrs[0]);
 		}
 
-		tpp_unlock_rwlock(&router_lock);
-
 		/* broadcast to all self connected leaves */
-		/*
-		 * Its okay to call this function without being under a lock, since when a TPP_CTL_LEAVE
-		 * arrives the downed leaf's traces (IP addresses etc) are removed from the indexes
-		 * under lock before this function is called to propagate this information.
-		 * Another concurrent TPP_CTL_LEAVE will not find anything in the indexes to remove
-		 * and will be ignored early itself.
-		 */
 		broadcast_to_my_leaves(chunks, 2, tfd, 0);
 
 		free_leaf(l);
+
+		tpp_unlock_rwlock(&router_lock);
 
 		return 0;
 
@@ -811,8 +796,6 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			r->conn_fd = -1;
 			r->state = TPP_ROUTER_STATE_DISCONNECTED;
 
-			tpp_unlock_rwlock(&router_lock);
-
 			chunks[0].data = (void *) &hdr;
 			chunks[0].len = sizeof(tpp_leave_pkt_hdr_t);
 
@@ -827,17 +810,11 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 				chunks[1].len = l->num_addrs * sizeof(tpp_addr_t);
 
 				/* broadcast to all self connected leaves */
-				/*
-				 * Its okay to call this function without being under a lock, since when a TPP_CTL_LEAVE
-				 * arrives the downed leaf's traces (IP addresses etc) are removed from the indexes
-				 * under lock before this function is called to propagate this information.
-				 * Another concurrent TPP_CTL_LEAVE will not find anything in the indexes to remove
-				 * and will be ignored early itself. Besides we do not want to hold a lock across
-				 * a IO call (inside this function).
-				 */
 				broadcast_to_my_leaves(chunks, 2, tfd, 0);
 				free_leaf(l);
 			}
+
+			tpp_unlock_rwlock(&router_lock);
 		}
 
 		if (r->initiator == 1) {
@@ -879,14 +856,16 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			 * ie, remove from routers_idx tree
 			 **/
 			tpp_write_lock(&router_lock);
+			
 			pbs_idx_delete(routers_idx, &r->router_addr);
-			tpp_unlock_rwlock(&router_lock);
-
 			/*
 			 * context will be freed and deleted by router_close_handler
 			 * so just free router structure itself
 			 */
 			free_router(r);
+
+			tpp_unlock_rwlock(&router_lock);
+
 		}
 
 		return 0;
@@ -1001,7 +980,9 @@ router_timer_handler(time_t now)
 		chunks[0].len = len;
 
 		/* broadcast to self connected leaves asking for notification */
+		tpp_read_lock(&router_lock);
 		broadcast_to_my_leaves(chunks, 1, -1, 1);
+		tpp_unlock_rwlock(&router_lock);
 	}
 
 	return ret;
@@ -1330,7 +1311,9 @@ again:
 				tpp_transport_set_conn_ctx(tfd, ctx);
 
 				/* now send new router info about all leaves I have */
-				send_leaves_to_router(this_router, r); /* this call will unlock the router_lock */
+				send_leaves_to_router(this_router, r);
+
+				tpp_unlock_rwlock(&router_lock);
 				return 0;
 
 			} else if (node_type == TPP_LEAF_NODE || node_type == TPP_LEAF_NODE_LISTEN) {
@@ -1524,10 +1507,10 @@ again:
 					 * broadcast JOIN pkt to other routers,
 					 * except from where it came from
 					 */
-					broadcast_to_my_routers(chunks, 1, tfd); /* this call will unlock the router_lock */
-				} else {
-					tpp_unlock_rwlock(&router_lock); /* unlock router_lock explicitly */
+					broadcast_to_my_routers(chunks, 1, tfd);
 				}
+				
+				tpp_unlock_rwlock(&router_lock);
 				return 0;
 			}
 			return 0;
