@@ -2577,7 +2577,7 @@ Time4resv(struct work_task *ptask)
 			preq->rq_perm |= ATR_DFLAG_MGWR;
 			strncpy(preq->rq_user, pbs_current_user, PBS_MAXUSER);
 			strncpy(preq->rq_host, server_host, PBS_MAXHOSTNAME);
-			strncpy(preq->rq_ind.rq_manager.rq_objname, presv->ri_qs.ri_resvID, PBS_MAXSVRJOBID);
+			strncpy(preq->rq_ind.rq_manager.rq_objname, presv->ri_qs.ri_resvID, PBS_MAXSVRRESVID);
 			char hook_msg[HOOK_MSG_SIZE] = {0};
 			switch (process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt)) {
 			case 0: /* explicit reject */
@@ -2585,7 +2585,7 @@ Time4resv(struct work_task *ptask)
 			case 2: /* no hook script executed - go ahead and accept event*/
 				break;
 			default:
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, 
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__,
 				"resv_begin event: accept req by default");
 			free(preq);
 			}
