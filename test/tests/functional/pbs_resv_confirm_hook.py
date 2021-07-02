@@ -40,6 +40,7 @@
 import textwrap
 from tests.functional import *
 
+
 class TestResvConfirmHook(TestFunctional):
     """
     Tests to verify the reservation begin hook for a confirm standing/advance/
@@ -50,17 +51,20 @@ class TestResvConfirmHook(TestFunctional):
         import pbs
         e=pbs.event()
 
-        pbs.logmsg(pbs.LOG_DEBUG, 'Reservation Confirm Hook name - %s' % e.hook_name)
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   'Reservation Confirm Hook name - %s' % e.hook_name)
 
         if e.type == pbs.RESV_CONFIRM:
-            pbs.logmsg(pbs.LOG_DEBUG, 'Reservation ID - %s' % e.resv.resvid)
+            pbs.logmsg(pbs.LOG_DEBUG,
+                       'Reservation ID - %s' % e.resv.resvid)
     """)
 
     standing_resv_hook_script = textwrap.dedent("""\
         import pbs
         e=pbs.event()
 
-        pbs.logmsg(pbs.LOG_DEBUG, 'Reservation Confirm Hook name - %s' % e.hook_name)
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   'Reservation Confirm Hook name - %s' % e.hook_name)
 
         if e.type == pbs.RESV_CONFIRM:
             pbs.logmsg(pbs.LOG_DEBUG, 'Reservation occurrence - %s' %
@@ -106,7 +110,8 @@ class TestResvConfirmHook(TestFunctional):
         off, delete the degraded reservation and verify the resv_confirm
         hook ran the correct number of times.
         """
-        self.server.import_hook(self.hook_name, TestResvConfirmHook.advance_resv_hook_script)
+        self.server.import_hook(self.hook_name,
+                                TestResvConfirmHook.advance_resv_hook_script)
 
         offset = 10
         duration = 30
@@ -114,7 +119,8 @@ class TestResvConfirmHook(TestFunctional):
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
-        msg = 'Hook;Server@%s;Reservation ID - %s' % (self.server.shortname, rid)
+        msg = 'Hook;Server@%s;Reservation ID - %s' % (self.server.shortname,
+                                                      rid)
         self.server.log_match(msg, tail=True, interval=1, max_attempts=10)
 
         self.mom.stop()
@@ -123,7 +129,8 @@ class TestResvConfirmHook(TestFunctional):
         self.server.expect(RESV, attrs, id=rid)
 
         self.server.delete(rid)
-        msg = 'Hook;Server@%s;Reservation ID - %s' % (self.server.shortname, rid)
+        msg = 'Hook;Server@%s;Reservation ID - %s' % (self.server.shortname,
+                                                      rid)
         self.server.log_match(msg, tail=True, interval=1, max_attempts=10)
 
     @tags('hooks')
@@ -182,7 +189,8 @@ class TestResvConfirmHook(TestFunctional):
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
               (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, interval=2, max_attempts=10, existence=False)
+        self.server.log_match(msg, tail=True, interval=2, max_attempts=10,
+                              existence=False)
 
     @tags('hooks')
     @timeout(30)
@@ -220,7 +228,8 @@ class TestResvConfirmHook(TestFunctional):
             import pbs
             e=pbs.event()
 
-            pbs.logmsg(pbs.LOG_DEBUG, 'Reservation confirm Hook name - %s' % e.hook_name)
+            pbs.logmsg(pbs.LOG_DEBUG,
+                       'Reservation confirm Hook name - %s' % e.hook_name)
 
             if e.type == pbs.RESV_CONFIRM:
                 pbs.logmsg(pbs.LOG_DEBUG, "e.resv = %s" % e.resv.resvid)
@@ -252,15 +261,16 @@ class TestResvConfirmHook(TestFunctional):
         """
         Testcase to submit and confirm a standing reservation for two
         occurrences, wait for the first occurrence to begin and verify
-        the confirm hook for the reservation, delete before the second occurrence and
-        verify the confirm ran only once.
+        the confirm hook for the reservation, delete before the second
+        occurrence and verify the confirm ran only once.
         """
         self.server.import_hook(self.hook_name,
                                 TestResvConfirmHook.standing_resv_hook_script)
 
         offset = 10
         duration = 30
-        rid = self.server.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2',
+        rid = self.server.submit_resv(offset, duration,
+                                      rrule='FREQ=MINUTELY;COUNT=2',
                                       conf=self.conf)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -275,8 +285,8 @@ class TestResvConfirmHook(TestFunctional):
         msg = 'Hook;Server@%s;Reservation occurrence - 1' % \
               self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
-        self.logger.info('Reservation confirm hook ran for first occurrence of '
-                         'a standing reservation')
+        self.logger.info('Reservation confirm hook ran for first occurrence of'
+                         ' a standing reservation')
 
         self.logger.info('delete during first occurence')
 
@@ -291,8 +301,8 @@ class TestResvConfirmHook(TestFunctional):
         """
         Testcase to set the node attributes such that the number of ncpus is 1,
         submit and confirm a reservation on the same node, submit another
-        reservation on the same node and verify the reservation confirm hook did not run
-        as the latter one stays in unconfirmed state.
+        reservation on the same node and verify the reservation confirm hook
+        did not run as the latter one stays in unconfirmed state.
         """
         self.server.import_hook(self.hook_name,
                                 TestResvConfirmHook.advance_resv_hook_script)
@@ -350,20 +360,24 @@ class TestResvConfirmHook(TestFunctional):
         import pbs
         e=pbs.event()
 
-        pbs.logmsg(pbs.LOG_DEBUG, 'Reservation Confirm Hook name - %s' % e.hook_name)
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   'Reservation Confirm Hook name - %s' % e.hook_name)
 
         if e.type == pbs.RESV_CONFIRM:
-            pbs.logmsg(pbs.LOG_DEBUG, 'Test 1 Reservation ID - %s' % e.resv.resvid)
+            pbs.logmsg(pbs.LOG_DEBUG,
+                       'Test 1 Reservation ID - %s' % e.resv.resvid)
         """)
 
         test_hook_script_2 = textwrap.dedent("""\
         import pbs
         e=pbs.event()
 
-        pbs.logmsg(pbs.LOG_DEBUG, 'Reservation Confirm Hook name - %s' % e.hook_name)
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   'Reservation Confirm Hook name - %s' % e.hook_name)
 
         if e.type == pbs.RESV_CONFIRM:
-            pbs.logmsg(pbs.LOG_DEBUG, 'Test 2 Reservation ID - %s' % e.resv.resvid)
+            pbs.logmsg(pbs.LOG_DEBUG,
+                       'Test 2 Reservation ID - %s' % e.resv.resvid)
         """)
 
         attrs = {'event': 'resv_confirm'}

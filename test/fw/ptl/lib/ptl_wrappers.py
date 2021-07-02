@@ -2040,7 +2040,8 @@ class Wrappers(PBSService):
             self.alterresv(r, attrs, extend=extend, runas=runas)
 
             if msg != self.last_out[0]:
-                raise PBSResvAlterError(msg=f"Wrong Message expected {msg} got {self.last_out[0]}")
+                raise PBSResvAlterError(
+                    msg=f"Wrong Message expected {msg} got {self.last_out[0]}")
             self.logger.info(msg + " displayed")
 
             if check_log:
@@ -2081,7 +2082,8 @@ class Wrappers(PBSService):
                     attrs['reserve_duration'] = new_duration_conv
 
                 if sched_down:
-                    attrs['reserve_state'] = (MATCH_RE, 'RESV_BEING_ALTERED|11')
+                    attrs['reserve_state'] = (MATCH_RE,
+                                              'RESV_BEING_ALTERED|11')
                 elif confirm:
                     attrs['reserve_state'] = (MATCH_RE, 'RESV_CONFIRMED|2')
                 else:
@@ -2103,8 +2105,8 @@ class Wrappers(PBSService):
                         acct_msg += " count=" + count
 
                     self.accounting_match(acct_msg, regexp=True,
-                                                 interval=2,
-                                                 max_attempts=30, n='ALL')
+                                          interval=2,
+                                          max_attempts=30, n='ALL')
 
                 # Check if reservation reports new start time
                 # and updated duration.
@@ -2136,7 +2138,8 @@ class Wrappers(PBSService):
             try:
                 self.alterresv(r, attrs, extend=extend, runas=runas)
             except PbsResvAlterError:
-                self.logger.info("Reservation Alteration failed.  This is expected.")
+                self.logger.info(
+                    "Reservation Alteration failed.  This is expected.")
                 return start, end
             else:
                 self.assertFalse("Reservation alter allowed when it should" +

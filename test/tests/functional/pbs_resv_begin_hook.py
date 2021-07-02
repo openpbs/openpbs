@@ -54,6 +54,7 @@ def get_hook_body_reverse_node_state():
     hook_body = textwrap.dedent(hook_body)
     return hook_body
 
+
 class TestResvBeginHook(TestFunctional):
     """
     Tests to verify the reservation begin hook for a confirm standing/advance/
@@ -111,7 +112,8 @@ if e.type == pbs.RESV_BEGIN:
         self.server.delete(rid)
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
               (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, interval=1, max_attempts=10, existence=False)
+        self.server.log_match(msg, tail=True, interval=1, max_attempts=10,
+                              existence=False)
 
     @tags('hooks')
     def test_delete_degraded_resv(self):
@@ -120,7 +122,8 @@ if e.type == pbs.RESV_BEGIN:
         off, delete the degraded reservation and verify the resvbegin
         hook did not run.
         """
-        self.server.import_hook(self.hook_name, TestResvBeginHook.advance_resv_hook_script)
+        self.server.import_hook(self.hook_name,
+                                TestResvBeginHook.advance_resv_hook_script)
 
         offset = 10
         duration = 30
@@ -137,7 +140,8 @@ if e.type == pbs.RESV_BEGIN:
         self.server.delete(rid)
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
               (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, interval=1, max_attempts=10, existence=False)
+        self.server.log_match(msg, tail=True, interval=1, max_attempts=10,
+                              existence=False)
 
     @tags('hooks')
     def test_server_down_case_1(self):
@@ -189,14 +193,16 @@ if e.type == pbs.RESV_BEGIN:
 
         self.server.stop()
 
-        self.logger.info('wait for %s seconds till the reservation would end' % (wait_time))
+        self.logger.info('wait for %s seconds till the reservation would end' %
+                         (wait_time))
         time.sleep(wait_time)
 
         self.server.start()
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
               (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, interval=2, max_attempts=10, existence=False)
+        self.server.log_match(msg, tail=True, interval=2, max_attempts=10,
+                              existence=False)
 
     @tags('hooks')
     @timeout(30)
@@ -234,7 +240,8 @@ if e.type == pbs.RESV_BEGIN:
             import pbs
             e=pbs.event()
 
-            pbs.logmsg(pbs.LOG_DEBUG, 'Reservation begin Hook name - %s' % e.hook_name)
+            pbs.logmsg(pbs.LOG_DEBUG,
+                       'Reservation begin Hook name - %s' % e.hook_name)
 
             if e.type == pbs.RESV_BEGIN:
                 pbs.logmsg(pbs.LOG_DEBUG, 'e.resv = %s' % e.resv.__dict__)
@@ -274,7 +281,8 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.server.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2',
+        rid = self.server.submit_resv(offset, duration,
+                                      rrule='FREQ=MINUTELY;COUNT=2',
                                       conf=self.conf)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -314,7 +322,8 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.server.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2',
+        rid = self.server.submit_resv(offset, duration,
+                                      rrule='FREQ=MINUTELY;COUNT=2',
                                       conf=self.conf)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -326,8 +335,8 @@ if e.type == pbs.RESV_BEGIN:
         msg = 'Hook;Server@%s;Reservation occurrence - 1' % \
               self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
-        self.logger.info('Reservation begin hook ran for first occurrence of a '
-                         'standing reservation')
+        self.logger.info('Reservation begin hook ran for first occurrence of a'
+                         ' standing reservation')
 
         self.logger.info('Sleep for 30 seconds as this is a '
                          'minutely occurrence')
@@ -340,8 +349,8 @@ if e.type == pbs.RESV_BEGIN:
         msg = 'Hook;Server@%s;Reservation occurrence - 2' % \
               self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
-        self.logger.info('Reservation begin hook ran for second occurrence of a'
-                         ' standing reservation')
+        self.logger.info('Reservation begin hook ran for second occurrence of '
+                         'a standing reservation')
 
     @tags('hooks')
     @timeout(300)
@@ -358,7 +367,8 @@ if e.type == pbs.RESV_BEGIN:
 
         offset = 10
         duration = 30
-        rid = self.server.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2',
+        rid = self.server.submit_resv(offset, duration,
+                                      rrule='FREQ=MINUTELY;COUNT=2',
                                       conf=self.conf)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -383,8 +393,8 @@ if e.type == pbs.RESV_BEGIN:
         msg = 'Hook;Server@%s;Reservation occurrence - 1' % \
               self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
-        self.logger.info('Reservation begin hook ran for first occurrence of a '
-                         'standing reservation')
+        self.logger.info('Reservation begin hook ran for first occurrence of '
+                         'a standing reservation')
 
         self.logger.info(
             'wait for 10 seconds till the next occurrence is submitted')
@@ -455,13 +465,14 @@ if e.type == pbs.RESV_BEGIN:
         Test: check for the existence and values of the
         pbs.REVERSE_RESV_STATE dictionary
 
-        run a hook that converts reseration state change ints into a string, then search
-        for it in the server log.
+        run a hook that converts reservation state change ints into a string,
+        then search for it in the server log.
         """
 
         self.add_pbs_python_path_to_sys_path()
         import pbs
-        self.server.import_hook(self.hook_name, get_hook_body_reverse_node_state())
+        self.server.import_hook(self.hook_name,
+                                get_hook_body_reverse_node_state())
         start_time = int(time.time())
 
         duration = 30
@@ -472,7 +483,8 @@ if e.type == pbs.RESV_BEGIN:
         attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
 
         for value, key in pbs.REVERSE_RESV_STATE.items():
-            self.server.log_match("key:%s value:%s" % (key, value), starttime=start_time)
+            self.server.log_match("key:%s value:%s" % (key, value),
+                                  starttime=start_time)
 
     @tags('hooks')
     @timeout(30)
@@ -485,20 +497,24 @@ if e.type == pbs.RESV_BEGIN:
         import pbs
         e=pbs.event()
 
-        pbs.logmsg(pbs.LOG_DEBUG, 'Reservation Begin Hook name - %s' % e.hook_name)
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   'Reservation Begin Hook name - %s' % e.hook_name)
 
         if e.type == pbs.RESV_BEGIN:
-            pbs.logmsg(pbs.LOG_DEBUG, 'Test 1 Reservation ID - %s' % e.resv.resvid)
+            pbs.logmsg(pbs.LOG_DEBUG,
+                       'Test 1 Reservation ID - %s' % e.resv.resvid)
         """)
 
         test_hook_script_2 = textwrap.dedent("""\
         import pbs
         e=pbs.event()
 
-        pbs.logmsg(pbs.LOG_DEBUG, 'Reservation Begin Hook name - %s' % e.hook_name)
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   'Reservation Begin Hook name - %s' % e.hook_name)
 
         if e.type == pbs.RESV_BEGIN:
-            pbs.logmsg(pbs.LOG_DEBUG, 'Test 2 Reservation ID - %s' % e.resv.resvid)
+            pbs.logmsg(pbs.LOG_DEBUG,
+                       'Test 2 Reservation ID - %s' % e.resv.resvid)
         """)
 
         attrs = {'event': 'resv_begin'}
