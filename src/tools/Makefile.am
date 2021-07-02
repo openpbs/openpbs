@@ -61,7 +61,8 @@ EXTRA_PROGRAMS = \
 
 common_cflags = \
 	-I$(top_srcdir)/src/include \
-	@KRB5_CFLAGS@
+	@KRB5_CFLAGS@ \
+	@sec_cflags@
 
 common_libs = \
 	$(top_builddir)/src/lib/Libpbs/libpbs.la \
@@ -70,7 +71,8 @@ common_libs = \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	-lpthread \
 	@socket_lib@ \
-	@KRB5_LIBS@
+	@KRB5_LIBS@ \
+	@sec_lib@
 
 pbs_sleep_LDFLAGS = -all-static
 pbs_sleep_SOURCES = pbs_sleep.c
@@ -149,7 +151,8 @@ pbs_tclsh_LDADD = \
 	@socket_lib@ \
 	@KRB5_LIBS@ \
 	@libz_lib@ \
-	@tcl_lib@
+	@tcl_lib@ \
+	@sec_lib@
 
 pbs_tclsh_SOURCES = \
 	pbs_tclWrap.c \
@@ -176,7 +179,8 @@ pbs_wish_LDADD = \
 	@socket_lib@ \
 	@KRB5_LIBS@ \
 	@libz_lib@ \
-	@tk_lib@
+	@tk_lib@ \
+	@sec_lib@
 
 pbs_wish_SOURCES = \
 	pbs_tclWrap.c \

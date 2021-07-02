@@ -1173,7 +1173,7 @@ class PBSTestSuite(unittest.TestCase):
             if restart_comm:
                 self.du.set_pbs_config(comm.hostname, confs=new_pbsconf)
                 comm.pbs_conf = new_pbsconf
-                comm.pi.initd(comm.hostname, "restart", daemon="comm")
+                comm.pi.service(comm.hostname, "restart", daemon="comm")
                 if not comm.isUp():
                     self.fail("comm is not up")
 
@@ -1335,7 +1335,7 @@ class PBSTestSuite(unittest.TestCase):
                 else:
                     for initcmd in cmds_to_exec:
                         # start/stop the particular daemon
-                        server.pi.initd(server.hostname, initcmd[1],
+                        server.pi.service(server.hostname, initcmd[1],
                                         daemon=initcmd[0])
                         if initcmd[1] == "start":
                             if initcmd[0] == "server":

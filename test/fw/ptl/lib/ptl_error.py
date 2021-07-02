@@ -220,7 +220,7 @@ class PtlExpectError(PtlFailureException):
     pass
 
 
-class PbsInitServicesError(PtlException):
+class PbsServiceControlError(PtlException):
     pass
 
 

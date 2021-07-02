@@ -95,6 +95,10 @@
 #include "placementsets.h"
 #include "pbs_internal.h"
 #include "pbs_reliable.h"
+#ifndef WIN32
+#include "pbs_seccon.h"
+#endif
+#include <sys/un.h>
 
 #include "renew_creds.h"
 
@@ -143,9 +147,11 @@ extern struct rlimit64 orig_core_limit;
 extern struct rlimit   orig_nproc_limit;
 extern struct rlimit   orig_core_limit;
 #endif  /* RLIM64... */
+void *sec_user_session;
 
 extern eventent * event_dup(eventent *ep, job *pjob, hnodent *pnode);
 extern void send_join_job_restart_mcast(int mtfd, int com, eventent *ep, int nth, job *pjob, pbs_list_head *phead);
+extern void *mom_security_context;
 
 /* Local Varibles */
 
@@ -171,7 +177,8 @@ char *variables_else[] = {	/* variables to add, value computed */
 	"OMP_NUM_THREADS",
 	"PBS_ACCOUNT",
 	"PBS_ARRAY_INDEX",
-	"PBS_ARRAY_ID"
+	"PBS_ARRAY_ID",
+	"TMPDIR"
 };
 
 static	int num_var_else = sizeof(variables_else) / sizeof(char *);
@@ -780,6 +787,48 @@ jobdirname(char *sequence, char *homedir)
 
 /**
  * @brief
+ *	Make the staging and execution directory with what ever
+ *	privileges are currently set,  may be root or may be user.
+ *	This function is a helper task for mkjobdir() below.
+ *
+ * @param[in] jobid - the job id string
+ * @param[in] jobdir - the full path to the sandox (working directory to make
+ *
+ * @return int
+ * @retval JOB_EXEC_FAIL1 failure to make directory
+ * @retval  0 success
+ *
+ */
+int
+internal_mkjobdir(uid_t uid, gid_t gid, void *usercred, char *jobdir, char *jobid)
+{
+	if (mkdir(jobdir, 0700) == -1) {
+		if (errno == EEXIST) {
+			sprintf(log_buffer, "the staging and execution directory %s already exists", jobdir);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_INFO, jobid, log_buffer);
+		} else {
+			sprintf(log_buffer, "mkdir: %s", jobdir);
+			log_joberr(errno, __func__, log_buffer, jobid);
+			return JOB_EXEC_FAIL1;
+		}
+	}
+#ifndef WIN32
+	if (sec_set_filecon(jobdir, usercred)) {
+		sprintf(log_buffer, "could not set security context for %s", jobdir);
+		log_joberr(errno, __func__, log_buffer, jobid);
+		return JOB_EXEC_FAIL1;
+	}
+#endif
+	if (chmod(jobdir, 0700) == -1) {
+		sprintf(log_buffer, "unable to change permissions on staging and execution directory %s", jobdir);
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, jobid, log_buffer);
+		return JOB_EXEC_FAIL1;
+	}
+	return 0;
+}
+
+/**
+ * @brief
  * 	mktmpdir - make temporary directory(s)
  *	A temporary directory is created and the name is
  *	placed in an environment variable.
@@ -787,16 +836,15 @@ jobdirname(char *sequence, char *homedir)
  * @param[in] jobid - job id
  * @param[in] uid - user id
  * @param[in] gid - group id
- * @param[in] vtab - pointer to variable table
  *
  * @return	int
  * @retval	0		Success
- * @retval 	JOB_EXEC_FAIL1 	failure to make directory
+ * @retval	-1		failure to make directory
  *
  */
 
 int
-mktmpdir(char *jobid, uid_t uid, gid_t gid, struct var_table *vtab)
+mktmpdir(char *jobid, uid_t uid, gid_t gid, void *usercred)
 {
 	char	*tmpdir;
 
@@ -829,6 +877,13 @@ mktmpdir(char *jobid, uid_t uid, gid_t gid, struct var_table *vtab)
 			}
 		}
 	}
+#ifndef WIN32
+	if (sec_set_filecon(tmpdir, usercred)) {
+		sprintf(log_buffer, "sec_set_filecon %s", tmpdir);
+		log_joberr(errno, __func__, log_buffer, jobid);
+		return JOB_EXEC_FAIL1;
+	}
+#endif
 	/* Explicitly call chmod because umask affects mkdir() */
 	if (chmod(tmpdir, 0700) == -1) {
 		sprintf(log_buffer, "chmod: %s", tmpdir);
@@ -840,44 +895,6 @@ mktmpdir(char *jobid, uid_t uid, gid_t gid, struct var_table *vtab)
 		log_joberr(errno, __func__, log_buffer, jobid);
 		return JOB_EXEC_FAIL1;
 	}
-	/* Only set TMPDIR if everything succeeded to this point. */
-	if (vtab) {
-		bld_env_variables(vtab, "TMPDIR", tmpdir);
-	}
-	return 0;
-}
-
-/**
- * @brief
- *	Make the staging and execution directory with what ever
- *	privileges are currently set,  may be root or may be user.
- *	This function is a helper task for mkjobdir() below.
- *
- * @param[in] jobid - the job id string
- * @param[in] jobdir - the full path to the sandox (working directory to make
- *
- * @return int
- * @retval JOB_EXEC_FAIL1 failure to make directory
- * @retval  0 success
- *
- */
-static int
-internal_mkjobdir(char *jobid, char *jobdir)
-{
-	if (mkdir(jobdir, 0700) == -1) {
-		if (errno == EEXIST) {
-			sprintf(log_buffer, "the staging and execution directory %s already exists", jobdir);
-			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_INFO, jobid, log_buffer);
-		} else {
-			sprintf(log_buffer, "mkdir: %s", jobdir);
-			log_joberr(errno, __func__, log_buffer, jobid);
-			return JOB_EXEC_FAIL1;
-		}
-	}
-	if (chmod(jobdir, 0700) == -1) {
-		sprintf(log_buffer, "unable to change permissions on staging and execution directory %s", jobdir);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, jobid, log_buffer);
-	}
 	return 0;
 }
 
@@ -887,6 +904,7 @@ internal_mkjobdir(char *jobid, char *jobdir)
  *
  * @param[in] uid - user id
  * @param[in] gid - group id
+ * @param[in] context - mandatory access control context
  *
  * @return 	int
  * @retval	0	Success
@@ -895,8 +913,14 @@ internal_mkjobdir(char *jobid, char *jobdir)
  */
 
 int
-impersonate_user(uid_t uid, gid_t gid)
+impersonate_user(uid_t uid, gid_t gid, void *context)
 {
+#ifndef WIN32
+	if (sec_set_exec_con(context)) {
+		sec_reset_fscon();
+		return -1;
+	}
+#endif
 #if defined(HAVE_GETPWUID) && defined(HAVE_INITGROUPS)
 	struct passwd *pwd = getpwuid(uid);
 	if (pwd == NULL)
@@ -913,12 +937,18 @@ impersonate_user(uid_t uid, gid_t gid)
 	if ((setegid(gid) == -1) ||
 		(seteuid(uid) == -1)) {
 		(void)setegid(pbsgroup);
+#ifndef WIN32
+		sec_revert_con(mom_security_context);
+#endif
 		return -1;
 	}
 #elif defined(HAVE_SETRESUID) && defined(HAVE_SETRESGID)
 	if ((setresgid(-1, gid, -1) == -1) ||
 		(setresuid(-1, uid, -1) == -1)) {
 		(void)setresgid(-1, pbsgroup, -1);
+#ifndef WIN32
+		sec_revert_con(mom_security_context);
+#endif
 		return -1;
 	}
 #else
@@ -947,6 +977,9 @@ revert_from_user(void)
 	(void)setresgid(-1, pbsgroup, -1);
 #else
 #error No function to change effective GID
+#endif
+#ifndef WIN32
+	sec_revert_con(mom_security_context);
 #endif
 }
 
@@ -985,6 +1018,7 @@ revert_from_user(void)
  * @param[in] jobdir - job directory
  * @param[in] uid - user id
  * @param[in] gid - group id
+ * @param[in] usercred - security contex
  *
  * @return 	int
  * @retval	0	Success
@@ -993,7 +1027,7 @@ revert_from_user(void)
  */
 
 int
-mkjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid)
+mkjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, void *usercred)
 {
 	int	rc;
 
@@ -1001,8 +1035,15 @@ mkjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid)
 
 		/* making the directory as root in a secure root owned dir */
 
-		if ((rc = internal_mkjobdir(jobid, jobdir)) != 0)
+		if ((rc = internal_mkjobdir(uid, gid, usercred, jobdir, jobid)) != 0)
 			return (rc);
+#ifndef WIN32
+		if (sec_set_filecon(jobdir, usercred) == -1) {
+			sprintf(log_buffer, "sec_set_filecon %s", jobdir);
+			log_joberr(errno, __func__, log_buffer, jobid);
+			return JOB_EXEC_FAIL1;
+		}
+#endif
 
 		/* now change ownership to the user */
 		if (chown(jobdir, uid, gid) == -1) {
@@ -1014,16 +1055,22 @@ mkjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid)
 
 		/* making the directory in the user's home, do it as user */
 
-		if (impersonate_user(uid, gid) == -1)
+		if (impersonate_user(uid, gid, usercred) == -1)
 			return -1;
 
 		/* make the directory */
-		rc = internal_mkjobdir(jobid, jobdir);
+		rc = internal_mkjobdir(uid, gid, usercred, jobdir, jobid);
 
 		/* go back to being root */
 
 		revert_from_user();
-
+#ifndef WIN32
+		if (sec_set_filecon(jobdir, usercred) == -1) {
+			sprintf(log_buffer, "sec_set_filecon %s", jobdir);
+			log_joberr(errno, __func__, log_buffer, jobid);
+			return JOB_EXEC_FAIL1;
+		}
+#endif
 		if (rc != 0)
 			return (rc);
 	}
@@ -1131,6 +1178,7 @@ lastname(char *shell)
  * @param[in] euid     - the execution uid
  * @param[in] egid     - the execution gid
  * @param[in] rgid     - the login (or real) gid of the user
+ * @param[in] usercred - security related credential/context
  *
  * @return int
  * @retval 0  - success
@@ -1138,7 +1186,7 @@ lastname(char *shell)
  *
  */
 int
-becomeuser_args(char *eusrname, uid_t euid, gid_t egid, gid_t rgid)
+becomeuser_args(char *eusrname, uid_t euid, gid_t egid, gid_t rgid, void * usercred)
 {
 	gid_t *grplist = NULL;
 	static int   maxgroups=0;
@@ -1149,7 +1197,15 @@ becomeuser_args(char *eusrname, uid_t euid, gid_t egid, gid_t rgid)
 	pag = getpag();
 #endif
 #endif
-
+#ifndef WIN32
+	if (!sec_user_session) {
+		if ((sec_set_exec_con(usercred) == -1) || ((sec_user_session = sec_open_session(eusrname)) == NULL)) {
+			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
+				"unable to open user session");
+			return -1;
+		}
+	}
+#endif
 	/* obtain the maximum number of groups possible in the list */
 	if (maxgroups == 0)
 		maxgroups = (int)sysconf(_SC_NGROUPS_MAX);
@@ -1160,8 +1216,13 @@ becomeuser_args(char *eusrname, uid_t euid, gid_t egid, gid_t rgid)
 
 		/* allocate an array for the group list */
 		grplist = calloc((size_t)maxgroups, sizeof(gid_t));
-		if (grplist == NULL)
+		if (grplist == NULL) {
+#ifndef WIN32
+			if (sec_user_session)
+				sec_close_session(sec_user_session);
+#endif
 			return -1;
+		}
 		/* get the current list of groups */
 		numsup = getgroups(maxgroups, grplist);
 		for (i=0; i<numsup; ++i) {
@@ -1173,6 +1234,10 @@ becomeuser_args(char *eusrname, uid_t euid, gid_t egid, gid_t rgid)
 			if (numsup == maxgroups) {
 				/* cannot, list already at max size */
 				free(grplist);
+#ifndef WIN32
+				if (sec_user_session)
+					sec_close_session(sec_user_session);
+#endif
 				return -1;
 			}
 			grplist[numsup++] = rgid;
@@ -1185,15 +1250,23 @@ becomeuser_args(char *eusrname, uid_t euid, gid_t egid, gid_t rgid)
 #endif
 #endif
 
-		if ((setgroups((size_t)numsup, grplist) != -1) &&
-		    (setgid(egid) != -1) &&
-		    (setuid(euid) != -1)) {
+		if (
+#ifndef WIN32
+			(sec_set_exec_con(usercred) != -1) &&
+#endif
+			(setgroups((size_t)numsup, grplist) != -1) &&
+			(setgid(egid) != -1) &&
+			(setuid(euid) != -1)) {
 			free(grplist);
 			return 0;
 		}
 	}
 	if (grplist)
 		free(grplist);
+#ifndef WIN32
+	if (sec_user_session)
+		sec_close_session(sec_user_session);
+#endif
 	return -1;
 }
 
@@ -1218,14 +1291,17 @@ becomeuser_args(char *eusrname, uid_t euid, gid_t egid, gid_t rgid)
  */
 
 int
-becomeuser(job *pjob)
+becomeuser(job *pjob, void *usercred)
 {
 	gid_t rgid;
 	if (pjob->ji_grpcache != NULL)
 		rgid = pjob->ji_grpcache->gc_rgid;
 	else
 		rgid = pjob->ji_qs.ji_un.ji_momt.ji_exgid;
-	if (becomeuser_args(get_jattr_str(pjob, JOB_ATR_euser), pjob->ji_qs.ji_un.ji_momt.ji_exuid, pjob->ji_qs.ji_un.ji_momt.ji_exgid, rgid) == -1) {
+	if (becomeuser_args(get_jattr_str(pjob, JOB_ATR_euser),
+		pjob->ji_qs.ji_un.ji_momt.ji_exuid,
+		pjob->ji_qs.ji_un.ji_momt.ji_exgid, rgid,
+		usercred) == -1) {
 		fprintf(stderr, "unable to set user privileges, errno = %d\n",
 			errno);
 		return -1;
@@ -1305,7 +1381,7 @@ set_credential(job *pjob, char **shell, char ***argarray)
 #endif /* localmod 019 */
 				}
 			}
-			ret = becomeuser(pjob);
+			ret = becomeuser(pjob, NULL);
 			break;
 
 		case PBS_CREDTYPE_AES:
@@ -1317,7 +1393,7 @@ set_credential(job *pjob, char **shell, char ***argarray)
 			if (read_cred(pjob, &cred_buf, &cred_len) != 0)
 				break;
 
-			ret = becomeuser(pjob);
+			ret = becomeuser(pjob, NULL);
 
 			if (pipe(fds) == -1) {
 				log_err(errno, __func__, "pipe");
@@ -1351,6 +1427,39 @@ set_credential(job *pjob, char **shell, char ***argarray)
 				strcpy(argv[i], "-");
 				strcat(argv[i++], name);
 			}
+			break;
+		case PBS_CREDTYPE_SECCON:
+			argv = (char **)calloc(2 + num, sizeof(char *));
+			assert(argv != NULL);
+
+			/* construct argv array */
+			if (shell != NULL) {
+				prog = *shell;
+				name = lastname(*shell);
+				argv[i] = malloc(strlen(name) + 2);
+				assert(argv[i] != NULL);
+				strcpy(argv[i], "-");
+				strcat(argv[i++], name);
+				/* copy remaining command line args 1..end, skip 0 */
+				if (num >= 2) { /* num=# of !NULL argarray entries */
+					for (j = 1; (*argarray)[j]; j++)
+						argv[i++] = (*argarray)[j];
+				}
+			}
+			if ((ret = read_cred(pjob, &cred_buf, &cred_len)) != 0) {
+				sprintf(log_buffer, "failed to read credential file");
+				log_joberr(errno, __func__, log_buffer, pjob->ji_qs.ji_jobid);
+			} else {
+				if (snprintf(log_buffer, LOG_BUF_SIZE, "read user credential %*s",
+					(int) cred_len, cred_buf) >= LOG_BUF_SIZE)
+					log_joberr(EOVERFLOW, __func__, "credential size overflow",
+						pjob->ji_qs.ji_jobid);
+				else
+					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE,
+						pjob->ji_qs.ji_jobid, log_buffer);
+			}
+
+			ret = becomeuser(pjob, cred_buf);
 			break;
 
 		default:
@@ -2837,6 +2946,11 @@ finish_exec(job *pjob)
 	FILE			*temp_stderr = stderr;
 	vnl_t			*vnl_fails = NULL;
 	vnl_t			*vnl_good = NULL;
+	int ret = 0;
+
+	char *tmpdir;
+	void *usercred = NULL;
+	void *save_sockconn = NULL;
 
 	ptc = -1; /* No current master pty */
 
@@ -2850,6 +2964,7 @@ finish_exec(job *pjob)
 		return;
 	}
 
+	usercred = pjob->ji_wattr[(int)JOB_ATR_security_context].at_val.at_str;
 	/* wait until after job_setup to call jobdirname(), we need the user's home info */
 	pbs_jobdir = jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir);
 
@@ -3277,6 +3392,7 @@ finish_exec(job *pjob)
 		else
 			sprintf(buf, "%s%s%s", path_jobs,
 				pjob->ji_qs.ji_jobid, JOB_SCRIPT_SUFFIX);
+
 		(void)chown(buf, pjob->ji_qs.ji_un.ji_momt.ji_exuid,
 			pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 
@@ -3574,30 +3690,54 @@ finish_exec(job *pjob)
 #ifdef NAS /* localmod 010 */
 	(void) NAS_tmpdirname(pjob);
 #endif /* localmod 010 */
-	j = mktmpdir(pjob->ji_qs.ji_jobid,
-		pjob->ji_qs.ji_un.ji_momt.ji_exuid,
-		pjob->ji_qs.ji_un.ji_momt.ji_exgid,
-		&(pjob->ji_env));
+
+	tmpdir = tmpdirname(pjob->ji_qs.ji_jobid);
+#ifndef WIN32
+	if ((sec_set_exec_con(usercred) == -1)
+		|| ((sec_user_session = sec_open_session(pjob->ji_wattr[JOB_ATR_euser].at_val.at_str)) == NULL)) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			  pjob->ji_qs.ji_jobid,
+			  "unable to start job, "
+			  "no security context found or "
+			  "not able to set security context");
+		starter_return(upfds, downfds, -1, &sjr);
+	}
+
+	int should_revert = 0;
+	if (sec_should_impersonate()) {
+		impersonate_user(pjob->ji_qs.ji_un.ji_momt.ji_exuid, pjob->ji_qs.ji_un.ji_momt.ji_exgid, usercred);
+		should_revert = 1;
+	}
+#endif
+	j = mktmpdir(pjob->ji_qs.ji_jobid, pjob->ji_qs.ji_un.ji_momt.ji_exuid,
+		pjob->ji_qs.ji_un.ji_momt.ji_exgid, usercred);
 	if (j != 0)
 		starter_return(upfds, downfds, j, &sjr);
 
+	/* Only set TMPDIR if everything succeeded to this point. */
+	bld_env_variables(&(pjob->ji_env), "TMPDIR", tmpdir);
+
 	/* set PBS_JOBDIR */
 	if (sandbox_private) {
-		/* Add PBS_JOBDIR if it doesn't already exist */
 		j = mkjobdir(pjob->ji_qs.ji_jobid,
 			pbs_jobdir,
 			pjob->ji_qs.ji_un.ji_momt.ji_exuid,
-			pjob->ji_qs.ji_un.ji_momt.ji_exgid);
+			pjob->ji_qs.ji_un.ji_momt.ji_exgid,
+			usercred);
 		if (j != 0) {
 			sprintf(log_buffer, "unable to create the job directory %s",
 				pbs_jobdir);
 			log_joberr(errno, __func__ , log_buffer, pjob->ji_qs.ji_jobid);
 			starter_return(upfds, downfds, j, &sjr); /* exits */
 		}
+		/* Add PBS_JOBDIR if it doesn't already exist */
 		bld_env_variables(&(pjob->ji_env), "PBS_JOBDIR", pbs_jobdir);
-	} else {
+	} else
 		bld_env_variables(&(pjob->ji_env), "PBS_JOBDIR", pwdp->pw_dir);
-	}
+#ifndef WIN32
+	if (should_revert)
+		revert_from_user();
+#endif
 
 	mom_unnice();
 
@@ -3638,6 +3778,42 @@ finish_exec(job *pjob)
 				pjob->ji_qs.ji_jobid);
 			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 		}
+#ifndef WIN32
+		if (sec_get_net_conn(&save_sockconn) != 0) {
+			sprintf(log_buffer,"cannot get current socket context");
+			log_err(errno, __func__ , log_buffer);
+			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
+		} else {
+			sprintf(log_buffer, "sec_get_net_conn %s", (char *) save_sockconn);
+			log_record(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO,
+				   __func__, log_buffer);
+		}
+
+		if (sec_should_impersonate()) {
+			if ((ret = read_cred(pjob, &cred_buf, &cred_len)) != 0) {
+				if (ret == 1)
+					sprintf(log_buffer, "no security context found");
+				else
+					sprintf(log_buffer, "failed to read credential file");
+				log_joberr(errno, __func__, log_buffer, pjob->ji_qs.ji_jobid);
+				starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
+			} else {
+				sprintf(log_buffer, "job credential %s", (char *) cred_buf);
+				log_record(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO,
+				   	__func__, log_buffer);
+			}
+		}
+		if (sec_set_net_conn(cred_buf) != 0) {
+			sprintf(log_buffer,"cannot set socket context for %s",
+					 pjob->ji_qs.ji_jobid);
+			log_err(errno, __func__ , log_buffer);
+			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
+		}
+#endif
+		if (cred_buf) {
+			free(cred_buf);
+			cred_buf = NULL;
+		}
 
 		qsub_sock = conn_qsub(phost+1, get_jattr_long(pjob, JOB_ATR_interactive));
 		if (qsub_sock < 0) {
@@ -3670,6 +3846,14 @@ finish_exec(job *pjob)
 			}
 		}
 
+#ifndef WIN32
+		if (sec_set_net_conn(save_sockconn) != 0) {
+			sprintf(log_buffer,"cannot restore socket context");
+			log_err(errno, __func__ , log_buffer);
+			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
+		}
+		sec_free_con(save_sockconn);
+#endif
 		if (qsub_sock != old_qsub_sock) {
 
 			if (CS_remap_ctx(old_qsub_sock, qsub_sock) != CS_SUCCESS) {
@@ -4602,8 +4786,11 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	int			cred_action;
 #endif
+	char *tmpdir = NULL;
+	void *usercred = NULL;
 
 	pbs_jobdir = jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir);
+	usercred = pjob->ji_wattr[JOB_ATR_security_context].at_val.at_str;
 	memset(&sjr, 0, sizeof(sjr));
 	if (pipe(pipes) == -1)
 		return PBSE_SYSTEM;
@@ -4832,21 +5019,59 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 #ifdef NAS /* localmod 010 */
 	(void) NAS_tmpdirname(pjob);
 #endif /* localmod 010 */
+	tmpdir = tmpdirname(pjob->ji_qs.ji_jobid);
+#ifndef WIN32
+	if ((sec_set_exec_con(usercred) == -1)
+		|| ((sec_user_session = sec_open_session(pjob->ji_wattr[JOB_ATR_euser].at_val.at_str)) == NULL))
+		starter_return(kid_write, kid_read, -1, &sjr);
+
+	int should_revert = 0;
+	if (sec_should_impersonate()) {
+		impersonate_user(pjob->ji_qs.ji_un.ji_momt.ji_exuid, pjob->ji_qs.ji_un.ji_momt.ji_exgid, usercred);
+		should_revert = 1;
+	}
+#endif
 	j = mktmpdir(pjob->ji_qs.ji_jobid,
 		pjob->ji_qs.ji_un.ji_momt.ji_exuid,
 		pjob->ji_qs.ji_un.ji_momt.ji_exgid,
-		&(pjob->ji_env));
-	if (j != 0) {
+		pjob->ji_wattr[(int)JOB_ATR_security_context].at_val.at_str);
+	if (j != 0)
 		starter_return(kid_write, kid_read, j, &sjr);
-	}
+	/* Only set TMPDIR if everything succeeded to this point. */
+	bld_env_variables(&(pjob->ji_env), "TMPDIR", tmpdir);
 
 	/* set PBS_JOBDIR */
 	if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
 		(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
+		mode_t myumask = 0;
+		char maskbuf[22];
+		mode_t m;
+
+		if (pjob->ji_wattr[(int)JOB_ATR_umask].at_flags & ATR_VFLAG_SET) {
+			sprintf(maskbuf, "%ld", pjob->ji_wattr[(int)JOB_ATR_umask].at_val.at_long);
+			sscanf(maskbuf, "%o", &m);
+			myumask = umask(m);
+		} else
+			myumask = umask(077);
+
+		j = mkjobdir(pjob->ji_qs.ji_jobid,
+			jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir),
+			pjob->ji_qs.ji_un.ji_momt.ji_exuid,
+			pjob->ji_qs.ji_un.ji_momt.ji_exgid,
+			pjob->ji_wattr[JOB_ATR_security_context].at_val.at_str);
+
+		if (myumask != 0)
+			(void)umask(myumask);
+
+		if (j != 0)
+			starter_return(kid_write, kid_read, j, &sjr);
+
 		bld_env_variables(&(pjob->ji_env), "PBS_JOBDIR", pbs_jobdir);
-	} else {
+	} else
 		bld_env_variables(&(pjob->ji_env), "PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
-	}
+
+	if (should_revert)
+		revert_from_user();
 
 	j = set_job(pjob, &sjr);
 	if (j < 0) {
@@ -5985,6 +6210,8 @@ start_exec(job *pjob)
 	char hook_msg[HOOK_MSG_SIZE];
 	hook *last_phook = NULL;
 	unsigned int hook_fail_action = 0;
+	int ret = 0;
+	void *save_sockconn = NULL;
 
 	/* make sure we have an open tpp stream back to the server */
 	if (server_stream == -1)
@@ -6183,6 +6410,50 @@ start_exec(job *pjob)
 			pjob->ji_stdout = -1;
 			pjob->ji_stderr = -1;
 		} else {
+#ifndef WIN32
+			if (sec_get_net_conn(&save_sockconn) != 0) {
+				sprintf(log_buffer,"cannot get current socket context");
+				log_err(errno, __func__ , log_buffer);
+				exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
+				return;
+			} else {
+				sprintf(log_buffer, "sec_get_net_conn %s", (char *) save_sockconn);
+				log_record(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO,
+					   __func__, log_buffer);
+			}
+			if (sec_should_impersonate()) {
+				if ((ret = read_cred(pjob, &cred_buf, &cred_len)) != 0) {
+					if (ret == 1)
+						sprintf(log_buffer,
+							"no security context found");
+					else
+						sprintf(log_buffer,
+							"failed to read credential file");
+					log_joberr(errno, __func__, log_buffer, pjob->ji_qs.ji_jobid);
+					exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
+					return;
+				} else {
+					sprintf(log_buffer, "job credential %s", (char *) cred_buf);
+					log_record(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO,
+					   	__func__, log_buffer);
+				}
+			}
+			if (sec_set_net_conn(cred_buf) != 0) {
+				sprintf(log_buffer,"cannot set socket context for %s",
+						 pjob->ji_qs.ji_jobid);
+				log_err(errno, __func__ , log_buffer);
+				if (cred_buf) {
+					free(cred_buf);
+					cred_buf = NULL;
+				}
+				exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
+				return;
+			}
+#endif
+			if (cred_buf) {
+				free(cred_buf);
+				cred_buf = NULL;
+			}
 			/*
 			 * Open two sockets for use by demux program later.
 			 */
@@ -6213,6 +6484,13 @@ start_exec(job *pjob)
 					if (socks[i] != -1)
 						close(socks[i]);
 				}
+#ifndef WIN32
+				if (sec_set_net_conn(save_sockconn) != 0) {
+					sprintf(log_buffer,"cannot restore socket context");
+					log_err(errno, __func__ , log_buffer);
+				}
+				sec_free_con(save_sockconn);
+#endif
 				exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
 				return;
 			}
@@ -6220,6 +6498,13 @@ start_exec(job *pjob)
 			pjob->ji_stderr = socks[1];
 			pjob->ji_extended.ji_ext.ji_stdout = pjob->ji_ports[0];
 			pjob->ji_extended.ji_ext.ji_stderr = pjob->ji_ports[1];
+#ifndef WIN32
+			if (sec_set_net_conn(save_sockconn) != 0) {
+				sprintf(log_buffer,"cannot restore socket context");
+				log_err(errno, __func__ , log_buffer);
+			}
+			sec_free_con(save_sockconn);
+#endif
 		}
 
 		for (i = 1; i < nodenum; i++) {
@@ -6348,6 +6633,10 @@ starter_return(int upfds, int downfds, int code, struct startjob_rtn *sjrtn)
 	(void)close(upfds);
 	(void)close(downfds);
 	if (code < 0) {
+#ifndef WIN32
+		if (sec_user_session)
+			sec_close_session(sec_user_session);
+#endif
 		exit(254);
 	}
 }
@@ -6365,6 +6654,8 @@ starter_return(int upfds, int downfds, int code, struct startjob_rtn *sjrtn)
  * @param[in] mode  - file creation mode (permissions), see mode of open(2)
  * @param[in] exuid - effective uid of user as which to open/create file
  * @param[in] exgid - effective gid of user as which to open/create file
+ * @param[in] usercred - user credential;
+ * @param[in] username - username
  *
  * @return int
  * @retval -1  - error on open/create or impersonating the user
@@ -6373,15 +6664,20 @@ starter_return(int upfds, int downfds, int code, struct startjob_rtn *sjrtn)
  */
 
 int
-open_file_as_user(char *path, int oflag, mode_t mode, uid_t exuid, gid_t exgid)
+open_file_as_user(char *path, int oflag, mode_t mode, uid_t exuid, gid_t exgid, void *usercred, char *username)
 {
 	int fds;
 	int open_errno = 0;
 	extern gid_t pbsgroup;
 
 	/* must open or create file as the user */
-
-	if (impersonate_user(exuid, exgid) == -1)
+#ifndef WIN32
+	if (!sec_user_session) {
+		if ((sec_set_exec_con(usercred) == -1) || ((sec_user_session = sec_open_session(username)) == NULL))
+			return -1;
+	}
+#endif
+	if (impersonate_user(exuid, exgid, usercred) == -1)
 		return -1;
 
 	if ((fds = open(path, oflag, mode)) == -1)
@@ -6416,6 +6712,8 @@ open_file_as_user(char *path, int oflag, mode_t mode, uid_t exuid, gid_t exgid)
  * @param[in]	path  - path to the file to be created
  * @param[in]	exuid - uid for file owner
  * @param[in]	exgid - gid for file owner
+ * @param[in]	usercred - user credential
+ * @param[in]	username - username
  *
  * @return	int
  * @retval	file descriptor (>=0) if success
@@ -6425,7 +6723,7 @@ open_file_as_user(char *path, int oflag, mode_t mode, uid_t exuid, gid_t exgid)
  *
  */
 static int
-create_file_securely(char *path, uid_t exuid, gid_t exgid)
+create_file_securely(char *path, uid_t exuid, gid_t exgid, void *usercred, char *username)
 {
 	char    buf[MAXPATHLEN+1];
 	char   *pc;
@@ -6455,7 +6753,7 @@ create_file_securely(char *path, uid_t exuid, gid_t exgid)
 	 * DO NOT return until have changed back to root
 	 */
 
-	if (impersonate_user(exuid, exgid) == -1)
+	if (impersonate_user(exuid, exgid, usercred) == -1)
 		return -1;
 
 	fds = mkstemp(buf);	/* create file */
@@ -6665,6 +6963,8 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 	int   keeping = 0;
 	char *path;
 	struct stat sb;
+	void *usercred;
+	char *username = pjob->ji_wattr[JOB_ATR_euser].at_val.at_str;
 
 	if (!pjob)
 		return (-1);
@@ -6673,6 +6973,8 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 	exuid = pjob->ji_grpcache->gc_uid;
 	path = std_file_name(pjob, which, &keeping);
 
+	usercred = pjob->ji_wattr[(int)JOB_ATR_security_context].at_val.at_str;
+	//usercred = get_jattr_str(pjob, JOB_ATR_security_context);
 	/* must open or create file as the user */
 
 	/*
@@ -6681,11 +6983,11 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 	 */
 
 	if (is_jattr_set(pjob, JOB_ATR_interactive) != 0 && get_jattr_long(pjob, JOB_ATR_interactive) > 0)
-		fds = open_file_as_user(path, mode, 0644, exuid, exgid);
+		fds = open_file_as_user(path, mode, 0644, exuid, exgid, usercred, username);
 	else if (keeping) {
 		/* The user is keeping the file in his Home directory or sandbox, */
 		/* both are safe and the file can be opened directly.             */
-		fds = open_file_as_user(path, mode, 0644, exuid, exgid);
+		fds = open_file_as_user(path, mode, 0644, exuid, exgid, usercred, username);
 	} else {
 
 		/* File going into the spool area... */
@@ -6710,7 +7012,7 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 				&& (sb.st_gid == exgid)) {
 
 			/* at this point all is ok, go open it */
-			fds = open_file_as_user(path, mode, 0644, exuid, exgid);
+			fds = open_file_as_user(path, mode, 0644, exuid, exgid, usercred, username);
 			if (fds == -1)
 				return (-1);
 
@@ -6741,7 +7043,7 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 			/* file does not exist or is not correct */
 			/* create the file in a secure manner    */
 
-			if ((fds = create_file_securely(path, exuid, exgid)) == -1) {
+			if ((fds = create_file_securely(path, exuid, exgid, usercred, username)) == -1) {
 				sprintf(log_buffer,
 						"secure create of file failed for job %s for user %u",
 						pjob->ji_qs.ji_jobid, exuid);
@@ -6755,6 +7057,17 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 				return (-1);
 			}
 		}
+	}
+
+	if (((mode & O_CREAT) != 0)
+#ifndef WIN32
+  		&& (sec_set_filecon(path, usercred) == -1)
+#endif
+		) {
+		sprintf(log_buffer, "failed to set file context for %s", path);
+		log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *) __func__, log_buffer);
+		close(fds);
+		return -1;
 	}
 
 	return (fds);

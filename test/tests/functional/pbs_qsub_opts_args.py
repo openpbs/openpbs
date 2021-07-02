@@ -116,7 +116,11 @@ class TestQsubOptionsArguments(TestFunctional):
         relpath = os.path.join(
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_release_nodes')
 
-        rel_cmd = [relpath, '-j', jid, momB.shortname]
+        rel_cmd = []
+        if self.server.se.is_seccon_enabled(self.server.hostname):
+            self.server.se.prefix_runcon(
+                TEST_USER, rel_cmd, self.server.hostname)
+        rel_cmd += [relpath, '-j', jid, momB.shortname]
         ret = self.server.du.run_cmd(self.server.hostname, cmd=rel_cmd,
                                      runas=TEST_USER)
         self.assertEqual(ret['rc'], 0)

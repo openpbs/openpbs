@@ -1761,6 +1761,12 @@ pbs.event().job.release_nodes_on_stageout=False
         # Run pbs_release_nodes
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, '-a']
 
+        if self.server.se.is_seccon_enabled(self.server.hostname):
+            runcon = []
+            self.server.se.prefix_runcon(
+                TEST_USER, runcon, self.server.hostname)
+            cmd = runcon + cmd
+
         ret = self.server.du.run_cmd(self.server.hostname, cmd,
                                      runas=TEST_USER)
         self.assertNotEqual(ret['rc'], 0)
@@ -1811,6 +1817,11 @@ pbs.event().job.release_nodes_on_stageout=False
         # Run pbs_release_nodes
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n5, self.n6,
                self.n1, self.n7]
+        if self.server.se.is_seccon_enabled(self.server.hostname):
+            runcon = []
+            self.server.se.prefix_runcon(
+                TEST_USER, runcon, self.server.hostname)
+            cmd = runcon + cmd
         ret = self.server.du.run_cmd(self.server.hostname, cmd,
                                      runas=TEST_USER)
         self.assertNotEqual(ret['rc'], 0)
@@ -1905,6 +1916,11 @@ pbs.event().job.release_nodes_on_stageout=False
         # Run pbs_release_nodes
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n4, self.n5,
                self.n8, self.n6, self.n7]
+        if self.server.se.is_seccon_enabled(self.server.hostname):
+            runcon = []
+            self.server.se.prefix_runcon(
+                TEST_USER, runcon, self.server.hostname)
+            cmd = runcon + cmd
         ret = self.server.du.run_cmd(self.server.hostname, cmd,
                                      runas=TEST_USER)
 
@@ -2004,6 +2020,11 @@ pbs.event().job.release_nodes_on_stageout=False
         # Run pbs_release_nodes
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n4, self.n5,
                self.n6, self.n7]
+        if self.server.se.is_seccon_enabled(self.server.hostname):
+            runcon = []
+            self.server.se.prefix_runcon(
+                TEST_USER, runcon, self.server.hostname)
+            cmd = runcon + cmd
 
         ret = self.server.du.run_cmd(self.server.hostname, cmd,
                                      runas=TEST_USER)
@@ -2094,6 +2115,11 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Run pbs_release_nodes as regular user
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, '-a']
+        if self.server.se.is_seccon_enabled(self.server.hostname):
+            runcon = []
+            self.server.se.prefix_runcon(
+                TEST_USER, runcon, self.server.hostname)
+            cmd = runcon + cmd
         ret = self.server.du.run_cmd(self.server.hostname, cmd,
                                      runas=TEST_USER)
         self.assertEqual(ret['rc'], 0)
@@ -2537,6 +2563,11 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Run pbs_release_nodes as regular user
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n4]
+        if self.server.se.is_seccon_enabled(self.server.hostname):
+            runcon = []
+            self.server.se.prefix_runcon(
+                TEST_USER, runcon, self.server.hostname)
+            cmd = runcon + cmd
         ret = self.server.du.run_cmd(self.server.hostname, cmd,
                                      runas=TEST_USER)
         self.assertEqual(ret['rc'], 0)
@@ -4204,6 +4235,11 @@ pbs.event().job.release_nodes_on_stageout=False
         # Run pbs_release_nodes as regular user
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n4, self.n5,
                self.n6, self.n7]
+        if self.server.se.is_seccon_enabled(self.server.hostname):
+            runcon = []
+            self.server.se.prefix_runcon(
+                TEST_USER, runcon, self.server.hostname)
+            cmd = runcon + cmd
         ret = self.server.du.run_cmd(self.server.hostname, cmd,
                                      runas=TEST_USER)
         self.assertEqual(ret['rc'], 0)
@@ -4348,6 +4384,11 @@ pbs.event().job.release_nodes_on_stageout=False
         # Run pbs_release_nodes as regular user
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n4, self.n5,
                self.n6, self.n7]
+        if self.server.se.is_seccon_enabled(self.server.hostname):
+            runcon = []
+            self.server.se.prefix_runcon(
+                TEST_USER, runcon, self.server.hostname)
+            cmd = runcon + cmd
         ret = self.server.du.run_cmd(self.server.hostname, cmd,
                                      runas=TEST_USER)
         self.assertEqual(ret['rc'], 0)
@@ -6661,6 +6702,11 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
 
         # Release node2 from job1 only
         cmd = [self.pbs_release_nodes_cmd, '-j', jid1, self.hostB]
+        if self.server.se.is_seccon_enabled(self.server.hostname):
+            runcon = []
+            self.server.se.prefix_runcon(
+                TEST_USER, runcon, self.server.hostname)
+            cmd = runcon + cmd
         ret = self.server.du.run_cmd(self.server.hostname, cmd,
                                      runas=TEST_USER)
         self.assertEqual(ret['rc'], 0)
@@ -6943,6 +6989,11 @@ pbs.logjobmsg(pbs.event().job.id, "execjob_end hook executed")
                            offset=30, id=jid)
 
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, '-a']
+        if self.server.se.is_seccon_enabled(self.server.hostname):
+            runcon = []
+            self.server.se.prefix_runcon(
+                TEST_USER, runcon, self.server.hostname)
+            cmd = runcon + cmd
         ret = self.server.du.run_cmd(self.server.hostname,
                                      cmd, runas=TEST_USER)
         self.assertEqual(ret['rc'], 0)

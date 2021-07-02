@@ -277,6 +277,7 @@ libpbs_la_SOURCES = \
 	../Liblog/pbs_log.c \
 	../Liblog/log_event.c \
 	../Libsec/cs_standard.c \
+	../Libsec/pbs_seccon.c \
 	../Libutil/avltree.c \
 	../Libutil/get_hostname.c \
 	../Libutil/misc_utils.c \

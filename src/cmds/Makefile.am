@@ -89,7 +89,8 @@ dist_bin_SCRIPTS = \
 
 common_cflags = \
 	-I$(top_srcdir)/src/include \
-	@KRB5_CFLAGS@
+	@KRB5_CFLAGS@ \
+	@sec_cflags@
 
 common_libs = \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
@@ -98,7 +99,8 @@ common_libs = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	-lpthread \
 	@socket_lib@ \
-	@KRB5_LIBS@
+	@KRB5_LIBS@ \
+	@sec_lib@
 
 common_sources = \
 	$(top_srcdir)/src/lib/Libcmds/cmds_common.c

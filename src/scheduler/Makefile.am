@@ -47,7 +47,8 @@ common_cflags = \
 	@libz_inc@ \
 	-pthread \
 	@PYTHON_INCLUDES@ \
-	@KRB5_CFLAGS@
+	@KRB5_CFLAGS@ \
+	@sec_cflags@
 
 common_libs = \
 	$(builddir)/libpbs_sched.a \
@@ -55,14 +56,15 @@ common_libs = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
+	$(top_builddir)/src/lib/Libsec/libsec.a \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
 	@libz_lib@ \
 	@libical_lib@ \
 	@KRB5_LIBS@ \
-	@libundolr_lib@
+	@libundolr_lib@ \
+	@sec_lib@
 
 libpbs_sched_a_CPPFLAGS = ${common_cflags}
 

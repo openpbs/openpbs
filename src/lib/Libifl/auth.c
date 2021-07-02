@@ -51,6 +51,7 @@
 #include "libsec.h"
 #include "auth.h"
 #include "log.h"
+#include "pbs_seccon.h"
 
 static auth_def_t *loaded_auths = NULL;
 
@@ -339,6 +340,7 @@ tcp_send_auth_req(int sock, unsigned int port, char *user, char *auth_method, ch
 	int rc;
 	int am_len;
 	int em_len = encrypt_method ? strlen(encrypt_method) : 0;
+	void *sec_con = NULL;
 
 	if (auth_method == NULL || *auth_method == '\0') {
 		/* auth method can't be null or empty string */
@@ -362,11 +364,18 @@ tcp_send_auth_req(int sock, unsigned int port, char *user, char *auth_method, ch
 		return -1;
 	}
 
+	sec_set_context(&sec_con, ATTR_security_context);
+
 	if (diswui(sock, port) ||  /* port (only used in resvport auth) */
-		encode_DIS_ReqExtend(sock, NULL)) {
+		encode_DIS_ReqExtend(sock, sec_con)) {
 		pbs_errno = PBSE_SYSTEM;
+		if (sec_con)
+			free(sec_con);
 		return -1;
 	}
+
+	if (sec_con)
+		free(sec_con);
 
 	if (dis_flush(sock)) {
 		pbs_errno = PBSE_SYSTEM;

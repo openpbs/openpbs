@@ -65,14 +65,14 @@ except ImportError:
         pass
 
 from ptl.lib.ptl_error import (PtlExpectError, PbsServiceError,
-                               PbsInitServicesError, PtlLogMatchError,
+                               PbsServiceControlError, PtlLogMatchError,
                                PbsStatusError, PbsManagerError,
                                PbsMomConfigError)
 from ptl.lib.ptl_constants import (MGR_CMD_DELETE, MGR_OBJ_NODE,
                                    MGR_CMD_CREATE, MGR_CMD_IMPORT,
                                    MGR_CMD_SET, ATTR_rescavail,
                                    NODE, VNODE, HOOK, HOST, MATCH_RE)
-from ptl.lib.ptl_service import PBSService, PBSInitServices
+from ptl.lib.ptl_service import PBSService, PbsServiceControl
 
 
 def get_mom_obj(server, name=None, attrs={}, pbsconf_file=None,
@@ -136,7 +136,7 @@ class MoM(PBSService):
             _m += ['@', pbsconf_file]
         _m += [': ']
         self.logprefix = "".join(_m)
-        self.pi = PBSInitServices(hostname=self.hostname,
+        self.pi = PbsServiceControl(hostname=self.hostname,
                                   conf=self.pbs_conf_file)
         self.configd = os.path.join(self.pbs_conf['PBS_HOME'], 'mom_priv',
                                     'config.d')
@@ -404,7 +404,7 @@ class MoM(PBSService):
                 if pid is None:
                     raise PbsServiceError(rv=False, rc=-1,
                                           msg="Could not find PID")
-            except PbsInitServicesError as e:
+            except PbsServiceControlError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return rv
 
@@ -422,7 +422,7 @@ class MoM(PBSService):
         else:
             try:
                 self.pi.stop_mom()
-            except PbsInitServicesError as e:
+            except PbsServiceControlError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
 
@@ -682,7 +682,7 @@ class MoM(PBSService):
             self.du.set_pbs_config(self.hostname, confs=new_pbsconf,
                                    append=False)
             self.pbs_conf = new_pbsconf
-            self.pi.initd(self.hostname, "restart", daemon="mom")
+            self.pi.service(self.hostname, "restart", daemon="mom")
             if not self.isUp():
                 self.fail("Mom is not up")
 

@@ -55,7 +55,7 @@ class TestLogUtils(TestSelf):
             hostname = self.server.hostname
         a = {'PBS_LOG_HIGHRES_TIMESTAMP': highrestimestamp}
         self.du.set_pbs_config(hostname=hostname, confs=a, append=True)
-        PBSInitServices().restart()
+        PbsServiceControl().restart()
         self.assertTrue(self.server.isUp(), 'Failed to restart PBS Daemons')
 
     def test_log_match_microsec_logging(self):

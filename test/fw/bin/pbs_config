@@ -497,7 +497,7 @@ if __name__ == '__main__':
                                 natvnode, usenatvnode, fname=vdefname,
                                 vnodes_per_host=vnodes_per_host)
     elif switchversion:
-        pi = PBSInitServices()
+        pi = PbsServiceControl()
         for host in hosts:
             pi.switch_version(host, switchversion)
 
@@ -522,7 +522,7 @@ if __name__ == '__main__':
                 mom_op += stop_moms
             for i in mom_op:
                 c = os.path.join('/etc', conf_prefix + str(i))
-                pi = PBSInitServices(serverhost, conf=c)
+                pi = PbsServiceControl(serverhost, conf=c)
                 if restart_moms:
                     ret = pi.restart()
                 if stop_moms:

@@ -72,7 +72,7 @@ from ptl.lib.ptl_error import (PbsStatusError, PbsSubmitError,
                                PbsQstopError, PbsResourceError,
                                PbsResvAlterError, PtlExpectError,
                                PbsConnectError, PbsServiceError,
-                               PbsInitServicesError, PbsMessageError,
+                               PbsServiceControlError, PbsMessageError,
                                PtlLogMatchError)
 from ptl.lib.ptl_types import PbsAttribute
 from ptl.lib.ptl_constants import *
@@ -80,7 +80,7 @@ from ptl.lib.ptl_entities import (Hook, Queue, Entity, Limit,
                                   EquivClass, Resource)
 from ptl.lib.ptl_sched import Scheduler
 from ptl.lib.ptl_mom import MoM, get_mom_obj
-from ptl.lib.ptl_service import PBSService, PBSInitServices
+from ptl.lib.ptl_service import PBSService, PbsServiceControl
 from ptl.lib.ptl_wrappers import *
 
 
@@ -247,14 +247,27 @@ class Server(Wrappers):
             rv = super(Server, self)._start(inst=self, args=args,
                                             launcher=launcher)
         else:
-            try:
-                rv = self.pi.start_server()
-                pid = self._validate_pid(self)
-                if pid is None:
-                    raise PbsServiceError(rv=False, rc=-1,
-                                          msg="Could not find PID")
-            except PbsInitServicesError as e:
-                raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
+            self.se = SecConUtils()
+            if self.se.is_seccon_enabled(self.hostname):
+                try:
+                    rv = self.pi.service(op='show', daemon='server')
+                    if rv['rc'] == 0:
+                        if (rv['out'][0].split('=')[1] == 'active'):
+                            rv = self.pi.restart_server()
+                        else:
+                            rv = self.pi.start_server()
+
+                except PbsServiceControlError as e:
+                    raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
+            else:
+                try:
+                    rv = self.pi.start_server()
+                    pid = self._validate_pid(self)
+                    if pid is None:
+                        raise PbsServiceError(rv=False, rc=-1,
+                                            msg="Could not find PID")
+                except PbsServiceControlError as e:
+                    raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
         if self.isUp():
             return rv
         else:
@@ -273,7 +286,7 @@ class Server(Wrappers):
         else:
             try:
                 self.pi.stop_server()
-            except PbsInitServicesError as e:
+            except PbsServiceControlError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg,
                                       post=self._disconnect, conn=self._conn,
                                       force=True)
@@ -1862,7 +1875,7 @@ class Server(Wrappers):
                     self.logger.error("create_moms: Error deleting all nodes")
                     return False
 
-        pi = PBSInitServices()
+        pi = PbsServiceControl()
         if momhosts is None:
             momhosts = [self.hostname]
 
@@ -1895,7 +1908,7 @@ class Server(Wrappers):
                 _np_conf['PBS_MANAGER_SERVICE_PORT'] = str(port + 1)
                 self.du.set_pbs_config(hostname, fout=_n_pbsconf,
                                        confs=_np_conf)
-                pi.initd(hostname, conf_file=_n_pbsconf, op='start')
+                pi.service(hostname, conf_file=_n_pbsconf, op='start')
                 m = MoM(self, hostname, pbsconf_file=_n_pbsconf)
                 if m.isUp():
                     m.stop()

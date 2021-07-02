@@ -57,15 +57,16 @@ from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_procutils import ProcUtils
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
-from ptl.lib.ptl_error import (PbsInitServicesError, PbsServiceError,
+from ptl.lib.ptl_error import (PbsServiceControlError, PbsServiceError,
                                PtlLogMatchError)
 from ptl.lib.ptl_object import PBSObject
 
 from ptl.lib.ptl_constants import (SERVER, VNODE, QUEUE, JOB,
                                    RESV, SCHED, HOOK)
+from ptl.utils.pbs_secutils import SecConUtils
 
 
-class PBSInitServices(object):
+class PbsServiceControl(object):
     """
     PBS initialization services
 
@@ -85,7 +86,7 @@ class PBSInitServices(object):
         self.du = DshUtils()
         self.is_linux = sys.platform.startswith('linux')
 
-    def initd(self, hostname=None, op='status', conf_file=None,
+    def service(self, hostname=None, op='status', conf_file=None,
               init_script=None, daemon='all'):
         """
         Run the init script for a given operation
@@ -106,7 +107,7 @@ class PBSInitServices(object):
             hostname = self.hostname
         if conf_file is None:
             conf_file = self.conf_file
-        return self._unix_initd(hostname, op, conf_file, init_script, daemon)
+        return self._unix_service(hostname, op, conf_file, init_script, daemon)
 
     def restart(self, hostname=None, init_script=None):
         """
@@ -117,7 +118,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='restart', init_script=init_script)
+        return self.service(hostname, op='restart', init_script=init_script)
 
     def restart_server(self, hostname=None, init_script=None):
         """
@@ -128,7 +129,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='restart', init_script=init_script,
+        return self.service(hostname, op='restart', init_script=init_script,
                           daemon='server')
 
     def restart_mom(self, hostname=None, init_script=None):
@@ -140,7 +141,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='restart', init_script=init_script,
+        return self.service(hostname, op='restart', init_script=init_script,
                           daemon='mom')
 
     def restart_sched(self, hostname=None, init_script=None):
@@ -152,7 +153,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='restart', init_script=init_script,
+        return self.service(hostname, op='restart', init_script=init_script,
                           daemon='sched')
 
     def restart_comm(self, hostname=None, init_script=None):
@@ -164,7 +165,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='restart', init_script=init_script,
+        return self.service(hostname, op='restart', init_script=init_script,
                           daemon='comm')
 
     def start(self, hostname=None, init_script=None):
@@ -176,7 +177,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='start', init_script=init_script)
+        return self.service(hostname, op='start', init_script=init_script)
 
     def start_server(self, hostname=None, init_script=None):
         """
@@ -187,7 +188,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='start', init_script=init_script,
+        return self.service(hostname, op='start', init_script=init_script,
                           daemon='server')
 
     def start_mom(self, hostname=None, init_script=None):
@@ -199,7 +200,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='start', init_script=init_script,
+        return self.service(hostname, op='start', init_script=init_script,
                           daemon='mom')
 
     def start_sched(self, hostname=None, init_script=None):
@@ -211,7 +212,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='start', init_script=init_script,
+        return self.service(hostname, op='start', init_script=init_script,
                           daemon='sched')
 
     def start_comm(self, hostname=None, init_script=None):
@@ -223,7 +224,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='start', init_script=init_script,
+        return self.service(hostname, op='start', init_script=init_script,
                           daemon='comm')
 
     def stop(self, hostname=None, init_script=None):
@@ -235,7 +236,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='stop', init_script=init_script)
+        return self.service(hostname, op='stop', init_script=init_script)
 
     def stop_server(self, hostname=None, init_script=None):
         """
@@ -246,7 +247,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='stop', init_script=init_script,
+        return self.service(hostname, op='stop', init_script=init_script,
                           daemon='server')
 
     def stop_mom(self, hostname=None, init_script=None):
@@ -258,7 +259,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='stop', init_script=init_script,
+        return self.service(hostname, op='stop', init_script=init_script,
                           daemon='mom')
 
     def stop_sched(self, hostname=None, init_script=None):
@@ -270,7 +271,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='stop', init_script=init_script,
+        return self.service(hostname, op='stop', init_script=init_script,
                           daemon='sched')
 
     def stop_comm(self, hostname=None, init_script=None):
@@ -282,7 +283,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='stop', init_script=init_script,
+        return self.service(hostname, op='stop', init_script=init_script,
                           daemon='comm')
 
     def status(self, hostname=None, init_script=None):
@@ -294,7 +295,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='status', init_script=init_script)
+        return self.service(hostname, op='status', init_script=init_script)
 
     def status_server(self, hostname=None, init_script=None):
         """
@@ -305,7 +306,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='status', init_script=init_script,
+        return self.service(hostname, op='status', init_script=init_script,
                           daemon='server')
 
     def status_mom(self, hostname=None, init_script=None):
@@ -317,7 +318,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='status', init_script=init_script,
+        return self.service(hostname, op='status', init_script=init_script,
                           daemon='mom')
 
     def status_sched(self, hostname=None, init_script=None):
@@ -329,7 +330,7 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='status', init_script=init_script,
+        return self.service(hostname, op='status', init_script=init_script,
                           daemon='sched')
 
     def status_comm(self, hostname=None, init_script=None):
@@ -341,10 +342,10 @@ class PBSInitServices(object):
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
         """
-        return self.initd(hostname, op='status', init_script=init_script,
+        return self.service(hostname, op='status', init_script=init_script,
                           daemon='comm')
 
-    def _unix_initd(self, hostname, op, conf_file, init_script, daemon):
+    def _unix_service(self, hostname, op, conf_file, init_script, daemon):
         """
         Helper function for initd ``(*nix version)``
 
@@ -360,62 +361,137 @@ class PBSInitServices(object):
                        sched, comm or all
         :type daemon: str
         """
-        init_cmd = copy.copy(self.du.sudo_cmd)
-        if daemon is not None and daemon != 'all':
-            conf = self.du.parse_pbs_config(hostname, conf_file)
-            dconf = {
-                'PBS_START_SERVER': 0,
-                'PBS_START_MOM': 0,
-                'PBS_START_SCHED': 0,
-                'PBS_START_COMM': 0
-            }
-            if daemon == 'server' and conf.get('PBS_START_SERVER', 0) != 0:
-                dconf['PBS_START_SERVER'] = 1
-            elif daemon == 'mom' and conf.get('PBS_START_MOM', 0) != 0:
-                dconf['PBS_START_MOM'] = 1
-            elif daemon == 'sched' and conf.get('PBS_START_SCHED', 0) != 0:
-                dconf['PBS_START_SCHED'] = 1
-            elif daemon == 'comm' and conf.get('PBS_START_COMM', 0) != 0:
-                dconf['PBS_START_COMM'] = 1
-            for k, v in dconf.items():
-                init_cmd += ["%s=%s" % (k, str(v))]
-            _as = True
+        self.se = SecConUtils()
+        if self.se.is_seccon_enabled(hostname):
+            from ptl.lib.pbs_testlib import Server, MoM, get_mom_obj
+            server = Server(hostname, pbsconf_file=conf_file)
+            systemd_path = os.path.join(
+                os.sep + 'lib', 'systemd', 'system')
+            service_cmd = []
+            if daemon is not None and daemon != 'all':
+                if op == "show":
+                    service_cmd = ['systemctl', op,
+                                   'pbs_' + daemon, '--property=ActiveState']
+                else:
+                    service_cmd = ['systemctl', op, 'pbs_' + daemon]
+                unit_file = os.path.join(
+                    systemd_path, 'pbs_' + daemon + '.service')
+                if not self.du.isfile(hostname, path=unit_file, sudo=True):
+                    msg = "%s service file not found" % str(daemon)
+                    raise PbsServiceControlError(rc=1, rv=False, msg=msg)
+            else:
+                daemons = []
+                conf = self.du.parse_pbs_config(hostname, conf_file)
+                if conf.get('PBS_START_SERVER', 0) != '0':
+                   daemons.append('pbs_server')
+                if conf.get('PBS_START_MOM', 0) != '0':
+                    daemons.append('pbs_mom')
+                if conf.get('PBS_START_SCHED', 0) != '0':
+                    daemons.append('pbs_sched')
+                if conf.get('PBS_START_COMM', 0) != '0':
+                    daemons.append('pbs_comm')
+                i = 0
+                for d in daemons:
+                    unit_file = os.path.join(systemd_path, d + '.service')
+                    if not self.du.isfile(hostname, path=unit_file, sudo=True):
+                        msg = "%s service file not found" % str(d)
+                        raise PbsServiceControlError(rc=1, rv=False, msg=msg)
+                    service_cmd.append([])
+                    service_cmd[i].extend(['systemctl', op, d])
+                    i += 1
+                _as = True
+            msg = 'running systemctl to ' + op + ' pbs'
+            if daemon is not None and daemon != 'all':
+                msg += ' ' + daemon
+            msg += ' on ' + hostname
+            msg += ' service_cmd=%s' % (str(service_cmd))
+            self.logger.info(msg)
+            if daemon != 'all':
+                ret = self.du.run_cmd(hostname, service_cmd,
+                                      sudo=True, logerr=False)
+                if daemon == "mom" and op == "start" and ret['rc'] == 0:
+                    # 'systemctl start pbs_mom' returned success,
+                    # now check if pbs_mom is really started.
+                    m = get_mom_obj(server, hostname, pbsconf_file=conf_file)
+                    if not m.isUp(max_attempts=5):
+                        # pbs_mom not running, start it and add to the exising
+                        # systemd cgroup by running reload operation
+                        service_cmd = ['systemctl', 'reload', 'pbs_mom']
+                        ret = self.du.run_cmd(hostname, service_cmd,
+                                              sudo=True, logerr=False)
+
+            else:
+                for i in range(len(daemons)):
+                    ret = self.du.run_cmd(hostname, service_cmd[i],
+                                          sudo=True, logerr=False)
+                    if service_cmd[i][2] == "pbs_mom" and op == "start" and ret['rc'] == 0:
+                        # 'systemctl start pbs_mom' returned success,
+                        # now check if pbs_mom is really started.
+                        m = get_mom_obj(server, hostname, pbsconf_file=conf_file)
+                        if not m.isUp(max_attempts=5):
+                            # pbs_mom not running, start it and add to the exising
+                            # systemd cgroup by running reload operation
+                            service_cmd = ['systemctl', 'reload', 'pbs_mom']
+                            ret = self.du.run_cmd(hostname, service_cmd,
+                                                  sudo=True, logerr=False)
         else:
-            fn = None
-            if (conf_file is not None) and (conf_file != self.dflt_conf_file):
-                init_cmd += ['PBS_CONF_FILE=' + conf_file]
+            service_cmd = copy.copy(self.du.sudo_cmd)
+            if daemon is not None and daemon != 'all':
+                conf = self.du.parse_pbs_config(hostname, conf_file)
+                dconf = {
+                    'PBS_START_SERVER': 0,
+                    'PBS_START_MOM': 0,
+                    'PBS_START_SCHED': 0,
+                    'PBS_START_COMM': 0
+                }
+                if daemon == 'server' and conf.get('PBS_START_SERVER', 0) != 0:
+                    dconf['PBS_START_SERVER'] = 1
+                elif daemon == 'mom' and conf.get('PBS_START_MOM', 0) != 0:
+                    dconf['PBS_START_MOM'] = 1
+                elif daemon == 'sched' and conf.get('PBS_START_SCHED', 0) != 0:
+                    dconf['PBS_START_SCHED'] = 1
+                elif daemon == 'comm' and conf.get('PBS_START_COMM', 0) != 0:
+                    dconf['PBS_START_COMM'] = 1
+                for k, v in dconf.items():
+                    service_cmd += ["%s=%s" % (k, str(v))]
                 _as = True
             else:
-                _as = False
-            conf = self.du.parse_pbs_config(hostname, conf_file)
-        if (init_script is None) or (not init_script.startswith('/')):
-            if 'PBS_EXEC' not in conf:
-                msg = 'Missing PBS_EXEC setting in pbs config'
-                raise PbsInitServicesError(rc=1, rv=False, msg=msg)
-            if init_script is None:
-                init_script = os.path.join(conf['PBS_EXEC'], 'libexec',
-                                           'pbs_init.d')
-            else:
-                init_script = os.path.join(conf['PBS_EXEC'], 'etc',
-                                           init_script)
-            if not self.du.isfile(hostname, path=init_script, sudo=True):
-                # Could be Type 3 installation where we will not have
-                # PBS_EXEC/libexec/pbs_init.d
-                return []
-        init_cmd += [init_script, op]
-        msg = 'running init script to ' + op + ' pbs'
-        if daemon is not None and daemon != 'all':
-            msg += ' ' + daemon
-        msg += ' on ' + hostname
-        if conf_file is not None:
-            msg += ' using ' + conf_file
-        msg += ' init_cmd=%s' % (str(init_cmd))
-        self.logger.info(msg)
-        ret = self.du.run_cmd(hostname, init_cmd, as_script=_as,
-                              logerr=False)
+                fn = None
+                if (conf_file is not None) and (
+                        conf_file != self.dflt_conf_file):
+                    service_cmd += ['PBS_CONF_FILE=' + conf_file]
+                    _as = True
+                else:
+                    _as = False
+                conf = self.du.parse_pbs_config(hostname, conf_file)
+            if (init_script is None) or (not init_script.startswith('/')):
+                if 'PBS_EXEC' not in conf:
+                    msg = 'Missing PBS_EXEC setting in pbs config'
+                    raise PbsServiceControlError(rc=1, rv=False, msg=msg)
+                if init_script is None:
+                    init_script = os.path.join(conf['PBS_EXEC'], 'libexec',
+                                               'pbs_init.d')
+                else:
+                    init_script = os.path.join(conf['PBS_EXEC'], 'etc',
+                                               init_script)
+                if not self.du.isfile(hostname, path=init_script, sudo=True):
+                    # Could be Type 3 installation where we will not have
+                    # PBS_EXEC/libexec/pbs_init.d
+                    return []
+            service_cmd += [init_script, op]
+            msg = 'running init script to ' + op + ' pbs'
+            if daemon is not None and daemon != 'all':
+                msg += ' ' + daemon
+            msg += ' on ' + hostname
+            if conf_file is not None:
+                msg += ' using ' + conf_file
+            msg += ' service_cmd=%s' % (str(service_cmd))
+            self.logger.info(msg)
+            ret = self.du.run_cmd(hostname, service_cmd, as_script=_as,
+                                  logerr=False)
         if ret['rc'] != 0:
-            raise PbsInitServicesError(rc=ret['rc'], rv=False,
-                                       msg='\n'.join(ret['err']))
+            raise PbsServiceControlError(rc=ret['rc'], rv=False,
+                                         msg='\n'.join(ret['err']))
         else:
             return ret
 
@@ -434,7 +510,7 @@ class PBSInitServices(object):
             ret = self.du.isdir(hostname, path=newver)
             if not ret:
                 msg = 'no version ' + version + ' on host ' + hostname
-                raise PbsInitServicesError(rc=0, rv=False, msg=msg)
+                raise PbsServiceControlError(rc=0, rv=False, msg=msg)
             self.stop(hostname)
             dflt = os.path.join(dn, 'default')
             ret = self.du.isfile(hostname, path=dflt)

@@ -44,11 +44,13 @@ sbin_PROGRAMS = pbs_server.bin pbs_comm
 pbs_server_bin_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	-I$(top_srcdir)/src/lib/Liblicensing \
+	-I/usr/include \
 	@expat_inc@ \
 	@libical_inc@ \
 	@libz_inc@ \
 	@PYTHON_INCLUDES@ \
-	@KRB5_CFLAGS@
+	@KRB5_CFLAGS@ \
+	@sec_cflags@
 
 pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
@@ -56,12 +58,12 @@ pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libsite/libsite.a \
 	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
 	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	$(top_builddir)/src/lib/Liblicensing/liblicensing.la \
+	$(top_builddir)/src/lib/Libsec/libsec.a \
 	@expat_lib@ \
 	@libz_lib@ \
 	@libical_lib@ \
@@ -70,7 +72,8 @@ pbs_server_bin_LDADD = \
 	-lssl \
 	-lcrypto \
 	@KRB5_LIBS@ \
-	@libundolr_lib@
+	@libundolr_lib@ \
+	@sec_lib@
 
 pbs_server_bin_SOURCES = \
 	accounting.c \
@@ -147,17 +150,20 @@ pbs_server_bin_SOURCES = \
 pbs_comm_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	@libz_inc@ \
-	@KRB5_CFLAGS@
+	@KRB5_CFLAGS@ \
+	@sec_cflags@
 
 pbs_comm_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
+	$(top_builddir)/src/lib/Libsec/libsec.a \
 	-lpthread \
 	@libz_lib@ \
 	@socket_lib@ \
 	@KRB5_LIBS@ \
-	@libundolr_lib@
+	@libundolr_lib@ \
+	@sec_lib@
 
 pbs_comm_SOURCES = pbs_comm.c

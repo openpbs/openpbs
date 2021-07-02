@@ -50,14 +50,15 @@ extern "C" {
 
 #include <sys/types.h>
 
-#define	PBS_CREDVER		1
-#define	PBS_CREDTYPE_NONE	0
-#define	PBS_CREDTYPE_GRIDPROXY	2 /* Deprecated */
+#define PBS_CREDVER		1
+#define PBS_CREDTYPE_NONE	0
+#define PBS_CREDTYPE_GRIDPROXY	2 /* Deprecated */
 #define PBS_CREDTYPE_AES	3
+#define PBS_CREDTYPE_SECCON	4
 
-#define	PBS_GC_BATREQ		100
-#define	PBS_GC_CPYFILE		101
-#define	PBS_GC_EXEC		102
+#define PBS_GC_BATREQ		100
+#define PBS_GC_CPYFILE		101
+#define PBS_GC_EXEC		102
 
 #define PBS_CREDNAME_AES	"aes"
 

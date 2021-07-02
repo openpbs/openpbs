@@ -92,6 +92,7 @@ noinst_HEADERS = \
 	pbs_nodes.h \
 	pbs_python.h \
 	pbs_python_private.h \
+	pbs_seccon.h \
 	pbs_share.h \
 	pbs_undolr.h \
 	pbs_v1_module_common.i \

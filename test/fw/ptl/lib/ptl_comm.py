@@ -47,7 +47,7 @@ import socket
 import string
 import sys
 import time
-from ptl.lib.ptl_service import PBSService, PBSInitServices
+from ptl.lib.ptl_service import PBSService, PbsServiceControl
 
 
 class Comm(PBSService):
@@ -97,7 +97,7 @@ class Comm(PBSService):
             'PBS_COMM_ROUTERS': '-r',
             'PBS_COMM_THREADS': '-t'
         }
-        self.pi = PBSInitServices(hostname=self.hostname,
+        self.pi = PbsServiceControl(hostname=self.hostname,
                                   conf=self.pbs_conf_file)
 
     def start(self, args=None, launcher=None):
@@ -120,7 +120,7 @@ class Comm(PBSService):
                 if pid is None:
                     raise PbsServiceError(rv=False, rc=-1,
                                           msg="Could not find PID")
-            except PbsInitServicesError as e:
+            except PbsServiceControlError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return rv
 
@@ -138,7 +138,7 @@ class Comm(PBSService):
         else:
             try:
                 self.pi.stop_comm()
-            except PbsInitServicesError as e:
+            except PbsServiceControlError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
 

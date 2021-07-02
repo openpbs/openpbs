@@ -86,6 +86,9 @@
 #include "tpp.h"
 #include "dis.h"
 #include <openssl/sha.h>
+#ifndef WIN32
+#include "pbs_seccon.h"
+#endif
 
 
 #define	RESCASSN_NCPUS	"resources_assigned.ncpus"
@@ -137,7 +140,7 @@ extern	int		num_acpus;
 extern 	u_Long		av_phy_mem;
 
 
-extern int becomeuser(job *pjob);
+extern int becomeuser(job *, void *usercred);
 
 extern int  send_sched_recycle(char *user);
 
@@ -150,6 +153,7 @@ extern unsigned long	 hook_action_id;
 extern	int		internal_state_update; /* flag for sending mom information update to the server */
 
 extern int		server_stream;
+extern void *mom_security_context;
 
 extern char **environ;
 
@@ -994,7 +998,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			}
 
 			/* NOTE: "launch" hook is already running as the user */
-			if (becomeuser(pjob) != 0) {
+			if (becomeuser(pjob, pjob->ji_wattr[(int)JOB_ATR_security_context].at_val.at_str) != 0) {
 				char *jobuser;
 
 				jobuser = get_jattr_str(pjob, JOB_ATR_euser);
@@ -1036,6 +1040,10 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			if (chdir(path_spool) != 0)
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_WARNING, phook->hook_name, "unable to go to spool directory");
 		} else { /* run as root */
+#ifndef WIN32
+			sec_reset_fscon();
+			sec_set_exec_con(mom_security_context);
+#endif
 			snprintf(hook_inputfile, MAXPATHLEN, FMT_HOOK_INFILE, path_hooks_workdir, hook_event_as_string(event_type), phook->hook_name, myseq);
 			snprintf(hook_outputfile, MAXPATHLEN, FMT_HOOK_OUTFILE, path_hooks_workdir, hook_event_as_string(event_type), phook->hook_name, myseq);
 			snprintf(hook_datafile, MAXPATHLEN, FMT_HOOK_DATAFILE, path_hooks_workdir, hook_event_as_string(event_type), phook->hook_name, myseq);

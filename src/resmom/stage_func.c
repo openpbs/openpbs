@@ -61,6 +61,9 @@
 #include "batch_request.h"
 #include "pbs_nodes.h"
 #include "mom_func.h"
+#ifndef WIN32
+#include "pbs_seccon.h"
+#endif
 
 /**
  * @file	stage_func.c
@@ -76,6 +79,7 @@ extern size_t cred_len;				/* length of cred buffer */
 #ifndef WIN32
 extern int cred_pipe;
 extern char *pwd_buf;
+extern void *sec_user_session;
 #endif
 extern char mom_host[PBS_MAXHOSTNAME+1];	/* MoM host name */
 
@@ -1192,7 +1196,7 @@ error:
  *
  */
 void
-rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
+rmjobdir(char *jobid, char *jobdir, char *usercred, uid_t uid, gid_t gid, int check_shared)
 {
 	static	char	rmdir_buf[MAXPATHLEN+1] = {'\0'};
 	struct	stat	sb = {0};
@@ -1226,7 +1230,7 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
 	if ((pbs_jobdir_root[0] == '\0') || (strcmp(pbs_jobdir_root, JOBDIR_DEFAULT) == 0)) {
 		/* In user's home, need to be user */
 		/* The rest must be done as the User */
-		if (impersonate_user(uid, gid) == -1)
+		if (impersonate_user(uid, gid, usercred) == -1)
 			return;
 	}
 #endif
@@ -1319,6 +1323,8 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
 	tpp_terminate();
 	execl(rm, "pbs_cleandir", rf, newdir, NULL);
 	log_err(errno, __func__, "execl");
+	if (sec_user_session)
+		sec_close_session(sec_user_session);
 	exit(21);
 #endif
 }

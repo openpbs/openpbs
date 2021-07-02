@@ -73,7 +73,7 @@ class TestTPP(TestFunctional):
                           has to be restarted
         :type host_name: String
         """
-        pi = PBSInitServices(hostname=host_name)
+        pi = PbsServiceControl(hostname=host_name)
         pi.restart()
 
     def set_pbs_conf(self, host_name, conf_param):

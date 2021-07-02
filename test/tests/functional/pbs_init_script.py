@@ -39,12 +39,21 @@
 
 
 from tests.functional import *
+from ptl.utils.pbs_secutils import SecConUtils
 
 
 class TestPbsInitScript(TestFunctional):
     """
     Testing PBS init script
     """
+
+    def setUp(self):
+        self.se = SecConUtils()
+        for host, mom in self.moms.items():
+            if self.se.is_seccon_enabled(mom.hostname):
+                msg = "Test not supported on seccon enabled machine"
+                self.skip_test(msg)
+        TestFunctional.setUp(self)
 
     def test_env_vars_precede_pbs_conf_file(self):
         """
@@ -78,5 +87,5 @@ class TestPbsInitScript(TestFunctional):
     def tearDown(self):
         # Above test leaves system in unusable state for PTL and PBS.
         # Hence restarting PBS explicitly
-        PBSInitServices().restart()
+        PbsServiceControl().restart()
         TestFunctional.tearDown(self)

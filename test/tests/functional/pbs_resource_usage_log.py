@@ -332,7 +332,7 @@ class TestResourceUsageLog(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
         # Restart PBS services
-        PBSInitServices().restart()
+        PbsServiceControl().restart()
         if self.server.shortname != self.mom.shortname:
             self.mom.restart()
 

@@ -47,6 +47,16 @@ PBS_VERSION=@PBS_VERSION@
 INSTALL_DB="install_db"
 UPGRADE_DB="upgrade_db"
 
+has_runuser() {
+	PATH=$PATH:/sbin:/usr/sbin	# be sure it will be found if present
+	if type runuser > /dev/null 2>&1
+	then
+		return 0
+	else
+		return 1
+	fi
+}
+
 get_db_user() {
 	[ -f "${dbuser_fl}" ] && dbuser_name=`cat "${dbuser_fl}" | tr -d '[:space:]'`
 	[ -z "${dbuser_name}" ] && dbuser_name="${PBS_DATA_SERVICE_USER:-@database_user@}"
@@ -75,7 +85,7 @@ chk_dataservice_user() {
 	fi
 
 	# login as ${chk_usr} and try to cd to user home dir
-	su - ${chk_usr} -s /bin/sh -c "cd" > /dev/null 2>&1
+	${sucmd} - ${chk_usr} -s /bin/sh -c "cd" > /dev/null 2>&1
 
 	if [ $? -ne 0 ]; then
 		echo "Unable to login as user ${chk_usr}. Is the user enabled/home directory accessible?"
@@ -146,6 +156,14 @@ check_hostname() {
 #
 # Start of the pbs_habitat script
 #
+
+if has_runuser
+then
+	sucmd="runuser"
+else
+	sucmd="su"
+fi
+
 conf=${PBS_CONF_FILE:-/etc/pbs.conf}
 ostype=`uname 2>/dev/null`
 umask 022

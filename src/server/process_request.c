@@ -157,6 +157,9 @@ get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
 {
 	int ret;
 
+	if (jobp->ji_extended.ji_ext.ji_credtype == PBS_CREDTYPE_SECCON)
+		 return (read_cred(jobp, data, dsize));
+
 #ifndef PBS_MOM
 	/*
 	 * ensure job's euser exists as this can be called
@@ -237,6 +240,28 @@ req_authenticate(conn_t *conn, struct batch_request *request)
 		req_reject(PBSE_SYSTEM, 0, request);
 		close_client(conn->cn_sock);
 		return;
+	}
+
+	if (request->rq_extend != NULL) {
+		if (strstr(request->rq_extend, ATTR_security_context) == request->rq_extend) {
+			/*
+			 * Skip the ATTR_security_context + "=" prefix.
+			 * Note that using sizeof() rather than strlen()
+			 * skips the '=' as well.
+			 */
+			cp->cn_security_context = strdup(request->rq_extend + sizeof(ATTR_security_context));
+			if (cp->cn_security_context == NULL) {
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_ERR,
+					request->rq_ind.rq_cpyfile.rq_jobid,
+					"could not save security context");
+				req_reject(PBSE_SYSTEM, errno, request);
+				return;
+			} else {
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO,
+					"saved security context",
+					request->rq_extend);
+			}
+		}
 	}
 
 	(void) strcpy(cp->cn_username, request->rq_user);

@@ -99,6 +99,7 @@
 
 #include <pwd.h>
 #include "mom_func.h"
+#include "pbs_seccon.h"
 
 extern	char mom_host[PBS_MAXHOSTNAME+1];
 #endif	/* PBS_MOM */
@@ -327,6 +328,7 @@ req_quejob(struct batch_request *preq)
 	resource_def *prdefplc;
 	resource *presc;
 	conn_t *conn = NULL;
+	void *ctx;
 #else
 	mom_hook_input_t  hook_input;
 	mom_hook_output_t hook_output;
@@ -979,6 +981,32 @@ req_quejob(struct batch_request *preq)
 
 	set_jattr_str_slim(pj, JOB_ATR_at_server, pbs_server_name, NULL);
 
+	/*
+	 * Grab saved security context from the conn and install it
+	 * in the job's credential area. Note that the context string's \0
+	 * byte is saved in the credential file so that it will be picked up
+	 * when the MoM reads it back.
+	 */
+	ctx = conn->cn_security_context;
+	if (ctx == NULL) {
+		log_event(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR,
+			  "client connection",
+			  "no security context information present");
+	} else {
+		pj->ji_extended.ji_ext.ji_credtype = PBS_CREDTYPE_SECCON;
+		preq->rq_ind.rq_jobcred.rq_data = ctx;
+		preq->rq_ind.rq_jobcred.rq_size = strlen(ctx);
+		if (write_cred(pj, preq->rq_ind.rq_jobcred.rq_data,
+			(size_t) preq->rq_ind.rq_jobcred.rq_size + 1) == -1) {
+			job_purge(pj);
+			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
+		}
+		job_attr_def[(int)JOB_ATR_security_context].at_decode(
+			&pj->ji_wattr[(int)JOB_ATR_security_context],(char *)0,
+			(char *)0, (char *) ctx);
+	}
+
 	/* If enabled, check the server's required cred type */
 
 	if (is_sattr_set(SVR_ATR_ReqCredEnable) &&
@@ -1375,6 +1403,14 @@ req_jobscript(struct batch_request *preq)
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
+#ifndef WIN32
+	if (pj->ji_wattr[(int)JOB_ATR_security_context].at_val.at_str != NULL)
+		if (sec_set_fdcon(fds)) {
+			req_reject(PBSE_INTERNAL, 0, preq);
+			close(fds);
+			return;
+		}
+#endif
 
 #ifdef WIN32
 	secure_file2(namebuf, "Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED, "Everyone", READS_MASK|READ_CONTROL);
@@ -1626,7 +1662,8 @@ req_mvjobfile(struct batch_request *preq)
 		if (mkjobdir(pj->ji_qs.ji_jobid,
 			pbs_jobdir,
 			pj->ji_grpcache->gc_uid,
-			pj->ji_grpcache->gc_gid) != 0) {
+			pj->ji_grpcache->gc_gid,
+			pj->ji_wattr[JOB_ATR_security_context].at_val.at_str) != 0) {
 			sprintf(log_buffer, "unable to create the job directory %s", pbs_jobdir);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid, log_buffer);
 			req_reject(PBSE_MOMREJECT, 0, preq);

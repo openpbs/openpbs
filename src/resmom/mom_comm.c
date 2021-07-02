@@ -92,6 +92,7 @@
 #include	"placementsets.h"
 #include	"pbs_reliable.h"
 #include	"renew_creds.h"
+#include	"pbs_seccon.h"
 #ifdef PMIX
 #include	"mom_pmix.h"
 #endif
@@ -2973,7 +2974,8 @@ im_request(int stream, int version)
 	unsigned int		hook_fail_action = 0;
 	char			*nodehost = NULL;
 	char			timebuf[TIMEBUF_SIZE] = {0};
-  	char			*delete_job_msg = NULL;
+	char			*delete_job_msg = NULL;
+	char			*usercred;
 
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
 	if ((version != IM_PROTOCOL_VER) && (version != IM_OLD_PROTOCOL_VER)) {
@@ -3361,7 +3363,6 @@ im_request(int stream, int version)
 					SEND_ERR(PBSE_SYSTEM)
 					goto done;
 				}
-
 #else	/* Unix/Linux */
 
 				mode_t myumask = 0;
@@ -3369,19 +3370,42 @@ im_request(int stream, int version)
 				mode_t j;
 				int    e;
 
-				if (is_jattr_set(pjob, JOB_ATR_umask)) {
-					sprintf(maskbuf, "%ld", get_jattr_long(pjob, JOB_ATR_umask));
+				if (pjob->ji_wattr[(int)JOB_ATR_umask].at_flags&ATR_VFLAG_SET) {
+					sprintf(maskbuf, "%ld",
+						pjob->ji_wattr[(int)JOB_ATR_umask].at_val.at_long);
 					sscanf(maskbuf, "%o", &j);
 					myumask = umask(j);
 				} else {
 					myumask = umask(077);
 				}
 
+				usercred = pjob->ji_wattr[(int)JOB_ATR_security_context].at_val.at_str;
+
+				if ((sec_set_exec_con(usercred) == -1) || (sec_open_session(pjob->ji_wattr[JOB_ATR_euser].at_val.at_str) == NULL)) {
+					sprintf(log_buffer, "unable to create the job directory %s", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
+					log_err(errno, __func__, log_buffer);
+					(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
+					mom_deljob(pjob);
+					SEND_ERR(PBSE_SYSTEM)
+					goto done;
+				}
+
+				int should_revert = 0;
+				if (sec_should_impersonate()) {
+					impersonate_user(pjob->ji_qs.ji_un.ji_momt.ji_exuid, pjob->ji_qs.ji_un.ji_momt.ji_exgid, usercred);
+					should_revert = 1;
+				}
+
 				e = mkjobdir(pjob->ji_qs.ji_jobid,
 					jobdirname(pjob->ji_qs.ji_jobid,
 					pjob->ji_grpcache->gc_homedir),
 					pjob->ji_qs.ji_un.ji_momt.ji_exuid,
-					pjob->ji_qs.ji_un.ji_momt.ji_exgid);
+					pjob->ji_qs.ji_un.ji_momt.ji_exgid,
+					usercred);
+
+				if (should_revert)
+					revert_from_user();
+
 				if (myumask != 0)
 					(void)umask(myumask);
 

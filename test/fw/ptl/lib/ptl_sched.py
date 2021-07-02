@@ -58,12 +58,12 @@ from operator import itemgetter
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
-from ptl.lib.ptl_service import PBSService, PBSInitServices
+from ptl.lib.ptl_service import PBSService, PbsServiceControl
 from ptl.lib.ptl_fairshare import (FairshareTree, FairshareNode,
                                    Fairshare)
 from ptl.lib.ptl_entities import Holidays
 from ptl.lib.ptl_error import (PbsManagerError, PbsStatusError,
-                               PbsInitServicesError, PbsServiceError,
+                               PbsServiceControlError, PbsServiceError,
                                PtlLogMatchError, PbsSchedConfigError,
                                PbsFairshareError)
 from ptl.lib.ptl_constants import (SCHED, MGR_CMD_SET, MGR_CMD_UNSET,
@@ -201,7 +201,7 @@ class Scheduler(PBSService):
             _m += ['@', pbsconf_file]
         _m += [': ']
         self.logprefix = "".join(_m)
-        self.pi = PBSInitServices(hostname=self.hostname,
+        self.pi = PbsServiceControl(hostname=self.hostname,
                                   conf=self.pbs_conf_file)
         self.pbs_conf = self.server.pbs_conf
         self.sc_name = id
@@ -305,7 +305,7 @@ class Scheduler(PBSService):
             try:
                 ret = self.du.run_cmd(self.hostname, cmd, sudo=True,
                                       logerr=False, level=logging.INFOCLI)
-            except PbsInitServicesError as e:
+            except PbsServiceControlError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             self.server.manager(MGR_CMD_LIST, SCHED)
             return ret
@@ -320,7 +320,7 @@ class Scheduler(PBSService):
                 if pid is None:
                     raise PbsServiceError(rv=False, rc=-1,
                                           msg="Could not find PID")
-            except PbsInitServicesError as e:
+            except PbsServiceControlError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return rv
 
@@ -343,7 +343,7 @@ class Scheduler(PBSService):
         else:
             try:
                 self.pi.stop_sched()
-            except PbsInitServicesError as e:
+            except PbsServiceControlError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
 

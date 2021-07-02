@@ -134,6 +134,7 @@ static enum job_atr attrs_to_copy[] = {
 	JOB_ATR_cred_id,
 #endif
 	JOB_ATR_submit_host,
+	JOB_ATR_security_context,
 	JOB_ATR_LAST /* This MUST be LAST	*/
 };
 
@@ -712,6 +713,11 @@ create_subjob(job *parent, char *newjid, int *rc)
 		return NULL;
 	}
 	subj->ji_qs = parent->ji_qs;	/* copy the fixed save area */
+	subj->ji_extended.ji_ext.ji_credtype = parent->ji_extended.ji_ext.ji_credtype;
+	sprintf(log_buffer, "%s:  subjob ji_credtype %d", (char *) __func__,
+		subj->ji_extended.ji_ext.ji_credtype);
+	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB,
+		  LOG_INFO, newjid, log_buffer);
 	subj->ji_qhdr     = parent->ji_qhdr;
 	subj->ji_myResv   = parent->ji_myResv;
 	subj->ji_parentaj = parent;

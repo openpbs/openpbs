@@ -68,6 +68,7 @@ from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError, get_method_name
 from ptl.utils.pbs_procutils import ProcUtils
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
+from ptl.utils.pbs_secutils import SecConUtils
 
 try:
     import psycopg2
@@ -86,7 +87,7 @@ from ptl.lib.ptl_error import (PbsStatusError, PbsSubmitError,
                                PbsQstopError, PbsResourceError,
                                PbsResvAlterError, PtlExpectError,
                                PbsConnectError, PbsServiceError,
-                               PbsInitServicesError, PbsMessageError,
+                               PbsServiceControlError, PbsMessageError,
                                PtlLogMatchError)
 from ptl.lib.ptl_types import PbsAttribute
 from ptl.lib.ptl_constants import *
@@ -95,7 +96,7 @@ from ptl.lib.ptl_entities import (Hook, Queue, Entity, Limit,
 from ptl.lib.ptl_resourceresv import Job, Reservation, InteractiveJob
 from ptl.lib.ptl_sched import Scheduler
 from ptl.lib.ptl_mom import MoM, get_mom_obj
-from ptl.lib.ptl_service import PBSService, PBSInitServices
+from ptl.lib.ptl_service import PBSService, PbsServiceControl
 from ptl.lib.ptl_expect_action import ExpectActions
 try:
     from nose.plugins.skip import SkipTest
@@ -189,8 +190,9 @@ class Wrappers(PBSService):
             _m += ['@', pbsconf_file]
         _m += [': ']
         self.logprefix = "".join(_m)
-        self.pi = PBSInitServices(hostname=self.hostname,
+        self.pi = PbsServiceControl(hostname=self.hostname,
                                   conf=self.pbs_conf_file)
+        self.se = SecConUtils()
         self.set_client(client)
 
         if client_pbsconf_file is None:
@@ -1640,6 +1642,12 @@ class Wrappers(PBSService):
                     runcmd += ['export %s=\"%s\"' % (k, v)]
                 runcmd += ["\n"]
 
+        if obj.username != self.current_user:
+            runas = obj.username
+        else:
+            runas = None
+        self.se.prefix_runcon(runas, runcmd, self.hostname)
+
         script_file = None
         if self.get_op_mode() == PTL_CLI:
             exclude_attrs = []  # list of attributes to not convert to CLI
@@ -1888,8 +1896,10 @@ class Wrappers(PBSService):
         self.logger.info(prefix)
         c = None
         rc = 0
+        pcmd = []
         if self.get_op_mode() == PTL_CLI:
-            pcmd = [os.path.join(self.client_conf['PBS_EXEC'], 'bin', 'qdel')]
+            self.se.prefix_runcon(runas, pcmd, self.hostname)
+            pcmd += [os.path.join(self.client_conf['PBS_EXEC'], 'bin', 'qdel')]
             if extend is not None:
                 pcmd += self.utils.convert_to_cli(extend, op=IFL_DELETE,
                                                   hostname=self.hostname)
@@ -2714,8 +2724,10 @@ class Wrappers(PBSService):
         self.logger.info(prefix)
 
         c = None
+        pcmd = []
         if self.get_op_mode() == PTL_CLI:
-            pcmd = [os.path.join(self.client_conf['PBS_EXEC'], 'bin',
+            self.se.prefix_runcon(runas, pcmd, self.hostname)
+            pcmd += [os.path.join(self.client_conf['PBS_EXEC'], 'bin',
                                  'qalter')]
             if attrib is not None:
                 _conf = self.default_client_pbs_conf
@@ -3205,8 +3217,10 @@ class Wrappers(PBSService):
         c = None
         rc = 0
 
+        pcmd = []
         if self.get_op_mode() == PTL_CLI:
-            pcmd = [os.path.join(self.client_conf['PBS_EXEC'], 'bin', 'qmove')]
+            self.se.prefix_runcon(runas, pcmd, self.hostname)
+            pcmd += [os.path.join(self.client_conf['PBS_EXEC'], 'bin', 'qmove')]
             if destination is not None:
                 pcmd += [destination]
             if jobid is not None:

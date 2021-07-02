@@ -142,7 +142,7 @@ class TestVerifyLogOutput(TestFunctional):
         """
         started_time = time.time()
         self.logger.info('Restarting PBS Services')
-        PBSInitServices().restart()
+        PbsServiceControl().restart()
 
         if self.server.isUp() and self.scheduler.isUp():
             self.scheduler.log_match("Req;;Starting Scheduling Cycle",

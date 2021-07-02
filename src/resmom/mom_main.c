@@ -136,6 +136,9 @@
 #define		PRIO_MIN	-20
 #endif
 #include	"pbs_undolr.h"
+#ifndef WIN32
+#include	"pbs_seccon.h"
+#endif
 
 /* Reducing tpp_request process for a minimum of 3 times to interleave other connections */
 #define MAX_TPP_LOOPS 3
@@ -189,6 +192,7 @@ int lockfds;
 float max_load_val = -1.0;
 int max_poll_downtime_val = PBS_MAX_POLL_DOWNTIME;
 char *mom_domain;
+void *mom_security_context;
 char *mom_home;
 char mom_host[PBS_MAXHOSTNAME + 1];
 pid_t mom_pid;
@@ -7262,6 +7266,9 @@ main(int argc, char *argv[])
 
 
 #ifndef	WIN32 /* ---- UNIX ------------------------------------------*/
+	if (sec_get_con(&mom_security_context))
+		exit(1);
+
 	mygid = getgid();
 	(void)setgroups(1, &mygid);	/* secure suppl. groups */
 

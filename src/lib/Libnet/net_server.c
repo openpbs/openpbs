@@ -949,7 +949,10 @@ cleanup_conn(int idx)
 			log_err(err, __func__, logbuf);
         	}
 	}
-
+	if (svr_conn[idx]->cn_security_context != NULL) {
+		free(svr_conn[idx]->cn_security_context);
+		svr_conn[idx]->cn_security_context = NULL;
+	}
 	/* Remove connection from the linked list */
 	delete_link(&svr_conn[idx]->cn_link);
 
