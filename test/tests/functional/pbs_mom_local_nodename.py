@@ -101,5 +101,7 @@ pbs.logmsg(pbs.LOG_DEBUG,
         self.du.unset_pbs_config(hostname=self.mom.shortname,
                                  confs=['PBS_MOM_NODE_NAME'])
         self.server.restart()
+        self.server.manager(MGR_CMD_DELETE, VNODE, id="@default",
+                            runas=ROOT_USER)
         self.mom.restart()
         TestFunctional.tearDown(self)
