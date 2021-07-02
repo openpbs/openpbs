@@ -2578,6 +2578,9 @@ Time4resv(struct work_task *ptask)
 			strncpy(preq->rq_user, pbs_current_user, PBS_MAXUSER);
 			strncpy(preq->rq_host, server_host, PBS_MAXHOSTNAME);
 			strncpy(preq->rq_ind.rq_manager.rq_objname, presv->ri_qs.ri_resvID, PBS_MAXSVRRESVID);
+			/* handle truncation warning */
+			preq->rq_ind.rq_manager.rq_objname[PBS_MAXSVRJOBID] = '\0';
+
 			char hook_msg[HOOK_MSG_SIZE] = {0};
 			switch (process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt)) {
 			case 0: /* explicit reject */
