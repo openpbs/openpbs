@@ -55,14 +55,13 @@
  * 	free_server_info()
  * 	free_resource_list()
  * 	free_resource()
- * 	new_server_info()
  * 	new_resource()
  * 	create_resource()
  * 	add_resource_list()
  * 	add_resource_value()
  * 	add_resource_str_arr()
  * 	add_resource_bool()
- * 	free_server()
+ * 	delete )
  * 	update_server_on_run()
  * 	update_server_on_end()
  * 	create_server_arrays()
@@ -72,7 +71,6 @@
  * 	check_running_job_not_in_reservation()
  * 	check_running_job_in_reservation()
  * 	check_resv_running_on_node()
- * 	dup_server_info()
  * 	dup_resource_list()
  * 	dup_selective_resource_list()
  * 	dup_ind_resource_list()
@@ -114,8 +112,10 @@
 #include <ctype.h>
 #include <signal.h>
 #include <sys/wait.h>
-
+// STL headers
 #include <algorithm>
+#include <exception>
+
 #include "pbs_entlim.h"
 #include "pbs_ifl.h"
 #include "pbs_error.h"
@@ -218,7 +218,7 @@ query_server(status *pol, int pbs_sd)
 	if(query_server_dyn_res(sinfo) == -1) {
 		pbs_statfree(server);
 		sinfo->fstree = NULL;
-		free_server(sinfo);
+		delete sinfo;
 		return NULL;
 	}
 
@@ -226,7 +226,7 @@ query_server(status *pol, int pbs_sd)
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Scheduler does not contain a partition");
 		pbs_statfree(server);
 		sinfo->fstree = NULL;
-		free_server(sinfo);
+		delete sinfo;
 		return NULL;
 	}
 
@@ -242,7 +242,7 @@ query_server(status *pol, int pbs_sd)
 	if ((sinfo->nodes = query_nodes(pbs_sd, sinfo)) == NULL) {
 		pbs_statfree(server);
 		sinfo->fstree = NULL;
-		free_server(sinfo);
+		delete sinfo;
 		pbs_statfree(bs_resvs);
 		return NULL;
 	}
@@ -257,7 +257,7 @@ query_server(status *pol, int pbs_sd)
 	if (sinfo->queues.empty()) {
 		pbs_statfree(server);
 		sinfo->fstree = NULL;
-		free_server(sinfo);
+		delete sinfo;
 		pbs_statfree(bs_resvs);
 		return NULL;
 	}
@@ -293,7 +293,7 @@ query_server(status *pol, int pbs_sd)
 			auto ret_val = add_queue_to_list(&sinfo->queue_list, queue);
 			if (ret_val == 0) {
 				sinfo->fstree = NULL;
-				free_server(sinfo);
+				delete sinfo;
 				pbs_statfree(bs_resvs);
 				return NULL;
 			}
@@ -306,13 +306,13 @@ query_server(status *pol, int pbs_sd)
 
 	if (create_server_arrays(sinfo) == 0) { /* bad stuff happened */
 		sinfo->fstree = NULL;
-		free_server(sinfo);
+		delete sinfo;
 		return NULL;
 	}
 #ifdef NAS /* localmod 050 */
 	/* Give site a chance to tweak values before jobs are sorted */
 	if (site_tidy_server(sinfo) == 0) {
-		free_server(sinfo);
+		delete sinfo;
 		return NULL;
 	}
 #endif /* localmod 050 */
@@ -340,7 +340,7 @@ query_server(status *pol, int pbs_sd)
 						   sinfo->sc.total, check_exit_job, NULL, 0);
 	if (sinfo->running_jobs == NULL || sinfo->exiting_jobs == NULL) {
 		sinfo->fstree = NULL;
-		free_server(sinfo);
+		delete sinfo;
 		return NULL;
 	}
 
@@ -372,7 +372,7 @@ query_server(status *pol, int pbs_sd)
 			if ((sinfo->running_jobs[i]->job->is_subjob) &&
 			    (associate_array_parent(sinfo->running_jobs[i], sinfo) == 1)) {
 				sinfo->fstree = NULL;
-				free_server(sinfo);
+				delete sinfo;
 				return NULL;
 			}
 		}
@@ -383,7 +383,7 @@ query_server(status *pol, int pbs_sd)
 			if ((sinfo->running_jobs[i]->job->is_subjob) &&
 			    (associate_array_parent(sinfo->running_jobs[i], sinfo) == 1)) {
 				sinfo->fstree = NULL;
-				free_server(sinfo);
+				delete sinfo;
 				return NULL;
 			}
 		}
@@ -408,7 +408,7 @@ query_server(status *pol, int pbs_sd)
 	sinfo->unordered_nodes = static_cast<node_info **>(malloc((sinfo->num_nodes + 1) * sizeof(node_info *)));
 	if (sinfo->unordered_nodes == NULL) {
 		sinfo->fstree = NULL;
-		free_server(sinfo);
+		delete sinfo;
 		return NULL;
 	}
 
@@ -493,8 +493,7 @@ query_server_info(status *pol, struct batch_status *server)
 	if (pol == NULL || server == NULL)
 		return NULL;
 
-	if ((sinfo = new_server_info(1)) == NULL)
-		return NULL;		/* error */
+	sinfo = new server_info(1);
 
 	if (sinfo->liminfo == NULL)
 		return NULL;
@@ -502,7 +501,7 @@ query_server_info(status *pol, struct batch_status *server)
 	sinfo->name = std::string(server->name);
 
 	if ((sinfo->policy = dup_status(pol)) == NULL) {
-		free_server_info(sinfo);
+		sinfo->free_server_info();
 		return NULL;
 	}
 
@@ -565,7 +564,7 @@ query_server_info(status *pol, struct batch_status *server)
 					sinfo->res = resp;
 
 				if (set_resource(resp, attrp->value, RF_AVAIL) == 0) {
-					free_server_info(sinfo);
+					sinfo->free_server_info();
 					return NULL;
 				}
 			}
@@ -575,7 +574,7 @@ query_server_info(status *pol, struct batch_status *server)
 				sinfo->res = resp;
 			if (resp != NULL) {
 				if (set_resource(resp, attrp->value, RF_ASSN) == 0) {
-					free_server_info(sinfo);
+					sinfo->free_server_info();
 					return NULL;
 				}
 			}
@@ -619,7 +618,7 @@ query_server_info(status *pol, struct batch_status *server)
 	if (sinfo->job_sort_formula == NULL && sc_attrs.job_sort_formula != NULL) {
 		sinfo->job_sort_formula = string_dup(sc_attrs.job_sort_formula);
 		if (sinfo->job_sort_formula == NULL) {
-			free_server_info(sinfo);
+			sinfo->free_server_info();
 			return NULL;
 		}
 	}
@@ -977,28 +976,18 @@ free_server_psets(std::unordered_map<std::string, node_partition *>& spsets)
 
 /**
  * @brief	dup a sinfo->svr_to_psets map (deep copy)
- * 			Note: this might not be needed once we convert node_partition to a class
+ *			Note: this might not be needed once we convert node_partition to a class
  *
  * @param[in]	spsets - map of server psets
- * @param[in]	sinfo - sinfo in the duplicated universe
  *
- * @return std::unordered_map<std::string, node_partition *>
- * @retval An unordered_map containing copy of the input
+ * @return nothing
  */
-static std::unordered_map<std::string, node_partition *>
-dup_server_psets(std::unordered_map<std::string, node_partition *>& spsets, server_info *sinfo)
+void
+server_info::dup_server_psets(const std::unordered_map<std::string, node_partition*>& spsets)
 {
-	std::unordered_map<std::string, node_partition *> newpset;
 
-	for (const auto& spset : spsets) {
-		newpset[spset.first] = dup_node_partition(spset.second, sinfo);
-		if (newpset[spset.first] == NULL) {
-			free_server_psets(newpset);
-			return {};
-		}
-	}
-
-	return newpset;
+	for (const auto& spset : spsets)
+		svr_to_psets[spset.first] = dup_node_partition(spset.second, this);
 }
 
 /**
@@ -1006,75 +995,85 @@ dup_server_psets(std::unordered_map<std::string, node_partition *>& spsets, serv
  * 		free_server_info - free the space used by a server_info
  *		structure
  *
- * @param[in]	sinfo	-	the server_info structure to free
- *
  * @return	void
  *
  * @par MT-Safe:	no
  */
 void
-free_server_info(server_info *sinfo)
+server_info::free_server_info()
 {
-	if (sinfo->jobs != NULL)
-		free(sinfo->jobs);
-	if (sinfo->all_resresv != NULL)
-		free(sinfo->all_resresv);
-	if (sinfo->running_jobs != NULL)
-		free(sinfo->running_jobs);
-	if (sinfo->exiting_jobs != NULL)
-		free(sinfo->exiting_jobs);
+	if (jobs != NULL)
+		free(jobs);
+	if (all_resresv != NULL)
+		free(all_resresv);
+	if (running_jobs != NULL)
+		free(running_jobs);
+	if (exiting_jobs != NULL)
+		free(exiting_jobs);
 	/* if we don't have nodes associated with queues, this is a reference */
-	if (sinfo->has_nodes_assoc_queue == 0)
-		sinfo->unassoc_nodes = NULL;
-	else if (sinfo->unassoc_nodes != NULL)
-		free(sinfo->unassoc_nodes);
-	free_counts_list(sinfo->alljobcounts);
-	free_counts_list(sinfo->group_counts);
-	free_counts_list(sinfo->project_counts);
-	free_counts_list(sinfo->user_counts);
-	free_counts_list(sinfo->total_alljobcounts);
-	free_counts_list(sinfo->total_group_counts);
-	free_counts_list(sinfo->total_project_counts);
-	free_counts_list(sinfo->total_user_counts);
-	if (sinfo->nodepart != NULL)
-		free_node_partition_array(sinfo->nodepart);
-	if (sinfo->allpart)
-		free_node_partition(sinfo->allpart);
-	if (!(sinfo->svr_to_psets.empty()))
-		free_server_psets(sinfo->svr_to_psets);
-	if (sinfo->hostsets != NULL)
-		free_node_partition_array(sinfo->hostsets);
-	if (sinfo->nodesigs)
-		free_string_array(sinfo->nodesigs);
-	if (!sinfo->npc_arr.empty())
-		free_np_cache_array(sinfo->npc_arr);
-	if (sinfo->calendar != NULL)
-		free_event_list(sinfo->calendar);
-	if (sinfo->policy != NULL)
-		delete sinfo->policy;
-	if (sinfo->fstree != NULL)
-		delete sinfo->fstree;
-	if (sinfo->liminfo != NULL) {
-		lim_free_liminfo(sinfo->liminfo);
-		sinfo->liminfo = NULL;
+	if (has_nodes_assoc_queue == 0)
+		unassoc_nodes = NULL;
+	else if (unassoc_nodes != NULL)
+		free(unassoc_nodes);
+	free_counts_list(alljobcounts);
+	free_counts_list(group_counts);
+	free_counts_list(project_counts);
+	free_counts_list(user_counts);
+	free_counts_list(total_alljobcounts);
+	free_counts_list(total_group_counts);
+	free_counts_list(total_project_counts);
+	free_counts_list(total_user_counts);
+	if (nodepart != NULL)
+		free_node_partition_array(nodepart);
+	if (allpart)
+		free_node_partition(allpart);
+	if (!(svr_to_psets.empty()))
+		free_server_psets(svr_to_psets);
+	if (hostsets != NULL)
+		free_node_partition_array(hostsets);
+	if (nodesigs)
+		free_string_array(nodesigs);
+	if (!npc_arr.empty())
+		free_np_cache_array(npc_arr);
+	if (calendar != NULL)
+		free_event_list(calendar);
+	if (policy != NULL)
+		delete policy;
+	if (fstree != NULL)
+		delete fstree;
+	if (liminfo != NULL) {
+		lim_free_liminfo(liminfo);
+		liminfo = NULL;
 	}
-	if (sinfo->queue_list != NULL)
-		free_queue_list(sinfo->queue_list);
-	if(sinfo->equiv_classes != NULL)
-		free_resresv_set_array(sinfo->equiv_classes);
-	if(sinfo->buckets != NULL)
-		free_node_bucket_array(sinfo->buckets);
+	if (queue_list != NULL)
+		free_queue_list(queue_list);
+	if(equiv_classes != NULL)
+		free_resresv_set_array(equiv_classes);
+	if(buckets != NULL)
+		free_node_bucket_array(buckets);
 
-	if(sinfo->unordered_nodes != NULL)
-		free(sinfo->unordered_nodes);
+	if(unordered_nodes != NULL)
+		free(unordered_nodes);
 
-	free_resource_list(sinfo->res);
-	free(sinfo->job_sort_formula);
+	free_resource_list(res);
+	free(job_sort_formula);
 
 #ifdef NAS
 	/* localmod 034 */
 	site_free_shares(sinfo);
 #endif
+
+	/* We need to free the sinfo first to free the calendar.
+	 * When the calendar is freed, the job events modify the jobs.  We can't
+	 * free the jobs before then.
+	 */
+	free_queues(queues);
+	free_nodes(nodes);
+	free_resource_resv_array(resvs);
+
+#ifdef NAS /* localmod 053 */
+	site_restore_users();
+#endif /* localmod 053 */
 }
 
 /**
@@ -1135,89 +1134,86 @@ free_resource(schd_resource *resp)
 	free(resp);
 }
 
-/**
- * @brief
- * 		new_server_info - allocate and initialize a new
- *		server_info struct
- *
- * @param[in]	limallocflag	-	if nonzero, a liminfo structure will
- *									also be allocated
- *
- * @return	new allocated struct
- *
- * @see	lim_alloc_liminfo
- *
- * @par MT-Safe:	no
- */
-server_info *
-new_server_info(int limallocflag)
+// Init function
+void server_info::init_server_info ()
 {
-	server_info *sinfo;			/* the new server */
 
-	if ((sinfo = new server_info()) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-
-	sinfo->has_soft_limit = 0;
-	sinfo->has_hard_limit = 0;
-	sinfo->has_user_limit = 0;
-	sinfo->has_grp_limit = 0;
-	sinfo->has_proj_limit = 0;
-	sinfo->has_all_limit = 0;
-	sinfo->has_mult_express = 0;
-	sinfo->has_multi_vnode = 0;
-	sinfo->has_prime_queue = 0;
-	sinfo->has_nonprime_queue = 0;
-	sinfo->has_nodes_assoc_queue = 0;
-	sinfo->has_ded_queue = 0;
-	sinfo->has_runjob_hook = 0;
-	sinfo->node_group_enable = 0;
-	sinfo->eligible_time_enable = 0;
-	sinfo->provision_enable = 0;
-	sinfo->power_provisioning = 0;
-	sinfo->use_hard_duration = 0;
-	sinfo->pset_metadata_stale = 0;
-	sinfo->num_parts = 0;
-	sinfo->name = empty_str;
-	sinfo->res = NULL;
-	sinfo->queues = {};
-	sinfo->queue_list = NULL;
-	sinfo->jobs = NULL;
-	sinfo->all_resresv = NULL;
-	sinfo->calendar = NULL;
-	sinfo->running_jobs = NULL;
-	sinfo->exiting_jobs = NULL;
-	sinfo->nodes = NULL;
-	sinfo->unassoc_nodes = NULL;
-	sinfo->resvs = NULL;
-	sinfo->nodepart = NULL;
-	sinfo->allpart = NULL;
-	sinfo->hostsets = NULL;
-	sinfo->nodesigs = NULL;
-	sinfo->qrun_job = NULL;
-	sinfo->policy = NULL;
-	sinfo->fstree = NULL;
-	sinfo->equiv_classes = NULL;
-	sinfo->buckets = NULL;
-	sinfo->unordered_nodes = NULL;
-	sinfo->num_nodes = 0;
-	sinfo->num_resvs = 0;
-	sinfo->num_hostsets = 0;
-	sinfo->server_time = 0;
-	sinfo->job_sort_formula = NULL;
-
-	if ((limallocflag != 0))
-		sinfo->liminfo = lim_alloc_liminfo();
-	init_state_count(&(sinfo->sc));
-	memset(sinfo->preempt_count, 0, (NUM_PPRIO + 1) * sizeof(int));
+	has_soft_limit = 0;
+	has_hard_limit = 0;
+	has_user_limit = 0;
+	has_grp_limit = 0;
+	has_proj_limit = 0;
+	has_all_limit = 0;
+	has_mult_express = 0;
+	has_multi_vnode = 0;
+	has_prime_queue = 0;
+	has_nonprime_queue = 0;
+	has_nodes_assoc_queue = 0;
+	has_ded_queue = 0;
+	has_runjob_hook = 0;
+	node_group_enable = 0;
+	eligible_time_enable = 0;
+	provision_enable = 0;
+	power_provisioning = 0;
+	use_hard_duration = 0;
+	pset_metadata_stale = 0;
+	num_parts = 0;
+	name = empty_str;
+	res = NULL;
+	queues = {};
+	queue_list = NULL;
+	jobs = NULL;
+	all_resresv = NULL;
+	calendar = NULL;
+	running_jobs = NULL;
+	exiting_jobs = NULL;
+	nodes = NULL;
+	unassoc_nodes = NULL;
+	resvs = NULL;
+	nodepart = NULL;
+	allpart = NULL;
+	hostsets = NULL;
+	nodesigs = NULL;
+	qrun_job = NULL;
+	policy = NULL;
+	fstree = NULL;
+	equiv_classes = NULL;
+	buckets = NULL;
+	unordered_nodes = NULL;
+	num_nodes = 0;
+	num_resvs = 0;
+	num_hostsets = 0;
+	server_time = 0;
+	job_sort_formula = NULL;
+	init_state_count(&sc);
+	memset(preempt_count, 0, (NUM_PPRIO + 1) * sizeof(int));
+	liminfo = NULL;
 
 #ifdef NAS
 	/* localmod 034 */
-	sinfo->share_head = NULL;
+	share_head = NULL;
 #endif
 
-	return sinfo;
+}
+
+// Parametrized Constructor
+server_info::server_info(int limallocflag)
+{
+	init_server_info();
+	if ((limallocflag != 0))
+		liminfo = lim_alloc_liminfo();
+}
+
+//Default Constructor
+server_info::server_info()
+{
+	init_server_info();
+}
+
+// Destructor
+server_info::~server_info()
+{
+	free_server_info();
 }
 
 /**
@@ -1567,37 +1563,6 @@ add_resource_bool(schd_resource *r1, schd_resource *r2)
 
 /**
  * @brief
- * 		free_server - free a server_info and possibly its queues also
- *
- * @param[in]	sinfo -	server_info list head
- *
- * @return	void
- *
- * @par MT-Safe:	no
- */
-void
-free_server(server_info *sinfo)
-{
-	if (sinfo == NULL)
-		return;
-	/* We need to free the sinfo first to free the calendar.
-	 * When the calendar is freed, the job events modify the jobs.  We can't
-	 * free the jobs before then.
-	 */
-	free_server_info(sinfo);
-
-	free_queues(sinfo->queues);
-	free_nodes(sinfo->nodes);
-	free_resource_resv_array(sinfo->resvs);
-
-#ifdef NAS /* localmod 053 */
-	site_restore_users();
-#endif /* localmod 053 */
-	delete sinfo;
-}
-
-/**
- * @brief
  * 		update_server_on_run - update server_info structure
  *				when a resource resv is run
  *
@@ -1840,7 +1805,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
  * @par MT-Safe:	no
  */
 int
-copy_server_arrays(server_info *nsinfo, server_info *osinfo)
+copy_server_arrays(server_info *nsinfo, const server_info *osinfo)
 {
 	resource_resv **job_arr;	/* used in copying jobs to job array */
 	resource_resv **all_arr;	/* used in copying jobs to job/resv array */
@@ -2110,156 +2075,131 @@ check_resv_running_on_node(resource_resv *resv, const void *arg)
 	return 0;
 }
 
-/**
- * @brief
- * 		dup_server_info - duplicate a server_info struct
- *
- * @param[in]	osinfo	-	the struct to copy
- *
- * @return	duplicated server_info
- * @retval	NULL	: something wrong!
- *
- * @par MT-Safe:	no
- */
-server_info *
-dup_server_info(server_info *osinfo)
+// Copy constructor
+server_info::server_info(const server_info &osinfo)
 {
-	server_info *nsinfo;		/* scheduler internal form of server info */
-	unsigned int i;
+	init_server_info();
+	if (osinfo.fstree != NULL)
+		fstree = new fairshare_head(*osinfo.fstree);
+	has_mult_express = osinfo.has_mult_express;
+	has_soft_limit = osinfo.has_soft_limit;
+	has_hard_limit = osinfo.has_hard_limit;
+	has_user_limit = osinfo.has_user_limit;
+	has_all_limit = osinfo.has_all_limit;
+	has_grp_limit = osinfo.has_grp_limit;
+	has_proj_limit = osinfo.has_proj_limit;
+	has_multi_vnode = osinfo.has_multi_vnode;
+	has_prime_queue = osinfo.has_prime_queue;
+	has_nonprime_queue = osinfo.has_nonprime_queue;
+	has_ded_queue = osinfo.has_ded_queue;
+	has_nodes_assoc_queue = osinfo.has_nodes_assoc_queue;
+	node_group_enable = osinfo.node_group_enable;
+	eligible_time_enable = osinfo.eligible_time_enable;
+	provision_enable = osinfo.provision_enable;
+	power_provisioning = osinfo.power_provisioning;
+	use_hard_duration = osinfo.use_hard_duration;
+	pset_metadata_stale = osinfo.pset_metadata_stale;
+	name = osinfo.name;
+	liminfo = lim_dup_liminfo(osinfo.liminfo);
+	server_time = osinfo.server_time;
+	res = dup_resource_list(osinfo.res);
+	alljobcounts = dup_counts_map(osinfo.alljobcounts);
+	group_counts = dup_counts_map(osinfo.group_counts);
+	project_counts = dup_counts_map(osinfo.project_counts);
+	user_counts = dup_counts_map(osinfo.user_counts);
+	total_alljobcounts = dup_counts_map(osinfo.total_alljobcounts);
+	total_group_counts = dup_counts_map(osinfo.total_group_counts);
+	total_project_counts = dup_counts_map(osinfo.total_project_counts);
+	total_user_counts = dup_counts_map(osinfo.total_user_counts);
+	node_group_key = osinfo.node_group_key;
+	nodesigs = dup_string_arr(osinfo.nodesigs);
 
-	if (osinfo == NULL)
-		return NULL;
+	policy = dup_status(osinfo.policy);
 
-	/* duplicate the server information */
-	if ((nsinfo = new_server_info(0)) == NULL)
-		return NULL;
-
-	if (osinfo->fstree != NULL) {
-		nsinfo->fstree = new fairshare_head(*osinfo->fstree);
-		if (nsinfo->fstree == NULL) {
-			free_server(nsinfo);
-			return NULL;
-		}
-	}
-	nsinfo->has_mult_express = osinfo->has_mult_express;
-	nsinfo->has_soft_limit = osinfo->has_soft_limit;
-	nsinfo->has_hard_limit = osinfo->has_hard_limit;
-	nsinfo->has_user_limit = osinfo->has_user_limit;
-	nsinfo->has_all_limit = osinfo->has_all_limit;
-	nsinfo->has_grp_limit = osinfo->has_grp_limit;
-	nsinfo->has_proj_limit = osinfo->has_proj_limit;
-	nsinfo->has_multi_vnode = osinfo->has_multi_vnode;
-	nsinfo->has_prime_queue = osinfo->has_prime_queue;
-	nsinfo->has_nonprime_queue = osinfo->has_nonprime_queue;
-	nsinfo->has_ded_queue = osinfo->has_ded_queue;
-	nsinfo->has_nodes_assoc_queue = osinfo->has_nodes_assoc_queue;
-	nsinfo->node_group_enable = osinfo->node_group_enable;
-	nsinfo->eligible_time_enable = osinfo->eligible_time_enable;
-	nsinfo->provision_enable = osinfo->provision_enable;
-	nsinfo->power_provisioning = osinfo->power_provisioning;
-	nsinfo->use_hard_duration = osinfo->use_hard_duration;
-	nsinfo->pset_metadata_stale = osinfo->pset_metadata_stale;
-	nsinfo->name = osinfo->name;
-	nsinfo->liminfo = lim_dup_liminfo(osinfo->liminfo);
-	nsinfo->server_time = osinfo->server_time;
-	nsinfo->res = dup_resource_list(osinfo->res);
-	nsinfo->alljobcounts = dup_counts_map(osinfo->alljobcounts);
-	nsinfo->group_counts = dup_counts_map(osinfo->group_counts);
-	nsinfo->project_counts = dup_counts_map(osinfo->project_counts);
-	nsinfo->user_counts = dup_counts_map(osinfo->user_counts);
-	nsinfo->total_alljobcounts = dup_counts_map(osinfo->total_alljobcounts);
-	nsinfo->total_group_counts = dup_counts_map(osinfo->total_group_counts);
-	nsinfo->total_project_counts = dup_counts_map(osinfo->total_project_counts);
-	nsinfo->total_user_counts = dup_counts_map(osinfo->total_user_counts);
-	nsinfo->node_group_key = osinfo->node_group_key;
-	nsinfo->nodesigs = dup_string_arr(osinfo->nodesigs);
-
-	nsinfo->policy = dup_status(osinfo->policy);
-
-	nsinfo->num_nodes = osinfo->num_nodes;
+	num_nodes = osinfo.num_nodes;
 
 	/* dup the nodes, if there are any nodes */
-	nsinfo->nodes = dup_nodes(osinfo->nodes, nsinfo, NO_FLAGS);
+	nodes = dup_nodes(osinfo.nodes, this, NO_FLAGS);
 
-	if (nsinfo->has_nodes_assoc_queue) {
-		nsinfo->unassoc_nodes =
-			node_filter(nsinfo->nodes, nsinfo->num_nodes, is_unassoc_node, NULL, 0);
+	if (has_nodes_assoc_queue) {
+		unassoc_nodes =
+			node_filter(nodes, num_nodes, is_unassoc_node, NULL, 0);
 	} else
-		nsinfo->unassoc_nodes = nsinfo->nodes;
+		unassoc_nodes = nodes;
 
-	nsinfo->unordered_nodes = dup_unordered_nodes(osinfo->unordered_nodes, nsinfo->nodes);
+	unordered_nodes = dup_unordered_nodes(osinfo.unordered_nodes, nodes);
 
 	/* dup the reservations */
-	nsinfo->resvs = dup_resource_resv_array(osinfo->resvs, nsinfo, NULL);
-	nsinfo->num_resvs = osinfo->num_resvs;
+	resvs = dup_resource_resv_array(osinfo.resvs, this, NULL);
+	num_resvs = osinfo.num_resvs;
 
 #ifdef NAS /* localmod 053 */
 	site_save_users();
 #endif /* localmod 053 */
 
 	/* duplicate the queues */
-	nsinfo->queues = dup_queues(osinfo->queues, nsinfo);
-	if (nsinfo->queues.empty()) {
-		free_server(nsinfo);
-		return NULL;
+	queues = dup_queues(osinfo.queues, this);
+	if (queues.empty()) {
+		free_server_info();
+		throw sched_exception("Unable to duplicate queues", SCHD_ERROR);
 	}
 
-	if (osinfo->queue_list != NULL) {
+	if (osinfo.queue_list != NULL) {
 		/* queues are already sorted in descending order of their priority */
-		for (i = 0; i < nsinfo->queues.size(); i++) {
-			auto ret_val = add_queue_to_list(&nsinfo->queue_list, nsinfo->queues[i]);
+		for (unsigned int i = 0; i < queues.size(); i++) {
+			auto ret_val = add_queue_to_list(&queue_list, queues[i]);
 			if (ret_val == 0) {
-				nsinfo->fstree = NULL;
-				free_server(nsinfo);
-				return NULL;
+				fstree = NULL;
+				free_server_info();
+				throw sched_exception("Unable to add queue to queue_list", SCHD_ERROR);
 			}
 		}
 	}
 
-	nsinfo->sc = osinfo->sc;
+	sc = osinfo.sc;
 
 	/* sets nsinfo -> jobs and nsinfo -> all_resresv */
 #ifdef NAS /* localmod 054 */
-	if (create_server_arrays(nsinfo) == 0) {
-		free_server(nsinfo);
-		return NULL;
+	if (create_server_arrays(this) == 0) {
+		free_server_info();
+		throw sched_exception("Unable to duplicate server arrays", SCHD_ERROR);
 	}
 #else
-	copy_server_arrays(nsinfo, osinfo);
+	copy_server_arrays(this, &osinfo);
 #endif /* localmod 054 */
 
-	nsinfo->equiv_classes = dup_resresv_set_array(osinfo->equiv_classes, nsinfo);
+	equiv_classes = dup_resresv_set_array(osinfo.equiv_classes, this);
 
 	/* the event list is created dynamically during the evaluation of resource
 	 * reservations. It is a sorted list of all_resresv, initialized to NULL to
 	 * appropriately be freed in free_event_list */
-	nsinfo->calendar = dup_event_list(osinfo->calendar, nsinfo);
-	if (nsinfo->calendar == NULL) {
-		free_server(nsinfo);
-		return NULL;
+	calendar = dup_event_list(osinfo.calendar, this);
+	if (calendar == NULL) {
+		free_server_info();
+		throw sched_exception("Unable to duplicate calendar", SCHD_ERROR);
 	}
 
-	nsinfo->running_jobs =
-		resource_resv_filter(nsinfo->jobs, nsinfo->sc.total,
+	running_jobs =
+		resource_resv_filter(jobs, sc.total,
 		check_run_job, NULL, FILTER_FULL);
 
-	nsinfo->exiting_jobs =
-		resource_resv_filter(nsinfo->jobs, nsinfo->sc.total,
+	exiting_jobs =
+		resource_resv_filter(jobs, sc.total,
 		check_exit_job, NULL, 0);
 
-	nsinfo->num_preempted = osinfo->num_preempted;
+	num_preempted = osinfo.num_preempted;
 
-	if (osinfo->qrun_job != NULL)
-		nsinfo->qrun_job = find_resource_resv(nsinfo->jobs,
-			osinfo->qrun_job->name);
+	if (osinfo.qrun_job != NULL)
+		qrun_job = find_resource_resv(jobs,
+			osinfo.qrun_job->name);
 
-	for (i = 0; i < NUM_PPRIO; i++)
-		nsinfo->preempt_count[i] = osinfo->preempt_count[i];
+	for (int i = 0; i < NUM_PPRIO; i++)
+		preempt_count[i] = osinfo.preempt_count[i];
 
 #ifdef NAS /* localmod 034 */
-	if (!site_dup_shares(osinfo, nsinfo)) {
-		free_server(nsinfo);
-		return NULL;
+	if (!site_dup_shares(&osinfo, this)) {
+		free_server_info();
+		throw sched_exception("Unable to duplicate shares", SCHD_ERROR);
 	}
 #endif /* localmod 034 */
 
@@ -2268,72 +2208,70 @@ dup_server_info(server_info *osinfo)
 	/* the jobs are not dupped when we dup the nodes, so we need to copy
 	 * the node's job arrays now
 	 */
-	for (i = 0; osinfo->nodes[i] != NULL; i++)
-		nsinfo->nodes[i]->job_arr =
-			copy_resresv_array(osinfo->nodes[i]->job_arr, nsinfo->jobs);
+	for (int i = 0; osinfo.nodes[i] != NULL; i++)
+		nodes[i]->job_arr =
+			copy_resresv_array(osinfo.nodes[i]->job_arr, jobs);
 
-	nsinfo->num_parts = osinfo->num_parts;
-	if (osinfo->nodepart != NULL) {
-		nsinfo->nodepart = dup_node_partition_array(osinfo->nodepart, nsinfo);
-		if (nsinfo->nodepart == NULL) {
-			free_server(nsinfo);
-			return NULL;
+	num_parts = osinfo.num_parts;
+	if (osinfo.nodepart != NULL) {
+		nodepart = dup_node_partition_array(osinfo.nodepart, this);
+		if (nodepart == NULL) {
+			free_server_info();
+			throw sched_exception("Unable to duplicate node partition", SCHD_ERROR);
 		}
 	}
-	nsinfo->allpart = dup_node_partition(osinfo->allpart, nsinfo);
-	if (osinfo->hostsets != NULL) {
+	allpart = dup_node_partition(osinfo.allpart, this);
+	if (osinfo.hostsets != NULL) {
 		int j, k;
-		nsinfo->hostsets = dup_node_partition_array(osinfo->hostsets, nsinfo);
-		if (nsinfo->hostsets == NULL) {
-			free_server(nsinfo);
-			return NULL;
+		hostsets = dup_node_partition_array(osinfo.hostsets, this);
+		if (hostsets == NULL) {
+			free_server_info();
+			throw sched_exception("Unable to duplicate hostsets", SCHD_ERROR);
 		}
 		/* reattach nodes to their host sets*/
-		for (j = 0; nsinfo->hostsets[j] != NULL; j++) {
-			node_partition *hset = nsinfo->hostsets[j];
+		for (j = 0; hostsets[j] != NULL; j++) {
+			node_partition *hset = hostsets[j];
 			for (k = 0; hset->ninfo_arr[k] != NULL; k++)
 				hset->ninfo_arr[k]->hostset = hset;
 		}
-		nsinfo->num_hostsets = osinfo->num_hostsets;
+		num_hostsets = osinfo.num_hostsets;
 	}
 
 	/* the running resvs are not dupped when we dup the nodes, so we need to copy
 	 * the node's running resvs arrays now
 	 */
-	for (i = 0; osinfo->nodes[i] != NULL; i++) {
-		nsinfo->nodes[i]->run_resvs_arr =
-			copy_resresv_array(osinfo->nodes[i]->run_resvs_arr, nsinfo->resvs);
-		nsinfo->nodes[i]->np_arr =
-			copy_node_partition_ptr_array(osinfo->nodes[i]->np_arr, nsinfo->nodepart);
-		if (nsinfo->calendar != NULL)
-			nsinfo->nodes[i]->node_events = dup_te_lists(osinfo->nodes[i]->node_events, nsinfo->calendar->next_event);
+	for (int i = 0; osinfo.nodes[i] != NULL; i++) {
+		nodes[i]->run_resvs_arr =
+			copy_resresv_array(osinfo.nodes[i]->run_resvs_arr, resvs);
+		nodes[i]->np_arr =
+			copy_node_partition_ptr_array(osinfo.nodes[i]->np_arr, nodepart);
+		if (calendar != NULL)
+			nodes[i]->node_events = dup_te_lists(osinfo.nodes[i]->node_events, calendar->next_event);
 	}
-	nsinfo->buckets = dup_node_bucket_array(osinfo->buckets, nsinfo);
+	buckets = dup_node_bucket_array(osinfo.buckets, this);
 	/* Now that all job information has been created, time to associate
 	 * jobs to each other if they have runone dependency
 	 */
-	associate_dependent_jobs(nsinfo);
+	associate_dependent_jobs(this);
 
-	for (i = 0; nsinfo->running_jobs[i] != NULL; i++) {
-		if ((nsinfo->running_jobs[i]->job->is_subjob) &&
-		    (associate_array_parent(nsinfo->running_jobs[i], nsinfo) == 1)) {
-			free_server_info(nsinfo);
-			return NULL;
+	for (int i = 0; running_jobs[i] != NULL; i++) {
+		if ((running_jobs[i]->job->is_subjob) &&
+			(associate_array_parent(running_jobs[i], this) == 1)) {
+			free_server_info();
+			throw sched_exception("Unable to associate running subjob with parent", SCHD_ERROR);
 		}
 	}
 
-	if (osinfo->job_sort_formula != NULL) {
-		nsinfo->job_sort_formula = string_dup(osinfo->job_sort_formula);
-		if (nsinfo->job_sort_formula == NULL) {
-			free_server_info(nsinfo);
-			return NULL;
+	if (osinfo.job_sort_formula != NULL) {
+		job_sort_formula = string_dup(osinfo.job_sort_formula);
+		if (job_sort_formula == NULL) {
+			free_server_info();
+			throw sched_exception("Unable to duplicate job_sort_fornula", SCHD_ERROR);
 		}
 	}
 
 	/* Copy the map of server psets */
-	nsinfo->svr_to_psets = dup_server_psets(osinfo->svr_to_psets, nsinfo);
-
-	return nsinfo;
+	dup_server_psets(osinfo.svr_to_psets);
 }
 
 /**
@@ -2617,7 +2555,7 @@ free_counts_list(counts_map &ctslist)
  * @par MT-Safe:	no
  */
 counts *
-dup_counts(counts *octs)
+dup_counts(const counts *octs)
 {
 	counts *ncts;
 
@@ -2633,7 +2571,7 @@ dup_counts(counts *octs)
  *
  * @return	new counts_map
  */
-counts_map dup_counts_map(counts_map &omap)
+counts_map dup_counts_map(const counts_map &omap)
 {
     counts_map nmap;
     for (auto iter: omap)

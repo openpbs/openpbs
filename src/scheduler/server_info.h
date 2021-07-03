@@ -89,11 +89,6 @@ schd_resource *find_resource_by_str(schd_resource *reslist, const std::string& n
 schd_resource *find_resource(schd_resource *reslist, resdef *def);
 
 /*
- *	free_server_info - free the space used by a server_info structure
- */
-void free_server_info(server_info *sinfo);
-
-/*
  *      free_resource - free a resource struct
  */
 void free_resource(schd_resource *res);
@@ -102,11 +97,6 @@ void free_resource(schd_resource *res);
  *      free_resource_list - free a resource list
  */
 void free_resource_list(schd_resource *res_list);
-
-/*
- *      new_server_info - allocate and initalize a new server_info struct
- */
-server_info *new_server_info(int limallocflag);
 
 /*
  *      new_resource - allocate and initialize new resoruce struct
@@ -142,7 +132,7 @@ int create_server_arrays(server_info *sinfo);
 /*
  *	copy_server_arrays - copy server's jobs and all_resresv arrays
  */
-int copy_server_arrays(server_info *nsinfo, server_info *osinfo);
+int copy_server_arrays(server_info *nsinfo, const server_info *osinfo);
 
 
 /*
@@ -185,11 +175,6 @@ int check_running_job_not_in_reservation(resource_resv *job, const void *arg);
  *				running reservations
  */
 int check_resv_running_on_node(resource_resv *resv, const void *arg);
-
-/*
- *      dup_server - duplicate a server_info struct
- */
-server_info *dup_server_info(server_info *osinfo);
 
 /*
  *      dup_resource_list - dup a resource list
@@ -260,12 +245,12 @@ void free_counts_list(counts_map &ctslist);
 /*
  *      dup_counts - duplicate a counts structure
  */
-counts *dup_counts(counts *octs);
+counts *dup_counts(const counts *octs);
 
 /*
  *	dup_counts_map - duplicate counts_map
  */
-counts_map dup_counts_map (counts_map &omap);
+counts_map dup_counts_map (const counts_map &omap);
 
 /*
  *      find_counts - find a counts structure by name

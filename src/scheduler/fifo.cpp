@@ -1128,7 +1128,7 @@ end_cycle_tasks(server_info *sinfo)
 	 */
 	if (sinfo != NULL) {
 		sinfo->fstree = NULL;
-		free_server(sinfo);	/* free server and queues and jobs */
+		delete sinfo;	/* free server and queues and jobs */
 	}
 
 	/* close any open connections to peers */
@@ -1867,11 +1867,14 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		if (find_timed_event(nexte, topjob->name, IGNORE_DISABLED_EVENTS, TIMED_NOEVENT, 0) != NULL)
 			return 1;
 	}
-	if ((nsinfo = dup_server_info(sinfo)) == NULL)
+	try {
+		nsinfo = new server_info(*sinfo);
+	} catch (std::exception &e) {
 		return 0;
+	}
 
 	if ((njob = find_resource_resv_by_indrank(nsinfo->jobs, topjob->resresv_ind, topjob->rank)) == NULL) {
-		free_server(nsinfo);
+		delete nsinfo;
 		return 0;
 	}
 
@@ -1900,7 +1903,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		if (topjob->job->is_array) {
 			tjob = queue_subjob(topjob, sinfo, topjob->job->queue);
 			if (tjob == NULL) {
-				free_server(nsinfo);
+				delete nsinfo;
 				return 0;
 			}
 
@@ -1909,7 +1912,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 			if (njob == NULL) {
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
 					"Can't find new subjob in simulated universe");
-				free_server(nsinfo);
+				delete nsinfo;
 				return 0;
 			}
 			/* The subjob is just for the calendar, not for running */
@@ -1946,11 +1949,11 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 					bjob->execselect = parse_selspec(selectspec);
 				}
 			} else {
-				free_server(nsinfo);
+				delete nsinfo;
 				return 0;
 			}
 		} else {
-			free_server(nsinfo);
+			delete nsinfo;
 			return 0;
 		}
 
@@ -1964,14 +1967,14 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 
 		auto te_start = create_event(TIMED_RUN_EVENT, bjob->start, bjob, NULL, NULL);
 		if (te_start == NULL) {
-			free_server(nsinfo);
+			delete nsinfo;
 			return 0;
 		}
 		add_event(sinfo->calendar, te_start);
 
 		auto te_end = create_event(TIMED_END_EVENT, bjob->end, bjob, NULL, NULL);
 		if (te_end == NULL) {
-			free_server(nsinfo);
+			delete nsinfo;
 			return 0;
 		}
 		add_event(sinfo->calendar, te_end);
@@ -2021,10 +2024,10 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 	} else if (start_time == 0) {
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING, topjob->name,
 			"Error in calculation of start time of top job");
-		free_server(nsinfo);
+		delete nsinfo;
 		return 0;
 	}
-	free_server(nsinfo);
+	delete nsinfo;
 
 	return 1;
 }

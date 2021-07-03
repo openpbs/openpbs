@@ -3210,7 +3210,9 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	}
 
 	/* use locally dup'd copy of sinfo so we don't modify the original */
-	if ((nsinfo = dup_server_info(sinfo)) == NULL) {
+	try {
+	    nsinfo = new server_info(*sinfo);
+	} catch (std::exception &e) {
 		free_schd_error_list(full_err);
 		free(pjobs);
 		free_string_array(preempt_targets_list);
@@ -3476,7 +3478,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			*no_of_jobs = i;
 	}
 cleanup:
-	free_server(nsinfo);
+	delete nsinfo;
 	free(pjobs);
 	free(prjobs);
 	free_schd_error_list(full_err);

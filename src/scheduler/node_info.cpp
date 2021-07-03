@@ -1460,7 +1460,7 @@ dup_node_info(node_info *onode, server_info *nsinfo, unsigned int flags)
 		nnode->svr_node = find_node_by_indrank(nsinfo->nodes, onode->node_ind, onode->rank);
 
 	/* Duplicate list of jobs and running reservations.
-	 * If caller is dup_server_info() then nsinfo->resvs/jobs should be NULL,
+	 * If caller is server_info's copy constructor then nsinfo->resvs/jobs should be NULL,
 	 * but running reservations and jobs are collected later in the caller.
 	 * Otherwise, we collect running reservations or jobs here.
 	 */

@@ -69,7 +69,7 @@
 #include "site_queue.h"
 #endif
 
-struct server_info;
+class server_info;
 struct job_info;
 struct schd_resource;
 struct resource_req;
@@ -103,6 +103,7 @@ struct sort_info;
 class resource_resv;
 class node_info;
 class queue_info;
+class sched_exception;
 
 
 typedef struct state_count state_count;
@@ -306,7 +307,7 @@ class selspec
 	selspec();
 	selspec(const selspec&);
 	selspec& operator=(const selspec&);
-	~selspec();
+	virtual ~selspec();
 };
 
 /* for description of these bits, check the PBS admin guide or scheduler IDS */
@@ -383,8 +384,9 @@ struct schedattrs
 	long server_dyn_res_alarm;
 };
 
-struct server_info
+class server_info
 {
+	public:
 	bool has_soft_limit:1;	/* server has a soft user/grp limit set */
 	bool has_hard_limit:1;	/* server has a hard user/grp limit set */
 	bool has_mult_express:1;	/* server has multiple express queues */
@@ -476,6 +478,15 @@ struct server_info
 	/* localmod 034 */
 	share_head *share_head;	/* root of share info */
 #endif
+	// Class methods
+	void free_server_info();
+	void init_server_info();
+	server_info();
+	server_info(int);
+	server_info(const server_info &);
+	~server_info();
+	server_info & operator=(const server_info &);
+	void dup_server_psets(const std::unordered_map<std::string, node_partition*>& spsets);
 };
 
 class queue_info
@@ -541,7 +552,7 @@ class queue_info
 
 	explicit queue_info(const char *);
 	queue_info(queue_info&, server_info *);
-	~queue_info();
+	virtual ~queue_info();
 };
 
 struct job_info
@@ -726,7 +737,7 @@ struct node_info
 	char *svr_inst_id;
 
 	explicit node_info(const std::string& name);
-	~node_info();
+	virtual ~node_info();
 };
 
 struct resv_info
@@ -818,7 +829,7 @@ class resource_resv
 	timed_event *end_event;		   /* end event in calendar */
 
 	explicit resource_resv(const std::string& rname);
-	~resource_resv();
+	virtual ~resource_resv();
 };
 
 class resource_type
@@ -889,7 +900,7 @@ class prev_job_info
 	prev_job_info(const prev_job_info &);
 	prev_job_info(prev_job_info &&) noexcept;
 	prev_job_info& operator=(const prev_job_info&);
-	~prev_job_info();
+	virtual ~prev_job_info();
 };
 
 class counts
@@ -902,7 +913,7 @@ class counts
 	counts(const std::string &);
 	counts(const counts &);
 	counts& operator=(const counts &);
-	~counts();
+	virtual ~counts();
 };
 
 struct resource_count
@@ -925,7 +936,7 @@ class fairshare_head
 	fairshare_head();
 	fairshare_head(fairshare_head&);
 	fairshare_head& operator=(fairshare_head&);
-	~fairshare_head();
+	virtual ~fairshare_head();
 };
 
 class group_info
@@ -1001,7 +1012,7 @@ class np_cache
 	np_cache();
 	np_cache(const np_cache &);
 	np_cache& operator=(const np_cache &);
-	~np_cache();
+	virtual ~np_cache();
 };
 
 /* header to usage file.  Needs to be EXACTLY the same size as a
@@ -1265,5 +1276,22 @@ struct chunk_map {
 struct resresv_filter {
 	resource_resv *job;
 	schd_error *err;		/* reason why set can not run*/
+};
+
+class sched_exception: public std::exception
+{
+	public:
+	sched_exception(const sched_exception &e);
+	sched_exception &operator =(const sched_exception &e);
+	sched_exception (const std::string &str, const int &err);
+	const char * what();
+	int get_error_code() const;
+	const std::string get_message() const;
+	virtual ~sched_exception();
+	sched_exception() = delete;
+	private:
+	std::string message;
+	int error_code;
+
 };
 #endif	/* _DATA_TYPES_H */
