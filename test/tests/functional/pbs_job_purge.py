@@ -53,8 +53,6 @@ class TestJobPurge(TestFunctional):
         """
         a = {'resources_available.ncpus': 3}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
-        jobs_dir_path = os.path.join(
-            self.server.pbs_conf['PBS_HOME'], 'mom_priv', 'jobs/')
         # Submit a normal and an array job
         j = Job(TEST_USER)
         j.set_sleep_time(30)
@@ -74,5 +72,7 @@ class TestJobPurge(TestFunctional):
         jobs_suffix_list = ['.JB', '.SC', '.TK']
         for jobid in jobid_list:
             for suffix in jobs_suffix_list:
-                job_file = jobs_dir_path + jobid + suffix
-                self.assertFalse(self.du.isfile(path=job_file, sudo=True))
+                job_file = self.mom.get_formed_path(
+                            self.mom.pbs_conf['PBS_HOME'],
+                            'mom_priv', 'jobs', jobid + suffix)
+                self.assertFalse(self.mom.isfile(path=job_file, sudo=True))

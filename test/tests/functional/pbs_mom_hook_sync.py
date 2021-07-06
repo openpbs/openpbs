@@ -376,8 +376,9 @@ class TestMomHookSync(TestFunctional):
                     srvret = None
                     continue
 
-            file = os.path.join(self.momB.pbs_conf['PBS_HOME'], 'mom_priv',
-                                'hooks', 'resourcedef')
+            file = self.momB.get_formed_path(self.momB.pbs_conf['PBS_HOME'],
+                                             'mom_priv', 'hooks',
+                                             'resourcedef')
             momret = self.momB.cat(file, logerr=False,
                                    sudo=True)
             if momret['rc'] != 0 or len(momret['out']) == 0:
@@ -406,8 +407,8 @@ class TestMomHookSync(TestFunctional):
         self.server.expect(NODE, 'state', id=self.momB.shortname, op=UNSET)
 
         # check if rescdef is deleted
-        file = os.path.join(self.momB.pbs_conf['PBS_HOME'], 'mom_priv',
-                            'resourcedef')
+        file = self.momB.get_formed_path(self.momB.pbs_conf['PBS_HOME'],
+                                         'mom_priv', 'resourcedef')
         self.assertFalse(
             self.momB.du.isfile(self.momB.hostname, file, sudo=True),
             "resourcedef not deleted at mom")
