@@ -2591,7 +2591,7 @@ Time4resv(struct work_task *ptask)
 					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__,
 						"resv_begin event: accept req by default");
 			}
-			free(preq);
+			free_br(preq);
 		}
 
 		presv->resv_start_task = NULL;
