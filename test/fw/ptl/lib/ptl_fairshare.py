@@ -289,9 +289,9 @@ class Fairshare(object):
         self.user = user
         _m = ['fairshare']
         if self.sc_name is not None:
-            _m += ['-', self.sc_name]
+            _m += ['-', str(self.sc_name)]
         if self.user is not None:
-            _m += ['-', self.user]
+            _m += ['-', str(self.user)]
         _m += [':']
         self.logprefix = "".join(_m)
 
