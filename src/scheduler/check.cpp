@@ -1386,12 +1386,12 @@ dynamic_avail(schd_resource *res)
  * @return	resource amount
  */
 sch_resource_t
-find_counts_elm(counts_map &cts_list, const std::string &name, resdef *rdef, counts **cnt, resource_count **rcount)
+find_counts_elm(counts_umap &cts_list, const std::string &name, resdef *rdef, counts **cnt, resource_count **rcount)
 {
 	resource_count *res_lim;
 	counts *cts;
 
-	if (name == empty_str)
+	if (name.empty())
 		return 0;
 
 	if ((cts = find_counts(cts_list, name)) != NULL) {
@@ -1675,7 +1675,7 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 	 * If it doesn't exist, we'll create it and add it to the cache
 	 */
 	if (resresv->place_spec->group != NULL) {
-		string_vector grouparr {resresv->place_spec->group};
+		std::vector<std::string> grouparr {resresv->place_spec->group};
 		npc = find_alloc_np_cache(policy, sinfo->npc_arr, grouparr, ninfo_arr, cmp_placement_sets);
 		if (npc != NULL)
 			nodepart = npc->nodepart;

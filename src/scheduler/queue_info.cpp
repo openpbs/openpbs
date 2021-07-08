@@ -98,7 +98,7 @@
  * @return	pointer to the head of the queue structure
  *
  */
-qinfo_vector
+std::vector<queue_info *>
 query_queues(status *policy, int pbs_sd, server_info *sinfo)
 {
 	/* the linked list of queues returned from the server */
@@ -108,7 +108,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	struct batch_status *cur_queue;
 
 	/* array of pointers to internal scheduling structure for queues */
-	qinfo_vector qinfo_arr = {};
+	std::vector<queue_info *> qinfo_arr = {};
 
 	/* the current queue we are working on */
 	queue_info *qinfo;
@@ -240,7 +240,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 				if (qinfo->has_soft_limit || qinfo->has_hard_limit) {
 					counts *allcts;
 					allcts = find_alloc_counts(qinfo->alljobcounts,
-						std::string(PBS_ALL_ENTITY));
+						PBS_ALL_ENTITY);
 
 					if (qinfo->running_jobs != NULL) {
 						/* set the user and group counts */
@@ -532,7 +532,7 @@ queue_info::queue_info(const char *qname): name(qname)
  */
 
 void
-free_queues(qinfo_vector &qarr)
+free_queues(std::vector<queue_info *> &qarr)
 {
 	if (qarr.empty())
 		return;
@@ -617,7 +617,7 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 			cts = find_alloc_counts(qinfo->user_counts, resresv->user);
 			update_counts_on_run(cts, resresv->resreq);
 
-			auto allcts = find_alloc_counts(qinfo->alljobcounts, std::string(PBS_ALL_ENTITY));
+			auto allcts = find_alloc_counts(qinfo->alljobcounts, PBS_ALL_ENTITY);
 			update_counts_on_run(allcts, resresv->resreq);
 		}
 	}
@@ -695,7 +695,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv, const char *job_s
 			cts = find_counts(qinfo->user_counts, resresv->user);
 			update_counts_on_end(cts, resresv->resreq);
 
-			cts = find_alloc_counts(qinfo->alljobcounts, std::string(PBS_ALL_ENTITY));
+			cts = find_alloc_counts(qinfo->alljobcounts, PBS_ALL_ENTITY);
 			update_counts_on_end(cts, resresv->resreq);
 		}
 	}
@@ -731,10 +731,10 @@ queue_info::~queue_info()
  * @return	the duplicated queue array
  *
  */
-qinfo_vector
-dup_queues(const qinfo_vector &oqueues, server_info *nsinfo)
+std::vector<queue_info *>
+dup_queues(const std::vector<queue_info *> &oqueues, server_info *nsinfo)
 {
-	qinfo_vector new_queues = {};
+	std::vector<queue_info *> new_queues = {};
 
 	if (oqueues.empty())
 		return new_queues;
@@ -795,14 +795,14 @@ queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.nam
 #endif
 
 	qres = dup_resource_list(oqinfo.qres);
-	alljobcounts = dup_counts_map(oqinfo.alljobcounts);
-	group_counts = dup_counts_map(oqinfo.group_counts);
-	project_counts = dup_counts_map(oqinfo.project_counts);
-	user_counts = dup_counts_map(oqinfo.user_counts);
-	total_alljobcounts = dup_counts_map(oqinfo.total_alljobcounts);
-	total_group_counts = dup_counts_map(oqinfo.total_group_counts);
-	total_project_counts = dup_counts_map(oqinfo.total_project_counts);
-	total_user_counts = dup_counts_map(oqinfo.total_user_counts);
+	alljobcounts = dup_counts_umap(oqinfo.alljobcounts);
+	group_counts = dup_counts_umap(oqinfo.group_counts);
+	project_counts = dup_counts_umap(oqinfo.project_counts);
+	user_counts = dup_counts_umap(oqinfo.user_counts);
+	total_alljobcounts = dup_counts_umap(oqinfo.total_alljobcounts);
+	total_group_counts = dup_counts_umap(oqinfo.total_group_counts);
+	total_project_counts = dup_counts_umap(oqinfo.total_project_counts);
+	total_user_counts = dup_counts_umap(oqinfo.total_user_counts);
 	nodepart = dup_node_partition_array(oqinfo.nodepart, nsinfo);
 	allpart = dup_node_partition(oqinfo.allpart, nsinfo);
 	node_group_key = oqinfo.node_group_key;
@@ -848,7 +848,7 @@ queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.nam
  *
  */
 queue_info *
-find_queue_info(qinfo_vector &qinfo_arr, const std::string& name)
+find_queue_info(std::vector<queue_info *> &qinfo_arr, const std::string& name)
 {
 	int i;
 

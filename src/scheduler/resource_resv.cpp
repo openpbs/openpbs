@@ -120,9 +120,6 @@
  */
 resource_resv::resource_resv(const std::string& rname): name(rname) 
 {
-	user = empty_str;
-	group = empty_str;
-	project = empty_str;
 	nodepart_name = NULL;
 	select = NULL;
 	execselect = NULL;
@@ -760,13 +757,13 @@ is_resource_resv_valid(resource_resv *resresv, schd_error *err)
 		return 0;
 	}
 
-	if (resresv->user == empty_str) {
+	if (resresv->user.empty()) {
 		set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
 		set_schd_error_arg(err, SPECMSG, "No User");
 		return 0;
 	}
 
-	if (resresv->group == empty_str) {
+	if (resresv->group.empty()) {
 		set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
 		set_schd_error_arg(err, SPECMSG, "No Group");
 		return 0;

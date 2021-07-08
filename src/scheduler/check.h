@@ -133,7 +133,7 @@ sch_resource_t dynamic_avail(schd_resource *res);
  *	cnt	- output param for address of the matching counts structure
  *	rreq	- output param for address of the matching resource_count structure
  */
-sch_resource_t find_counts_elm(counts_map &cts_list, const std::string &name, resdef *res, counts **cnt, resource_count **rreq);
+sch_resource_t find_counts_elm(counts_umap &cts_list, const std::string &name, resdef *res, counts **cnt, resource_count **rreq);
 
 
 /*

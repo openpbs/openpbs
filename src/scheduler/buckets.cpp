@@ -393,7 +393,7 @@ char *create_node_bucket_name(status *policy, node_bucket *nb) {
  * @retval NULL on error
  */
 node_bucket **
-create_node_buckets(status *policy, node_info **nodes, qinfo_vector &queues, unsigned int flags) {
+create_node_buckets(status *policy, node_info **nodes, std::vector<queue_info *> &queues, unsigned int flags) {
 	int i;
 	int j = 0;
 	node_bucket **buckets = NULL;
@@ -1077,7 +1077,7 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 	 * If it doesn't exist, we'll create it and add it to the cache
 	 */
 	if (resresv->place_spec->group != NULL) {
-		string_vector groupvec{resresv->place_spec->group};
+		std::vector<std::string> groupvec{resresv->place_spec->group};
 		np_cache *npc = NULL;
 		node_info **ninfo_arr;
 

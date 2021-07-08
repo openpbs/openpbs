@@ -1446,8 +1446,8 @@ dup_node_info(node_info *onode, server_info *nsinfo, unsigned int flags)
 	nnode->max_user_run = onode->max_user_run;
 	nnode->max_group_run = onode->max_group_run;
 
-	nnode->group_counts = dup_counts_map(onode->group_counts);
-	nnode->user_counts = dup_counts_map(onode->user_counts);
+	nnode->group_counts = dup_counts_umap(onode->group_counts);
+	nnode->user_counts = dup_counts_umap(onode->user_counts);
 
 	set_current_aoe(nnode, onode->current_aoe);
 	set_current_eoe(nnode, onode->current_eoe);
@@ -2461,7 +2461,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 		hostsets = resresv->server->hostsets;
 
 	if (hostsets == NULL) {
-		string_vector		host_arr{"host"};
+		std::vector<std::string> host_arr{"host"};
 		npc = find_alloc_np_cache(policy, resresv->server->npc_arr, host_arr, nptr, NULL);
 		if (npc != NULL)
 			hostsets = npc->nodepart;

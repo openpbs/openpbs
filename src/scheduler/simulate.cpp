@@ -1080,7 +1080,7 @@ new_timed_event()
  *
  * @par
  * 		dup_timed_event() modifies the run_event and end_event memebers of the resource_resv.
- * 		If dup_timed_event() is not called as part of dup_server_info(), the resource_resvs of
+ * 		If dup_timed_event() is not called as part of server_info() copy constructor, the resource_resvs of
  * 		the main server_info will be modified, even if server_info->calendar is not.
  *
  * @param[in]	ote 	- timed_event to copy

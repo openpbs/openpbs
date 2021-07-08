@@ -233,35 +233,25 @@ int is_unassoc_node(node_info *ninfo, void *arg);
 counts *new_counts(void);
 
 /*
- *      free_counts - free a counts structure
- */
-void free_counts(counts *cts);
-
-/*
  *      free_counts_list - free a list of counts structures
  */
-void free_counts_list(counts_map &ctslist);
+void free_counts_list(counts_umap &ctslist);
 
 /*
- *      dup_counts - duplicate a counts structure
+ *	dup_counts_umap - duplicate counts_umap
  */
-counts *dup_counts(const counts *octs);
-
-/*
- *	dup_counts_map - duplicate counts_map
- */
-counts_map dup_counts_map (const counts_map &omap);
+counts_umap dup_counts_umap (const counts_umap &omap);
 
 /*
  *      find_counts - find a counts structure by name
  */
-counts *find_counts(counts_map &ctslist, const std::string &name);
+counts *find_counts(counts_umap &ctslist, const std::string &name);
 
 /*
  *      find_alloc_counts - find a counts structure by name or allocate a new
  *                          counts, name it, and add it to the end of the list
  */
-counts *find_alloc_counts(counts_map &ctslist, const std::string &name);
+counts *find_alloc_counts(counts_umap &ctslist, const std::string &name);
 
 /*
  *      update_counts_on_run - update a counts struct on the running of a job
@@ -285,8 +275,8 @@ void update_counts_on_end(counts *cts, resource_req *resreq);
  *
  *	  returns void
  */
-void counts_max(counts_map &cmax, counts_map &ncounts);
-void counts_max(counts_map &cmax, counts *ncounts);
+void counts_max(counts_umap &cmax, counts_umap &ncounts);
+void counts_max(counts_umap &cmax, counts *ncounts);
 
 /*
  *      check_run_job - function used by resource_resv_filter to filter out

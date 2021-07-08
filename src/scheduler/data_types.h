@@ -139,10 +139,7 @@ typedef struct th_data_dup_resresv th_data_dup_resresv;
 typedef struct th_data_query_jinfo th_data_query_jinfo;
 typedef struct th_data_free_resresv th_data_free_resresv;
 
-typedef std::unordered_map<std::string, counts *> counts_map;
-typedef std::vector<std::string> string_vector;
-typedef std::vector<np_cache *> np_cache_vector;
-typedef std::vector<queue_info *> qinfo_vector;
+using counts_umap = std::unordered_map<std::string, counts *>;
 #ifdef NAS
 /* localmod 034 */
 /*
@@ -413,9 +410,9 @@ class server_info
 	int num_nodes;			/* number of nodes associated with the server */
 	int num_resvs;			/* number of reservations on the server */
 	int num_preempted;		/* number of jobs currently preempted */
-	string_vector node_group_key;		/* the node grouping resources */
+	std::vector<std::string> node_group_key;		/* the node grouping resources */
 	state_count sc;			/* number of jobs in each state */
-	qinfo_vector queues;		/* array of queues */
+	std::vector<queue_info *> queues;		/* array of queues */
 	queue_info ***queue_list;	/* 3 dimensional array, used to order jobs in round_robin */
 	node_info **nodes;		/* array of nodes associated with the server */
 	node_info **unassoc_nodes;	/* array of nodes not associated with queues */
@@ -435,19 +432,19 @@ class server_info
 	 */
 	int preempt_count[NUM_PPRIO + 1];
 
-	counts_map group_counts;		/* group resource and running counts */
-	counts_map project_counts;		/* project resource and running counts */
-	counts_map user_counts;		/* user resource and running counts */
-	counts_map alljobcounts;		/* overall resource and running counts */
+	counts_umap group_counts;		/* group resource and running counts */
+	counts_umap project_counts;		/* project resource and running counts */
+	counts_umap user_counts;		/* user resource and running counts */
+	counts_umap alljobcounts;		/* overall resource and running counts */
 
 	/*
 	 * Resource/Run counts list to store counts for all jobs which
 	 * are running/queued/suspended.
 	 */
-	counts_map total_group_counts;
-	counts_map total_project_counts;
-	counts_map total_user_counts;
-	counts_map total_alljobcounts;
+	counts_umap total_group_counts;
+	counts_umap total_project_counts;
+	counts_umap total_user_counts;
+	counts_umap total_alljobcounts;
 
 	node_partition **nodepart;	/* array pointers to node partitions */
 	int num_parts;			/* number of node partitions(node_group_key) */
@@ -462,7 +459,7 @@ class server_info
 	 * be duplicated.  It would be difficult to duplicate correctly, and it is
 	 * just a cache.  It will be regenerated when needed
 	 */
-	np_cache_vector npc_arr;
+	std::vector<np_cache *> npc_arr;
 
 	resource_resv *qrun_job;	/* used if running a job via qrun request */
 	/* policy structure for the server.  This is an easy storage location for
@@ -484,7 +481,7 @@ class server_info
 	server_info();
 	server_info(int);
 	server_info(const server_info &);
-	~server_info();
+	virtual ~server_info();
 	server_info & operator=(const server_info &);
 	void dup_server_psets(const std::unordered_map<std::string, node_partition*>& spsets);
 };
@@ -529,20 +526,20 @@ class queue_info
 	resource_resv **jobs;		/* array of jobs that reside in queue */
 	resource_resv **running_jobs;	/* array of jobs in the running state */
 	node_info **nodes;		/* array of nodes associated with the queue */
-	counts_map group_counts;		/* group resource and running counts */
-	counts_map project_counts;		/* project resource and running counts */
-	counts_map user_counts;		/* user resource and running counts */
-	counts_map alljobcounts;		/* overall resource and running counts */
+	counts_umap group_counts;		/* group resource and running counts */
+	counts_umap project_counts;		/* project resource and running counts */
+	counts_umap user_counts;		/* user resource and running counts */
+	counts_umap alljobcounts;		/* overall resource and running counts */
 	/*
 	 * Resource/Run counts list to store counts for all jobs which
 	 * are running/queued/suspended.
 	 */
-	counts_map total_group_counts;
-	counts_map total_project_counts;
-	counts_map total_user_counts;
-	counts_map total_alljobcounts;
+	counts_umap total_group_counts;
+	counts_umap total_project_counts;
+	counts_umap total_user_counts;
+	counts_umap total_alljobcounts;
 
-	string_vector node_group_key;		/* node grouping resources */
+	std::vector<std::string> node_group_key;		/* node grouping resources */
 	struct node_partition **nodepart; /* array pointers to node partitions */
 	struct node_partition *allpart;   /* partition w/ all nodes assoc with queue*/
 	int num_parts;			/* number of node partitions(node_group_key) */
@@ -703,8 +700,8 @@ struct node_info
 
 	int priority;			/* node priority */
 
-	counts_map group_counts;	/* group resource and running counts */
-	counts_map user_counts;		/* user resource and running counts */
+	counts_umap group_counts;	/* group resource and running counts */
+	counts_umap user_counts;		/* user resource and running counts */
 
 	int max_running;		/* max number of jobs on the node */
 	int max_user_run;		/* max number of jobs running by a user */
@@ -787,9 +784,9 @@ class resource_resv
 	bool will_use_multinode:1;	/* res resv will use multiple nodes */
 
 	const std::string name;		/* name of res resv */
-	std::string user;			/* username of the owner of the res resv */
-	std::string group;			/* exec group of owner of res resv */
-	std::string project;			/* exec project of owner of res resv */
+	std::string user;		/* username of the owner of the res resv */
+	std::string group;		/* exec group of owner of res resv */
+	std::string project;		/* exec project of owner of res resv */
 	char *nodepart_name;		/* name of node partition to run res resv in */
 
 	long sch_priority;		/* scheduler priority of res resv */
@@ -797,7 +794,7 @@ class resource_resv
 	int ec_index;			/* Index into server's job_set array*/
 
 	time_t qtime;			/* time res resv was submitted */
-	long long qrank;			/* time on which we might need to stabilize the sort */
+	long long qrank;		/* time on which we might need to stabilize the sort */
 	time_t start;			/* start time (UNDEFINED means no start time */
 	time_t end;			/* end time (UNDEFINED means no end time */
 	time_t duration;		/* duration of resource resv request */
@@ -1005,7 +1002,7 @@ struct node_partition
 class np_cache
 {
 	public:
-	string_vector resnames;		/* resource names used to create partitions */
+	std::vector<std::string> resnames;		/* resource names used to create partitions */
 	node_info **ninfo_arr;		/* ptr to array of nodes used to create pools */
 	int num_parts;			/* number of partitions in nodepart */
 	node_partition **nodepart;	/* node partitions */

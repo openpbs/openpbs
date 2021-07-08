@@ -387,7 +387,7 @@ find_node_partition_by_rank(node_partition **np_arr, int rank)
  *
  */
 node_partition **
-create_node_partitions(status *policy, node_info **nodes, const string_vector &resnames, unsigned int flags, int *num_parts)
+create_node_partitions(status *policy, node_info **nodes, const std::vector<std::string> &resnames, unsigned int flags, int *num_parts)
 {
 	node_partition **np_arr;
 	node_partition *np;
@@ -406,7 +406,7 @@ create_node_partitions(status *policy, node_info **nodes, const string_vector &r
 	static schd_resource *unset_res = NULL;
 	std::string unset_resname;
 
-	qinfo_vector queues = {};
+	std::vector<queue_info *> queues = {};
 
 	if (nodes == NULL || resnames.empty())
 		return NULL;
@@ -758,18 +758,18 @@ np_cache::np_cache() {
 	num_parts = UNSPECIFIED;
 }
 // copy constructor
-np_cache::np_cache(const np_cache & np_cache_) {
-	ninfo_arr = np_cache_.ninfo_arr;
-	nodepart = np_cache_.nodepart;
-	num_parts = np_cache_.num_parts;
-	resnames = np_cache_.resnames;
+np_cache::np_cache(const np_cache & rnp_cache) {
+	ninfo_arr = rnp_cache.ninfo_arr;
+	nodepart = rnp_cache.nodepart;
+	num_parts = rnp_cache.num_parts;
+	resnames = rnp_cache.resnames;
 }
 // assignment operator
-np_cache& np_cache::operator=(const np_cache &np_cache_) {
-	this->ninfo_arr = np_cache_.ninfo_arr;
-	this->nodepart = np_cache_.nodepart;
-	this->num_parts = np_cache_.num_parts;
-	this->resnames = np_cache_.resnames;
+np_cache& np_cache::operator=(const np_cache &rnp_cache) {
+	this->ninfo_arr = rnp_cache.ninfo_arr;
+	this->nodepart = rnp_cache.nodepart;
+	this->num_parts = rnp_cache.num_parts;
+	this->resnames = rnp_cache.resnames;
 	return  *this;
 }
 np_cache *
@@ -794,7 +794,7 @@ np_cache::~np_cache() {
  * @param[in,out]	npc_arr	-	np cashe array.
  */
 void
-free_np_cache_array(np_cache_vector &npc_arr)
+free_np_cache_array(std::vector<np_cache *> &npc_arr)
 {
 	if (npc_arr.empty())
 		return;
@@ -836,8 +836,8 @@ free_np_cache(np_cache *npc)
  *
  */
 np_cache *
-find_np_cache(const np_cache_vector &npc_arr,
-	const string_vector &resnames, node_info **ninfo_arr)
+find_np_cache(const std::vector<np_cache *> &npc_arr,
+	const std::vector<std::string> &resnames, node_info **ninfo_arr)
 {
 	if (npc_arr.empty() || resnames.empty() || ninfo_arr == NULL)
 		return NULL;
@@ -873,8 +873,8 @@ find_np_cache(const np_cache_vector &npc_arr,
  *
  */
 np_cache *
-find_alloc_np_cache(status *policy, np_cache_vector &pnpc_arr,
-	const string_vector &resnames, node_info **ninfo_arr,
+find_alloc_np_cache(status *policy, std::vector<np_cache *> &pnpc_arr,
+	const std::vector<std::string> &resnames, node_info **ninfo_arr,
 	int (*sort_func)(const void *, const void *))
 {
 	node_partition **nodepart = NULL;
@@ -1211,7 +1211,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 
 	sinfo->allpart = create_specific_nodepart(policy, "all", sinfo->unassoc_nodes, NO_FLAGS);
 	if (sinfo->has_multi_vnode) {
-		const string_vector resstr{"host"};
+		const std::vector<std::string> resstr{"host"};
 		int num;
 		sinfo->hostsets = create_node_partitions(policy, sinfo->nodes,
 			resstr, sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST, &num);
@@ -1265,7 +1265,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 
 		if (sinfo->node_group_enable && (qinfo->has_nodes || !qinfo->node_group_key.empty())) {
 			node_info **ngroup_nodes;
-			string_vector ngkey;
+			std::vector<std::string> ngkey;
 
 			if (qinfo->has_nodes)
 				ngroup_nodes = qinfo->nodes;

@@ -41,7 +41,6 @@
 #define	_CONSTANT_H
 
 #include <math.h>
-#include <string>
 
 /* macro to turn a value from enum preempt into it's bit for the bitfield */
 #define PREEMPT_TO_BIT(X) (1 << (X) )

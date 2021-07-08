@@ -492,7 +492,7 @@ enum match_string_array_ret match_string_array(const char * const *strarr1, cons
 	return SA_NO_MATCH;
 }
 // overloaded
-enum match_string_array_ret match_string_array(const string_vector &strarr1, const string_vector &strarr2)
+enum match_string_array_ret match_string_array(const std::vector<std::string> &strarr1, const std::vector<std::string> &strarr2)
 {
 	unsigned int match = 0;
 
@@ -1585,15 +1585,15 @@ free_ptr_array(void *inp)
  *
  *	@param[in] strlist - the comma delimited string
  *
- *	@return string_vector
+ *	@return std::vector<std::string>
  *
  */
-string_vector
+std::vector<std::string>
 break_comma_list(const std::string &strlist)
 {
 	std::stringstream sstream(strlist);
 	std::string str;
-	string_vector ret;
+	std::vector<std::string> ret;
 	while (std::getline(sstream, str, ','))
 		ret.push_back(str);
 	return ret;

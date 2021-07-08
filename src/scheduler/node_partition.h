@@ -119,7 +119,7 @@ node_partition **copy_node_partition_ptr_array(node_partition **onp_arr, node_pa
  *
  *
  */
-node_partition **create_node_partitions(status *policy, node_info **nodes, const string_vector &resnames,
+node_partition **create_node_partitions(status *policy, node_info **nodes, const std::vector<std::string> &resnames,
 					unsigned int flags, int *num_parts);
 
 /*
@@ -166,7 +166,7 @@ np_cache *new_np_cache(void);
 /*
  *	free_np_cache_array - destructor for array
  */
-void free_np_cache_array(np_cache_vector &npc_arr);
+void free_np_cache_array(std::vector<np_cache *> &npc_arr);
 
 /*
  *	free_np_cache - destructor
@@ -188,15 +188,15 @@ void free_np_cache(np_cache *npc);
  */
 np_cache *
 find_np_cache(np_cache **npc_arr,
-	const string_vector &resnames, node_info **ninfo_arr);
+	const std::vector<std::string> &resnames, node_info **ninfo_arr);
 /*
  *	find_alloc_np_cache - find a np_cache by the array of resource names
  *			      and nodes which created it.  If the np_cache
  *			      does not exist, create it and add it to the list
  */
 np_cache *
-find_alloc_np_cache(status *policy, np_cache_vector &pnpc_arr,
-	const string_vector &resnames, node_info **ninfo_arr,
+find_alloc_np_cache(status *policy, std::vector<np_cache *> &pnpc_arr,
+	const std::vector<std::string> &resnames, node_info **ninfo_arr,
 	int (*sort_func)(const void *, const void *));
 /*
  *	add_np_cache - add an np_cache to an array
