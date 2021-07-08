@@ -1912,7 +1912,10 @@ class Server(Wrappers):
                     attrib['port'] = port
                     if name is None:
                         name = hostname.split('.')[0]
-                    _n = name + str(momnum) + '-' + str(i)
+                    if momnum == 1:
+                        _n = name + '-' + str(i)
+                    else:
+                        _n = name + str(momnum) + '-' + str(i)
                     rc = self.manager(MGR_CMD_CREATE, NODE, attrib, id=_n)
                     if rc != 0:
                         self.logger.error("error creating node " + _n)
