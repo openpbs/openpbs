@@ -439,7 +439,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
             "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job1_select + "\n" + \
             "#PBS -l place=" + self.job1_place + "\n" + \
-            SLEEP_CMD + " 5\n" + \
+            SLEEP_CMD + " 30\n" + \
             "pbs_release_nodes -a\n" + \
             "%s\n" % (FIB50,)
 
@@ -464,7 +464,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
             "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job1_select + "\n" + \
             "#PBS -l place=" + self.job1_place + "\n" + \
-            SLEEP_CMD + " 5\n" + \
+            SLEEP_CMD + " 30\n" + \
             self.pbs_release_nodes_cmd + " " + self.n4 + "\n" + \
             "%s\n" % (FIB50,)
 
