@@ -930,7 +930,9 @@ class PBSService(PBSObject):
                     to current day
         :type day: int
         :param starttime: date timestamp to start matching
+        :type starttime: float
         :param endtime: date timestamp to end matching
+        :type endtime: float
         :param host: Hostname
         :type host: str
         :returns: Last ``<n>`` lines of logfile for ``Server``,
