@@ -281,13 +281,19 @@ class Fairshare(object):
     fs_tag = re.compile(fs_re)
 
     def __init__(self, has_snap=None, pbs_conf={}, sc_name=None,
-                 hostname=None, user=None, logprefix=None):
+                 hostname=None, user=None):
         self.has_snap = has_snap
         self.pbs_conf = pbs_conf
         self.sc_name = sc_name
         self.hostname = hostname
         self.user = user
-        self.logprefix = logprefix
+        _m = ['fairshare']
+        if self.sc_name is not None:
+            _m += ['-', self.sc_name]
+        if self.user is not None:
+            _m += ['-', self.user]
+        _m += [':']
+        self.logprefix = "".join(_m)
 
     def revert_fairshare(self):
         """

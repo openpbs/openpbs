@@ -208,7 +208,7 @@ class Scheduler(PBSService):
 
         self.user = DAEMON_SERVICE_USER
         self.fairshare = Fairshare(self.has_snap, self.pbs_conf, self.sc_name,
-                                   self.hostname, self.user, self.logprefix)
+                                   self.hostname, self.user)
 
         self.dflt_sched_config_file = os.path.join(self.pbs_conf['PBS_EXEC'],
                                                    'etc', 'pbs_sched_config')
