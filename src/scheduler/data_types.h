@@ -383,6 +383,7 @@ struct schedattrs
 
 class server_info
 {
+	void init_server_info();
 	public:
 	bool has_soft_limit:1;	/* server has a soft user/grp limit set */
 	bool has_hard_limit:1;	/* server has a hard user/grp limit set */
@@ -477,13 +478,13 @@ class server_info
 #endif
 	// Class methods
 	void free_server_info();
-	void init_server_info();
 	server_info();
 	server_info(int);
 	server_info(const server_info &);
 	virtual ~server_info();
 	server_info & operator=(const server_info &);
 	void dup_server_psets(const std::unordered_map<std::string, node_partition*>& spsets);
+	void free_server_psets();
 };
 
 class queue_info
@@ -1277,18 +1278,17 @@ struct resresv_filter {
 
 class sched_exception: public std::exception
 {
+	std::string message;
+	enum sched_error_code error_code;
 	public:
 	sched_exception(const sched_exception &e);
-	sched_exception &operator =(const sched_exception &e);
-	sched_exception (const std::string &str, const int &err);
+	sched_exception &operator=(const sched_exception &e);
+	sched_exception (const std::string &str, const enum sched_error_code e);
 	const char * what();
-	int get_error_code() const;
+	enum sched_error_code get_error_code() const;
 	const std::string get_message() const;
 	virtual ~sched_exception();
 	sched_exception() = delete;
-	private:
-	std::string message;
-	int error_code;
 
 };
 #endif	/* _DATA_TYPES_H */

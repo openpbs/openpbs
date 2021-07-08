@@ -317,22 +317,16 @@ copy_node_partition_ptr_array(node_partition **onp_arr, node_partition **new_nps
  *
  */
 node_partition *
-find_node_partition(node_partition **np_arr, const char *name)
+find_node_partition(node_partition **np_arr, const std::string &name)
 {
 	int i;
-	if (np_arr == NULL || name == NULL)
+	if (np_arr == NULL || name.empty())
 		return NULL;
 
-	for (i = 0; np_arr[i] != NULL && strcmp(np_arr[i]->name, name); i++)
+	for (i = 0; np_arr[i] != NULL && strcmp(np_arr[i]->name, name.c_str()); i++)
 		;
 
 	return np_arr[i];
-}
-// overloaded
-node_partition *
-find_node_partition(node_partition **np_arr, const std::string &name)
-{
-	return (find_node_partition(np_arr, name.c_str()));
 }
 
 /**
@@ -905,10 +899,6 @@ find_alloc_np_cache(status *policy, std::vector<np_cache *> &pnpc_arr,
 				npc->resnames = resnames;
 				npc->num_parts = num_parts;
 				npc->nodepart = nodepart;
-				if (npc->resnames.empty()) {
-					free_np_cache(npc);
-					error = 1;
-				}
 				pnpc_arr.push_back(npc);
 			}
 			else {

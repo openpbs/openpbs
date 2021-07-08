@@ -61,7 +61,6 @@
  * 	add_resource_value()
  * 	add_resource_str_arr()
  * 	add_resource_bool()
- * 	delete )
  * 	update_server_on_run()
  * 	update_server_on_end()
  * 	create_server_arrays()
@@ -110,7 +109,6 @@
 #include <ctype.h>
 #include <signal.h>
 #include <sys/wait.h>
-// STL headers
 #include <algorithm>
 #include <exception>
 
@@ -436,7 +434,7 @@ query_server(status *pol, int pbs_sd)
 	 */
 	create_placement_sets(policy, sinfo);
 	if (!sinfo->node_group_enable && !sinfo->node_group_key.empty() &&
-	    (sinfo->node_group_key[0] == std::string("msvr_node_group"))) {
+	    (sinfo->node_group_key[0] == "msvr_node_group")) {
 		auto np = create_node_partitions(policy, sinfo->unassoc_nodes,
 					    sinfo->node_group_key, NP_NONE, &sinfo->num_parts);
 
@@ -956,17 +954,15 @@ find_resource(schd_resource *reslist, resdef *def)
 }
 
 /**
- * @brief	free the sinfo->svr_to_psets map
- * 			Note: this won't be needed once we convert node_partition to a class
- *
- * @param[out]	spsets - the sinfo->svr_to_psets map
+ * @brief	free the svr_to_psets map
+ * 		Note: this won't be needed once we convert node_partition to a class
  *
  * @return void
  */
-static void
-free_server_psets(std::unordered_map<std::string, node_partition *>& spsets)
+void
+server_info::free_server_psets()
 {
-	for (auto& spset : spsets) {
+	for (auto& spset : svr_to_psets) {
 		free_node_partition(spset.second);
 		spset.second = NULL;
 	}
@@ -983,9 +979,15 @@ free_server_psets(std::unordered_map<std::string, node_partition *>& spsets)
 void
 server_info::dup_server_psets(const std::unordered_map<std::string, node_partition*>& spsets)
 {
-
-	for (const auto& spset : spsets)
-		svr_to_psets[spset.first] = dup_node_partition(spset.second, this);
+	for (const auto& spset : spsets) {
+		node_partition *temp = dup_node_partition(spset.second, this);
+		if (temp != NULL)
+			svr_to_psets[spset.first] = temp;
+		else {
+			free_server_psets();
+			return;
+		}
+	}
 }
 
 /**
@@ -1025,14 +1027,12 @@ server_info::free_server_info()
 		free_node_partition_array(nodepart);
 	if (allpart)
 		free_node_partition(allpart);
-	if (!(svr_to_psets.empty()))
-		free_server_psets(svr_to_psets);
+	free_server_psets();
 	if (hostsets != NULL)
 		free_node_partition_array(hostsets);
 	if (nodesigs)
 		free_string_array(nodesigs);
-	if (!npc_arr.empty())
-		free_np_cache_array(npc_arr);
+	free_np_cache_array(npc_arr);
 	if (calendar != NULL)
 		free_event_list(calendar);
 	if (policy != NULL)
@@ -1157,7 +1157,6 @@ void server_info::init_server_info ()
 	pset_metadata_stale = 0;
 	num_parts = 0;
 	res = NULL;
-	queues = {};
 	queue_list = NULL;
 	jobs = NULL;
 	all_resresv = NULL;
@@ -1651,8 +1650,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 		/* We're running a job or reservation, which will affect the cached data.
 		 * We'll flush the cache and rebuild it if needed
 		 */
-		if (!sinfo->npc_arr.empty())
-			free_np_cache_array(sinfo->npc_arr);
+		free_np_cache_array(sinfo->npc_arr);
 
 
 		/* a new job has been run, update running jobs array */
@@ -1757,8 +1755,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	/* We're ending a job or reservation, which will affect the cached data.
 	 * We'll flush the cache and rebuild it if needed
 	 */
-	if (!sinfo->npc_arr.empty())
-		free_np_cache_array(sinfo->npc_arr);
+	free_np_cache_array(sinfo->npc_arr);
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		if (resresv->is_job && resresv->job->is_running) {
@@ -2118,10 +2115,9 @@ server_info::server_info(const server_info &osinfo)
 	/* dup the nodes, if there are any nodes */
 	nodes = dup_nodes(osinfo.nodes, this, NO_FLAGS);
 
-	if (has_nodes_assoc_queue) {
-		unassoc_nodes =
-			node_filter(nodes, num_nodes, is_unassoc_node, NULL, 0);
-	} else
+	if (has_nodes_assoc_queue)
+		unassoc_nodes = node_filter(nodes, num_nodes, is_unassoc_node, NULL, 0);
+	else
 		unassoc_nodes = nodes;
 
 	unordered_nodes = dup_unordered_nodes(osinfo.unordered_nodes, nodes);

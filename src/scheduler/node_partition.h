@@ -132,7 +132,6 @@ node_partition **create_node_partitions(status *policy, node_info **nodes, const
  *      returns found node partition or NULL if not found
  *
  */
-node_partition *find_node_partition(node_partition **np_arr, const char *name);
 node_partition *find_node_partition(node_partition **np_arr, const std::string &name);
 
 /* find node partition by unique rank */
