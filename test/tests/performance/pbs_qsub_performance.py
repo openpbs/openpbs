@@ -51,6 +51,7 @@ class TestQsubPerformance(TestPerformance):
     def submit_jobs(self, qsub_exec_arg=None, env=None):
         """
         Submits n num of jobs according to the arguments provided
+        and returns starttime and endtime of job submission
         :param qsub_exec_arg: Arguments to qsub.
         :type qsub_exec_arg: String. Defaults to None.
         :param env: Environment variable to be set before submittign job.
@@ -68,7 +69,10 @@ class TestQsubPerformance(TestPerformance):
         job_sub_arg += ' -- /bin/sleep 100'
 
         for _ in range(1000):
+            start_time = time.time()
             subprocess.call(job_sub_arg, shell=True, env=env)
+            end_time = time.time()
+        return start_time, end_time
 
     def test_submit_large_env(self):
         """
@@ -78,13 +82,8 @@ class TestQsubPerformance(TestPerformance):
         3. Submit 1000 jobs again with -V as argument to qsub
         4. Collect time taken for both submissions
         """
-        start_time1 = time.time()
-        self.submit_jobs()
-        end_time1 = time.time()
-
-        start_time2 = time.time()
-        self.submit_jobs(qsub_exec_arg="-V")
-        end_time2 = time.time()
+        (start_time1, end_time1) = self.submit_jobs()
+        (start_time2, end_time2) = self.submit_jobs(qsub_exec_arg="-V")
 
         sub_time1 = int(end_time1 - start_time1)
         sub_time2 = int(end_time2 - start_time2)
