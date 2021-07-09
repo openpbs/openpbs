@@ -68,10 +68,10 @@ class TestQsubPerformance(TestPerformance):
 
         job_sub_arg += ' -- /bin/sleep 100'
 
+        start_time = time.time()
         for _ in range(1000):
-            start_time = time.time()
             subprocess.call(job_sub_arg, shell=True, env=env)
-            end_time = time.time()
+        end_time = time.time()
    
         sub_time = int(end_time - start_time)
         return sub_time
