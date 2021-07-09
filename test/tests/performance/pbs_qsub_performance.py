@@ -37,40 +37,53 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-
+import subprocess
 from tests.performance import *
 
 
 class TestQsubPerformance(TestPerformance):
-    """
-    This test suite contains tests of qsub performance
-    """
 
     def setUp(self):
         TestPerformance.setUp(self)
         attr = {'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, attr)
 
-    @timeout(400)
+    def submit_jobs(self, qsub_exec_arg=None, env=None):
+        """
+        Submits n num of jobs according to the arguments provided
+        :param qsub_exec_arg: Arguments to qsub.
+        :type qsub_exec_arg: String. Defaults to None.
+        :param env: Environment variable to be set before submittign job.
+        :type env: Dictionary. Defaults to None.
+        """
+        user = self.du.get_current_user()
+        qsub_path = os.path.join(
+                  self.server.pbs_conf['PBS_EXEC'], 'bin', 'qsub')
+        common_cmd = ' -u ' + user + ' ' + qsub_path
+        if qsub_exec_arg is not None:
+            job_sub_arg = "sudo -E" + common_cmd + ' ' + qsub_exec_arg
+        else:
+            job_sub_arg = 'sudo' + common_cmd
+
+        job_sub_arg += ' -- /bin/sleep 100'
+
+        for _ in range(1000):
+            subprocess.call(job_sub_arg, shell=True, env=env)
+
     def test_submit_large_env(self):
         """
-        submission of 1000 jobs
-        before and after exporting variable
-        to check submission performance
+        This test case does the following
+        1. Submit 1000 jobs
+        2. Set env variable with huge value
+        3. Submit 1000 jobs again with -V as argument to qsub
+        4. Collect time taken for both submissions
         """
-
         start_time1 = time.time()
-        for _ in range(1000):
-            j = Job(TEST_USER)
-            self.server.submit(j)
+        self.submit_jobs()
         end_time1 = time.time()
 
-        os.environ['VARIABLE'] = 'b' * 130000
-
         start_time2 = time.time()
-        for _ in range(1000):
-            j1 = Job(TEST_USER)
-            self.server.submit(j1)
+        self.submit_jobs(qsub_exec_arg="-V")
         end_time2 = time.time()
 
         sub_time1 = int(end_time1 - start_time1)
