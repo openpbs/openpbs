@@ -304,7 +304,10 @@ class PBSLogUtils(object):
                 line = process_head.communicate()[0]
                 line = line.decode("utf-8")
                 ts = line.split(';')[0]
-                pattern = '%m/%d/%Y %H:%M:%S.%f'
+                if '.' in ts:
+                    pattern = '%m/%d/%Y %H:%M:%S.%f'
+                else:
+                    pattern = '%m/%d/%Y %H:%M:%S'
                 epoch = int(time.mktime(time.strptime(ts, pattern)))
                 readcmd = ['tail', '-n', str(taillogs), log]
                 if start > epoch:
@@ -317,6 +320,7 @@ class PBSLogUtils(object):
             if hostname is None or self.du.is_localhost(hostname):
                 if sudo:
                     cmd = copy.copy(self.du.sudo_cmd) + readcmd
+                    self.logger.info('running ' + " ".join(cmd))
                     p = Popen(cmd, stdout=PIPE)
                     f = p.stdout
                 else:
@@ -328,6 +332,7 @@ class PBSLogUtils(object):
                 if sudo:
                     cmd += self.du.sudo_cmd
                 cmd += readcmd
+                self.logger.debug('running ' + " ".join(cmd))
                 p = Popen(cmd, stdout=PIPE)
                 f = p.stdout
         except Exception:
