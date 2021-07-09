@@ -73,7 +73,7 @@ class TestQsubPerformance(TestPerformance):
             subprocess.call(job_sub_arg, shell=True, env=env)
         end_time = time.time()
    
-        sub_time = int(end_time - start_time)
+        sub_time = round(end_time - start_time, 2)
         return sub_time
 
     def test_submit_large_env(self):
