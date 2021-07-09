@@ -49,6 +49,7 @@ node = ''
 for k in vn.keys():
     if host in k:
         node = k
+        break
 vn[node].resources_available["mem"] = pbs.size("90gb")
 other_node = "invalid_node"
 if other_node not in vn:
@@ -118,18 +119,15 @@ class TestHookExechostPeriodic(TestFunctional):
         common_msg = " as it is owned by a different mom"
         common_msg2 = "resources_available.mem=9gb per mom hook request"
 
-        exp_msg1 = "autocreated vnode %s" % other_node
+        exp_msg1 = "autocreated vnode %s" % (other_node)
         msg1 = "%s;Updated vnode %s's resource " % (self.momA.hostname,
                                                     other_node)
         exp_msg2 = msg1 + common_msg2
-        msg2 = "%s;Updated vnode %s's resource " % (self.momA.hostname,
-                                                    other_node)
-        exp_msg3 = msg2 + common_msg2
-        msg3 = "%s;Not allowed to update vnode '%s'," % (self.momB.hostname,
+        msg2 = "%s;Not allowed to update vnode '%s'," % (self.momB.hostname,
                                                          other_node)
-        exp_msg4 = msg3 + common_msg
+        exp_msg3 = msg2 + common_msg
 
-        for msg in [exp_msg1, exp_msg2, exp_msg3, exp_msg4]:
+        for msg in [exp_msg1, exp_msg2, exp_msg3]:
             self.server.log_match(msg)
 
         node_attribs = {'resources_available.mem': "90gb"}
