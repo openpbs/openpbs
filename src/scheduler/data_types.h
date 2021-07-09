@@ -384,6 +384,9 @@ struct schedattrs
 class server_info
 {
 	void init_server_info();
+	void free_server_info();
+	void free_server_psets();
+	void dup_server_psets(const std::unordered_map<std::string, node_partition*>& spsets);
 	public:
 	bool has_soft_limit:1;	/* server has a soft user/grp limit set */
 	bool has_hard_limit:1;	/* server has a hard user/grp limit set */
@@ -477,14 +480,11 @@ class server_info
 	share_head *share_head;	/* root of share info */
 #endif
 	// Class methods
-	void free_server_info();
 	server_info();
 	server_info(int);
 	server_info(const server_info &);
 	virtual ~server_info();
 	server_info & operator=(const server_info &);
-	void dup_server_psets(const std::unordered_map<std::string, node_partition*>& spsets);
-	void free_server_psets();
 };
 
 class queue_info
