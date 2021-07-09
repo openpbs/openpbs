@@ -165,12 +165,6 @@ class Scheduler(PBSService):
                             "strict_fifo"
                             ]
 
-    fs_re = r'(?P<name>[\S]+)[\s]*:[\s]*Grp:[\s]*(?P<Grp>[-]*[0-9]*)' + \
-            r'[\s]*cgrp:[\s]*(?P<cgrp>[-]*[0-9]*)[\s]*' + \
-            r'Shares:[\s]*(?P<Shares>[-]*[0-9]*)[\s]*Usage:[\s]*' + \
-            r'(?P<Usage>[0-9]+)[\s]*Perc:[\s]*(?P<Perc>.*)%'
-    fs_tag = re.compile(fs_re)
-
     def __init__(self, server, hostname=None, pbsconf_file=None,
                  snapmap={}, snap=None, db_access=None, id='default',
                  sched_priv=None):
