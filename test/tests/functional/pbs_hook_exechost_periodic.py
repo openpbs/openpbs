@@ -190,7 +190,7 @@ class TestHookExechostPeriodic(TestFunctional):
         self.hostB = self.momB.shortname
         hook_name = "periodic"
         hook_attrs = {'event': 'exechost_periodic', 'enabled': 'True'}
-        hook_script = """vn[remote_node].resources_available["foo"] = True"""
+        hook_script = """vn[node].resources_available["foo"] = True"""
         hook_body = common_periodic_hook_script + hook_script
         self.server.create_import_hook(hook_name, hook_attrs, hook_body)
         node_attribs = {'resources_available.foo': True}
