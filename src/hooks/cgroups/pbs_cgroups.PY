@@ -902,10 +902,11 @@ class HookUtils(object):
                 'name': 'resvsub',
                 'handler': None
             }
-            self.hook_events[pbs.MODIFYRESV] = {
-                'name': 'modifyresv',
-                'handler': None
-            }
+            if hasattr(pbs, "MODIFYRESV"):
+                self.hook_events[pbs.MODIFYRESV] = {
+                    'name': 'modifyresv',
+                    'handler': None
+                }
             self.hook_events[pbs.MOVEJOB] = {
                 'name': 'movejob',
                 'handler': None
