@@ -289,13 +289,15 @@ class PBSLogUtils(object):
         """
         readcmd = ['cat', log]
         taillogs = 10000
+        tailcmd = [self.du.which(hostname, 'tail')]
+        headcmd = [self.du.which(hostname, 'head')]
         if start:
             i = 0
             while(True):
                 i += 1
                 taillogs = 10000 * i
-                args = ['tail', '-n', str(taillogs), log]
-                args2 = ['head', '-n', '1']
+                args = tailcmd + ['-n', str(taillogs), log]
+                args2 = headcmd + ['-n', '1']
                 process_tail = Popen(args, stdout=PIPE,
                                      shell=False)
                 process_head = Popen(args2, stdin=process_tail.stdout,
@@ -304,22 +306,17 @@ class PBSLogUtils(object):
                 line = process_head.communicate()[0]
                 line = line.decode("utf-8")
                 ts = line.split(';')[0]
-                if '.' in ts:
-                    pattern = '%m/%d/%Y %H:%M:%S.%f'
-                else:
-                    pattern = '%m/%d/%Y %H:%M:%S'
-                epoch = int(time.mktime(time.strptime(ts, pattern)))
-                readcmd = ['tail', '-n', str(taillogs), log]
+                epoch = self.convert_date_time(ts)
+                readcmd = tailcmd + ['-n', str(taillogs), log]
                 if start > epoch:
                     break
                 elif taillogs > num_records:
                     readcmd = ['cat', log]
                     break
-
         try:
             if hostname is None or self.du.is_localhost(hostname):
                 if sudo:
-                    cmd = copy.copy(self.du.sudo_cmd) + readcmd
+                    cmd = self.du.sudo_cmd + readcmd
                     self.logger.info('running ' + " ".join(cmd))
                     p = Popen(cmd, stdout=PIPE)
                     f = p.stdout
@@ -351,6 +348,7 @@ class PBSLogUtils(object):
         """
         if logfile is None:
             return
+
         records = self.open_log(logfile, hostname, sudo=sudo)
         if records is None:
             return
