@@ -91,6 +91,7 @@ libpbs_sched_a_SOURCES = \
 	job_info.cpp \
 	job_info.h \
 	limits.cpp \
+	limits_if.h \
 	misc.cpp \
 	misc.h \
 	multi_threading.cpp \
