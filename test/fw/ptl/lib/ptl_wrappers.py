@@ -2069,23 +2069,31 @@ class Wrappers(PBSService):
             return 0
 
         obj_type = {}
+        job_list = []
+        resv_list = []
         for j in id:
             if j[0] in ('R', 'S', 'M'):
-                obj_type[j] = RESV
-                try:
-                    rc = self.delresv(j, extend, runas, logerr=logerr)
-                except PbsDelresvError as e:
-                    rc = e.rc
-                    msg = e.msg
-                    rv = e.rv
+                 obj_type[j] = RESV
+                 resv_list.append(j)
             else:
                 obj_type[j] = JOB
-                try:
-                    rc = self.deljob(j, extend, runas, logerr=logerr)
-                except PbsDeljobError as e:
-                    rc = e.rc
-                    msg = e.msg
-                    rv = e.rv
+                job_list.append(j)
+
+        if resv_list:
+            try:
+                rc = self.delresv(resv_list, extend, runas, logerr=logerr)
+            except PbsDelresvError as e:
+                rc = e.rc
+                msg = e.msg
+                rv = e.rv
+        elif job_list:
+            obj_type[j] = JOB
+            try:
+                rc = self.deljob(job_list, extend, runas, logerr=logerr)
+            except PbsDeljobError as e:
+                rc = e.rc
+                msg = e.msg
+                rv = e.rv
 
         if rc != 0:
             raise PbsDeleteError(rc=rc, rv=rv, msg=msg)

@@ -1565,14 +1565,15 @@ free_br(struct batch_request *preq)
 		 * decrement the reference count in the parent and when it
 		 * goes to zero,  reply_send() it
 		 */
-		struct batch_reply *preply = &preq->rq_parentbr->rq_reply;
 		if (preq->rq_parentbr->rq_refct > 0) {
 			if (--preq->rq_parentbr->rq_refct == 0) {
+#ifndef PBS_MOM		/* Server Only */
+				struct batch_reply *preply = &preq->rq_parentbr->rq_reply;
 				if (preq->rq_parentbr->rq_type == PBS_BATCH_DeleteJobList) {
-					preply->brp_un.brp_deletejoblist.tot_rpys += preply->brp_un.brp_deletejoblist.tot_arr_jobs ;
-					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+					if (update_deljob_rply(preq->rq_parentbr, preply->brp_un.brp_deletejoblist.pend_arrjobs, NULL, PBSE_NONE))
 						reply_send(preq->rq_parentbr);
-				} else 
+				} else
+#endif	/* End of server */
 					reply_send(preq->rq_parentbr);
 			}
 		}

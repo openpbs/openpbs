@@ -50,7 +50,6 @@
  *	req_deletejob()
  *	req_deletejob2()
  *	req_deleteReservation()
- *	post_delete_route()
  *	post_deljobfromresv_req()
  *
  */
@@ -105,11 +104,9 @@ extern resc_resv  *chk_rescResv_request(char *, struct batch_request *);
 
 /* Private Functions in this file */
 
-static void post_delete_route(struct work_task *);
 static void post_delete_mom1(struct work_task *);
 static void post_deljobfromresv_req(struct work_task *);
 static int req_deletejob2(struct batch_request *preq, job *pjob);
-int update_deletejob_stat(char *jid, struct batch_request *preq, int errcode);
 static void resume_deletion(struct work_task *ptask);
 
 /* Private Data Items */
@@ -130,13 +127,15 @@ static int qdel_mail = 1; /* true: sending mail */
  */
 static void
 resume_deletion(struct work_task *ptask)
-{	
+{
 	struct batch_request *preq = (struct batch_request *) ptask->wt_parm1;	
 
 	if (preq == NULL)
 		return;
 
-	preq->rq_ind.rq_deletejoblist.rq_resume = 1;
+	if (preq->rq_type == PBS_BATCH_DeleteJobList)
+		preq->rq_ind.rq_deletejoblist.rq_resume = 1;
+
 	req_deletejob(preq);
 	return;
 }
@@ -218,6 +217,56 @@ acct_del_write(char *jid, job *pjob, struct batch_request *preq, int nomail)
 
 /**
  * @Brief
+ * 	- Updates the pend_jobs count in the req struct.
+ *	- Updates the job's error code in reply structure by allocating 
+ *		batch_deljob_status struct.
+ *	- Check tot_rply count has reached zero
+ *
+ * @param[in]	preq - pointer batch request structure
+ * @param[in]	count - no of replies needs to be updated
+ * @param[in]	jid	- job id.
+ * @param[in]	errcode - Job's error code 
+ *
+ * @return	bool
+ * @retval	TRUE	- total reply count matches required; time to reply back
+ * @retval	FALSE	- total reply does not match the required no of replies
+ */
+bool
+update_deljob_rply(struct batch_request *preq, int count, char *jid, int errcode)
+{
+	struct batch_deljob_status *pdelstat;
+	struct batch_reply *preply = &preq->rq_reply;
+
+	if (preq->rq_type != PBS_BATCH_DeleteJobList)
+		return FALSE;
+
+	preply->brp_un.brp_deletejoblist.pend_jobs -= count;
+
+	/* If array job decrement the array job count to be accounted */
+	if (jid && is_job_array(jid) == IS_ARRAY_ArrayJob)
+		preply->brp_un.brp_deletejoblist.pend_arrjobs--;
+
+	if (errcode != PBSE_NONE) {
+		/* allocate reply structure and fill in jobid and status portion */
+		pdelstat = (struct batch_deljob_status *) malloc(sizeof(struct batch_deljob_status));
+		if (pdelstat == NULL)
+			log_err(PBSE_SYSTEM, __func__, "Failed to allocate memory");
+
+		pdelstat->name = strdup(jid);
+		pdelstat->code = errcode;
+		pdelstat->next = preply->brp_un.brp_deletejoblist.brp_delstatc;
+		preply->brp_un.brp_deletejoblist.brp_delstatc = pdelstat;
+		preq->rq_reply.brp_count++;
+	}
+
+	if (preply->brp_un.brp_deletejoblist.pend_jobs < 0)
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_ALERT,
+			  __func__, "pend_jobs count went negative for delete request");
+	return (preply->brp_un.brp_deletejoblist.pend_jobs <= 0);
+}
+
+/**
+ * @Brief
  *		If the job is a history job then purge its history
  *		If the job is a non-history job then it must be terminated before purging its history. Will be
  *		done by req_deletejob()
@@ -236,7 +285,6 @@ check_deletehistoryjob(struct batch_request * preq, char * jid)
 	int historyjob;
 	int histerr;
 	int t;
-	struct batch_reply *preply = &preq->rq_reply;
 
 	/*
 	 * If the array subjob or range of subjobs are in a history state then
@@ -246,8 +294,7 @@ check_deletehistoryjob(struct batch_request * preq, char * jid)
 	if ((t == IS_ARRAY_Single) || (t == IS_ARRAY_Range)) {
 		pjob = find_arrayparent(jid);
 		if ((histerr = svr_chk_histjob(pjob))) {
-			update_deletejob_stat(jid, preq, PBSE_NOHISTARRAYSUBJOB);
-			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+			if (update_deljob_rply(preq, 1, jid, PBSE_NOHISTARRAYSUBJOB))
 				req_reject(PBSE_NOHISTARRAYSUBJOB, 0, preq);
 			return TRUE;
 		} else {
@@ -292,8 +339,7 @@ check_deletehistoryjob(struct batch_request * preq, char * jid)
 
 		job_purge(histpjob);
 
-		update_deletejob_stat(jid, preq, PBSE_HISTJOBDELETED);
-		if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+		if (update_deljob_rply(preq, 1, jid, PBSE_HISTJOBDELETED))
 			reply_send(preq);
 		return TRUE;
 	} else {
@@ -358,41 +404,54 @@ decr_single_subjob_usage(job *parent)
 }
 
 /**
- * @Brief
- *		Updates the job's error code in reply structure by allocating 
- *		batch_deljob_status struct. 
- *
- * @param[in]	jid	- job id.
- * @param[in]	preq - pointer batch request structure
- * @param[in]	errcode - Job's error code 
- *
- * @return	int
- * @retval	0	- success in updating jobs status 
- * @retval	!0	- failure to update status
+ * @brief reorder the deljob list so that queued jobs will appear first.
+ * do not reorder if already sorted
+ * 
+ * deljob can wait if jobs are in prerun or transit state.
+ * This triggers other jobs in deljob list to get triggerred to be run.
+ * delete will take longer to delete these running jobs as it has to contact the mom
+ * meanwhile other jobs in the list will start to run
+ * triggering a series of delete followed by run.
+ * This has performance issues and makes debugging slower. 
+ * Ordering should prevent that.
+ * Complexity: O(N)
+ * 
+ * @param[in] preq - request structure
  */
-int 
-update_deletejob_stat(char *jid, struct batch_request *preq, int errcode)
+static void
+reorder_deljoblist(struct batch_request *preq)
 {
-	struct batch_deljob_status *pdelstat;
-	struct batch_reply *preply = &preq->rq_reply;
+	int head = -1;
+	int tail;
+	char **jlist = preq->rq_ind.rq_deletejoblist.rq_jobslist;
+	job *pjob;
+	char *temp;
 
-	preply->brp_un.brp_deletejoblist.tot_rpys++;
+	if (preq->rq_ind.rq_deletejoblist.rq_resume)
+		return;
 
-	if (preq->rq_type != PBS_BATCH_DeleteJobList)
-		return 0;
+	if (!jlist || !jlist[0])
+		return;
 
-	/* allocate reply structure and fill in jobid and status portion */
-	pdelstat = (struct batch_deljob_status *)malloc(sizeof(struct batch_deljob_status));
-	if (pdelstat == NULL)
-		return (PBSE_SYSTEM);
+	for (tail = 0; jlist[tail]; tail++) {
 
-	pdelstat->name = strdup(jid);
-	pdelstat->code = errcode;
-	pdelstat->next = preply->brp_un.brp_deletejoblist.brp_delstatc;
-	preply->brp_un.brp_deletejoblist.brp_delstatc = pdelstat;
-	preq->rq_reply.brp_count++;
+		pjob = find_job(jlist[tail]);
+		if (!pjob)
+			continue;
 
-	return 0;
+		if (head == -1) {
+			if (get_job_state(pjob) != JOB_STATE_LTR_QUEUED) {
+				head = tail;
+			}
+			continue;
+		}
+
+		if (get_job_state(pjob) == JOB_STATE_LTR_QUEUED) {
+			temp = jlist[head];
+			jlist[head++] = jlist[tail];
+			jlist[tail] = temp;
+		}
+	}
 }
 
 /**
@@ -430,6 +489,7 @@ req_deletejob(struct batch_request *preq)
 	time_t begin_time = time(NULL);
 
 	if (preq->rq_type == PBS_BATCH_DeleteJobList) {
+		reorder_deljoblist(preq);
 		preply->brp_choice = BATCH_REPLY_CHOICE_Delete;
 		jobids = preq->rq_ind.rq_deletejoblist.rq_jobslist;
 		count = preq->rq_ind.rq_deletejoblist.rq_count;
@@ -451,21 +511,23 @@ req_deletejob(struct batch_request *preq)
 		qdel_mail = 1;
 
 	if (preq->rq_ind.rq_deletejoblist.rq_resume != 1) {
-		preply->brp_un.brp_deletejoblist.tot_jobs = count;
-		preply->brp_un.brp_deletejoblist.tot_arr_jobs = 0;
-		preply->brp_un.brp_deletejoblist.tot_rpys = 0;	
+		preply->brp_un.brp_deletejoblist.pend_arrjobs = 0;
+		preply->brp_un.brp_deletejoblist.pend_jobs = count;
 	} else 
 		start_jobid = preq->rq_ind.rq_deletejoblist.jobid_to_resume;
 
 	for (j = start_jobid; j < count; j++) {
+
+		if (j != start_jobid)
+			preq->rq_ind.rq_deletejoblist.rq_resume = 0;
+
 		snprintf(jid, sizeof(jid), "%s", jobids[j]);
 		parent = chk_job_request(jid, preq, &jt, &err);
 		if (parent == NULL) {
 			pjob = find_job(jid);
 			if (pjob != NULL && pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(err, PREEMPT_METHOD_DELETE, pjob);
-			update_deletejob_stat(jid, preq, err);
-			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
+			if (update_deljob_rply(preq, 1, jid, err)) {
 				if (preq->rq_type == PBS_BATCH_DeleteJobList)
 					req_reject(err, 0, preq);  /* note, req_reject is not called for delete job request 2 */
 				return;
@@ -499,8 +561,7 @@ req_deletejob(struct batch_request *preq)
 
 			pjob = get_subjob_and_state(parent, get_index_from_jid(jid), &sjst, NULL);
 			if (sjst == JOB_STATE_LTR_UNKNOWN) {
-				update_deletejob_stat(jid, preq, PBSE_IVALREQ);
-				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
+				if (update_deljob_rply(preq, 1, jid, PBSE_IVALREQ)) {
 					req_reject(PBSE_IVALREQ, 0, preq);
 					return;
 				} else
@@ -512,15 +573,13 @@ req_deletejob(struct batch_request *preq)
 					pjob = find_job(jid);
 					reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, pjob);
 				}
-				update_deletejob_stat(jid, preq, PBSE_BADSTATE);
-				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
+				if (update_deljob_rply(preq, 1, jid, PBSE_BADSTATE)) {
 					req_reject(PBSE_BADSTATE, 0, preq);
 					return;
 				} else
 					continue;
 			} else if (sjst == JOB_STATE_LTR_EXPIRED) {
-				update_deletejob_stat(jid, preq, PBSE_NOHISTARRAYSUBJOB);
-				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
+				if (update_deljob_rply(preq, 1, jid, PBSE_NOHISTARRAYSUBJOB)) {
 					req_reject(PBSE_NOHISTARRAYSUBJOB, 0, preq);
 					return;
 				} else
@@ -540,8 +599,7 @@ req_deletejob(struct batch_request *preq)
 				acct_del_write(jid, parent, preq, 0);
 				parent->ji_ajinfo->tkm_dsubjsct++;
 				decr_single_subjob_usage(parent);
-				preply->brp_un.brp_deletejoblist.tot_rpys++;
-				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+				if (update_deljob_rply(preq, 1, jid, PBSE_NONE))
 					reply_ack(preq);
 			}
 			chk_array_doneness(parent);
@@ -563,7 +621,7 @@ req_deletejob(struct batch_request *preq)
 			/* for each subjob that is running, delete it via req_deletejob2 */
 
 			++preq->rq_refct;
-			preply->brp_un.brp_deletejoblist.tot_arr_jobs++;
+			preply->brp_un.brp_deletejoblist.pend_arrjobs++;
 			
 			if (preq->rq_ind.rq_deletejoblist.rq_resume)
 				start = preq->rq_ind.rq_deletejoblist.subjobid_to_resume;
@@ -577,7 +635,7 @@ req_deletejob(struct batch_request *preq)
 					preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i;
 					set_task(WORK_Interleave, 0, resume_deletion, preq); 
 					--preq->rq_refct;
-					preply->brp_un.brp_deletejoblist.tot_arr_jobs--;
+					preply->brp_un.brp_deletejoblist.pend_arrjobs--;
 					return;
 				}
 				pjob = get_subjob_and_state(parent, i, &sjst, NULL);
@@ -597,9 +655,10 @@ req_deletejob(struct batch_request *preq)
 					} else {
 						if (dup_br_for_subjob(preq, pjob, req_deletejob2) == 2) {
 							preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
-							preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i;
+							preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i + parent->ji_ajinfo->tkm_step;
+							set_task(WORK_Timed, time_now + 1, resume_deletion, preq);
 							--preq->rq_refct;
-							preply->brp_un.brp_deletejoblist.tot_arr_jobs--;
+							preply->brp_un.brp_deletejoblist.pend_arrjobs--;
 							return;
 						}
 						del_parent = 0;
@@ -625,15 +684,12 @@ req_deletejob(struct batch_request *preq)
 					if (req_deletejob2(preq, parent) == 2) {
 						preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
 						preq->rq_ind.rq_deletejoblist.subjobid_to_resume = parent->ji_ajinfo->tkm_end;
-						preply->brp_un.brp_deletejoblist.tot_arr_jobs--;
+						preply->brp_un.brp_deletejoblist.pend_arrjobs--;
 						return;
 					}
 					del_parent = 0;
-				} else {
-					preply->brp_un.brp_deletejoblist.tot_rpys++;
-					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
-						reply_send(preq);
-				}
+				} else if (update_deljob_rply(preq, 1, jid, PBSE_NONE))
+					reply_send(preq);
 			} else
 				acct_del_write(jid, parent, preq, 0);
 
@@ -642,7 +698,7 @@ req_deletejob(struct batch_request *preq)
 					if (req_deletejob2(preq, parent) == 2) {
 						preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
 						preq->rq_ind.rq_deletejoblist.subjobid_to_resume = parent->ji_ajinfo->tkm_end;
-						preply->brp_un.brp_deletejoblist.tot_arr_jobs--;
+						preply->brp_un.brp_deletejoblist.pend_arrjobs--;
 						return;
 					}
 				}
@@ -655,8 +711,7 @@ req_deletejob(struct batch_request *preq)
 
 		range = get_range_from_jid(jid);
 		if (range == NULL) {
-			update_deletejob_stat(jid, preq, PBSE_IVALREQ);
-			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
+			if (update_deljob_rply(preq, 1, jid, PBSE_IVALREQ)) {
 				req_reject(PBSE_IVALREQ, 0, preq);
 				return;
 			} else
@@ -671,20 +726,19 @@ req_deletejob(struct batch_request *preq)
 			int count;
 
 			if ((i = parse_subjob_index(range, &pc, &start, &end, &step, &count)) == -1) {
-				update_deletejob_stat(jid, preq, PBSE_IVALREQ);
-				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+				if (update_deljob_rply(preq, 1, jid, PBSE_IVALREQ))
 					req_reject(PBSE_IVALREQ, 0, preq);
 				break;
-			} else if (i == 1)
+			} else if (i == 1) {
 				break;
+			}
 
 			/*
 			 * Ensure that the range specified in the delete job request does not exceed the
 			 * index of the highest numbered array subjob
 			 */
 			if (start < parent->ji_ajinfo->tkm_start || start > parent->ji_ajinfo->tkm_end) {
-				update_deletejob_stat(jid, preq, PBSE_UNKJOBID);
-				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+				if (update_deljob_rply(preq, 1, jid, PBSE_UNKJOBID))
 					req_reject(PBSE_UNKJOBID, 0, preq);
 				break;
 			}
@@ -705,8 +759,9 @@ req_deletejob(struct batch_request *preq)
 					} else {
 						if (dup_br_for_subjob(preq, pjob, req_deletejob2) == 2) {
 							preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
-							preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i;
+							preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i + step;
 							--preq->rq_refct;
+							set_task(WORK_Timed, time_now + 1, resume_deletion, preq);
 							return;
 						}
 					}
@@ -733,12 +788,10 @@ req_deletejob(struct batch_request *preq)
 		/* and reply will be sent to client when last delete is done */
 
 		if (--preq->rq_refct == 0) {
-			preply->brp_un.brp_deletejoblist.tot_rpys++;
-			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+			if (update_deljob_rply(preq, 1, jid, PBSE_NONE))
 				reply_send(preq);
 			chk_array_doneness(parent);
 		}
-		continue;
 	}
 
 }
@@ -769,7 +822,6 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 	int rc;
 	int is_mgr = 0;
 	int jt;
-	struct batch_reply *preply = &preq->rq_reply;
 
 	/* + 2 is for the '@' in user@host and for the null termination byte. */
 	char by_user[PBS_MAXUSER + PBS_MAXHOSTNAME + 2] = {'\0'};
@@ -802,8 +854,8 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			if ((pwtold->wt_type == WORK_Deferred_Child) ||
 			    (pwtold->wt_type == WORK_Deferred_Cmp)) {
 				pwtnew = set_task(pwtold->wt_type,
-					pwtold->wt_event, post_delete_route,
-					preq);
+						  pwtold->wt_event, resume_deletion,
+						  preq);
 				if (pwtnew) {
 					/*
 					 * reset type in case the SIGCHLD came
@@ -826,8 +878,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 					if (pjob->ji_pmt_preq != NULL)
 						reply_preempt_jobs_request(PBSE_SYSTEM, PREEMPT_METHOD_DELETE, pjob);
 
-					update_deletejob_stat(pjob->ji_qs.ji_jobid, preq, PBSE_SYSTEM);
-					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
+					if (update_deljob_rply(preq, 1, pjob->ji_qs.ji_jobid, PBSE_SYSTEM)) {
 						req_reject(PBSE_SYSTEM, 0, preq);
 						return 0;
 					}
@@ -840,8 +891,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_INTERNAL, PREEMPT_METHOD_DELETE, pjob);
 
-		update_deletejob_stat(pjob->ji_qs.ji_jobid, preq, PBSE_INTERNAL);
-		if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
+		if (update_deljob_rply(preq, 1, pjob->ji_qs.ji_jobid, PBSE_INTERNAL)) {
 			req_reject(PBSE_INTERNAL, 0, preq);
 			return 0;
 		}
@@ -850,13 +900,12 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 
 		/* being sent to MOM, wait till she gets it going */
 		/* retry in one second				  */
-		pwtnew = set_task(WORK_Timed, time_now + 1, post_delete_route,
+		pwtnew = set_task(WORK_Timed, time_now + 1, resume_deletion,
 			preq);
 		if (pwtnew == 0) {
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(PBSE_SYSTEM, PREEMPT_METHOD_DELETE, pjob);
-			update_deletejob_stat(pjob->ji_qs.ji_jobid, preq, PBSE_SYSTEM);
-			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+			if (update_deljob_rply(preq, 1, pjob->ji_qs.ji_jobid, PBSE_SYSTEM))
 				req_reject(PBSE_SYSTEM, 0, preq);
 		} else if (preq->rq_type == PBS_BATCH_DeleteJobList) {
 			/* let the caller know that the deljoblist request needs to be suspended */
@@ -887,8 +936,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 				  pjob->ji_qs.ji_jobid, "deleting instead of rerunning");
 			acct_del_write(pjob->ji_qs.ji_jobid, pjob, preq, 0);
-			preply->brp_un.brp_deletejoblist.tot_rpys++;
-			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+			if (update_deljob_rply(preq, 1, pjob->ji_qs.ji_jobid, PBSE_NONE))
 				reply_ack(preq);
 			return 0;
 		}
@@ -905,7 +953,6 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			}
 		}
 
-
 		if (check_job_substate(pjob, JOB_SUBSTATE_PROVISION)) {
 			if (forcedel) {
 				/*
@@ -917,16 +964,14 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 					pjob->ji_qs.ji_jobid, "deleting job");
 				acct_del_write(pjob->ji_qs.ji_jobid, pjob,
 					preq, 0);
-				preply->brp_un.brp_deletejoblist.tot_rpys++;
-				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+				if (update_deljob_rply(preq, 1, pjob->ji_qs.ji_jobid, PBSE_NONE))
 					reply_ack(preq);
 				rel_resc(pjob);
 				job_abt(pjob, NULL);
 			} else {
 				if (pjob->ji_pmt_preq != NULL)
 					reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, pjob);
-				update_deletejob_stat(pjob->ji_qs.ji_jobid, preq, PBSE_BADSTATE);
-				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+				if (update_deljob_rply(preq, 1, pjob->ji_qs.ji_jobid, PBSE_BADSTATE))
 					req_reject(PBSE_BADSTATE, 0, preq);
 			}
 			return 0;
@@ -980,8 +1025,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			if (preq->rq_parentbr)
 				reply_ack(preq);
 			else {
-				preply->brp_un.brp_deletejoblist.tot_rpys++;
-				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+				if (update_deljob_rply(preq, 1, pjob->ji_qs.ji_jobid, PBSE_NONE))
 					reply_ack(preq);
 			}
 			discard_job(pjob, "Forced Delete", 1);
@@ -1007,8 +1051,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		if (rc) {
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
-			update_deletejob_stat(pjob->ji_qs.ji_jobid, preq, rc);
-			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+			if (update_deljob_rply(preq, 1, pjob->ji_qs.ji_jobid, rc))
 				req_reject(rc, 0, preq); /* cant send to MOM */
 			sprintf(log_buffer, "Delete failed %d", rc);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE,
@@ -1065,8 +1108,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 	if (preq->rq_parentbr)
 		reply_send(preq);
 	else {
-		preply->brp_un.brp_deletejoblist.tot_rpys++;
-		if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+		if (update_deljob_rply(preq, 1, pjob->ji_qs.ji_jobid, PBSE_NONE))
 			reply_send(preq);
 	}
 
@@ -1422,28 +1464,6 @@ req_deleteReservation(struct batch_request *preq)
 	return;
 }
 
-
-/**
- * @brief
- * 		post_delete_route - complete the task of deleting a job which was
- *		being routed at the time the delete request was received.
- *
- *		Just recycle the delete request, the job will either be here or not.
- *
- * @param[in]	pwt	- work_task structure
- */
-
-static void
-post_delete_route(struct work_task *pwt)
-{
-	struct batch_request *preq = pwt->wt_parm1;
-
-	if (preq->rq_type == PBS_BATCH_DeleteJobList)
-		preq->rq_ind.rq_deletejoblist.rq_resume = 1;
-	req_deletejob(preq);
-	return;
-}
-
 /**
  * @brief
  * 		post_delete_mom1 - first of 2 work task trigger functions to finish the
@@ -1462,7 +1482,6 @@ post_delete_mom1(struct work_task *pwt)
 	struct batch_request *preq_clt; /* original client request */
 	int rc;
 	int tries = 0;
-	struct batch_reply *preply = NULL;
 
 	preq_sig = pwt->wt_parm1;
 	rc = preq_sig->rq_reply.brp_code;
@@ -1473,13 +1492,11 @@ post_delete_mom1(struct work_task *pwt)
 		return;
 	}
 
-	preply = &preq_clt->rq_reply;
 	pjob = find_job(preq_sig->rq_ind.rq_signal.rq_jid);
 	release_req(pwt);
 	if (pjob == NULL) {
 		/* job has gone away */
-		update_deletejob_stat(pjob->ji_qs.ji_jobid, preq_clt, PBSE_UNKJOBID);
-		if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+		if (update_deljob_rply(preq_clt, 1, pjob->ji_qs.ji_jobid, PBSE_UNKJOBID))
 			req_reject(PBSE_UNKJOBID, 0, preq_clt);
 		return;
 	}
@@ -1493,8 +1510,7 @@ resend:
 
 		if (rc == PBSE_UNKSIG) {
 			if (tries++) {
-				update_deletejob_stat(pjob->ji_qs.ji_jobid, preq_clt, rc);
-				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+				if (update_deljob_rply(preq_clt, 1, pjob->ji_qs.ji_jobid, rc))
 					req_reject(rc, 0, preq_clt);
 				return;
 			}
@@ -1511,8 +1527,7 @@ resend:
 			if (check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) {
 				if (pjob->ji_pmt_preq != NULL)
 					reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
-				update_deletejob_stat(pjob->ji_qs.ji_jobid, preq_clt, rc);
-				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+				if (update_deljob_rply(preq_clt, 1, pjob->ji_qs.ji_jobid, rc))
 					req_reject(rc, 0, preq_clt);
 				return;
 			}
@@ -1522,15 +1537,13 @@ resend:
 			/* removed the resources assigned to job */
 			free_nodes(pjob);
 			set_resc_assigned(pjob, 0, DECR);
-			preply->brp_un.brp_deletejoblist.tot_rpys++;
-			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+			if (update_deljob_rply(preq_clt, 1, NULL, PBSE_NONE))
 				reply_ack(preq_clt);
 			svr_saveorpurge_finjobhist(pjob);
 		} else {
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
-			update_deletejob_stat(pjob->ji_qs.ji_jobid, preq_clt, rc);
-			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+			if (update_deljob_rply(preq_clt, 1, pjob->ji_qs.ji_jobid, rc))
 				req_reject(rc, 0, preq_clt);
 		}
 		return;
@@ -1541,11 +1554,9 @@ resend:
 	if (preq_clt->rq_parentbr) {
 		reply_ack(preq_clt);
 	} else {
-		preply->brp_un.brp_deletejoblist.tot_rpys++;
-		if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+		if (update_deljob_rply(preq_clt, 1, NULL, PBSE_NONE))
 			reply_ack(preq_clt); /* dont need it, reply now */
 	}
-
 
 	if (auxcode == JOB_SUBSTATE_TERM) {
 		/* Mom running a site supplied Terminate Job script   */
