@@ -153,6 +153,13 @@ extern int pbs_idx_find(void *idx, void **key, void **data, void **ctx);
  */
 extern void pbs_idx_free_ctx(void *ctx);
 
+/**
+ * @brief check whether idx is empty and has no key associated with it
+ * 
+ * @param idx[in] - avl index
+ */
+extern int pbs_idx_is_empty(void *idx);
+
 #ifdef __cplusplus
 }
 #endif

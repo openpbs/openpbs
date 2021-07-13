@@ -1543,7 +1543,6 @@ decode_DIS_RelnodesJob(int sock, struct batch_request *preq)
 	return rc;
 }
 
-
 /**
  * @brief
  * 		Free space allocated to a batch_request structure
@@ -1551,7 +1550,6 @@ decode_DIS_RelnodesJob(int sock, struct batch_request *preq)
  *
  * @param[in]	preq - the batch_request structure to free up.
  */
-
 void
 free_br(struct batch_request *preq)
 {
@@ -1565,14 +1563,14 @@ free_br(struct batch_request *preq)
 		 * decrement the reference count in the parent and when it
 		 * goes to zero,  reply_send() it
 		 */
-		struct batch_reply *preply = &preq->rq_parentbr->rq_reply;
 		if (preq->rq_parentbr->rq_refct > 0) {
 			if (--preq->rq_parentbr->rq_refct == 0) {
+#ifndef PBS_MOM		/* Server Only */
 				if (preq->rq_parentbr->rq_type == PBS_BATCH_DeleteJobList) {
-					preply->brp_un.brp_deletejoblist.tot_rpys += preply->brp_un.brp_deletejoblist.tot_arr_jobs ;
-					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+					if (delete_pending_arrayjobs(preq->rq_parentbr))
 						reply_send(preq->rq_parentbr);
-				} else 
+				} else
+#endif	/* End of server */
 					reply_send(preq->rq_parentbr);
 			}
 		}
