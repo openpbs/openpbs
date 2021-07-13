@@ -991,7 +991,7 @@ req_modifyReservation(struct batch_request *preq)
 			break;
 		default:
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_INFO, "", "resvsub event: accept req by default");
+				LOG_INFO, "", "modifyresv event: accept req by default");
 	}
 
 	sock = preq->rq_conn;
