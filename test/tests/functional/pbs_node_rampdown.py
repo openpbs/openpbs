@@ -332,7 +332,7 @@ class TestPbsNodeRampDown(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostC)
 
         a = {'state': 'free', 'resources_available.ncpus': (GE, 1)}
-        self.server.expect(VNODE, {'state=free': 11}, op=EQ, count=True,
+        self.server.expect(VNODE, {'state=free': 11}, count=True,
                            interval=2)
 
         # Various node names
@@ -544,6 +544,14 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
             "%s:mem=1048576kb:ncpus=1+" % (self.n5,) + \
             "%s:ncpus=1)+" % (self.n6,) + \
             "(%s:ncpus=1:mem=1048576kb)" % (self.n7,)
+        self.job11x_exec_vnode_match = \
+            "\(.+:mem=1048576kb:ncpus=1\+" + \
+            ".+:mem=1048576kb:ncpus=1\+" + \
+            ".+:ncpus=1\)\+" + \
+            "\(.+:mem=1048576kb:ncpus=1\+" + \
+            ".+:mem=1048576kb:ncpus=1\+" + \
+            ".+:ncpus=1\)\+" + \
+            "\(.+:ncpus=1:mem=1048576kb\)"
         self.script['job11x'] = \
             "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job11x_select + "\n" + \
@@ -5587,7 +5595,7 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
              server with qterm -t immediate which
              will requeue job completely, and when
              server is started, job gets assigned
-             the vnodes from the original request
+             resources to the original request
              before the pbs_release_nodes call.
 
              Given a job submitted with a select spec of
@@ -5612,8 +5620,8 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
 
              Now start pbs_server.
 
-             The job goes back to getting assigned to the
-             original resources, before pbs_releaes_nodes
+             The job goes back to getting assigned resources for the
+             original request, before pbs_release_nodes
              was called.
         """
         jid = self.create_and_submit_job('job11x')
@@ -5732,6 +5740,8 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.server.set_op_mode(om)
         self.assertFalse(self.server.isUp())
 
+        check_time = time.time()
+
         # resume momC, but this is a stale request (nothing happens)
         # since server is down.
         self.momC.signal("-CONT")
@@ -5750,18 +5760,16 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
                                  'Resource_List.select': self.job11x_select,
                                  'Resource_List.place': self.job11x_place,
                                  'schedselect': self.job11x_schedselect,
-                                 'exec_host': self.job11x_exec_host,
-                                 'exec_vnode': self.job11x_exec_vnode}, id=jid)
-        # Check various vnode status.
-        jobs_assn1 = "%s/0" % (jid,)
-        self.match_vnode_status([self.n1, self.n2, self.n4, self.n5,
-                                 self.n7], 'job-exclusive', jobs_assn1, 1,
-                                '1048576kb')
+                                 'exec_host': self.job11x_exec_host}, id=jid)
 
-        self.match_vnode_status([self.n3, self.n6],
-                                'job-exclusive', jobs_assn1, 1, '0kb')
+        self.server.log_match("Job;%s;Job Run.+on exec_vnode %s" % (
+                              jid, self.job11x_exec_vnode_match), regexp=True,
+                              starttime=check_time)
 
-        self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
+        self.server.expect(VNODE, {'state=job-exclusive': 7},
+                           count=True, max_attempts=20, interval=2)
+        self.server.expect(VNODE, {'state=free': 4},
+                           count=True, max_attempts=20, interval=2)
 
         self.server.expect(SERVER, {'resources_assigned.ncpus': 7,
                                     'resources_assigned.mem': '5242880kb'})
@@ -6081,6 +6089,8 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.server.set_op_mode(om)
         self.assertFalse(self.server.isUp())
 
+        check_time = time.time()
+
         # resume momC, but this is a stale request (nothing happens)
         # since server is down.
         self.momC.signal("-CONT")
@@ -6100,28 +6110,19 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
                                  'Resource_List.select': self.job11_select,
                                  'Resource_List.place': self.job11_place,
                                  'schedselect': self.job11_schedselect,
-                                 'exec_host': self.job11_exec_host,
-                                 'exec_vnode': self.job11_exec_vnode}, id=jid)
+                                 'exec_host': self.job11_exec_host}, id=jid)
 
-        # Check various vnode status.
-        jobs_assn1 = "%s/0" % (jid,)
-        self.match_vnode_status([self.n1, self.n2, self.n4, self.n5],
-                                'job-busy', jobs_assn1, 1,
-                                '1048576kb')
+        self.server.log_match("Job;%s;Job Run.+on exec_vnode %s" % (
+                              jid, self.job11x_exec_vnode_match), regexp=True,
+                              starttime=check_time)
 
-        self.match_vnode_status([self.n3, self.n6],
-                                'job-busy', jobs_assn1, 1, '0kb')
-
-        # node <n7> still has resources (ncpus=1, mem=1gb) to share
-        self.server.expect(VNODE, {'state': 'free',
-                                   'jobs': jobs_assn1,
-                                   'resources_assigned.ncpus': 1,
-                                   'resources_assigned.mem': '1048576kb'},
-                           id=self.n7)
-        self.match_vnode_status([self.n7], 'free', jobs_assn1,
-                                1, '1048576kb')
-
-        self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
+        # 7 vnodes are assigned in a shared way: 6 of them has single cpu,
+        # while 1 has multiple cpus. So 6 will get "job-busy" state while
+        # the other will be in "free" state like the rest.
+        self.server.expect(VNODE, {'state=job-busy': 6},
+                           count=True, max_attempts=20, interval=2)
+        self.server.expect(VNODE, {'state=free': 5},
+                           count=True, max_attempts=20, interval=2)
 
         self.server.expect(SERVER, {'resources_assigned.ncpus': 7,
                                     'resources_assigned.mem': '5242880kb'})
