@@ -291,6 +291,13 @@ class PBSLogUtils(object):
         taillogs = 10000
         tailcmd = [self.du.which(hostname, 'tail')]
         headcmd = [self.du.which(hostname, 'head')]
+        if sudo:
+            tailcmd = self.du.sudo_cmd + tailcmd
+            headcmd = self.du.sudo_cmd + headcmd
+        if hostname:
+            tailcmd = ['ssh', hostname] + tailcmd
+            headcmd = ['ssh', hostname] + headcmd
+
         if start:
             i = 0
             while(True):
