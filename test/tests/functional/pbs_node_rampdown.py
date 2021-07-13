@@ -332,7 +332,7 @@ class TestPbsNodeRampDown(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostC)
 
         a = {'state': 'free', 'resources_available.ncpus': (GE, 1)}
-        self.server.expect(VNODE, {'state=free': 11}, op=EQ, count=True,
+        self.server.expect(VNODE, {'state=free': 11}, count=True,
                            interval=2)
 
         # Various node names
