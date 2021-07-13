@@ -850,12 +850,9 @@ queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.nam
 queue_info *
 find_queue_info(std::vector<queue_info *> &qinfo_arr, const std::string& name)
 {
-	int i;
-
 	if (qinfo_arr.empty())
 		return NULL;
 
-	for (i = 0; qinfo_arr[i] != NULL && qinfo_arr[i]->name != name; i++)
 	for (auto queue: qinfo_arr) {
 		if (queue->name == name)
 			return queue;
