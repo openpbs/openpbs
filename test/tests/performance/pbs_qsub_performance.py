@@ -37,7 +37,6 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-import subprocess
 from tests.performance import *
 
 
@@ -57,22 +56,27 @@ class TestQsubPerformance(TestPerformance):
         :param env: Environment variable to be set before submittign job.
         :type env: Dictionary. Defaults to None.
         """
-        user = self.du.get_current_user()
         qsub_path = os.path.join(
                   self.server.pbs_conf['PBS_EXEC'], 'bin', 'qsub')
-        common_cmd = ' -u ' + user + ' ' + qsub_path
+
         if qsub_exec_arg is not None:
-            job_sub_arg = "sudo -E" + common_cmd + ' ' + qsub_exec_arg
+            job_sub_arg = qsub_path + ' ' + qsub_exec_arg
+            env = {'VARIABLE': 'b' * 13000}
         else:
-            job_sub_arg = 'sudo' + common_cmd
+            job_sub_arg = qsub_path
 
         job_sub_arg += ' -- /bin/sleep 100'
 
         start_time = time.time()
         for _ in range(1000):
-            subprocess.call(job_sub_arg, shell=True, env=env)
+            qsub = self.du.run_cmd(self.server.hostname,
+                                    job_sub_arg,
+                                    env=env,
+                                    as_script=True,
+                                    logerr=False)
+            if qsub['rc'] != 0:
+                return -1
         end_time = time.time()
-   
         sub_time = round(end_time - start_time, 2)
         return sub_time
 
@@ -90,5 +94,7 @@ class TestQsubPerformance(TestPerformance):
         self.logger.info(
             "Submission time without env is %d and with env is %d sec"
             % (sub_time_without_env, sub_time_with_env))
-        self.perf_test_result(sub_time_without_env, "submission_time_without_env", "sec")
-        self.perf_test_result(sub_time_with_env, "submission_time_with_env", "sec")
+        self.perf_test_result(sub_time_without_env,
+                              "submission_time_without_env", "sec")
+        self.perf_test_result(sub_time_with_env,
+                              "submission_time_with_env", "sec")
