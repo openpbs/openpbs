@@ -37,47 +37,64 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-
 from tests.performance import *
 
 
 class TestQsubPerformance(TestPerformance):
-    """
-    This test suite contains tests of qsub performance
-    """
 
     def setUp(self):
         TestPerformance.setUp(self)
         attr = {'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, attr)
 
-    @timeout(400)
+    def submit_jobs(self, qsub_exec_arg=None, env=None):
+        """
+        Submits n num of jobs according to the arguments provided
+        and returns submission time
+        :param qsub_exec_arg: Arguments to qsub.
+        :type qsub_exec_arg: String. Defaults to None.
+        :param env: Environment variable to be set before submittign job.
+        :type env: Dictionary. Defaults to None.
+        """
+        qsub_path = os.path.join(
+                  self.server.pbs_conf['PBS_EXEC'], 'bin', 'qsub')
+
+        if qsub_exec_arg is not None:
+            job_sub_arg = qsub_path + ' ' + qsub_exec_arg
+            env = {'VARIABLE': 'b' * 13000}
+        else:
+            job_sub_arg = qsub_path
+
+        job_sub_arg += ' -- /bin/sleep 100'
+
+        start_time = time.time()
+        for _ in range(1000):
+            qsub = self.du.run_cmd(self.server.hostname,
+                                   job_sub_arg,
+                                   env=env,
+                                   as_script=True,
+                                   logerr=False)
+            if qsub['rc'] != 0:
+                return -1
+        end_time = time.time()
+        sub_time = round(end_time - start_time, 2)
+        return sub_time
+
     def test_submit_large_env(self):
         """
-        submission of 1000 jobs
-        before and after exporting variable
-        to check submission performance
+        This test case does the following
+        1. Submit 1000 jobs
+        2. Set env variable with huge value
+        3. Submit 1000 jobs again with -V as argument to qsub
+        4. Collect time taken for both submissions
         """
-
-        start_time1 = time.time()
-        for _ in range(1000):
-            j = Job(TEST_USER)
-            self.server.submit(j)
-        end_time1 = time.time()
-
-        os.environ['VARIABLE'] = 'b' * 130000
-
-        start_time2 = time.time()
-        for _ in range(1000):
-            j1 = Job(TEST_USER)
-            self.server.submit(j1)
-        end_time2 = time.time()
-
-        sub_time1 = int(end_time1 - start_time1)
-        sub_time2 = int(end_time2 - start_time2)
+        sub_time_without_env = self.submit_jobs()
+        sub_time_with_env = self.submit_jobs(qsub_exec_arg="-V")
 
         self.logger.info(
             "Submission time without env is %d and with env is %d sec"
-            % (sub_time1, sub_time2))
-        self.perf_test_result(sub_time1, "submission_time_without_env", "sec")
-        self.perf_test_result(sub_time2, "submission_time_with_env", "sec")
+            % (sub_time_without_env, sub_time_with_env))
+        self.perf_test_result(sub_time_without_env,
+                              "submission_time_without_env", "sec")
+        self.perf_test_result(sub_time_with_env,
+                              "submission_time_with_env", "sec")
