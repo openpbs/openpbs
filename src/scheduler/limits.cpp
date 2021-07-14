@@ -736,19 +736,19 @@ limcounts::limcounts(const counts_umap &user_,
 		     const counts_umap &project_,
 		     const counts_umap &all_)
 {
-	user = user_;
-	group = group_;
-	project = project_;
-	all = all_;
+	user = dup_counts_umap(user_);
+	group = dup_counts_umap(group_);
+	project = dup_counts_umap(project_);
+	all = dup_counts_umap(all_);
 }
 
 // Copy Constructor
 limcounts::limcounts(const limcounts &rlimit)
 {
-	user = rlimit.user;
-	group = rlimit.group;
-	project = rlimit.project;
-	all = rlimit.all;
+	user = dup_counts_umap(rlimit.user);
+	group = dup_counts_umap(rlimit.group);
+	project = dup_counts_umap(rlimit.project);
+	all = dup_counts_umap(rlimit.all);
 }
 
 // Assignment operator
@@ -764,7 +764,10 @@ limcounts & limcounts::operator=(const limcounts &rlimit)
 // destructor
 limcounts::~limcounts()
 {
-    //do nothing
+    free_counts_list(user);
+    free_counts_list(group);
+    free_counts_list(project);
+    free_counts_list(all);
 }
 
 /**
