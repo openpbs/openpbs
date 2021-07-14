@@ -3613,7 +3613,7 @@ if %s e.job.in_ms_mom():
             self.skipTest('Skipping test since nvidia-smi not found')
         last_gpu_was_physical = False
         gpus = 0
-        #store uuids of the MIG devices
+        # store uuids of the MIG devices
         uuid_list = []
         for l in rv['out']:
             if l.startswith('GPU'):
@@ -3651,8 +3651,9 @@ if %s e.job.in_ms_mom():
 
         mig_devices_in_use = tmp_out[-1]
         for mig_device in mig_devices_in_use.split(","):
-            self.assertIn(mig_device, uuid_list,"MIG identifiers do not match")
-            
+            self.assertIn(mig_device, uuid_list,
+                          "MIG identifiers do not match")
+
         self.logger.info(tmp_out)
         self.assertIn('There are 1 GPUs', tmp_out, 'No gpus were assigned')
         self.assertIn('c 195:255 rwm', tmp_out, 'Nvidia controller not found')

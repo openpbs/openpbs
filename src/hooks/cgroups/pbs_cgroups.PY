@@ -2023,13 +2023,14 @@ class NodeUtils(object):
                 gpus[gpuid]['gis'] = {}
             gpus[gpuid]['gis'][giid] = gi
 
-        #Find all MIG UUIDs using nvidia-smi -L and update it later while finding the CIs
+        # Find all MIG UUIDs using nvidia-smi -L
+        # and update it later while finding the CIs
         uuid_list = []
         cmd = [self.cfg['nvidia-smi'], '-L']
         pbs.logmsg(pbs.EVENT_DEBUG4, 'NVIDIA SMI command: %s' % cmd)
         time_start = time.time()
         out = []
- 
+
         try:
             # Try running the nvidia-smi command
             process = subprocess.Popen(cmd, shell=False,
@@ -2046,23 +2047,23 @@ class NodeUtils(object):
         if elapsed_time > 2.0:
             pbs.logmsg(pbs.EVENT_DEBUG,
                        '%s: nvidia-smi call took %f seconds' %
-                       (caller_name(), elapsed_time))   
+                       (caller_name(), elapsed_time))
 
-        #format is:
+        # format is:
         # GPU gpuID: gpu_name (UUID: GPU UUID)
-        #   MIG xg.ygb      Device  0: (UUID: MIG-UUID)
-        #   MIG xg.ygb      Device  1: (UUID: MIG-UUID)
+        # MIG xg.ygb      Device  0: (UUID: MIG-UUID)
+        # MIG xg.ygb      Device  1: (UUID: MIG-UUID)
 
         line_count = 0
-        for out_line in out : 
-            if(line_count==0 or line_count==len(out)-1):
-                line_count+=1
+        for out_line in out:
+            if(line_count == 0 or line_count == len(out)-1):
+                line_count += 1
                 continue
-            
+
             else:
                 mig_uuid = out_line.split()[-1].rstrip(")")
                 uuid_list.append(mig_uuid)
-                line_count+=1
+                line_count += 1
 
         pbs.logmsg(pbs.EVENT_DEBUG4, "uuid list : \n" + str(uuid_list))
 
@@ -2103,7 +2104,7 @@ class NodeUtils(object):
         # |   0      7       MIG 1g.5gb       0         0          0:1     |
         r = re.compile(
             r'^\|\s+(\d+)\s+(\d+)\s+MIG\s+\S+\s+\d+\s+(\d+)\s+(\S+\s+)?\|$')
- 
+
         uuid_count = 0
         for out_line in out:
             match = r.match(out_line)
@@ -2116,9 +2117,9 @@ class NodeUtils(object):
             minor = self._discover_mig_minor(gpu_num, giid, ciid)
             if minor == -1:
                 continue
-            
+
             uuid = uuid_list[uuid_count]
-            uuid_count+=1
+            uuid_count += 1
             # uuid = 'MIG-%s/%s/%s' % (gpus[gpuid]['uuid'], giid, ciid)
             ci = {'minor': minor, 'gi': giid, 'ci': ciid, 'uuid': uuid}
             pbs.logmsg(pbs.EVENT_DEBUG4, 'CI found %s' % str(ci))
