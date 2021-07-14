@@ -526,6 +526,7 @@ if [ "$ngpus" -eq "0" ]; then
     ngpus=$(nvidia-smi -L | grep "GPU" | wc -l)
 fi
 echo "There are $ngpus GPUs"
+echo $CUDA_VISIBLE_DEVICES
 sleep 10
 """
         self.cpu_controller_script = """
@@ -3612,11 +3613,14 @@ if %s e.job.in_ms_mom():
             self.skipTest('Skipping test since nvidia-smi not found')
         last_gpu_was_physical = False
         gpus = 0
+        #store uuids of the MIG devices
+        uuid_list = []
         for l in rv['out']:
             if l.startswith('GPU'):
                 last_gpu_was_physical = True
                 gpus += 1
             elif l.lstrip().startswith('MIG'):
+                uuid_list.append(l.split()[-1].rstrip(")"))
                 if last_gpu_was_physical:
                     gpus -= 1
                 last_gpu_was_physical = False
@@ -3644,6 +3648,11 @@ if %s e.job.in_ms_mom():
         tmp_file = filename.split(':')[1]
         tmp_host = ehost.split('/')[0]
         tmp_out = self.wait_and_read_file(filename=tmp_file, host=tmp_host)
+
+        mig_devices_in_use = tmp_out[-1]
+        for mig_device in mig_devices_in_use.split(","):
+            self.assertIn(mig_device, uuid_list,"MIG identifiers do not match")
+            
         self.logger.info(tmp_out)
         self.assertIn('There are 1 GPUs', tmp_out, 'No gpus were assigned')
         self.assertIn('c 195:255 rwm', tmp_out, 'Nvidia controller not found')
