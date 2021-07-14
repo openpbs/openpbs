@@ -290,28 +290,14 @@ class PBSLogUtils(object):
         readcmd = ['cat', log]
         taillogs = 10000
         tailcmd = [self.du.which(hostname, 'tail')]
-        headcmd = [self.du.which(hostname, 'head')]
-        if sudo:
-            tailcmd = self.du.sudo_cmd + tailcmd
-            headcmd = self.du.sudo_cmd + headcmd
-        if hostname:
-            tailcmd = ['ssh', hostname] + tailcmd
-            headcmd = ['ssh', hostname] + headcmd
-
         if start:
             i = 0
             while(True):
                 i += 1
                 taillogs = 10000 * i
-                args = tailcmd + ['-n', str(taillogs), log]
-                args2 = headcmd + ['-n', '1']
-                process_tail = Popen(args, stdout=PIPE,
-                                     shell=False)
-                process_head = Popen(args2, stdin=process_tail.stdout,
-                                     stdout=PIPE, shell=False)
-                process_tail.stdout.close()
-                line = process_head.communicate()[0]
-                line = line.decode("utf-8")
+                tail_out = self.du.tail(hostname, log, sudo,
+                                        option='-n ' + str(taillogs))
+                line = tail_out['out'][0]
                 ts = line.split(';')[0]
                 epoch = self.convert_date_time(ts)
                 readcmd = tailcmd + ['-n', str(taillogs), log]
@@ -320,6 +306,7 @@ class PBSLogUtils(object):
                 elif taillogs > num_records:
                     readcmd = ['cat', log]
                     break
+
         try:
             if hostname is None or self.du.is_localhost(hostname):
                 if sudo:
