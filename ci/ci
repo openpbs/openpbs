@@ -774,10 +774,10 @@ def run_ci(build_pkgs=False):
             ensure_ci_running()
     target_path = os.path.join(command_path, MACROS['CONFIGURE_OPT_FILE'])
     if conf_opts['configure'] != read_from_file(target_path):
+        write_to_file(target_path, conf_opts['configure'])
         cmd = ' export ONLY_CONFIGURE=1 && /src/etc/do.sh 2>&1 \
             | tee -a /logs/build-$(hostname -s) '
         run_docker_cmd(cmd)
-        write_to_file(target_path, conf_opts['configure'])
     cmd = ' export ONLY_REBUILD=1 && /src/etc/do.sh 2>&1 \
         | tee -a /logs/build-$(hostname -s) '
     run_docker_cmd(cmd)
@@ -819,7 +819,8 @@ if __name__ == "__main__":
                                  epilog=textwrap.dedent(_help),
                                  conflict_handler='resolve')
     _help = 'set configuration values for os | nodes | configure | tests'
-    ap.add_argument('-p', '--params', nargs='+', help=_help, metavar='param')
+    ap.add_argument('-p', '--params', nargs='+',
+                    action='append', help=_help, metavar='param')
     _help = 'destroy pbs container'
     ap.add_argument('-d', '--delete', action='store_true', help=_help)
     _help = 'build packages for the current platform.'
@@ -851,7 +852,8 @@ if __name__ == "__main__":
             sys.exit(1)
     try:
         if args.params is not None:
-            parse_params(args.params)
+            for p in args.params:
+                parse_params(p)
         if args.build_pkgs is not None:
             build_pkgs = True
         if args.delete is True:
