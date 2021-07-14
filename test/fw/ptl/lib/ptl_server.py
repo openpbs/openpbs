@@ -286,7 +286,7 @@ class Server(Wrappers):
         Terminate and start a PBS server.
         """
         cmd = os.path.join(self.client_conf['PBS_EXEC'], 'bin',
-                          'pbsnodes') + ' -av' + ' -Fjson'
+                           'pbsnodes') + ' -av' + ' -Fjson'
         cmd_out = self.du.run_cmd(self.hostname, cmd, sudo=True)
         pbsnodes_json = json.loads('\n'.join(cmd_out['out']))
         if self.isUp():
