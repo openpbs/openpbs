@@ -256,7 +256,7 @@ class PBSLogUtils(object):
             # Get epoch-timestamp assuming local timezone
             tm = t.timestamp()
         except ValueError:
-            cls.logger.debug("could not convert date time: " + str(dt))
+            cls.logger.info("could not convert date time: " + str(dt))
             return None
 
         if micro is True:
