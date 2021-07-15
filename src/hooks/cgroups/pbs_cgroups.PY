@@ -2056,6 +2056,8 @@ class NodeUtils(object):
 
         line_count = 0
         for out_line in out:
+            # Don't capture the first list element which has the GPU UUID and
+            # the last line, which has only a newline in it
             if(line_count == 0 or line_count == len(out)-1):
                 line_count += 1
                 continue
@@ -2120,7 +2122,6 @@ class NodeUtils(object):
 
             uuid = uuid_list[uuid_count]
             uuid_count += 1
-            # uuid = 'MIG-%s/%s/%s' % (gpus[gpuid]['uuid'], giid, ciid)
             ci = {'minor': minor, 'gi': giid, 'ci': ciid, 'uuid': uuid}
             pbs.logmsg(pbs.EVENT_DEBUG4, 'CI found %s' % str(ci))
             if 'cis' not in gpus[gpuid]['gis'][giid]:
