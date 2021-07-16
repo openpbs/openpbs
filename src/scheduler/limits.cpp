@@ -135,7 +135,7 @@ class  limcounts
 	counts_umap group;
 	counts_umap project;
 	counts_umap all;
-	limcounts();
+	limcounts() = delete;
 	limcounts(const counts_umap &user_,
 		  const counts_umap &group_,
 		  const counts_umap &project_,
@@ -727,9 +727,6 @@ has_softlimits(void *p)
  * @brief
  *		limitcount class constructor.
  */
-limcounts::limcounts()
-{
-}
 // Parametrized Constructor
 limcounts::limcounts(const counts_umap &user_,
 		     const counts_umap &group_,
@@ -754,10 +751,10 @@ limcounts::limcounts(const limcounts &rlimit)
 // Assignment operator
 limcounts & limcounts::operator=(const limcounts &rlimit)
 {
-	user = rlimit.user;
-	group = rlimit.group;
-	project = rlimit.project;
-	all = rlimit.all;
+	user = dup_counts_umap(rlimit.user);
+	group = dup_counts_umap(rlimit.group);
+	project = dup_counts_umap(rlimit.project);
+	all = dup_counts_umap(rlimit.all);
 	return *this;
 }
 

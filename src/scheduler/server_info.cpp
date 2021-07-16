@@ -285,7 +285,7 @@ query_server(status *pol, int pbs_sd)
 		std::sort(sinfo->queues.begin(), sinfo->queues.end(), cmp_queue_prio_dsc);
 	if (policy->round_robin == 1) {
 		/* queues are already sorted in descending order of their priority */
-		for (auto queue: sinfo->queues) {
+		for (auto queue : sinfo->queues) {
 			auto ret_val = add_queue_to_list(&sinfo->queue_list, queue);
 			if (ret_val == 0) {
 				sinfo->fstree = NULL;
@@ -2477,7 +2477,7 @@ counts::counts(const std::string &name_){
 
 // counts copy constructor
 counts::counts(const counts &rcount) {
-        name = rcount.name;
+	name = rcount.name;
 	running = rcount.running;
 	rescts = dup_resource_count_list(rcount.rescts);
 	soft_limit_preempt_bit = rcount.soft_limit_preempt_bit;
@@ -2485,7 +2485,7 @@ counts::counts(const counts &rcount) {
 
 // count assignment operator
 counts& counts::operator = (const counts &rcount) {
-        this->name = rcount.name;
+	this->name = rcount.name;
 	this->running = rcount.running;
 	this->rescts = dup_resource_count_list(rcount.rescts);
 	this->soft_limit_preempt_bit = rcount.soft_limit_preempt_bit;
@@ -2525,7 +2525,7 @@ free_counts_list(counts_umap &ctslist)
 counts_umap dup_counts_umap(const counts_umap &omap)
 {
 	counts_umap nmap;
-	for (auto iter: omap)
+	for (auto &iter: omap)
 		nmap[iter.first] = new counts(*(iter.second));
 	return nmap;
 }

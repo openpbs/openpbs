@@ -158,11 +158,6 @@ int node_partition_update_array(status *policy, node_partition **nodepart);
 int node_partition_update(status *policy, node_partition *np);
 
 /*
- *	new_np_cache - constructor
- */
-np_cache *new_np_cache(void);
-
-/*
  *	free_np_cache_array - destructor for array
  */
 void free_np_cache_array(std::vector<np_cache *> &npc_arr);

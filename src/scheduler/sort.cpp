@@ -277,8 +277,7 @@ cmp_nspec_by_sub_seq(const void *v1, const void *v2)
  *
  * @return	int
  * @retval	1	: if q1 < q2
- * @retval	0 	: if q1 == q2
- * @retval	-1  : if q1 > q2
+ * @retval	0 	: if q1 >= q2
  */
 bool
 cmp_queue_prio_dsc (const queue_info *q1, const queue_info *q2)

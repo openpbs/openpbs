@@ -516,6 +516,7 @@ enum match_string_array_ret match_string_array(const std::vector<std::string> &s
 
 	return SA_NO_MATCH;
 }
+
 /**
  * @brief
  * 		convert a string array into a printable string

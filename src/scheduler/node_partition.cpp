@@ -55,7 +55,6 @@
  * 	create_node_partitions()
  * 	node_partition_update_array()
  * 	node_partition_update()
- * 	new_np_cache()
  * 	free_np_cache_array()
  * 	free_np_cache()
  * 	find_alloc_np_cache()
@@ -398,7 +397,6 @@ create_node_partitions(status *policy, node_info **nodes, const std::vector<std:
 	int np_i;		/* index into node partition array we are creating */
 
 	static schd_resource *unset_res = NULL;
-	std::string unset_resname;
 
 	std::vector<queue_info *> queues = {};
 
@@ -432,8 +430,7 @@ create_node_partitions(status *policy, node_info **nodes, const std::vector<std:
 			res = find_resource(nodes[node_i]->res, def);
 
 			if (res == NULL && (flags & NP_CREATE_REST)) {
-				unset_resname = res_i;
-				unset_res->name = unset_resname.c_str();
+				unset_res->name = res_i.c_str();
 				if (set_resource(unset_res, "\"\"", RF_AVAIL) == 0) {
 					free_node_partition_array(np_arr);
 					return NULL;
@@ -742,35 +739,14 @@ node_partition_update(status *policy, node_partition *np)
 
 /**
  * @brief
- *		new_np_cache - constructor
+ *		np_cache - constructor
  *
- * @return	new np_cache structure
+ * @return	new np_cache object
  */
 np_cache::np_cache() {
 	ninfo_arr = NULL;
 	nodepart = NULL;
 	num_parts = UNSPECIFIED;
-}
-// copy constructor
-np_cache::np_cache(const np_cache & rnp_cache) {
-	ninfo_arr = rnp_cache.ninfo_arr;
-	nodepart = rnp_cache.nodepart;
-	num_parts = rnp_cache.num_parts;
-	resnames = rnp_cache.resnames;
-}
-// assignment operator
-np_cache& np_cache::operator=(const np_cache &rnp_cache) {
-	this->ninfo_arr = rnp_cache.ninfo_arr;
-	this->nodepart = rnp_cache.nodepart;
-	this->num_parts = rnp_cache.num_parts;
-	this->resnames = rnp_cache.resnames;
-	return  *this;
-}
-np_cache *
-new_np_cache(void)
-{
-	np_cache *npc = new np_cache();
-	return npc;
 }
 // Destructor
 np_cache::~np_cache() {
@@ -893,7 +869,7 @@ find_alloc_np_cache(status *policy, std::vector<np_cache *> &pnpc_arr,
 			if (sort_func != NULL)
 				qsort(nodepart, num_parts, sizeof(node_partition *), sort_func);
 
-			npc = new_np_cache();
+			npc = new np_cache();
 			if (npc != NULL) {
 				npc->ninfo_arr = ninfo_arr;
 				npc->resnames = resnames;

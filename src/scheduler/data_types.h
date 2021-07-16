@@ -383,10 +383,6 @@ struct schedattrs
 
 class server_info
 {
-	void init_server_info();
-	void free_server_info();
-	void free_server_psets();
-	void dup_server_psets(const std::unordered_map<std::string, node_partition*>& spsets);
 	public:
 	bool has_soft_limit:1;	/* server has a soft user/grp limit set */
 	bool has_hard_limit:1;	/* server has a hard user/grp limit set */
@@ -485,6 +481,12 @@ class server_info
 	server_info(const server_info &);
 	virtual ~server_info();
 	server_info & operator=(const server_info &);
+
+	private:
+	void init_server_info();
+	void free_server_info();
+	void free_server_psets();
+	void dup_server_psets(const std::unordered_map<std::string, node_partition*>& spsets);
 };
 
 class queue_info
@@ -636,7 +638,7 @@ struct job_info
 #endif
 };
 
-struct node_info
+class node_info
 {
 	public:
 	bool is_down:1;		/* node is down */
@@ -1008,8 +1010,8 @@ class np_cache
 	int num_parts;			/* number of partitions in nodepart */
 	node_partition **nodepart;	/* node partitions */
 	np_cache();
-	np_cache(const np_cache &);
-	np_cache& operator=(const np_cache &);
+	np_cache(const np_cache &) = delete;
+	np_cache& operator=(const np_cache &) = delete;
 	virtual ~np_cache();
 };
 
@@ -1278,8 +1280,6 @@ struct resresv_filter {
 
 class sched_exception: public std::exception
 {
-	std::string message;
-	enum sched_error_code error_code;
 	public:
 	sched_exception(const sched_exception &e);
 	sched_exception &operator=(const sched_exception &e);
@@ -1289,6 +1289,10 @@ class sched_exception: public std::exception
 	const std::string get_message() const;
 	virtual ~sched_exception();
 	sched_exception() = delete;
+
+	private:
+	std::string message;
+	enum sched_error_code error_code;
 
 };
 #endif	/* _DATA_TYPES_H */
