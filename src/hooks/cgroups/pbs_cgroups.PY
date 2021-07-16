@@ -2025,7 +2025,6 @@ class NodeUtils(object):
 
         # Find all MIG UUIDs using nvidia-smi -L
         # and update it later while finding the CIs
-        uuid_list = []
         cmd = [self.cfg['nvidia-smi'], '-L']
         pbs.logmsg(pbs.EVENT_DEBUG4, 'NVIDIA SMI command: %s' % cmd)
         time_start = time.time()
@@ -2054,20 +2053,22 @@ class NodeUtils(object):
         # MIG xg.ygb      Device  0: (UUID: MIG-UUID)
         # MIG xg.ygb      Device  1: (UUID: MIG-UUID)
 
-        line_count = 0
+        # Map (gpu_id, instance_id) to a MIG UUID
+        uuid_map = dict()
+        r_gpu = re.compile(r'\s*GPU\s(\d+)')
+        r_mig = re.compile(r'\s*MIG.*Device\s*(\d+)')
+        current_gpu = 0
         for out_line in out:
-            # Don't capture the first list element which has the GPU UUID and
-            # the last line, which has only a newline in it
-            if(line_count == 0 or line_count == len(out)-1):
-                line_count += 1
-                continue
-
-            else:
+            gpu_match = r_gpu.match(out_line)
+            mig_match = r_mig.match(out_line)
+            if(gpu_match):
+                current_gpu = int(gpu_match.group(1))
+                uuid_map[current_gpu] = dict()
+            if(mig_match):
                 mig_uuid = out_line.split()[-1].rstrip(")")
-                uuid_list.append(mig_uuid)
-                line_count += 1
+                uuid_map[current_gpu][int(mig_match.group(1))] = mig_uuid
 
-        pbs.logmsg(pbs.EVENT_DEBUG4, "uuid list : \n" + str(uuid_list))
+        pbs.logmsg(pbs.EVENT_DEBUG4, "uuid map : \n" + str(uuid_map))
 
         # now find all CIs
         cmd = [self.cfg['nvidia-smi'], 'mig', '-lci']
@@ -2112,6 +2113,9 @@ class NodeUtils(object):
             match = r.match(out_line)
             if not match:
                 continue
+            # reset count if a new gpu is parsed
+            if(gpu_num != int(match.group(1))):
+                uuid_count = 0
             gpu_num = int(match.group(1))
             gpuid = 'nvidia%d' % gpu_num
             giid = int(match.group(2))
@@ -2119,8 +2123,7 @@ class NodeUtils(object):
             minor = self._discover_mig_minor(gpu_num, giid, ciid)
             if minor == -1:
                 continue
-
-            uuid = uuid_list[uuid_count]
+            uuid = uuid_map[gpu_num][uuid_count]
             uuid_count += 1
             ci = {'minor': minor, 'gi': giid, 'ci': ciid, 'uuid': uuid}
             pbs.logmsg(pbs.EVENT_DEBUG4, 'CI found %s' % str(ci))
