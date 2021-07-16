@@ -285,17 +285,11 @@ class Server(Wrappers):
         """
         Terminate and start a PBS server.
         """
-        cmd = os.path.join(self.client_conf['PBS_EXEC'], 'bin',
-                           'pbsnodes') + ' -av' + ' -Fjson'
-        cmd_out = self.du.run_cmd(self.hostname, cmd, sudo=True)
-        pbsnodes_json = json.loads('\n'.join(cmd_out['out']))
         if self.isUp():
             if not self.stop():
                 return False
         start_rc = self.start()
-        for m in pbsnodes_json['nodes']:
-            a = {'state': pbsnodes_json['nodes'][m]['state']}
-            self.expect(NODE, a, id=m)
+        self.expect(NODE, {'state=state-unknown,down': 0})
         return start_rc
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
