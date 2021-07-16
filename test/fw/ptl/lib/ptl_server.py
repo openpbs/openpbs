@@ -1920,6 +1920,8 @@ class Server(Wrappers):
                     if rc != 0:
                         self.logger.error("error creating node " + _n)
                         error = True
+        num_nodes = num * len(momhosts)
+        self.expect(NODE, {'state=free': num_nodes})
         if error:
             return False
 
