@@ -2109,6 +2109,7 @@ class NodeUtils(object):
             r'^\|\s+(\d+)\s+(\d+)\s+MIG\s+\S+\s+\d+\s+(\d+)\s+(\S+\s+)?\|$')
 
         uuid_count = 0
+        gpu_num = 0
         for out_line in out:
             match = r.match(out_line)
             if not match:
