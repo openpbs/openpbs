@@ -137,7 +137,7 @@ class MoM(PBSService):
         _m += [': ']
         self.logprefix = "".join(_m)
         self.pi = PbsServiceControl(hostname=self.hostname,
-                                  conf=self.pbs_conf_file)
+                                    conf=self.pbs_conf_file)
         self.configd = os.path.join(self.pbs_conf['PBS_HOME'], 'mom_priv',
                                     'config.d')
         self.config = {}

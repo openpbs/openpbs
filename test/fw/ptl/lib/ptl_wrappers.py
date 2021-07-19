@@ -191,7 +191,7 @@ class Wrappers(PBSService):
         _m += [': ']
         self.logprefix = "".join(_m)
         self.pi = PbsServiceControl(hostname=self.hostname,
-                                  conf=self.pbs_conf_file)
+                                    conf=self.pbs_conf_file)
         self.se = SecConUtils()
         self.set_client(client)
 
@@ -2728,7 +2728,7 @@ class Wrappers(PBSService):
         if self.get_op_mode() == PTL_CLI:
             self.se.prefix_runcon(runas, pcmd, self.hostname)
             pcmd += [os.path.join(self.client_conf['PBS_EXEC'], 'bin',
-                                 'qalter')]
+                                  'qalter')]
             if attrib is not None:
                 _conf = self.default_client_pbs_conf
                 pcmd += self.utils.convert_to_cli(attrib, op=IFL_ALTER,
@@ -3220,7 +3220,8 @@ class Wrappers(PBSService):
         pcmd = []
         if self.get_op_mode() == PTL_CLI:
             self.se.prefix_runcon(runas, pcmd, self.hostname)
-            pcmd += [os.path.join(self.client_conf['PBS_EXEC'], 'bin', 'qmove')]
+            pcmd += [os.path.join(self.client_conf['PBS_EXEC'],
+                                  'bin', 'qmove')]
             if destination is not None:
                 pcmd += [destination]
             if jobid is not None:

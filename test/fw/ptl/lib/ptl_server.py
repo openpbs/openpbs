@@ -265,7 +265,7 @@ class Server(Wrappers):
                     pid = self._validate_pid(self)
                     if pid is None:
                         raise PbsServiceError(rv=False, rc=-1,
-                                            msg="Could not find PID")
+                                              msg="Could not find PID")
                 except PbsServiceControlError as e:
                     raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
         if self.isUp():

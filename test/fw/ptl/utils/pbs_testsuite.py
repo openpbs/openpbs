@@ -1336,7 +1336,7 @@ class PBSTestSuite(unittest.TestCase):
                     for initcmd in cmds_to_exec:
                         # start/stop the particular daemon
                         server.pi.service(server.hostname, initcmd[1],
-                                        daemon=initcmd[0])
+                                          daemon=initcmd[0])
                         if initcmd[1] == "start":
                             if initcmd[0] == "server":
                                 self._check_daemons_on_server(server, "server")

@@ -45,4 +45,4 @@ class SecConUtils(object):
         return False
 
     def prefix_runcon(self, runas, runcmd, host):
-        return 
+        return

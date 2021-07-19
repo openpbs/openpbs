@@ -87,7 +87,7 @@ class PbsServiceControl(object):
         self.is_linux = sys.platform.startswith('linux')
 
     def service(self, hostname=None, op='status', conf_file=None,
-              init_script=None, daemon='all'):
+                init_script=None, daemon='all'):
         """
         Run the init script for a given operation
 
@@ -130,7 +130,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='restart', init_script=init_script,
-                          daemon='server')
+                            daemon='server')
 
     def restart_mom(self, hostname=None, init_script=None):
         """
@@ -142,7 +142,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='restart', init_script=init_script,
-                          daemon='mom')
+                            daemon='mom')
 
     def restart_sched(self, hostname=None, init_script=None):
         """
@@ -154,7 +154,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='restart', init_script=init_script,
-                          daemon='sched')
+                            daemon='sched')
 
     def restart_comm(self, hostname=None, init_script=None):
         """
@@ -166,7 +166,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='restart', init_script=init_script,
-                          daemon='comm')
+                            daemon='comm')
 
     def start(self, hostname=None, init_script=None):
         """
@@ -189,7 +189,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='start', init_script=init_script,
-                          daemon='server')
+                            daemon='server')
 
     def start_mom(self, hostname=None, init_script=None):
         """
@@ -201,7 +201,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='start', init_script=init_script,
-                          daemon='mom')
+                            daemon='mom')
 
     def start_sched(self, hostname=None, init_script=None):
         """
@@ -213,7 +213,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='start', init_script=init_script,
-                          daemon='sched')
+                            daemon='sched')
 
     def start_comm(self, hostname=None, init_script=None):
         """
@@ -225,7 +225,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='start', init_script=init_script,
-                          daemon='comm')
+                            daemon='comm')
 
     def stop(self, hostname=None, init_script=None):
         """
@@ -248,7 +248,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='stop', init_script=init_script,
-                          daemon='server')
+                            daemon='server')
 
     def stop_mom(self, hostname=None, init_script=None):
         """
@@ -260,7 +260,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='stop', init_script=init_script,
-                          daemon='mom')
+                            daemon='mom')
 
     def stop_sched(self, hostname=None, init_script=None):
         """
@@ -272,7 +272,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='stop', init_script=init_script,
-                          daemon='sched')
+                            daemon='sched')
 
     def stop_comm(self, hostname=None, init_script=None):
         """
@@ -284,7 +284,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='stop', init_script=init_script,
-                          daemon='comm')
+                            daemon='comm')
 
     def status(self, hostname=None, init_script=None):
         """
@@ -307,7 +307,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='status', init_script=init_script,
-                          daemon='server')
+                            daemon='server')
 
     def status_mom(self, hostname=None, init_script=None):
         """
@@ -319,7 +319,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='status', init_script=init_script,
-                          daemon='mom')
+                            daemon='mom')
 
     def status_sched(self, hostname=None, init_script=None):
         """
@@ -331,7 +331,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='status', init_script=init_script,
-                          daemon='sched')
+                            daemon='sched')
 
     def status_comm(self, hostname=None, init_script=None):
         """
@@ -343,7 +343,7 @@ class PbsServiceControl(object):
         :type init_script: str or None
         """
         return self.service(hostname, op='status', init_script=init_script,
-                          daemon='comm')
+                            daemon='comm')
 
     def _unix_service(self, hostname, op, conf_file, init_script, daemon):
         """
@@ -383,7 +383,7 @@ class PbsServiceControl(object):
                 daemons = []
                 conf = self.du.parse_pbs_config(hostname, conf_file)
                 if conf.get('PBS_START_SERVER', 0) != '0':
-                   daemons.append('pbs_server')
+                    daemons.append('pbs_server')
                 if conf.get('PBS_START_MOM', 0) != '0':
                     daemons.append('pbs_mom')
                 if conf.get('PBS_START_SCHED', 0) != '0':
@@ -424,14 +424,18 @@ class PbsServiceControl(object):
                 for i in range(len(daemons)):
                     ret = self.du.run_cmd(hostname, service_cmd[i],
                                           sudo=True, logerr=False)
-                    if service_cmd[i][2] == "pbs_mom" and op == "start" and ret['rc'] == 0:
+                    if (service_cmd[i][2] == "pbs_mom" and
+                            op == "start" and ret['rc'] == 0):
                         # 'systemctl start pbs_mom' returned success,
                         # now check if pbs_mom is really started.
-                        m = get_mom_obj(server, hostname, pbsconf_file=conf_file)
+                        m = get_mom_obj(
+                            server, hostname, pbsconf_file=conf_file)
                         if not m.isUp(max_attempts=5):
-                            # pbs_mom not running, start it and add to the exising
-                            # systemd cgroup by running reload operation
-                            service_cmd = ['systemctl', 'reload', 'pbs_mom']
+                            # pbs_mom not running, start it and add
+                            # to the exising systemd cgroup by running
+                            # reload operation
+                            service_cmd = [
+                                'systemctl', 'reload', 'pbs_mom']
                             ret = self.du.run_cmd(hostname, service_cmd,
                                                   sudo=True, logerr=False)
         else:

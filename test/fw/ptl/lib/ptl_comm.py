@@ -98,7 +98,7 @@ class Comm(PBSService):
             'PBS_COMM_THREADS': '-t'
         }
         self.pi = PbsServiceControl(hostname=self.hostname,
-                                  conf=self.pbs_conf_file)
+                                    conf=self.pbs_conf_file)
 
     def start(self, args=None, launcher=None):
         """

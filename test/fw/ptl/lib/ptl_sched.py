@@ -202,7 +202,7 @@ class Scheduler(PBSService):
         _m += [': ']
         self.logprefix = "".join(_m)
         self.pi = PbsServiceControl(hostname=self.hostname,
-                                  conf=self.pbs_conf_file)
+                                    conf=self.pbs_conf_file)
         self.pbs_conf = self.server.pbs_conf
         self.sc_name = id
 
