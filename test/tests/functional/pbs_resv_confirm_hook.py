@@ -47,7 +47,7 @@ class TestResvConfirmHook(TestFunctional):
     degraded reservation once the reservation begins.
     """
 
-    advance_resv_hook_script = textwrap.dedent("""\
+    advance_resv_hook_script = textwrap.dedent("""
         import pbs
         e=pbs.event()
 
@@ -57,18 +57,8 @@ class TestResvConfirmHook(TestFunctional):
         if e.type == pbs.RESV_CONFIRM:
             pbs.logmsg(pbs.LOG_DEBUG,
                        'Reservation ID - %s' % e.resv.resvid)
-    """)
-
-    standing_resv_hook_script = textwrap.dedent("""\
-        import pbs
-        e=pbs.event()
-
-        pbs.logmsg(pbs.LOG_DEBUG,
-                   'Reservation Confirm Hook name - %s' % e.hook_name)
-
-        if e.type == pbs.RESV_CONFIRM:
             pbs.logmsg(pbs.LOG_DEBUG, 'Reservation occurrence - %s' %
-            e.resv.reserve_index)
+                       e.resv.reserve_index)
     """)
 
     def setUp(self):
@@ -83,7 +73,7 @@ class TestResvConfirmHook(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
     @tags('hooks')
-    def test_delete_advance_resv(self):
+    def test_run_advance_resv(self):
         """
         Testcase to submit and confirm advance reservation, delete the same
         and verify the resv_confirm hook ran.
@@ -93,135 +83,50 @@ class TestResvConfirmHook(TestFunctional):
 
         offset = 10
         duration = 30
-        rid = self.server.submit_resv(offset, duration)
+        rid, _, _ = self.server.submit_resv(offset, duration)
 
-        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid)
-
-        self.server.delete(rid)
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
               (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, interval=1, max_attempts=10)
 
     @tags('hooks')
-    def test_delete_degraded_resv(self):
+    def test_degraded_resv(self):
         """
-        Testcase to submit and confirm an advance reservation, turn the mom
-        off, delete the degraded reservation and verify the resv_confirm
-        hook ran the correct number of times.
+        Testcase to submit and confirm an advance reservation, offline vnode,
+        verify reservation degredation, restore the vnode and verify the
+        resv_confirm hook ran the correct number of times.
         """
         self.server.import_hook(self.hook_name,
                                 TestResvConfirmHook.advance_resv_hook_script)
 
-        offset = 10
+        offset = 300
         duration = 30
-        rid = self.server.submit_resv(offset, duration)
-
-        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid)
+        rid, _, _ = self.server.submit_resv(offset, duration)
+        mom = self.moms.values()[0]
         msg = 'Hook;Server@%s;Reservation ID - %s' % (self.server.shortname,
                                                       rid)
-        self.server.log_match(msg, tail=True, interval=1, max_attempts=10)
+        self.server.log_match(msg, tail=True)
 
-        self.mom.stop()
+        self.server.manager(MGR_CMD_SET, NODE, {'state': (INCR, 'offline')},
+                            id=mom.shortname)
+        vnode_off_time = time.time()
 
-        attrs['reserve_state'] = (MATCH_RE, 'RESV_DEGRADED|10')
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
         self.server.expect(RESV, attrs, id=rid)
 
-        self.server.delete(rid)
-        msg = 'Hook;Server@%s;Reservation ID - %s' % (self.server.shortname,
-                                                      rid)
-        self.server.log_match(msg, tail=True, interval=1, max_attempts=10)
-
-    @tags('hooks')
-    def test_server_down_case_1(self):
-        """
-        Testcase to submit and confirm an advance reservation, turn the server
-        off, turn the server on, delete the reservation after start and verify
-        the resvconfirm hook ran.
-        """
-        self.server.import_hook(self.hook_name,
-                                TestResvConfirmHook.advance_resv_hook_script)
-
-        offset = 10
-        duration = 300
-        rid = self.server.submit_resv(offset, duration)
-
+        self.server.manager(MGR_CMD_SET, NODE, {'state': (DECR, 'offline')},
+                            id=mom.shortname)
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
 
-        self.server.stop()
-
-        self.server.start()
-
-        time.sleep(11)
-
-        self.server.delete(rid)
-
-        msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, interval=1, max_attempts=10)
-
-    @tags('hooks')
-    @timeout(300)
-    def test_server_down_case_2(self):
-        """
-        Testcase to submit and confirm an advance reservation, turn the
-        server off, wait for the reservation duration to finish, turn the
-        server on and verify the resvconfirm hook never ran.
-        """
-        self.server.import_hook(self.hook_name,
-                                TestResvConfirmHook.advance_resv_hook_script)
-
-        offset = 10
-        duration = 30
-        rid = self.server.submit_resv(offset, duration)
-
-        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid)
-
-        self.server.stop()
-
-        self.logger.info('wait for 30 seconds till the reservation would end')
-        time.sleep(30)
-
-        self.server.start()
-
-        msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, interval=2, max_attempts=10,
-                              existence=False)
-
-    @tags('hooks')
-    @timeout(30)
-    def test_begin_advance_resv(self):
-        """
-        Testcase to submit and confirm an advance reservation, wait for it
-        to begin and verify the reservation confirm hook.
-        """
-        self.server.import_hook(self.hook_name,
-                                TestResvConfirmHook.advance_resv_hook_script)
-
-        offset = 10
-        duration = 30
-        rid = self.server.submit_resv(offset, duration)
-
-        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid)
-
-        attrs['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
-        self.server.expect(RESV, attrs, id=rid, offset=10)
-
-        # Don't need to wait.  Let teardown clear the reservation
-        msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
+        self.server.log_match(msg, starttime=vnode_off_time, interval=1,
+                              max_attempts=10, existence=False)
 
     @tags('hooks')
     def test_set_attrs(self):
         """
         Testcase to submit and confirm an advance reservation, delete the
-        reservation and verify the read permissions in the resvbegin hook.
+        reservation and verify the read permissions in the resvconfirm hook.
         """
 
         hook_script = """\
@@ -233,30 +138,23 @@ class TestResvConfirmHook(TestFunctional):
 
             if e.type == pbs.RESV_CONFIRM:
                 pbs.logmsg(pbs.LOG_DEBUG, "e.resv = %s" % e.resv.resvid)
-                e.resv.resources_used.walltime = 10
+                e.resv.queue = 'workq'
                 pbs.logmsg(pbs.LOG_DEBUG, 'Reservation ID - %s' %
-                e.resv.resources_used.walltime)
+                e.resv.queue)
         """
         hook_script = textwrap.dedent(hook_script)
         self.server.import_hook(self.hook_name, hook_script)
 
         offset = 10
         duration = 30
-        rid = self.server.submit_resv(offset, duration)
+        rid, _, _ = self.server.submit_resv(offset, duration)
 
-        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid)
-
-        time.sleep(15)
-
-        self.server.delete(rid)
         msg = 'Svr;Server@%s;PBS server internal error (15011) in Error ' \
-              'evaluating Python script, attribute '"'resources_used'"' is ' \
+              'evaluating Python script, attribute '"'queue'"' is ' \
               'part of a readonly object' % self.server.shortname
         self.server.log_match(msg, tail=True, max_attempts=30, interval=2)
 
     @tags('hooks')
-    @timeout(300)
     def test_delete_resv_after_first_occurrence(self):
         """
         Testcase to submit and confirm a standing reservation for two
@@ -265,36 +163,29 @@ class TestResvConfirmHook(TestFunctional):
         occurrence and verify the confirm ran only once.
         """
         self.server.import_hook(self.hook_name,
-                                TestResvConfirmHook.standing_resv_hook_script)
+                                TestResvConfirmHook.advance_resv_hook_script)
 
-        offset = 10
+        offset = 20
         duration = 30
-        rid = self.server.submit_resv(offset, duration,
-                                      rrule='FREQ=MINUTELY;COUNT=2',
-                                      conf=self.conf)
-
-        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid)
-
-        attrs['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
-        self.server.expect(RESV, attrs, id=rid, offset=10)
-
-        self.logger.info('wait till 30 seconds until the reservation begins')
-        time.sleep(30)
-
-        msg = 'Hook;Server@%s;Reservation occurrence - 1' % \
-              self.server.shortname
+        rid, _, _ = self.server.submit_resv(offset, duration,
+                                            rrule='FREQ=MINUTELY;COUNT=2',
+                                            conf=self.conf)
+        msg = 'Hook;Server@%s;Reservation ID - %s' % (self.server.shortname,
+                                                      rid)
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
         self.logger.info('Reservation confirm hook ran for first occurrence of'
                          ' a standing reservation')
+        post_first_conf_time = time.time()
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, attrs, id=rid)
+        off = offset + duration - time.time()
+        self.logger.info('Wait %s sec until reservation completed.', off)
 
-        self.logger.info('delete during first occurence')
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, attrs, id=rid, offset=off)
 
-        self.server.delete(rid)
-        msg = 'Hook;Server@%s;Reservation occurrence - 2' % \
-              self.server.shortname
-        self.server.log_match(msg, tail=True, interval=2, max_attempts=30,
-                              existence=False)
+        self.server.log_match(msg, starttime=post_first_conf_time, interval=1,
+                              max_attempts=10, existence=False)
 
     @tags('hooks')
     def test_unconfirmed_resv_with_node(self):
@@ -302,7 +193,7 @@ class TestResvConfirmHook(TestFunctional):
         Testcase to set the node attributes such that the number of ncpus is 1,
         submit and confirm a reservation on the same node, submit another
         reservation on the same node and verify the reservation confirm hook
-        did not run as the latter one stays in unconfirmed state.
+        did not run as the latter one never gets past the unconfirmed state.
         """
         self.server.import_hook(self.hook_name,
                                 TestResvConfirmHook.advance_resv_hook_script)
@@ -310,22 +201,24 @@ class TestResvConfirmHook(TestFunctional):
         node_attrs = {'resources_available.ncpus': 1}
         self.server.manager(MGR_CMD_SET, NODE, node_attrs,
                             id=self.mom.shortname)
-        offset = 10
-        duration = 10
-        rid = self.server.submit_resv(offset, duration)
+        offset = 20
+        duration = 300
+        rid, _, _ = self.server.submit_resv(offset, duration)
+        msg = 'Hook;Server@%s;Reservation ID - %s' % \
+              (self.server.shortname, rid)
+        self.server.log_match(msg, tail=True, max_attempts=10)
 
-        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid)
-
-        new_rid = self.server.submit_resv(offset, duration)
-
+        new_rid, _, _ = self.server.submit_resv(offset, duration,
+                                                confirmed=False)
+        msg = "Server@%s;Resv;%s;Reservation denied" % (self.server.shortname,
+                                                        new_rid)
+        self.server.log_match(msg, tail=True)
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
               (self.server.shortname, new_rid)
         self.server.log_match(msg, tail=True, max_attempts=10,
                               existence=False)
 
     @tags('hooks')
-    @timeout(240)
     def test_scheduler_down(self):
         """
         Testcase to turn off the scheduler and submit a reservation,
@@ -335,69 +228,73 @@ class TestResvConfirmHook(TestFunctional):
         self.server.import_hook(self.hook_name,
                                 TestResvConfirmHook.advance_resv_hook_script)
 
-        self.scheduler.stop()
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
-        offset = 10
+        offset = 20
         duration = 30
-        rid = self.server.submit_resv(offset, duration)
+        rid, _, end = self.server.submit_resv(offset, duration,
+                                              confirmed=False)
+        off = end - time.time()
 
-        self.logger.info('wait for 30 seconds till the reservation begins ')
-        time.sleep(30)
+        self.logger.info('wait for %s seconds till the reservation begins',
+                         off)
+        time.sleep(off)
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
               (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, max_attempts=10,
+        self.server.log_match(msg, tail=True, max_attempts=3,
                               existence=False)
 
     @tags('hooks')
-    @timeout(30)
-    def test_multiple_hooks(self):
-        """Define multiple hooks for the resv_confirm event and make sure
+    def test_multiple_reconfirm_hooks(self):
+        """
+        Define multiple hooks for the resv_confirm event and make sure
         both get run.
 
+        Check for initial confirmation and also in a degraded/reconfirmed case.
         """
-        test_hook_script_1 = textwrap.dedent("""\
+        test_hook_script = textwrap.dedent("""
         import pbs
         e=pbs.event()
 
         pbs.logmsg(pbs.LOG_DEBUG,
-                   'Reservation Confirm Hook name - %s' % e.hook_name)
+                   'Reservation Confirm Hook name - %%s' %% e.hook_name)
 
         if e.type == pbs.RESV_CONFIRM:
             pbs.logmsg(pbs.LOG_DEBUG,
-                       'Test 1 Reservation ID - %s' % e.resv.resvid)
-        """)
-
-        test_hook_script_2 = textwrap.dedent("""\
-        import pbs
-        e=pbs.event()
-
-        pbs.logmsg(pbs.LOG_DEBUG,
-                   'Reservation Confirm Hook name - %s' % e.hook_name)
-
-        if e.type == pbs.RESV_CONFIRM:
-            pbs.logmsg(pbs.LOG_DEBUG,
-                       'Test 2 Reservation ID - %s' % e.resv.resvid)
+                       'Test %d Reservation ID - %%s' %% e.resv.resvid)
         """)
 
         attrs = {'event': 'resv_confirm'}
-        self.server.create_hook("test_hook_1", attrs)
-        self.server.create_hook("test_hook_2", attrs)
-        self.server.import_hook("test_hook_1", test_hook_script_1)
-        self.server.import_hook("test_hook_2", test_hook_script_2)
-
+        self.server.create_import_hook("test_hook_1", attrs,
+                                       test_hook_script % 1)
+        self.server.create_import_hook("test_hook_2", attrs,
+                                       test_hook_script % 2)
+        a = {'resources_available.ncpus': 1}
+        self.mom.create_vnodes(a, 2)
         offset = 10
         duration = 30
-        rid = self.server.submit_resv(offset, duration)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': 5})
+        rid, _, _ = self.server.submit_resv(offset, duration)
+        msg1 = 'Hook;Server@%s;Test 1 Reservation ID - %s' % \
+            (self.server.shortname, rid)
+        self.server.log_match(msg1, tail=True)
+
+        msg2 = 'Hook;Server@%s;Test 2 Reservation ID - %s' % \
+            (self.server.shortname, rid)
+        self.server.log_match(msg2, tail=True)
+
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        rnodes = self.server.reservations[rid].get_vnodes()
+        self.server.manager(MGR_CMD_SET, NODE, {'state': (INCR, 'offline')},
+                            id=rnodes[0])
+        vnode_off_time = time.time()
+
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
-        attrs['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
-        self.server.expect(RESV, attrs, id=rid, offset=10)
 
-        msg = 'Hook;Server@%s;Test 1 Reservation ID - %s' % \
-              (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
-
-        msg = 'Hook;Server@%s;Test 2 Reservation ID - %s' % \
-              (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
+        self.server.log_match(msg1, starttime=vnode_off_time, interval=1,
+                              max_attempts=10)
+        self.server.log_match(msg2, starttime=vnode_off_time, interval=1,
+                              max_attempts=10)

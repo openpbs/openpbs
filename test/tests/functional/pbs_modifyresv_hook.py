@@ -70,28 +70,6 @@ class TestModifyResvHook(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
     @tags('hooks')
-    def test_delete_advance_resv(self):
-        """
-        Testcase to submit and confirm advance reservation, delete the same
-        and verify the modifyresv hook did not run.
-        """
-        self.server.import_hook(self.hook_name,
-                                TestModifyResvHook.advance_resv_hook_script)
-
-        offset = 10
-        duration = 30
-        rid = self.server.submit_resv(offset, duration)
-
-        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid)
-
-        self.server.delete(rid)
-        msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, interval=1, max_attempts=10,
-                              existence=False)
-
-    @tags('hooks')
     def test_server_down_case_1(self):
         """
         Testcase to submit and confirm an advance reservation, turn the server
@@ -101,13 +79,10 @@ class TestModifyResvHook(TestFunctional):
         self.server.import_hook(self.hook_name,
                                 TestModifyResvHook.advance_resv_hook_script)
 
-        offset = 10
+        offset = 20
         duration = 300
         shift = 30
-        rid, start, end = self.server.submit_resv(offset, duration, times=True)
-
-        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid)
+        rid, start, end = self.server.submit_resv(offset, duration)
 
         self.server.stop()
         self.server.alter_a_reservation(rid, start, end, shift, whichMessage=0)
@@ -123,7 +98,6 @@ class TestModifyResvHook(TestFunctional):
                               existence=False)
 
     @tags('hooks')
-    @timeout(30)
     def test_alter_advance_resv(self):
         """
         Testcase to submit and confirm an advance reservation, wait for it
@@ -132,23 +106,20 @@ class TestModifyResvHook(TestFunctional):
         self.server.import_hook(self.hook_name,
                                 TestModifyResvHook.advance_resv_hook_script)
 
-        offset = 10
+        offset = 20
         duration = 30
         shift = 10
-        rid, start, end = self.server.submit_resv(offset, duration, times=True)
-
-        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid)
+        rid, start, end = self.server.submit_resv(offset, duration)
 
         self.server.alter_a_reservation(rid, start, end, shift, alter_s=True,
                                         alter_e=True)
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
               (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
-        time.sleep(offset + shift)
-        attrs['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
-        self.server.expect(RESV, attrs, id=rid, offset=10)
-        # Don't need to wait.  Let teardown clear the reservation
+        off = offset + shift + 10
+        self.logger.info("Waiting %s sec for resv to run.", off)
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, attrs, id=rid, offset=off)
 
     @tags('hooks')
     def test_set_attrs(self):
@@ -182,12 +153,9 @@ class TestModifyResvHook(TestFunctional):
         offset = 10
         duration = 30
         shift = 10
-        rid, start, end = self.server.submit_resv(offset, duration, times=True)
+        rid, start, end = self.server.submit_resv(offset, duration)
         self.server.alter_a_reservation(rid, start, end, shift, alter_s=True,
                                         alter_e=True)
-
-        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid)
 
         time.sleep(15)
 
@@ -198,7 +166,6 @@ class TestModifyResvHook(TestFunctional):
         self.server.log_match(msg_ro, tail=True, max_attempts=30, interval=2)
 
     @tags('hooks')
-    @timeout(60)
     def test_scheduler_down(self):
         """
         Testcase to turn off the scheduler and submit a reservation,
@@ -208,14 +175,14 @@ class TestModifyResvHook(TestFunctional):
         self.server.import_hook(self.hook_name,
                                 TestModifyResvHook.advance_resv_hook_script)
 
-        self.scheduler.stop()
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
         offset = 10
         duration = 30
         shift = 10
 
-        rid, start, end = self.server.submit_resv(offset, duration, times=True)
-        self.logger.info("rid=%s start=%s end=%s", rid, start, end)
+        rid, start, end = self.server.submit_resv(offset, duration,
+                                                  confirmed=False)
         self.server.alter_a_reservation(rid, start, end, shift, alter_s=True,
                                         alter_e=True, check_log=False,
                                         sched_down=True)
@@ -224,61 +191,46 @@ class TestModifyResvHook(TestFunctional):
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % (self.server.shortname,
                                                       rid)
-        self.server.log_match(msg, tail=True, max_attempts=10)
+        self.server.log_match(msg, tail=True)
 
     @tags('hooks')
-    @timeout(30)
     def test_multiple_hooks(self):
-        """Define multiple hooks for the modifyresv event and make sure
-        both get run.
+        """
+        Define multiple hooks for the modifyresv event and make sure both
+        get run.
 
         """
-        test_hook_script_1 = textwrap.dedent("""\
+        test_hook_script = textwrap.dedent("""
         import pbs
         e=pbs.event()
 
         pbs.logmsg(pbs.LOG_DEBUG,
-                   'Reservation Modify Hook name - %s' % e.hook_name)
+                   'Reservation Confirm Hook name - %%s' %% e.hook_name)
 
         if e.type == pbs.MODIFYRESV:
             pbs.logmsg(pbs.LOG_DEBUG,
-                       'Test 1 Reservation ID - %s' % e.resv.resvid)
-        """)
-
-        test_hook_script_2 = textwrap.dedent("""\
-        import pbs
-        e=pbs.event()
-
-        pbs.logmsg(pbs.LOG_DEBUG,
-                   'Reservation Modify Hook name - %s' % e.hook_name)
-
-        if e.type == pbs.MODIFYRESV:
-            pbs.logmsg(pbs.LOG_DEBUG,
-                       'Test 2 Reservation ID - %s' % e.resv.resvid)
+                       'Test %d Reservation ID - %%s' %% e.resv.resvid)
         """)
 
         attrs = {'event': 'modifyresv'}
-        self.server.create_hook("test_hook_1", attrs)
-        self.server.create_hook("test_hook_2", attrs)
-        self.server.import_hook("test_hook_1", test_hook_script_1)
-        self.server.import_hook("test_hook_2", test_hook_script_2)
-
+        self.server.create_import_hook("test_hook_1", attrs,
+                                       test_hook_script % 1)
+        self.server.create_import_hook("test_hook_2", attrs,
+                                       test_hook_script % 2)
         offset = 10
         duration = 30
         shift = 10
-        rid, start, end = self.server.submit_resv(offset, duration, times=True)
+        rid, start, end = self.server.submit_resv(offset, duration)
         self.server.alter_a_reservation(rid, start, end, shift, alter_s=True,
                                         alter_e=True)
 
-        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid)
-        attrs['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
         self.server.expect(RESV, attrs, id=rid, offset=10)
 
         msg = 'Hook;Server@%s;Test 1 Reservation ID - %s' % \
               (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
+        self.server.log_match(msg, tail=True, interval=2, max_attempts=3)
 
         msg = 'Hook;Server@%s;Test 2 Reservation ID - %s' % \
               (self.server.shortname, rid)
-        self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
+        self.server.log_match(msg, tail=True, interval=2, max_attempts=3)

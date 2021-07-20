@@ -1859,7 +1859,7 @@ class Wrappers(PBSService):
         return objid
 
     def submit_resv(self, offset, duration, select='1:ncpus=1', rrule='',
-                    times=False, conf=None):
+                    conf=None, confirmed=True):
         """
         Helper function to submit an advance/a standing reservation.
         :param int offset: Time in seconds from time this is called to set the
@@ -1873,6 +1873,9 @@ class Wrappers(PBSService):
                               Otherwise return just the reservation id.
                               Default: False
         :param conf: Configuration for test case for PBS_TZID information.
+        :param boolean confirmed: Wait until the reservation is confimred if
+                                  True.
+                                  Default: True
         :return The reservation id if times is false.  Otherwise a tuple of
                 reservation id, start time and end time of the reservation.
 
@@ -1901,10 +1904,15 @@ class Wrappers(PBSService):
             attrs[ATTR_resv_timezone] = tzone
 
         rid = self.submit(Reservation(TEST_USER, attrs))
+        time_format = "%Y-%m-%d %H:%M:%S"
+        self.logger.info("Submitted reservation: %s, start=%s, end=%s", rid,
+                          time.strftime(time_format, time.localtime(start_time)),
+                          time.strftime(time_format, time.localtime(end_time)))
+        if confirmed:
+            attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+            self.expect(RESV, attrs, id=rid)
 
-        if times:
-            return rid, start_time, end_time
-        return rid
+        return rid, start_time, end_time
 
     def alter_a_reservation(self, r, start, end, shift=0,
                             alter_s=False, alter_e=False,
