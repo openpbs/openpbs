@@ -738,7 +738,9 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 	}
 	advresv->resv->resv_queue =
 		find_queue_info(sinfo->queues, advresv->resv->queuename);
-	if (is_resresv_running(advresv)) {
+		
+	/* It's possible for an in-conflict reservation to be running with no nodes */
+	if (is_resresv_running(advresv) && advresv->ninfo_arr != NULL) {
 		for (int j = 0; advresv->ninfo_arr[j] != NULL; j++)
 			advresv->ninfo_arr[j]->num_run_resv++;
 	}
