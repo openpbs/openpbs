@@ -538,8 +538,20 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 				}
 			}
 		}
-		if (pvnd->nd_state & INUSE_SLEEP)
-			do_this_vnode = 0;
+		/* Skip resetting state only on cray_compute nodes when state is sleep */
+		if ((pvnd->nd_state & INUSE_SLEEP) &&
+		    (setwhen == Set_All_State_Regardless) &&
+			(bits & INUSE_SLEEP) &&
+			!(do_set)) {
+			resource_def *prd;
+			resource     *prc;
+			pat = &pvnd->nd_attr[(int)ND_ATR_ResourceAvail];
+			prd = find_resc_def(svr_resc_def, "vntype");
+			if (pat && prd && (prc = find_resc_entry(pat, prd))) {
+				if (strcmp(prc->rs_value.at_val.at_arst->as_string[0], CRAY_COMPUTE) == 0)
+						do_this_vnode = 0;
+			}
+		}
 		if (do_this_vnode == 0)
 			continue;	/* skip setting state on this vnode */
 
@@ -4331,7 +4343,7 @@ found:
 			}
 
 			set_all_state(pmom, 0,
-				INUSE_UNKNOWN|INUSE_NEED_ADDRS, NULL,
+				INUSE_UNKNOWN|INUSE_NEED_ADDRS|INUSE_SLEEP, NULL,
 				Set_All_State_Regardless);
 			set_all_state(pmom, 1, INUSE_DOWN|INUSE_INIT, NULL,
 				Set_ALL_State_All_Down);
