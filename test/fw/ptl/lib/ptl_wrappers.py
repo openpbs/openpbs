@@ -1906,8 +1906,10 @@ class Wrappers(PBSService):
         rid = self.submit(Reservation(TEST_USER, attrs))
         time_format = "%Y-%m-%d %H:%M:%S"
         self.logger.info("Submitted reservation: %s, start=%s, end=%s", rid,
-                          time.strftime(time_format, time.localtime(start_time)),
-                          time.strftime(time_format, time.localtime(end_time)))
+                         time.strftime(time_format,
+                                       time.localtime(start_time)),
+                         time.strftime(time_format,
+                                       time.localtime(end_time)))
         if confirmed:
             attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
             self.expect(RESV, attrs, id=rid)
