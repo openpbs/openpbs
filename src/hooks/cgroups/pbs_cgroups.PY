@@ -2061,14 +2061,14 @@ class NodeUtils(object):
         for out_line in out:
             gpu_match = r_gpu.match(out_line)
             mig_match = r_mig.match(out_line)
-            if(gpu_match):
+            if gpu_match:
                 current_gpu = int(gpu_match.group(1))
                 uuid_map[current_gpu] = dict()
-            if(mig_match):
+            if mig_match:
                 mig_uuid = out_line.split()[-1].rstrip(")")
                 uuid_map[current_gpu][int(mig_match.group(1))] = mig_uuid
 
-        pbs.logmsg(pbs.EVENT_DEBUG4, "uuid map : \n" + str(uuid_map))
+        pbs.logmsg(pbs.EVENT_DEBUG4, "uuid map: %s" % str(uuid_map))
 
         # now find all CIs
         cmd = [self.cfg['nvidia-smi'], 'mig', '-lci']
@@ -2115,7 +2115,7 @@ class NodeUtils(object):
             if not match:
                 continue
             # reset count if a new gpu is parsed
-            if(gpu_num != int(match.group(1))):
+            if gpu_num != int(match.group(1)):
                 uuid_count = 0
             gpu_num = int(match.group(1))
             gpuid = 'nvidia%d' % gpu_num
