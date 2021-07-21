@@ -205,7 +205,7 @@ class TestModifyResvHook(TestFunctional):
         e=pbs.event()
 
         pbs.logmsg(pbs.LOG_DEBUG,
-                   'Reservation Confirm Hook name - %%s' %% e.hook_name)
+                   'Reservation Modify Hook name - %%s' %% e.hook_name)
 
         if e.type == pbs.MODIFYRESV:
             pbs.logmsg(pbs.LOG_DEBUG,

@@ -147,11 +147,10 @@ class TestResvBeginHook(TestFunctional):
 
         offset = 10
         duration = 30
-        mom = self.moms.values()[0]
 
         rid, start, _ = self.server.submit_resv(offset, duration)
         self.server.manager(MGR_CMD_SET, NODE, {'state': (INCR, 'offline')},
-                            id=mom.shortname)
+                            id=self.mom.shortname)
         attrs = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
         self.server.expect(RESV, attrs, id=rid)
         self.server.delete(rid)
@@ -177,13 +176,12 @@ class TestResvBeginHook(TestFunctional):
         rid, start, _ = self.server.submit_resv(offset, duration)
 
         self.server.stop()
-        time.sleep(offset)
+        time.sleep(offset + 5)
         self.server.start()
         self.assertTrue(self.server.isUp())
 
-        off = start - time.time()
         attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
-        self.server.expect(RESV, attrs, id=rid, offset=off)
+        self.server.expect(RESV, attrs, id=rid)
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
               (self.server.shortname, rid)
@@ -420,7 +418,7 @@ class TestResvBeginHook(TestFunctional):
         e=pbs.event()
 
         pbs.logmsg(pbs.LOG_DEBUG,
-                   'Reservation Confirm Hook name - %%s' %% e.hook_name)
+                   'Reservation Begin Hook name - %%s' %% e.hook_name)
 
         if e.type == pbs.RESV_BEGIN:
             pbs.logmsg(pbs.LOG_DEBUG,

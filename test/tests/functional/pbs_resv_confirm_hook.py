@@ -102,20 +102,19 @@ class TestResvConfirmHook(TestFunctional):
         offset = 300
         duration = 30
         rid, _, _ = self.server.submit_resv(offset, duration)
-        mom = self.moms.values()[0]
         msg = 'Hook;Server@%s;Reservation ID - %s' % (self.server.shortname,
                                                       rid)
         self.server.log_match(msg, tail=True)
 
         self.server.manager(MGR_CMD_SET, NODE, {'state': (INCR, 'offline')},
-                            id=mom.shortname)
+                            id=self.mom.shortname)
         vnode_off_time = time.time()
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
         self.server.expect(RESV, attrs, id=rid)
 
         self.server.manager(MGR_CMD_SET, NODE, {'state': (DECR, 'offline')},
-                            id=mom.shortname)
+                            id=self.mom.shortname)
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, attrs, id=rid)
 
