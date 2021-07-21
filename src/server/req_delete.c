@@ -134,7 +134,7 @@ resume_deletion(struct work_task *ptask)
 		return;
 
 	if (preq->rq_type == PBS_BATCH_DeleteJobList)
-		preq->rq_ind.rq_deletejoblist.rq_resume = 1;
+		preq->rq_ind.rq_deletejoblist.rq_resume = TRUE;
 
 	req_deletejob(preq);
 	return;
@@ -510,7 +510,7 @@ req_deletejob(struct batch_request *preq)
 	else
 		qdel_mail = 1;
 
-	if (preq->rq_ind.rq_deletejoblist.rq_resume != 1) {
+	if (!preq->rq_ind.rq_deletejoblist.rq_resume) {
 		preply->brp_un.brp_deletejoblist.pend_arrjobs = 0;
 		preply->brp_un.brp_deletejoblist.pend_jobs = count;
 	} else 
@@ -518,8 +518,10 @@ req_deletejob(struct batch_request *preq)
 
 	for (j = start_jobid; j < count; j++) {
 
-		if (j != start_jobid)
-			preq->rq_ind.rq_deletejoblist.rq_resume = 0;
+		if (j != start_jobid) {
+			preq->rq_ind.rq_deletejoblist.rq_resume = FALSE;
+			preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
+		}
 
 		snprintf(jid, sizeof(jid), "%s", jobids[j]);
 		parent = chk_job_request(jid, preq, &jt, &err);
@@ -549,10 +551,8 @@ req_deletejob(struct batch_request *preq)
 			 */
 			if (delhist)
 				parent->ji_deletehistory = 1;
-			if (req_deletejob2(preq, parent) == 2) {
-				preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
+			if (req_deletejob2(preq, parent) == 2)
 				return;
-			}
 			continue;
 
 		} else if (jt == IS_ARRAY_Single) {
@@ -590,10 +590,8 @@ req_deletejob(struct batch_request *preq)
 				*/
 				if (delhist)
 					pjob->ji_deletehistory = 1;
-				if (req_deletejob2(preq, pjob) == 2) {
-					preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
+				if (req_deletejob2(preq, pjob) == 2)
 					return;
-				}
 			} else {
 				update_sj_parent(parent, NULL, jid, sjst, JOB_STATE_LTR_EXPIRED);
 				acct_del_write(jid, parent, preq, 0);
@@ -619,23 +617,22 @@ req_deletejob(struct batch_request *preq)
 				parent->ji_deletehistory = 1;
 			/* The Array Job itself ... */
 			/* for each subjob that is running, delete it via req_deletejob2 */
-
-			++preq->rq_refct;
-			preply->brp_un.brp_deletejoblist.pend_arrjobs++;
 			
 			if (preq->rq_ind.rq_deletejoblist.rq_resume)
 				start = preq->rq_ind.rq_deletejoblist.subjobid_to_resume;
+			else {
+				/* in case of resume counts are incremented already */
+				++preq->rq_refct;
+				preply->brp_un.brp_deletejoblist.pend_arrjobs++;
+			}
 
 			/* keep the array from being removed while we are looking at it */
 			parent->ji_ajinfo->tkm_flags |= TKMFLG_NO_DELETE;
 			for (i = start; i <= parent->ji_ajinfo->tkm_end; i += parent->ji_ajinfo->tkm_step) {
 				end_time = time(NULL);
 				if ((end_time - begin_time) > QDEL_BREAKER_SECS) {
-					preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
 					preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i;
-					set_task(WORK_Interleave, 0, resume_deletion, preq); 
-					--preq->rq_refct;
-					preply->brp_un.brp_deletejoblist.pend_arrjobs--;
+					set_task(WORK_Interleave, 0, resume_deletion, preq);
 					return;
 				}
 				pjob = get_subjob_and_state(parent, i, &sjst, NULL);
@@ -654,11 +651,8 @@ req_deletejob(struct batch_request *preq)
 						job_purge(pjob);
 					} else {
 						if (dup_br_for_subjob(preq, pjob, req_deletejob2) == 2) {
-							preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
 							preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i + parent->ji_ajinfo->tkm_step;
 							set_task(WORK_Timed, time_now + 1, resume_deletion, preq);
-							--preq->rq_refct;
-							preply->brp_un.brp_deletejoblist.pend_arrjobs--;
 							return;
 						}
 						del_parent = 0;
@@ -682,9 +676,8 @@ req_deletejob(struct batch_request *preq)
 			if (--preq->rq_refct == 0) {
 				if ((parent = find_job(jid)) != NULL) {
 					if (req_deletejob2(preq, parent) == 2) {
-						preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
 						preq->rq_ind.rq_deletejoblist.subjobid_to_resume = parent->ji_ajinfo->tkm_end;
-						preply->brp_un.brp_deletejoblist.pend_arrjobs--;
+						++preq->rq_refct;
 						return;
 					}
 					del_parent = 0;
@@ -696,9 +689,8 @@ req_deletejob(struct batch_request *preq)
 			if (del_parent == 1) {
 				if ((parent = find_job(jid)) != NULL) {
 					if (req_deletejob2(preq, parent) == 2) {
-						preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
 						preq->rq_ind.rq_deletejoblist.subjobid_to_resume = parent->ji_ajinfo->tkm_end;
-						preply->brp_un.brp_deletejoblist.pend_arrjobs--;
+						++preq->rq_refct;
 						return;
 					}
 				}
@@ -729,9 +721,8 @@ req_deletejob(struct batch_request *preq)
 				if (update_deljob_rply(preq, 1, jid, PBSE_IVALREQ))
 					req_reject(PBSE_IVALREQ, 0, preq);
 				break;
-			} else if (i == 1) {
+			} else if (i == 1)
 				break;
-			}
 
 			/*
 			 * Ensure that the range specified in the delete job request does not exceed the
@@ -758,7 +749,6 @@ req_deletejob(struct batch_request *preq)
 						job_purge(pjob);
 					} else {
 						if (dup_br_for_subjob(preq, pjob, req_deletejob2) == 2) {
-							preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
 							preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i + step;
 							--preq->rq_refct;
 							set_task(WORK_Timed, time_now + 1, resume_deletion, preq);
