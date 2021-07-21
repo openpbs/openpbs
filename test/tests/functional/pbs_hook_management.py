@@ -849,6 +849,11 @@ class TestHookManagement(TestFunctional):
             self.server.manager(MGR_CMD_UNSET, NODE,
                                 'resources_available.ncpus',
                                 id=mom.shortname)
+
+            a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER1) + "=2]"}
+            self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
+            self.server.manager(MGR_CMD_UNSET, QUEUE, 'max_run_res_soft.ncpus', 'workq')
+
             self.server.log_match("cmd=>MGR_CMD_SET",
                                   starttime=start_time_mom)
             self.server.log_match("objtype=>MGR_OBJ_NODE",
@@ -860,11 +865,16 @@ class TestHookManagement(TestFunctional):
                                   "s_available,op:0,op_str:BATCH_OP_SET,resour"
                                   "ce:ncpus,sisters:[],value:700000 (stringifi"
                                   "ed)",
-                                  starttime=start_time_mom)
+                                  starttime=start_time_mom,
+                                  n='ALL', max_attempts=16)
             self.server.log_match("attribs=>flags:0,flags_lst:[],name:resource"
                                   "s_available,op:0,op_str:BATCH_OP_SET,resour"
                                   "ce:ncpus,sisters:[],value: (stringified)",
-                                  starttime=start_time_mom)
+                                  starttime=start_time_mom,
+                                  n='ALL', max_attempts=16)
+
+            # figure out where this went wrong:
+            # https://github.com/openpbs/openpbs/pull/1902/files
 
             """07/08/2021 13:57:09.301273;0006;Server@pdw-s1;Hook;Server@pdw-s1;cmd=>MGR_CMD_SET (reversed)
             07/08/2021 13:57:09.301282;0006;Server@pdw-s1;Hook;Server@pdw-s1;cmd=>2
