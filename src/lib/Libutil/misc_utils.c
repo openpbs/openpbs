@@ -618,7 +618,7 @@ pbs_asprintf_exit:
  * @param[in] ... - arguments to format string
  *
  * @return int
- * @retval -1 - Error
+ * @retval -1 - Error - No new allocation or freeing done.
  * @retval >=0 - Length of new string, not including terminator
  */
 int
@@ -629,6 +629,10 @@ pbs_asprintcatf(char **dest, size_t *size, size_t *idx, const char *fmt, ...)
 	size_t new_size = *size;
 	char * newbuf = NULL;
 
+	if (!size)
+		return -1;
+	if (!idx)
+		return -1;
 	if (!dest)
 		return -1;
 	if (!fmt)
