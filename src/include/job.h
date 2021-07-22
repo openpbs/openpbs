@@ -1008,7 +1008,7 @@ extern int   modify_job_attr(job *, svrattrl *, int, int *);
 extern char *prefix_std_file(job *, int);
 extern void  cat_default_std(job *, int, char *, char **);
 extern int   set_objexid(void *, int, attribute *);
-extern bool update_deljob_rply(struct batch_request *, int, char *, int);
+extern bool update_deljob_rply(struct batch_request *, char *, int);
 #if 0
 extern int   site_check_user_map(job *, char *);
 #endif

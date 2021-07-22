@@ -219,9 +219,8 @@ struct batch_reply
 		pbs_list_head brp_status; /* status (svr) replies */
 		struct batch_status *brp_statc; /* status (cmd) replies) */
 		struct {
-			int pend_jobs;
-			int pend_arrjobs;
-			struct batch_deljob_status *brp_delstatc;
+			void *undeleted_job_idx; /* tracking undeleted jobs */
+			struct batch_deljob_status *brp_delstatc; /* list of failed jobs with errcode */
 		} brp_deletejoblist;
 		struct {
 			int brp_txtlen;

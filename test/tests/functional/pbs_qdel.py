@@ -118,8 +118,8 @@ class TestQdel(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'true'})
         self.server.delete(job_set)
         # Make sure that the counters are not going negative
-        msg = "pend_jobs count went negative for delete request"
-        self.scheduler.log_match(msg, existence=False, max_attempts=3)
+        msg = "job*has already been deleted from delete job list"
+        self.scheduler.log_match(msg, existence=False, max_attempts=3, regexp=True)
         # Make sure the last two jobs doesn't started running while the deletion is in process
         for job in job_set[2:]:
             jobid, server = job.split('.')
