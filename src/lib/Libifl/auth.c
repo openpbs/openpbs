@@ -364,7 +364,9 @@ tcp_send_auth_req(int sock, unsigned int port, char *user, char *auth_method, ch
 		return -1;
 	}
 
+#ifndef WIN32
 	sec_set_context(&sec_con, ATTR_security_context);
+#endif
 
 	if (diswui(sock, port) ||  /* port (only used in resvport auth) */
 		encode_DIS_ReqExtend(sock, sec_con)) {
