@@ -2474,7 +2474,7 @@ getnum(char *str)
 	return (int)val;
 }
 
-#define	LABLELEN	1024
+#define	LABLELEN	2048
 
 struct {
 	int	physid;
