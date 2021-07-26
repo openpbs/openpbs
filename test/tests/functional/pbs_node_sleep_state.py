@@ -46,11 +46,6 @@ class TestNodeSleepState(TestFunctional):
     """
     This test suite contains regression tests for node sleep state
     """
-    def setUp(self):
-        super(TestNodeSleepState, self).setUp()
-        self.server.manager(MGR_CMD_DELETE, NODE, id="", sudo=True)
-        self.server.manager(MGR_CMD_CREATE, NODE, id=self.mom.shortname)
-        self.server.expect(NODE, {'state': 'free'})
 
     def test_node_set_sleep_state(self):
         """
