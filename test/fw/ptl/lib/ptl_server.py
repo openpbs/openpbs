@@ -288,7 +288,9 @@ class Server(Wrappers):
         if self.isUp():
             if not self.stop():
                 return False
-        return self.start()
+        start_rc = self.start()
+        self.expect(NODE, {'state=state-unknown,down': 0})
+        return start_rc
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, max_attempts=None, interval=None,
