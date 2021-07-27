@@ -768,7 +768,7 @@ exit 3
 
         a = {'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom1)
-        a = {'resources_available.ncpus': 3}
+        a = {'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom2)
 
         a = {'Resource_List.select': '1:ncpus=2'}
@@ -791,7 +791,7 @@ exit 3
 
         # Submit another express queue job requesting the host,
         # this job will stay queued
-        a = {ATTR_q: 'expressq', 'Resource_List.host': self.mom1,
+        a = {ATTR_q: 'expressq', 'Resource_List.host': ehost,
              'Resource_List.ncpus': 2}
         hj2 = Job(TEST_USER, attrs=a)
         hjid2 = self.server.submit(hj2)
