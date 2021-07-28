@@ -295,11 +295,11 @@ pbs_idx_free_ctx(void *ctx)
 /**
  * @brief check whether idx is empty and has no key associated with it
  * 
- * @param idx[in] - avl index
+ * @param[in] idx - pointer to avl index
  * 
  * @return int
- * @retval 1 : idx is empty
- * @retval 0: idx is not empty
+ * @retval 1 - idx is empty
+ * @retval 0 - idx is not empty
  */
 int
 pbs_idx_is_empty(void *idx)

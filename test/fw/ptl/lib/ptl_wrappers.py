@@ -2086,7 +2086,7 @@ class Wrappers(PBSService):
                 rc = e.rc
                 msg = e.msg
                 rv = e.rv
-        elif job_list:
+        if job_list:
             obj_type[j] = JOB
             try:
                 rc = self.deljob(job_list, extend, runas, logerr=logerr)
