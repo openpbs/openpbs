@@ -297,11 +297,11 @@ pbs_idx_free_ctx(void *ctx)
  * 
  * @param[in] idx - pointer to avl index
  * 
- * @return int
+ * @return bool
  * @retval 1 - idx is empty
  * @retval 0 - idx is not empty
  */
-int
+bool
 pbs_idx_is_empty(void *idx)
 {
 	void *idx_ctx = NULL;

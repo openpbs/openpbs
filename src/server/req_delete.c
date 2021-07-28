@@ -215,6 +215,15 @@ acct_del_write(char *jid, job *pjob, struct batch_request *preq, int nomail)
 	}
 }
 
+/**
+ * @brief check if there is any pending jobs
+ * remaing to be deleted
+ * 
+ * @param[in] preply - reply struct
+ * @return bool
+ * @retval true - more jobs pending to be deleted
+ * @retval false - no more jobs pending
+ */
 static bool
 any_pending_jobs(struct batch_reply *preply)
 {
@@ -223,10 +232,10 @@ any_pending_jobs(struct batch_reply *preply)
 	if (pbs_idx_is_empty(idx)) {
 		pbs_idx_destroy(idx);
 		preply->brp_un.brp_deletejoblist.undeleted_job_idx = NULL;
-		return TRUE;
+		return FALSE;
 	}
 
-	return FALSE;
+	return TRUE;
 }
 
 /**
@@ -241,8 +250,8 @@ any_pending_jobs(struct batch_reply *preply)
  * @param[in]	errcode - Job's error code 
  *
  * @return	bool
- * @retval	TRUE	- total reply count matches required; time to reply back
- * @retval	FALSE	- total reply does not match the required no of replies
+ * @retval	TRUE	- all jobs deleted
+ * @retval	FALSE	- jobs remaining to be deleted
  */
 bool
 update_deljob_rply(struct batch_request *preq, char *jid, int errcode)
@@ -280,7 +289,7 @@ update_deljob_rply(struct batch_request *preq, char *jid, int errcode)
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 			  __func__, "update_deljob_rply invoked with empty job id");
 
-	return any_pending_jobs(preply);
+	return !any_pending_jobs(preply);
 }
 
 /**
@@ -498,6 +507,7 @@ init_deljoblist_rply(struct batch_request *preq)
 
 /**
  * @brief delete any pending array jobs part of delete request
+ * 	from the reply index
  * 
  * @param[in] preq - request structure
  * 
@@ -521,7 +531,7 @@ delete_pending_arrayjobs(struct batch_request *preq)
 			pbs_idx_delete(idx, jid);
 	}
 
-	return any_pending_jobs(preply);
+	return !any_pending_jobs(preply);
 }
 
 /**

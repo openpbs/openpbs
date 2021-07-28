@@ -43,6 +43,14 @@
 extern "C" {
 #endif
 
+#if HAVE__BOOL
+#include "stdbool.h"
+#else
+#ifndef __cplusplus
+typedef enum { false, true } bool;
+#endif
+#endif
+
 #define PBS_IDX_DUPS_OK     0x01 /* duplicate key allowed in index */
 #define PBS_IDX_ICASE_CMP   0x02 /* set case-insensitive compare */
 
@@ -162,7 +170,7 @@ extern void pbs_idx_free_ctx(void *ctx);
  * @retval 1 - idx is empty
  * @retval 0 - idx is not empty
  */
-extern int pbs_idx_is_empty(void *idx);
+extern bool pbs_idx_is_empty(void *idx);
 
 #ifdef __cplusplus
 }
