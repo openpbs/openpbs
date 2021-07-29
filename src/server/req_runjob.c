@@ -1611,9 +1611,13 @@ post_sendmom(struct work_task *pwt)
 			else
 				free_nodes(jobp);
 
-			/* turn off the staged in flag */
+			/* delete stagein files if flag is set */
 			if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_StagedIn)
-				remove_stagein(jobp);
+				if (remove_stagein(jobp) != 0) {
+					/* if remove stagein is failed then */
+					/* we will remove stagedin flag from job */
+					jobp->ji_qs.ji_svrflags &= ~JOB_SVFLG_StagedIn;
+				}
 			snprintf(dest_host, sizeof(dest_host), "%s", jobp->ji_qs.ji_destin);
 			clear_exec_on_run_fail(jobp);
 			
