@@ -790,8 +790,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
  *		clear exec strings so job can be resecheduled anywhere.
  *
  * @par Functionality:
- *		If the job has been checkpointed then
- *		the job must run where it ran before.
+ *		If the job has been checkpointed then the job must run where it ran before.
  *		Otherwise it is free to run anywhere when re-scheduled.  In this case,
  *		clear the exec_hosts, exec_vnodes, etc.
  *
@@ -804,7 +803,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
 void
 clear_exec_on_run_fail(job *jobp)
 {
-	if ((jobp->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT ) == 0) {
+	if ((jobp->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) == 0) {
 
 		free_jattr(jobp, JOB_ATR_exec_host);
 		free_jattr(jobp, JOB_ATR_exec_host2);

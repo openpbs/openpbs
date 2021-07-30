@@ -180,7 +180,7 @@ job *pjob;
 			free_br(preq);
 		}
 	}
-	return (rc);
+	return rc;
 }
 
 /**

@@ -43,10 +43,13 @@ from tests.functional import *
 
 class TestCheckJobAttrib(TestFunctional):
     """
+    This testsuite is to validate job attributes and values
     """
 
     def test_exec_vnode_after_job_rerun(self):
         """
+        Test unsetting of exec_vnode of a job which got requeued
+        after stage-in and make sure stage-in files are cleaned up.
         """
         hook_name = "momhook"
         hook_body = "import pbs\npbs.event().reject('my custom message')\n"
@@ -57,12 +60,15 @@ class TestCheckJobAttrib(TestFunctional):
                               hook_name + ".PY" + ".*", regexp=True,
                               max_attempts=100, interval=5)
         storage_info = {}
+        starttime = int(time.time())
         stagein_path = self.mom.create_and_format_stagein_path(
             storage_info, asuser=str(TEST_USER))
         a = {ATTR_stagein: stagein_path}
         j = Job(TEST_USER, a)
         jid = self.server.submit(j)
         self.server.expect(JOB, 'exec_vnode', id=jid, op=UNSET)
+        self.server.expect(JOB, {'run_count': 1}, id=jid)
+        self.server.log_match('my custom message', starttime=starttime)
         path = stagein_path.split("@")
         msg = "Staged in file not cleaned"
         self.assertFalse(self.mom.isfile(path[0]), msg)
