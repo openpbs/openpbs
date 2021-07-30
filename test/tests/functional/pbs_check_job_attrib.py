@@ -67,7 +67,7 @@ class TestCheckJobAttrib(TestFunctional):
         j = Job(TEST_USER, a)
         jid = self.server.submit(j)
         self.server.expect(JOB, 'exec_vnode', id=jid, op=UNSET)
-        self.server.expect(JOB, {'run_count': 1}, id=jid)
+        self.server.expect(JOB, {'run_count': (GT, 0)}, id=jid)
         self.server.log_match('my custom message', starttime=starttime)
         path = stagein_path.split("@")
         msg = "Staged in file not cleaned"
