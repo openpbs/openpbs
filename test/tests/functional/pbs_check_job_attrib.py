@@ -67,6 +67,9 @@ class TestCheckJobAttrib(TestFunctional):
         j = Job(TEST_USER, a)
         jid = self.server.submit(j)
         self.server.expect(JOB, 'exec_vnode', id=jid, op=UNSET)
+        # make scheduling off to avoid any race conditions
+        # otherwise scheduler tries to run job till it reached H state
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         self.server.expect(JOB, {'run_count': (GT, 0)}, id=jid)
         self.server.log_match('my custom message', starttime=starttime)
         path = stagein_path.split("@")
