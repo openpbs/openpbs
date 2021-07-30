@@ -148,13 +148,18 @@ resume_deletion(struct work_task *ptask)
  *		used when the job is to be purged after files have been staged in
  *
  * @param[in,out]	pjob	- job
+ * 
+ * @return	int
+ * @retval	0	- success
+ * @retval	non-zero	- error code
  */
 
-void
+int
 remove_stagein(pjob)
 job *pjob;
 {
 	struct batch_request *preq = 0;
+	int rc = 0;
 
 	preq = cpy_stage(preq, pjob, JOB_ATR_stagein, 0);
 
@@ -164,7 +169,8 @@ job *pjob;
 
 		preq->rq_type = PBS_BATCH_DelFiles;
 		preq->rq_extra = NULL;
-		if (relay_to_mom(pjob, preq, release_req) == 0) {
+		rc = relay_to_mom(pjob, preq, release_req);
+		if (rc == 0) {
 			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_StagedIn;
 		} else {
 			/* log that we were unable to remove the files */
@@ -174,6 +180,7 @@ job *pjob;
 			free_br(preq);
 		}
 	}
+	return rc;
 }
 
 /**

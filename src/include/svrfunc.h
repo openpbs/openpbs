@@ -173,7 +173,7 @@ extern void check_block(job *, char *);
 extern void free_nodes(job *);
 extern int job_route(job *);
 extern void rel_resc(job *);
-extern void remove_stagein(job *);
+extern int remove_stagein(job *);
 extern size_t check_for_cred(job *, char **);
 extern void svr_mailowner(job *, int, int, char *);
 extern void svr_mailowner_id(char *, job *, int, int, char *);
