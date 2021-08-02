@@ -612,20 +612,21 @@ dup_svrattrl(svrattrl *osvrat)
 	
 	psvrat->al_name  = (char *)psvrat + sizeof(svrattrl);
 	strcpy(psvrat->al_name, osvrat->al_name);
-	psvrat->al_nameln = osvrat->al_nameln + 1;
+	psvrat->al_nameln = osvrat->al_nameln;
 
 	if (osvrat->al_rescln > 0) {
-		psvrat->al_resc = psvrat->al_name + psvrat->al_nameln;
+		psvrat->al_resc = psvrat->al_name + psvrat->al_nameln + 1;
 		strcpy(psvrat->al_resc, osvrat->al_resc);
-		psvrat->al_rescln = osvrat->al_rescln + 1;
+		psvrat->al_rescln = osvrat->al_rescln;
+		psvrat->al_value = psvrat->al_resc + psvrat->al_rescln + 1;
 	} else {
 		psvrat->al_resc = NULL;
 		psvrat->al_rescln = 0;
+		psvrat->al_value = psvrat->al_name + psvrat->al_nameln + 1;
 	}
 
-	psvrat->al_value = psvrat->al_resc + psvrat->al_rescln;
 	strcpy(psvrat->al_value, osvrat->al_value);
-	psvrat->al_valln  = osvrat->al_valln + 1;
+	psvrat->al_valln  = osvrat->al_valln;
 
 	psvrat->al_flags  = osvrat->al_flags;
 	psvrat->al_refct  = 1;
