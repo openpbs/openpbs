@@ -1592,6 +1592,14 @@ daemon_stuff(void)
 			cred_timeout = 1;
 		}
 
+		/* Shut the qsub daemon if the server had closed the connection */
+		for (i = 0; svr_conns[i]; i++) {
+			if (FD_ISSET(svr_conns[i]->sd, &workset)) {
+				if (recv(svr_conns[i]->sd, &rc, 1, MSG_PEEK) < 1)
+					goto out;
+			}
+		}
+
 		/* accept the connection */
 		fromlen = sizeof(from);
 		if ((sock = accept(bindfd, &from, &fromlen)) == -1) {
