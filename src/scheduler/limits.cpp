@@ -136,10 +136,10 @@ class  limcounts
 	counts_umap project;
 	counts_umap all;
 	limcounts() = delete;
-	limcounts(const counts_umap &user_,
-		  const counts_umap &group_,
-		  const counts_umap &project_,
-		  const counts_umap &all_);
+	limcounts(const counts_umap &ruser,
+		  const counts_umap &rgroup,
+		  const counts_umap &rproject,
+		  const counts_umap &rall);
 	limcounts (const limcounts &);
 	limcounts &operator=(const limcounts &);
 	~limcounts();
@@ -375,13 +375,13 @@ static void		*lim_dup_ctx(void *);
 static char		*lim_gengroupreskey(const char *);
 static char		*lim_genprojectreskey(const char *);
 static char		*lim_genuserreskey(const char *);
-static void		schderr_args_q(const std::string& , const char *, schd_error *);
-static void		schderr_args_q(const std::string& , const std::string&, schd_error *);
+static void		schderr_args_q(const std::string&, const char *, schd_error *);
+static void		schderr_args_q(const std::string&, const std::string&, schd_error *);
 static void 		schderr_args_q_res(const std::string&, const char *, char *, schd_error *);
 static void 		schderr_args_q_res(const std::string&, const std::string&, char *, schd_error *);
 static void		schderr_args_server(const char *, schd_error *);
 static void		schderr_args_server(const std::string&, schd_error *);
-static void		schderr_args_server_res(std::string &, const char *, schd_error *);
+static void		schderr_args_server_res(std::string&, const char *, schd_error *);
 static sch_resource_t	lim_get(const char *, void *);
 static int		lim_setoldlimits(const struct attrl *, void *);
 static int		lim_setreslimits(const struct attrl *, void *);
@@ -728,15 +728,15 @@ has_softlimits(void *p)
  *		limitcount class constructor.
  */
 // Parametrized Constructor
-limcounts::limcounts(const counts_umap &user_,
-		     const counts_umap &group_,
-		     const counts_umap &project_,
-		     const counts_umap &all_)
+limcounts::limcounts(const counts_umap &ruser,
+		     const counts_umap &rgroup,
+		     const counts_umap &rproject,
+		     const counts_umap &rall)
 {
-	user = dup_counts_umap(user_);
-	group = dup_counts_umap(group_);
-	project = dup_counts_umap(project_);
-	all = dup_counts_umap(all_);
+	user = dup_counts_umap(ruser);
+	group = dup_counts_umap(rgroup);
+	project = dup_counts_umap(rproject);
+	all = dup_counts_umap(rall);
 }
 
 // Copy Constructor
@@ -1154,15 +1154,17 @@ check_server_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	char		*key;
-	std::string	user = rr->user;
+	std::string	user;
 	int		used;
 	int		max_user_run, max_genuser_run;
 
-	if ((si == NULL) || (user.empty()) || (sc == NULL))
+	if ((si == NULL) || (rr == NULL) || (rr->user.empty()) || (sc == NULL))
 		return (SCHD_ERROR);
 
 	if (!si->has_user_limit)
 	    return (0);
+
+	user = rr->user;
 
 	auto &cts = sc->user;
 
@@ -1223,15 +1225,17 @@ check_server_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	char		*key;
-	std::string	group = rr->group;
+	std::string	group;
 	int		used;
 	int		max_group_run, max_gengroup_run;
 
-	if ((si == NULL) || (group.empty()) || (sc == NULL))
+	if ((si == NULL) || (rr == NULL) || (rr->group.empty()) || (sc == NULL))
 		return (SCHD_ERROR);
 
 	if (!si->has_grp_limit)
 	    return (0);
+
+	group = rr->group;
 
 	auto &cts = sc->group;
 
@@ -1402,15 +1406,17 @@ check_queue_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	char		*key;
-	std::string	user = rr->user;
+	std::string	user;
 	int		used;
 	int		max_user_run, max_genuser_run;
 
-	if ((qi == NULL) || (user.empty()) || (qc == NULL))
+	if ((qi == NULL) || (rr == NULL) || (rr->user.empty()) || (qc == NULL))
 		return (SCHD_ERROR);
 
 	if (!qi->has_user_limit)
 	    return (0);
+
+	user = rr->user;
 
 	auto &cts = qc->user;
 
@@ -1471,15 +1477,17 @@ check_queue_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	char		*key;
-	std::string	group = rr->group;
+	std::string	group;
 	int		used;
 	int		max_group_run, max_gengroup_run;
 
-	if ((qi == NULL) || (group.empty()) || (qc == NULL))
+	if ((qi == NULL) || (rr == NULL) || (rr->group.empty()) || (qc == NULL))
 		return (SCHD_ERROR);
 
 	if (!qi->has_grp_limit)
 	    return (0);
+
+	group = rr->group;
 
 	auto &cts = qc->group;
 
@@ -1951,16 +1959,18 @@ static int
 check_queue_max_user_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 {
 	char		*key;
-	std::string	user = rr->user;
+	std::string	user;
 	int		used;
 	int		max_user_run_soft, max_genuser_run_soft;
 	counts		*cnt = NULL;
 
-	if ((qi == NULL) || (user.empty()))
+	if ((qi == NULL) || (rr == NULL) || (rr->user.empty()))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
 	if (!qi->has_user_limit)
 	    return (0);
+
+	user = rr->user;
 
 	if ((key = entlim_mk_runkey(LIM_USER, user.c_str())) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
@@ -2025,16 +2035,18 @@ check_queue_max_group_run_soft(server_info *si, queue_info *qi,
 	resource_resv *rr)
 {
 	char		*key;
-	std::string	group = rr->group;
+	std::string	group;
 	int		used;
 	int		max_group_run_soft, max_gengroup_run_soft;
 	counts		*cnt = NULL;
 
-	if ((qi == NULL) || (group.empty()))
+	if ((qi == NULL) || (rr == NULL) || (rr->group.empty()))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
 	if (!qi->has_grp_limit)
 	    return (0);
+
+	group = rr->group;
 
 	if ((key = entlim_mk_runkey(LIM_GROUP, group.c_str())) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
@@ -2205,16 +2217,18 @@ check_server_max_user_run_soft(server_info *si, queue_info *qi,
 	resource_resv *rr)
 {
 	char		*key;
-	std::string	user = rr->user;
+	std::string	user;
 	int		used;
 	int		max_user_run_soft, max_genuser_run_soft;
 	counts		*cnt = NULL;
 
-	if ((si == NULL) || (user.empty()))
+	if ((si == NULL) || (rr == NULL) || (rr->user.empty()))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
 	if (!si->has_user_limit)
 	    return (0);
+
+	user = rr->user;
 
 	if ((key = entlim_mk_runkey(LIM_USER, user.c_str())) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
@@ -2278,16 +2292,18 @@ check_server_max_group_run_soft(server_info *si, queue_info *qi,
 	resource_resv *rr)
 {
 	char		*key;
-	std::string	group = rr->group;
+	std::string	group;
 	int		used;
 	int		max_group_run_soft, max_gengroup_run_soft;
 	counts		*cnt = NULL;
 
-	if ((si == NULL) || (group.empty()))
+	if ((si == NULL) || (rr == NULL) || (rr->group.empty()))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
 	if (!si->has_grp_limit)
 	    return (0);
+
+	group = rr->group;
 
 	if ((key = entlim_mk_runkey(LIM_GROUP, group.c_str())) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
@@ -2551,7 +2567,7 @@ check_max_group_res(resource_resv *rr, counts_umap &cts_list,
 {
 	char		*groupreskey;
 	char		*gengroupreskey;
-	std::string	group = rr->group;
+	std::string	group;
 	schd_resource	*res;
 	sch_resource_t	max_group_res;
 	sch_resource_t	max_gengroup_res;
@@ -2629,7 +2645,7 @@ check_max_group_res_soft(resource_resv *rr, counts_umap &cts_list, void *limitct
 {
 	char		*groupreskey;
 	char		*gengroupreskey;
-	std::string	group = rr->group;
+	std::string	group;
 	schd_resource	*res;
 	sch_resource_t	max_group_res_soft;
 	sch_resource_t	max_gengroup_res_soft;
@@ -2719,7 +2735,7 @@ check_max_user_res(resource_resv *rr, counts_umap &cts_list, resdef **rdef,
 {
 	char		*userreskey;
 	char		*genuserreskey;
-	std::string	user = rr->user;
+	std::string	user;
 	schd_resource	*res;
 	sch_resource_t	max_user_res;
 	sch_resource_t	max_genuser_res;
@@ -2800,7 +2816,7 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 {
 	char		*userreskey;
 	char		*genuserreskey;
-	std::string	user = rr->user;
+	std::string	user;
 	schd_resource	*res;
 	sch_resource_t	max_user_res_soft;
 	sch_resource_t	max_genuser_res_soft;
@@ -3305,7 +3321,7 @@ schderr_args_q_res(const std::string& qname, const char *entity, char *res,
 	set_schd_error_arg(err, ARG1, qname.c_str());
 	set_schd_error_arg(err, ARG2, res);
 	if (entity != NULL)
-		set_schd_error_arg(err, ARG3, (char*)entity);
+		set_schd_error_arg(err, ARG3, entity);
 }
 //overload
 static void
@@ -3328,7 +3344,7 @@ schderr_args_q_res(const std::string& qname, const std::string& entity, char *re
 static void
 schderr_args_server(const char *entity, schd_error *err)
 {
-	set_schd_error_arg(err, ARG1, (char*)entity);
+	set_schd_error_arg(err, ARG1, entity);
 }
 // overloaded
 static void
@@ -3348,7 +3364,7 @@ schderr_args_server(const std::string &entity, schd_error *err)
 static void
 schderr_args_server_res(std::string &entity, const char *res, schd_error *err)
 {
-	set_schd_error_arg(err, ARG1, (char*)res);
+	set_schd_error_arg(err, ARG1, res);
 	if (!entity.empty())
 		set_schd_error_arg(err, ARG2, entity.c_str());
 }
@@ -3609,7 +3625,7 @@ check_server_max_project_run_soft(server_info *si, queue_info *qi,
 	int		max_project_run_soft, max_genproject_run_soft;
 	counts		*cnt = NULL;
 
-	if (si == NULL)
+	if (si == NULL || rr == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
 	if (rr->project.empty())

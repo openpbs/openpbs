@@ -56,7 +56,6 @@
  * 	node_partition_update_array()
  * 	node_partition_update()
  * 	free_np_cache_array()
- * 	free_np_cache()
  * 	find_alloc_np_cache()
  * 	add_np_cache()
  * 	resresv_can_fit_nodepart()
@@ -398,7 +397,7 @@ create_node_partitions(status *policy, node_info **nodes, const std::vector<std:
 
 	static schd_resource *unset_res = NULL;
 
-	std::vector<queue_info *> queues = {};
+	std::vector<queue_info *> queues;
 
 	if (nodes == NULL || resnames.empty())
 		return NULL;
@@ -421,7 +420,7 @@ create_node_partitions(status *policy, node_info **nodes, const std::vector<std:
 	if (flags & NP_CREATE_REST && unset_res == NULL)
 		unset_res = new_resource();
 
-	for (auto &res_i: resnames) {
+	for (auto &res_i : resnames) {
 		auto def = find_resdef(res_i);
 		for (node_i = 0; nodes[node_i] != NULL; node_i++) {
 			if (nodes[node_i]->is_stale)
@@ -442,7 +441,7 @@ create_node_partitions(status *policy, node_info **nodes, const std::vector<std:
 				if (res->indirect_res != NULL)
 					res = res->indirect_res;
 				for (val_i = 0; res->str_avail[val_i] != NULL; val_i++) {
-					std::string str = res_i + '=' + res->str_avail[val_i];
+					std::string str = res_i + "=" + res->str_avail[val_i];
 					/* If we find the partition, we've already created it - add the node
 					 * to the existing partition.  If we don't find it, we create it.
 					 */
@@ -748,6 +747,13 @@ np_cache::np_cache() {
 	nodepart = NULL;
 	num_parts = UNSPECIFIED;
 }
+// overloaded
+np_cache::np_cache(node_info **rninfo_arr, const std::vector<std::string>& rresnames, node_partition **rnodepart, int rnum_parts) {
+	ninfo_arr = rninfo_arr;
+	nodepart = rnodepart;
+	resnames = rresnames;
+	num_parts = rnum_parts;
+}
 // Destructor
 np_cache::~np_cache() {
 	if (nodepart != NULL)
@@ -769,24 +775,10 @@ free_np_cache_array(std::vector<np_cache *> &npc_arr)
 	if (npc_arr.empty())
 		return;
 
-	for (auto elem: npc_arr)
-		free_np_cache(elem);
+	for (auto elem : npc_arr)
+		delete elem;
 	npc_arr.clear();
 	return;
-}
-
-/**
- * @brief
- *		free_np_cache - destructor
- *
- * @param[in,out]	npc_arr	-	np cashe array.
- */
-void
-free_np_cache(np_cache *npc)
-{
-	if (npc == NULL)
-		return;
-	delete npc;
 }
 
 /**
@@ -812,7 +804,7 @@ find_np_cache(const std::vector<np_cache *> &npc_arr,
 	if (npc_arr.empty() || resnames.empty() || ninfo_arr == NULL)
 		return NULL;
 
-	for (auto elem: npc_arr) {
+	for (auto elem : npc_arr) {
 		if (elem->ninfo_arr == ninfo_arr &&
 			match_string_array(elem->resnames, resnames) == SA_FULL_MATCH)
 			return elem;
@@ -868,16 +860,10 @@ find_alloc_np_cache(status *policy, std::vector<np_cache *> &pnpc_arr,
 		if (nodepart != NULL) {
 			if (sort_func != NULL)
 				qsort(nodepart, num_parts, sizeof(node_partition *), sort_func);
-
-			npc = new np_cache();
-			if (npc != NULL) {
-				npc->ninfo_arr = ninfo_arr;
-				npc->resnames = resnames;
-				npc->num_parts = num_parts;
-				npc->nodepart = nodepart;
+			try {
+				npc = new np_cache(ninfo_arr, resnames, nodepart, num_parts);
 				pnpc_arr.push_back(npc);
-			}
-			else {
+			} catch(std::bad_alloc &e) {
 				free_node_partition_array(nodepart);
 				error = 1;
 			}
@@ -1224,7 +1210,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 		}
 	}
 
-	for (auto qinfo: sinfo->queues) {
+	for (auto qinfo : sinfo->queues) {
 
 		if (qinfo->has_nodes)
 			qinfo->allpart = create_specific_nodepart(policy, "all", qinfo->nodes, NO_FLAGS);
@@ -1269,14 +1255,14 @@ create_placement_sets(status *policy, server_info *sinfo)
 void
 sort_all_nodepart(status *policy, server_info *sinfo)
 {
-	if (policy == NULL || sinfo == NULL || sinfo->queues.empty())
+	if (policy == NULL || sinfo == NULL)
 		return;
 
 	if (sinfo->node_group_enable && !sinfo->node_group_key.empty())
 		qsort(sinfo->nodepart, sinfo->num_parts,
 		      sizeof(node_partition *), cmp_placement_sets);
 
-	for (auto qinfo: sinfo->queues) {
+	for (auto qinfo : sinfo->queues) {
 
 		if (sinfo->node_group_enable && !qinfo->node_group_key.empty())
 			qsort(qinfo->nodepart, qinfo->num_parts,
@@ -1308,7 +1294,7 @@ sort_all_nodepart(status *policy, server_info *sinfo)
 void
 update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 {
-	if (sinfo == NULL || sinfo->queues.empty())
+	if (sinfo == NULL)
 		return;
 
 	if(sinfo->allpart == NULL)
@@ -1338,7 +1324,7 @@ update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 	}
 
 	/* Update and resort the placement sets on the queues */
-	for (auto qinfo: sinfo->queues) {
+	for (auto qinfo : sinfo->queues) {
 
 		if (sinfo->node_group_enable && !qinfo->node_group_key.empty())
 			node_partition_update_array(policy, qinfo->nodepart);

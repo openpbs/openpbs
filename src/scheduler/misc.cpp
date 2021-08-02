@@ -504,7 +504,6 @@ enum match_string_array_ret match_string_array(const std::vector<std::string> &s
 			match++;
 	}
 
-	/* i is the length of strarr1 since we just looped through the whole array */
 	if (match == strarr1.size() && match == strarr2.size())
 		return SA_FULL_MATCH;
 

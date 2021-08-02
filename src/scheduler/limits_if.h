@@ -146,7 +146,7 @@ int is_oldlimattr(const struct attrl *);
  * @retval NULL		: attribute value is not an old limit attribute
  *
  */
-const char * convert_oldlim_to_new(const struct attrl *a);
+const char *convert_oldlim_to_new(const struct attrl *a);
 
 /**	@fn int lim_setlimits(const struct attrl *a, enum limtype lt, void *p)
  *	@brief set resource or run-time limits

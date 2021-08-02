@@ -1919,27 +1919,25 @@ policy_change_info(server_info *sinfo, resource_resv *resresv)
 		return 0;
 	}
 
-	if (!sinfo->queues.empty()) {
-		if (policy->is_ded_time && sinfo->has_ded_queue) {
-			for (auto qinfo: sinfo->queues) {
-				if (qinfo->is_ded_queue &&
-					qinfo->jobs !=NULL)
-					return 1;
-			}
+	if (policy->is_ded_time && sinfo->has_ded_queue) {
+		for (auto qinfo: sinfo->queues) {
+			if (qinfo->is_ded_queue &&
+				qinfo->jobs !=NULL)
+				return 1;
 		}
-		if (policy->is_prime == PRIME && sinfo->has_prime_queue) {
-			for (auto qinfo: sinfo->queues) {
-				if (qinfo->is_prime_queue &&
-					qinfo->jobs !=NULL)
-					return 1;
-			}
+	}
+	if (policy->is_prime == PRIME && sinfo->has_prime_queue) {
+		for (auto qinfo: sinfo->queues) {
+			if (qinfo->is_prime_queue &&
+				qinfo->jobs !=NULL)
+				return 1;
 		}
-		if (policy->is_prime == NON_PRIME && sinfo->has_nonprime_queue) {
-			for (auto qinfo: sinfo->queues) {
-				if (qinfo->is_nonprime_queue &&
-					qinfo->jobs !=NULL)
-					return 1;
-			}
+	}
+	if (policy->is_prime == NON_PRIME && sinfo->has_nonprime_queue) {
+		for (auto qinfo: sinfo->queues) {
+			if (qinfo->is_nonprime_queue &&
+				qinfo->jobs !=NULL)
+				return 1;
 		}
 	}
 	return 0;

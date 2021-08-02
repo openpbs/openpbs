@@ -69,14 +69,9 @@ enum sched_error_code sched_exception::get_error_code() const
 }
 
 // Getter function for message
-const std::string sched_exception::get_message() const
+const std::string& sched_exception::get_message() const
 {
     return message;
-}
-
-// Destructor
-sched_exception::~sched_exception()
-{
 }
 
 /*

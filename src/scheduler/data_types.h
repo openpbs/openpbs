@@ -84,7 +84,7 @@ struct node_partition;
 struct range;
 struct place;
 struct schd_error;
-struct np_cache;
+class np_cache;
 struct chunk;
 class selspec;
 class resdef;
@@ -107,7 +107,6 @@ class sched_exception;
 
 
 typedef struct state_count state_count;
-typedef struct server_info server_info;
 typedef struct job_info job_info;
 typedef struct schd_resource schd_resource;
 typedef struct resource_req resource_req;
@@ -118,7 +117,6 @@ typedef struct nspec nspec;
 typedef struct node_partition node_partition;
 typedef struct place place;
 typedef struct schd_error schd_error;
-typedef struct np_cache np_cache;
 typedef struct chunk chunk;
 typedef struct timed_event timed_event;
 typedef struct event_list event_list;
@@ -476,8 +474,8 @@ class server_info
 	share_head *share_head;	/* root of share info */
 #endif
 	// Class methods
-	server_info();
-	server_info(int);
+	server_info(const char *);
+	server_info() = delete;
 	server_info(const server_info &);
 	virtual ~server_info();
 	server_info & operator=(const server_info &);
@@ -1010,6 +1008,7 @@ class np_cache
 	int num_parts;			/* number of partitions in nodepart */
 	node_partition **nodepart;	/* node partitions */
 	np_cache();
+	np_cache(node_info **, const std::vector<std::string>&, node_partition **, int);
 	np_cache(const np_cache &) = delete;
 	np_cache& operator=(const np_cache &) = delete;
 	virtual ~np_cache();
@@ -1284,10 +1283,9 @@ class sched_exception: public std::exception
 	sched_exception(const sched_exception &e);
 	sched_exception &operator=(const sched_exception &e);
 	sched_exception (const std::string &str, const enum sched_error_code e);
-	const char * what();
+	const char *what();
 	enum sched_error_code get_error_code() const;
-	const std::string get_message() const;
-	virtual ~sched_exception();
+	const std::string& get_message() const;
 	sched_exception() = delete;
 
 	private:

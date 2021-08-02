@@ -267,7 +267,7 @@ query_server(status *pol, int pbs_sd)
 	/* count the queues and total up the individual queue states
 	 * for server totals. (total up all the state_count structs)
 	 */
-	for (auto qinfo: sinfo->queues) {
+	for (auto qinfo : sinfo->queues) {
 		total_states(&(sinfo->sc), &(qinfo->sc));
 
 		if (qinfo->priority >= sc_attrs.preempt_queue_prio)
@@ -285,8 +285,8 @@ query_server(status *pol, int pbs_sd)
 		std::sort(sinfo->queues.begin(), sinfo->queues.end(), cmp_queue_prio_dsc);
 	if (policy->round_robin == 1) {
 		/* queues are already sorted in descending order of their priority */
-		for (auto queue : sinfo->queues) {
-			auto ret_val = add_queue_to_list(&sinfo->queue_list, queue);
+		for (auto qinfo : sinfo->queues) {
+			auto ret_val = add_queue_to_list(&sinfo->queue_list, qinfo);
 			if (ret_val == 0) {
 				sinfo->fstree = NULL;
 				delete sinfo;
@@ -489,12 +489,10 @@ query_server_info(status *pol, struct batch_status *server)
 	if (pol == NULL || server == NULL)
 		return NULL;
 
-	sinfo = new server_info(1);
+	sinfo = new server_info(server->name);
 
 	if (sinfo->liminfo == NULL)
 		return NULL;
-
-	sinfo->name = std::string(server->name);
 
 	if ((sinfo->policy = dup_status(pol)) == NULL) {
 		delete sinfo;
@@ -1021,32 +1019,22 @@ server_info::free_server_info()
 	free_counts_list(total_group_counts);
 	free_counts_list(total_project_counts);
 	free_counts_list(total_user_counts);
-	if (nodepart != NULL)
-		free_node_partition_array(nodepart);
-	if (allpart)
-		free_node_partition(allpart);
+	free_node_partition_array(nodepart);
+	free_node_partition(allpart);
 	free_server_psets();
-	if (hostsets != NULL)
-		free_node_partition_array(hostsets);
-	if (nodesigs)
-		free_string_array(nodesigs);
+	free_node_partition_array(hostsets);
+	free_string_array(nodesigs);
 	free_np_cache_array(npc_arr);
-	if (calendar != NULL)
-		free_event_list(calendar);
+	free_event_list(calendar);
 	if (policy != NULL)
 		delete policy;
 	if (fstree != NULL)
 		delete fstree;
-	if (liminfo != NULL) {
-		lim_free_liminfo(liminfo);
-		liminfo = NULL;
-	}
-	if (queue_list != NULL)
-		free_queue_list(queue_list);
-	if(equiv_classes != NULL)
-		free_resresv_set_array(equiv_classes);
-	if(buckets != NULL)
-		free_node_bucket_array(buckets);
+	lim_free_liminfo(liminfo);
+	liminfo = NULL;
+	free_queue_list(queue_list);
+	free_resresv_set_array(equiv_classes);
+	free_node_bucket_array(buckets);
 
 	if(unordered_nodes != NULL)
 		free(unordered_nodes);
@@ -1131,7 +1119,7 @@ free_resource(schd_resource *resp)
 }
 
 // Init function
-void server_info::init_server_info ()
+void server_info::init_server_info()
 {
 
 	has_soft_limit = 0;
@@ -1190,18 +1178,11 @@ void server_info::init_server_info ()
 
 }
 
-// Parametrized Constructor
-server_info::server_info(int limallocflag)
+// Constructor
+server_info::server_info(const char *sname): name(sname)
 {
 	init_server_info();
-	if ((limallocflag != 0))
-		liminfo = lim_alloc_liminfo();
-}
-
-//Default Constructor
-server_info::server_info()
-{
-	init_server_info();
+	liminfo = lim_alloc_liminfo();
 }
 
 // Destructor
@@ -1820,7 +1801,7 @@ copy_server_arrays(server_info *nsinfo, const server_info *osinfo)
 		return 0;
 	}
 
-	for (auto queue: nsinfo->queues) {
+	for (auto queue : nsinfo->queues) {
 		resresv_arr = queue->jobs;
 
 		if (resresv_arr != NULL) {
@@ -1874,7 +1855,7 @@ create_server_arrays(server_info *sinfo)
 		return 0;
 	}
 
-	for (auto queue: sinfo->queues) {
+	for (auto queue : sinfo->queues) {
 		resresv_arr = queue->jobs;
 
 		if (resresv_arr != NULL) {
@@ -2468,7 +2449,8 @@ is_unassoc_node(node_info *ninfo, void *arg)
 }
 
 // counts constructor
-counts::counts(const std::string &name_){
+counts::counts(const std::string &name_)
+{
 	name = name_;
 	running = 0;
 	rescts = NULL;
@@ -2476,7 +2458,8 @@ counts::counts(const std::string &name_){
 }
 
 // counts copy constructor
-counts::counts(const counts &rcount) {
+counts::counts(const counts &rcount)
+{
 	name = rcount.name;
 	running = rcount.running;
 	rescts = dup_resource_count_list(rcount.rescts);
@@ -2484,7 +2467,8 @@ counts::counts(const counts &rcount) {
 }
 
 // count assignment operator
-counts& counts::operator = (const counts &rcount) {
+counts& counts::operator=(const counts &rcount)
+{
 	this->name = rcount.name;
 	this->running = rcount.running;
 	this->rescts = dup_resource_count_list(rcount.rescts);
@@ -2493,7 +2477,8 @@ counts& counts::operator = (const counts &rcount) {
 }
 
 // destructor
-counts::~counts() {
+counts::~counts()
+{
 	free_resource_count_list(rescts);
 }
 
@@ -2510,7 +2495,7 @@ counts::~counts() {
 void
 free_counts_list(counts_umap &ctslist)
 {
-	for (auto it: ctslist)
+	for (auto it : ctslist)
 		delete it.second;
 }
 
@@ -2525,7 +2510,7 @@ free_counts_list(counts_umap &ctslist)
 counts_umap dup_counts_umap(const counts_umap &omap)
 {
 	counts_umap nmap;
-	for (auto &iter: omap)
+	for (auto &iter : omap)
 		nmap[iter.first] = new counts(*(iter.second));
 	return nmap;
 }
@@ -2649,8 +2634,8 @@ update_counts_on_end(counts *cts, resource_req *resreq)
 /*
  * @brief  Helper function that sets the max counts map if the counts structure passed
  *	   to this function has higher number running jobs or resources.
- * @param[in/out] counts_umap - map of max counts structures.
- * @param[in] counts * - pointer to counts structure that needs to be updated
+ * @param[in,out] counts_umap - map of max counts structures.
+ * @param[in] ncounts * - pointer to counts structure that needs to be updated
  *
  * @return void
  */
@@ -2695,9 +2680,9 @@ set_counts_max(counts_umap &cmax, const counts *ncounts)
  *		than the current max, we free the old, and dup the new
  *		and attach it in.
  *
- * @param[in/out]	cmax - current max
- * @param[in]	new  - new counts map.  If anything in this map is
- *					greater than the cur_max, it needs to be dup'd.
+ * @param[in,out]	cmax - current max
+ * @param[in]	ncounts - new counts map.  If anything in this map is
+ *			  greater than the cur_max, it needs to be dup'd.
  *
  * @return	void
  */
@@ -2784,7 +2769,7 @@ update_universe_on_end(status *policy, resource_resv *resresv, const char *job_s
 					free_resource_list(sinfo->allpart->res);
 					sinfo->allpart->res = NULL;
 				}
-				for (auto queue: sinfo->queues) {
+				for (auto queue : sinfo->queues) {
 					if (queue->allpart != NULL) {
 						free_resource_list(queue->allpart->res);
 						queue->allpart->res = NULL;

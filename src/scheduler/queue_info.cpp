@@ -108,7 +108,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	struct batch_status *cur_queue;
 
 	/* array of pointers to internal scheduling structure for queues */
-	std::vector<queue_info *> qinfo_arr = {};
+	std::vector<queue_info *> qinfo_arr;
 
 	/* the current queue we are working on */
 	queue_info *qinfo;
@@ -127,8 +127,6 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 	/* peer server descriptor */
 	int peer_sd = 0;
-
-	int i;
 
 	int err = 0;			/* an error has occurred */
 
@@ -153,15 +151,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 		return qinfo_arr;
 	}
 
-	cur_queue = queues;
-
-	while (cur_queue != NULL) {
-		cur_queue = cur_queue->next;
-	}
-
-	cur_queue = queues;
-
-	for (i = 0; cur_queue != NULL && !err; i++) {
+	for (cur_queue = queues; cur_queue != NULL && !err; cur_queue = cur_queue->next) {
 		/* convert queue information from batch_status to queue_info */
 		if ((qinfo = query_queue_info(policy, cur_queue, sinfo)) == NULL) {
 			free_schd_error(sch_err);
@@ -268,8 +258,6 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 		} else
 			delete qinfo;
-
-		cur_queue = cur_queue->next;
 	}
 
 	pbs_statfree(queues);
@@ -537,11 +525,9 @@ free_queues(std::vector<queue_info *> &qarr)
 	if (qarr.empty())
 		return;
 
-	for (auto queue: qarr) {
-		free_resource_resv_array(queue->jobs);
+	for (auto queue: qarr)
 		delete queue;
-	}
-
+	qarr.clear();
 }
 
 /**
@@ -704,6 +690,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv, const char *job_s
 // queue_info destructor
 queue_info::~queue_info()
 {
+	free_resource_resv_array(jobs);
 	free_resource_list(qres);
 	free(running_jobs);
 	free(nodes);
@@ -741,7 +728,9 @@ dup_queues(const std::vector<queue_info *> &oqueues, server_info *nsinfo)
 
 	for (auto queue: oqueues) {
 		queue_info *temp;
-		if ((temp = new queue_info(*queue, nsinfo)) == NULL) {
+		try {
+			temp = new queue_info(*queue, nsinfo);
+		} catch (std::bad_alloc &e) {
 			free_queues(new_queues);
 			return new_queues;
 		}
