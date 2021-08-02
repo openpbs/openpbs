@@ -162,7 +162,7 @@ def hook_attrs_func(hook_msg):
                         value_dct['resource'] = obj.resource
                         value_dct['sisters'] = obj.sisters
                         value_lst.append(value_dct)
-                    pbs.logmsg(pbs.LOG_DEBUG, f"attribs=>{pformat(value_lst)}")
+                    # pbs.logmsg(pbs.LOG_DEBUG, f"attribs=>{pformat(value_lst)}")
             elif attr == 'objtype':
                 value_str = pbs.REVERSE_MGR_OBJS[value]
                 pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} (reversed)")
@@ -861,13 +861,13 @@ class TestHookManagement(TestFunctional):
             self.server.log_match("objname=>%s" % mom.shortname,
                                   starttime=start_time_mom)
 
-            self.server.log_match("attribs=>flags:0,flags_lst:[],name:resource"
+            self.server.log_match("attribs[0]=>flags:0,flags_lst:[],name:resource"
                                   "s_available,op:0,op_str:BATCH_OP_SET,resour"
                                   "ce:ncpus,sisters:[],value:700000 (stringifi"
                                   "ed)",
                                   starttime=start_time_mom,
                                   n='ALL', max_attempts=16)
-            self.server.log_match("attribs=>flags:0,flags_lst:[],name:resource"
+            self.server.log_match("attribs[0]=>flags:0,flags_lst:[],name:resource"
                                   "s_available,op:0,op_str:BATCH_OP_SET,resour"
                                   "ce:ncpus,sisters:[],value: (stringified)",
                                   starttime=start_time_mom,
