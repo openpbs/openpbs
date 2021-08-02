@@ -525,7 +525,7 @@ free_queues(std::vector<queue_info *> &qarr)
 	if (qarr.empty())
 		return;
 
-	for (auto queue: qarr)
+	for (auto queue : qarr)
 		delete queue;
 	qarr.clear();
 }
@@ -732,6 +732,7 @@ dup_queues(const std::vector<queue_info *> &oqueues, server_info *nsinfo)
 			temp = new queue_info(*queue, nsinfo);
 		} catch (std::bad_alloc &e) {
 			free_queues(new_queues);
+			/* return the empty vector */
 			return new_queues;
 		}
 		new_queues.push_back(temp);

@@ -2449,9 +2449,9 @@ is_unassoc_node(node_info *ninfo, void *arg)
 }
 
 // counts constructor
-counts::counts(const std::string &name_)
+counts::counts(const std::string &rname)
 {
-	name = name_;
+	name = rname;
 	running = 0;
 	rescts = NULL;
 	soft_limit_preempt_bit = 0;
