@@ -80,6 +80,7 @@
 #include "svrfunc.h"
 
 #define QDEL_BREAKER_SECS 5
+#define QDEL_MAIL_SUPPRESS 1000
 
 /* Global Data Items: */
 
@@ -115,7 +116,7 @@ static char *sigk  = "SIGKILL";
 static char *sigt  = "SIGTERM";
 static char *sigtj =  SIG_TermJob;
 static char *acct_fmt = "requestor=%s@%s";
-static int qdel_mail = 1; /* true: sending mail */
+static bool qdel_mail = true; /* true: sending mail */
 
 /**
  * @brief
@@ -259,7 +260,8 @@ update_deljob_rply(struct batch_request *preq, char *jid, int errcode)
 	struct batch_deljob_status *pdelstat;
 	struct batch_reply *preply = &preq->rq_reply;
 	void *idx;
-	char *data = NULL;
+	char **data = NULL;
+	void *idx_ctx = NULL;
 
 	if (preq->rq_type != PBS_BATCH_DeleteJobList)
 		return FALSE;
@@ -279,7 +281,7 @@ update_deljob_rply(struct batch_request *preq, char *jid, int errcode)
 
 	idx = preply->brp_un.brp_deletejoblist.undeleted_job_idx;
 	if (jid) {
-		if (pbs_idx_find(idx, (void **) &jid, (void **) &data, NULL) == PBS_IDX_RET_OK)
+		if (pbs_idx_find(idx, (void **) &jid, (void **) &data, &idx_ctx) == PBS_IDX_RET_OK)
 			pbs_idx_delete(idx, jid);
 		else
 			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
@@ -431,7 +433,38 @@ decr_single_subjob_usage(job *parent)
 }
 
 /**
- * @brief reorder the deljob list so that queued jobs will appear first.
+ * @brief Set the mail limits
+ * 
+ * @param[in] preq - request structure 
+ */
+static void
+set_mail_count(struct batch_request *preq)
+{
+	int *mails = &preq->rq_ind.rq_deletejoblist.mails;
+	char *qdel_args;
+	char *keystr, *valuestr;
+
+	if (*mails != -1)
+		return;
+
+	/* retrieve default: suppress_email from server: default_qdel_arguments */
+	if (is_sattr_set(SVR_ATR_dfltqdelargs)) {
+		qdel_args = get_sattr_str(SVR_ATR_dfltqdelargs);
+		if (parse_equal_string(qdel_args, &keystr, &valuestr)) {
+			if (strcmp(keystr, "-Wsuppress_email") == 0)
+				*mails = atol(valuestr);
+			else
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR,
+					   __func__, "qdel: unsupported %s \n", qdel_args);
+		}
+	}
+	if (*mails == -1)
+		*mails = QDEL_MAIL_SUPPRESS;
+}
+
+/**
+ * @brief Initialize routine for deljoblist
+ * reorder the deljob list so that queued jobs will appear first.
  * do not reorder if already sorted
  * 
  * deljob can wait if jobs are in prerun or transit state.
@@ -446,25 +479,32 @@ decr_single_subjob_usage(job *parent)
  * @param[in] preq - request structure
  */
 static void
-reorder_deljoblist(struct batch_request *preq)
+init_deljoblist(struct batch_request *preq)
 {
 	int head = -1;
 	int tail;
 	char **jlist = preq->rq_ind.rq_deletejoblist.rq_jobslist;
+	struct batch_reply *preply = &preq->rq_reply;
 	job *pjob;
 	char *temp;
 
 	if (preq->rq_ind.rq_deletejoblist.rq_resume)
 		return;
 
+	set_mail_count(preq);
+
 	if (!jlist || !jlist[0])
 		return;
+
+	preply->brp_un.brp_deletejoblist.undeleted_job_idx = pbs_idx_create(0, 0);
 
 	for (tail = 0; jlist[tail]; tail++) {
 
 		pjob = find_job(jlist[tail]);
 		if (!pjob)
 			continue;
+
+		pbs_idx_insert(preply->brp_un.brp_deletejoblist.undeleted_job_idx, pjob->ji_qs.ji_jobid, NULL);
 
 		if (head == -1) {
 			if (get_job_state(pjob) != JOB_STATE_LTR_QUEUED) {
@@ -478,30 +518,6 @@ reorder_deljoblist(struct batch_request *preq)
 			jlist[head++] = jlist[tail];
 			jlist[tail] = temp;
 		}
-	}
-}
-
-/**
- * @brief Initialize reply struct for a delete job list
- * 
- * @param[in] preq - request struct
- *
- */
-static void
-init_deljoblist_rply(struct batch_request *preq)
-{
-	char **jobids;
-	int i;
-	struct batch_reply *preply = &preq->rq_reply;
-
-	if (preq->rq_ind.rq_deletejoblist.rq_resume)
-		return;
-
-	preply->brp_un.brp_deletejoblist.undeleted_job_idx = pbs_idx_create(0, 0);
-
-	jobids = preq->rq_ind.rq_deletejoblist.rq_jobslist;
-	for (i = 0; jobids[i]; i++) {
-		pbs_idx_insert(preply->brp_un.brp_deletejoblist.undeleted_job_idx, jobids[i], NULL);
 	}
 }
 
@@ -564,12 +580,15 @@ req_deletejob(struct batch_request *preq)
 	preply->brp_un.brp_deletejoblist.brp_delstatc = NULL;
 	preply->brp_count = 0;
 	int start_jobid = 0;
-	time_t end_time = 0;;
 	time_t begin_time = time(NULL);
 
 	if (preq->rq_type == PBS_BATCH_DeleteJobList) {
-		reorder_deljoblist(preq);
-		init_deljoblist_rply(preq);
+
+		if (!preq->rq_ind.rq_deletejoblist.rq_resume) {
+			init_deljoblist(preq);
+		} else
+			start_jobid = preq->rq_ind.rq_deletejoblist.jobid_to_resume;
+
 		preply->brp_choice = BATCH_REPLY_CHOICE_Delete;
 		jobids = preq->rq_ind.rq_deletejoblist.rq_jobslist;
 		count = preq->rq_ind.rq_deletejoblist.rq_count;
@@ -582,22 +601,27 @@ req_deletejob(struct batch_request *preq)
 		delhist = 1;
 	if (preq->rq_extend && strstr(preq->rq_extend, FORCE))
 		forcedel = 1;
-	/* with nomail , nomail_force , nomail_deletehist or nomailforce_deletehist options are set
-	 *  no mail is sent
-	 */
-	if (preq->rq_extend && strstr(preq->rq_extend, NOMAIL))
-		qdel_mail = 0;
-	else
-		qdel_mail = 1;
 
 	if (preq->rq_ind.rq_deletejoblist.rq_resume)
 		start_jobid = preq->rq_ind.rq_deletejoblist.jobid_to_resume;
+
+	/* with nomail , nomail_force , nomail_deletehist or nomailforce_deletehist options are set
+	 *  no mail is sent
+	 */
+	if ((preq->rq_extend && strstr(preq->rq_extend, NOMAIL)) ||
+	    (start_jobid >= preq->rq_ind.rq_deletejoblist.mails))
+		qdel_mail = 0;
 
 	for (j = start_jobid; j < count; j++) {
 
 		if (j != start_jobid) {
 			preq->rq_ind.rq_deletejoblist.rq_resume = FALSE;
 			preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
+		}
+
+		if ((time(NULL) - begin_time) > QDEL_BREAKER_SECS) {
+			set_task(WORK_Interleave, 0, resume_deletion, preq);
+			return;
 		}
 
 		snprintf(jid, sizeof(jid), "%s", jobids[j]);
@@ -619,7 +643,6 @@ req_deletejob(struct batch_request *preq)
 			if (rc == TRUE)
 				continue;
 		}
-
 
 		if (jt == IS_ARRAY_NO) {
 
@@ -705,8 +728,8 @@ req_deletejob(struct batch_request *preq)
 			/* keep the array from being removed while we are looking at it */
 			parent->ji_ajinfo->tkm_flags |= TKMFLG_NO_DELETE;
 			for (i = start; i <= parent->ji_ajinfo->tkm_end; i += parent->ji_ajinfo->tkm_step) {
-				end_time = time(NULL);
-				if ((end_time - begin_time) > QDEL_BREAKER_SECS) {
+
+				if ((time(NULL) - begin_time) > QDEL_BREAKER_SECS) {
 					preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i;
 					set_task(WORK_Interleave, 0, resume_deletion, preq);
 					return;
@@ -726,11 +749,8 @@ req_deletejob(struct batch_request *preq)
 							   preq->rq_host);
 						job_purge(pjob);
 					} else {
-						if (dup_br_for_subjob(preq, pjob, req_deletejob2) == 2) {
-							preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i + parent->ji_ajinfo->tkm_step;
-							set_task(WORK_Timed, time_now + 1, resume_deletion, preq);
-							return;
-						}
+						if (dup_br_for_subjob(preq, pjob, req_deletejob2) == 2)
+							continue;
 						del_parent = 0;
 					}
 				} else {
@@ -742,7 +762,6 @@ req_deletejob(struct batch_request *preq)
 				}
 			}
 			parent->ji_ajinfo->tkm_flags &= ~TKMFLG_NO_DELETE;
-
 
 			/* if deleting running subjobs, then just return;            */
 			/* parent will be deleted when last running subjob(s) ends   */
@@ -824,12 +843,8 @@ req_deletejob(struct batch_request *preq)
 						log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, msg_job_history_delete, preq->rq_user, preq->rq_host);
 						job_purge(pjob);
 					} else {
-						if (dup_br_for_subjob(preq, pjob, req_deletejob2) == 2) {
-							preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i + step;
-							--preq->rq_refct;
-							set_task(WORK_Timed, time_now + 1, resume_deletion, preq);
-							return;
-						}
+						if (dup_br_for_subjob(preq, pjob, req_deletejob2) == 2)
+							continue;
 					}
 				} else {
 					/* Queued, Waiting, Held, just set to expired */
@@ -920,6 +935,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		while (pwtold) {
 			if ((pwtold->wt_type == WORK_Deferred_Child) ||
 			    (pwtold->wt_type == WORK_Deferred_Cmp)) {
+				preq->rq_ind.rq_deletejoblist.rq_count = 1;
 				pwtnew = set_task(pwtold->wt_type,
 						  pwtold->wt_event, resume_deletion,
 						  preq);
@@ -963,23 +979,6 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			return 0;
 		}
 
-	} else if ((check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) && (forcedel == 0)) {
-
-		/* being sent to MOM, wait till she gets it going */
-		/* retry in one second				  */
-		pwtnew = set_task(WORK_Timed, time_now + 1, resume_deletion,
-			preq);
-		if (pwtnew == 0) {
-			if (pjob->ji_pmt_preq != NULL)
-				reply_preempt_jobs_request(PBSE_SYSTEM, PREEMPT_METHOD_DELETE, pjob);
-			if (update_deljob_rply(preq, pjob->ji_qs.ji_jobid, PBSE_SYSTEM))
-				req_reject(PBSE_SYSTEM, 0, preq);
-		} else if (preq->rq_type == PBS_BATCH_DeleteJobList) {
-			/* let the caller know that the deljoblist request needs to be suspended */
-			return 2;
-		}
-
-		return 0;
 	} else if (((jt != IS_ARRAY_Range) && (jt != IS_ARRAY_Single)) &&
 		   (check_job_state(pjob, JOB_STATE_LTR_QUEUED) ||
 		    check_job_state(pjob, JOB_STATE_LTR_HELD))) {
@@ -1555,6 +1554,8 @@ post_delete_mom1(struct work_task *pwt)
 
 	preq_sig = pwt->wt_parm1;
 	rc = preq_sig->rq_reply.brp_code;
+	if (rc && pwt->wt_aux && (rc < PBSE_) && (pwt->wt_aux > PBSE_))
+		rc = pwt->wt_aux;
 	auxcode = preq_sig->rq_reply.brp_auxcode;
 	preq_clt = preq_sig->rq_extra;
 	if (preq_clt == NULL) {
@@ -1563,13 +1564,14 @@ post_delete_mom1(struct work_task *pwt)
 	}
 
 	pjob = find_job(preq_sig->rq_ind.rq_signal.rq_jid);
-	release_req(pwt);
 	if (pjob == NULL) {
 		/* job has gone away */
-		if (update_deljob_rply(preq_clt, pjob->ji_qs.ji_jobid, PBSE_UNKJOBID))
+		if (update_deljob_rply(preq_clt, preq_sig->rq_ind.rq_signal.rq_jid, PBSE_UNKJOBID))
 			req_reject(PBSE_UNKJOBID, 0, preq_clt);
+		release_req(pwt);
 		return;
 	}
+	release_req(pwt);
 
 resend:
 	if (rc) {

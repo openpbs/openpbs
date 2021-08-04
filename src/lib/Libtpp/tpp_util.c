@@ -899,6 +899,14 @@ tpp_set_keep_alive(int fd, struct tpp_config *cnf)
 	}
 #endif
 
+#ifdef TCP_USER_TIMEOUT
+	optval = cnf->tcp_user_timeout;
+	if (tpp_sock_setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &optval, optlen) < 0) {
+		tpp_log(LOG_CRIT, __func__, "setsockopt(TCP_USER_TIMEOUT) errno=%d", errno);
+		return -1;
+	}
+#endif
+
 #endif /*for win32*/
 
 	return 0;

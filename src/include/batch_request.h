@@ -106,6 +106,7 @@ struct rq_manage {
 /* DeleteJobList */
 struct rq_deletejoblist {
 	int rq_count;
+	int mails;
 	char **rq_jobslist;
 	bool rq_resume;
 	int jobid_to_resume;

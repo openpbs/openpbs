@@ -232,9 +232,9 @@ pbs_deljob(int c, char *jobid, char *extend) {
  *
  */
 struct batch_deljob_status *
-pbs_deljoblist(int c, char **jobid, int numofjobs, char *extend)
+pbs_deljoblist(int c, char **jobid, int numofjobs, int mails, char *extend)
 {
-	return (*pfn_pbs_deljoblist)(c, jobid, numofjobs, extend);
+	return (*pfn_pbs_deljoblist)(c, jobid, numofjobs, mails, extend);
 }
 
 /**

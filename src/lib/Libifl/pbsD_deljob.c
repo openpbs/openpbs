@@ -79,7 +79,7 @@ __pbs_deljob(int c, char *jobid, char *extend)
 	list[0] = jobid;
 	list[1] = NULL;
 
-	res = __pbs_deljoblist(c, list, 1, extend);
+	res = __pbs_deljoblist(c, list, 1, -1, extend);
 	if (res != NULL)
 		return res->code;
 	return PBSE_NONE;

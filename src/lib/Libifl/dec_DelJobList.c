@@ -117,7 +117,15 @@ decode_DIS_DelJobList(int sock, struct batch_request *preq)
 		}
 	}
 	tmp_jobslist[i] = NULL;
+
+	preq->rq_ind.rq_deletejoblist.mails = disrui(sock, &rc);
+	if (rc) {
+		free(tmp_jobslist);
+		return rc;
+	}
+
 	preq->rq_ind.rq_deletejoblist.rq_jobslist = tmp_jobslist;
 	preq->rq_ind.rq_deletejoblist.rq_resume = FALSE;
+	
 	return rc;
 }

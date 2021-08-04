@@ -118,49 +118,6 @@ process_deljobstat(char *clusterid, struct batch_deljob_status **list, svr_jobid
 }
 
 /**
- * @brief	Get the mail suppression limit
- *
- * @param[in]	connect - connection fd
- *
- * @return int
- * @retval mail suppression limit
- */
-static int
-get_mail_suppress_count(int connect)
-{
-	struct batch_status *ss = NULL;
-	struct attrl attr = {0};
-	char *errmsg;
-	char *keystr, *valuestr;
-	int maillimit = 0;
-
-	attr.name = ATTR_dfltqdelargs;
-	attr.value = "";
-	ss = pbs_statserver(connect, &attr, NULL);
-
-	if (ss == NULL && pbs_errno != PBSE_NONE) {
-		if ((errmsg = pbs_geterrmsg(connect)) != NULL)
-			fprintf(stderr, "qdel: %s\n", errmsg);
-		else
-			fprintf(stderr, "qdel: Error %d\n", pbs_errno);
-		exit(pbs_errno);
-	}
-
-	if (ss != NULL && ss->attribs != NULL && ss->attribs->value != NULL) {
-		if (parse_equal_string(ss->attribs->value, &keystr, &valuestr)) {
-			if (strcmp(keystr, "-Wsuppress_email") == 0)
-				maillimit = atol(valuestr);
-			else
-				fprintf(stderr, "qdel: unsupported %s \'%s\'\n",
-					ss->attribs->name, ss->attribs->value);
-		}
-	}
-	pbs_statfree(ss);
-
-	return maillimit;
-}
-
-/**
  * @brief	Helper function to handle job deletion for a given cluster
  *
  * @param[in]	clusterid - id of the cluster, currently the PBS_SERVER value
@@ -176,15 +133,10 @@ static int
 delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail, char *warg, int wargsz)
 {
 	int connect;
-	int mails; /* number of emails we can send */
-	int numofjobs;
 	struct batch_deljob_status *p_delstatus;
 	int any_failed = 0;
-	char warg1[MAX_TIME_DELAY_LEN + 7];
 	svr_jobid_list_t *rmtsvr_jobid_list = NULL;
 	svr_jobid_list_t *iter_remote = NULL;
-
-	strcpy(warg1, NOMAIL);
 
 	if (clusterid == NULL || jobids == NULL)
 		return PBSE_INTERNAL;
@@ -199,40 +151,9 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 	} else if (pbs_errno)
 		show_svr_inst_fail(connect, "qdel");
 
-	/* retrieve default: suppress_email from server: default_qdel_arguments */
-	mails = dfltmail;
-	if (mails == 0)
-		mails = get_mail_suppress_count(connect);
-	if (mails == 0)
-		mails = QDEL_MAIL_SUPPRESS;
-
-	/* First, delete mail limit number of jobs */
-	numofjobs = (mails <= numids) ? mails : numids;
-	p_delstatus = pbs_deljoblist(connect, jobids, numofjobs, warg);
+	p_delstatus = pbs_deljoblist(connect, jobids, numids, dfltmail, warg);
 	any_failed = process_deljobstat(clusterid, &p_delstatus, &rmtsvr_jobid_list);
 	pbs_delstatfree(p_delstatus);
-
-	if (numofjobs < numids) {	/* More jobs to delete */
-		int any_failed_local = 0;
-		/* when jobs to be deleted over the mail suppression limit, mail function is disabled
-		* by sending the flag below to server via its extend field:
-		*   "" -- delete a job with a mail
-		*   "nomail" -- delete a job without sending a mail
-		*   "force" -- force job to be deleted with a mail
-		*   "nomailforce" -- force job to be deleted without sending a mail
-		*   "nomaildeletehist" -- delete history of a job without sending mail
-		*   "nomailforcedeletehist" -- force delete history of a job without sending mail.
-		*
-		* current warg1 "nomail" should be at start
-		*/
-		strcat(warg1, warg);
-		pbs_strncpy(warg, warg1, wargsz);
-		p_delstatus = pbs_deljoblist(connect, &jobids[numofjobs], (numids - numofjobs), warg);
-		any_failed_local = process_deljobstat(clusterid, &p_delstatus, &rmtsvr_jobid_list);
-		pbs_delstatfree(p_delstatus);
-		if (any_failed_local)
-			any_failed = any_failed_local;
-	}
 
 	/* Delete any jobs which were found on remote servers */
 	for (iter_remote = rmtsvr_jobid_list; iter_remote != NULL; iter_remote = iter_remote->next) {
@@ -241,7 +162,7 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 
 		fd = pbs_connect(iter_remote->svrname);
 		if (fd > 0) {
-			p_delstatus = pbs_deljoblist(fd, iter_remote->jobids, iter_remote->total_jobs, warg);
+			p_delstatus = pbs_deljoblist(fd, iter_remote->jobids, iter_remote->total_jobs, dfltmail, warg);
 			any_failed_local = process_deljobstat(iter_remote->svrname, &p_delstatus, NULL);
 			pbs_delstatfree(p_delstatus);
 			if (any_failed_local)
@@ -313,7 +234,7 @@ char **envp;
 	int deletehist = FALSE;
 	char *keystr, *valuestr;
 	char **jobids = NULL;
-	int dfltmail = 0;
+	int dfltmail = -1;
 	int numids = 0;
 	/* -W no longer supports a time delay */
 	/* max length is "nomailforcedeletehist" plus terminating '\0' */

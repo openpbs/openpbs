@@ -56,7 +56,6 @@
 #include "tpp.h"
 #include <stdio.h>
 
-#define NUM_JOBS_IN_A_BATCH 10000
 #define DFLT_NUMIDS 1000
 
 /**
@@ -254,20 +253,21 @@ add_failed_job(char *jobid, int code, struct batch_deljob_status **ret)
  * @param[in] function - req type
  * @param[in] jobids - the job id list
  * @param[in] numjids - the count of job ids
+ * @param[in] mails - max num of mails to be sent
  * @param[in] extend - extend string for req
  *
  * @return int
  * @retval pbs_errno value
  */
 static int
-send_deljob(int fd, int function, char **jobids, int numjids, char *extend)
+send_deljob(int fd, int function, char **jobids, int numjids, int mails, char *extend)
 {
 	int rc;
 
 	DIS_tcp_funcs();
 
 	if ((rc = encode_DIS_ReqHdr(fd, function, pbs_current_user)) ||
-	    (rc = encode_DIS_JobsList(fd, jobids, numjids)) ||
+	    (rc = encode_DIS_JobsList(fd, jobids, numjids, mails)) ||
 	    (rc = encode_DIS_ReqExtend(fd, extend))) {
 		if (set_conn_errtxt(fd, dis_emsg[rc]) != 0)
 			return (pbs_errno = PBSE_SYSTEM);
@@ -319,15 +319,16 @@ recv_deljob(int fd)
  * @param[in] function - req type
  * @param[in] jobids - the job id list
  * @param[in] numjids - the count of job ids
+ * @param[in] mails - max num of mails to be sent
  * @param[in] extend - extend string for req
  *
  * @return struct batch_deljob_status *
  * @retval list of error objects from server (or NULL)
  */
 static struct batch_deljob_status *
-deljob_to_server(int fd, int function, char **jobids, int numids, char *extend)
+deljob_to_server(int fd, int function, char **jobids, int numids, int mails, char *extend)
 {
-	if (send_deljob(fd, function, jobids, numids, extend))
+	if (send_deljob(fd, function, jobids, numids, mails, extend))
 		return NULL;
 
 	return recv_deljob(fd);
@@ -341,13 +342,14 @@ deljob_to_server(int fd, int function, char **jobids, int numids, char *extend)
  * @param[in] function - req type
  * @param[in] jobids - the job id list
  * @param[in] numjids - the count of job ids
+ * @param[in] mails - max num of mails to be sent
  * @param[in] extend - extend string for req
  *
  * @return struct batch_deljob_status *
  * @retval list of jobs not found on any server
  */
 static struct batch_deljob_status *
-broadcast_deljob(int c, int function, char **jobids, int numids, char *extend)
+broadcast_deljob(int c, int function, char **jobids, int numids, int mails, char *extend)
 {
 	int *skip_list;
 	svr_conn_t **conns = get_conn_svr_instances(c);
@@ -378,7 +380,7 @@ broadcast_deljob(int c, int function, char **jobids, int numids, char *extend)
 
 	/* Broadcast the jids to all servers */
 	for (i = 0; conns[i] != NULL; i++) {
-		if (send_deljob(conns[i]->sd, function, jobids, numids, extend))
+		if (send_deljob(conns[i]->sd, function, jobids, numids, mails, extend))
 			skip_list[i] = 1;
 	}
 	for (i = 0; conns[i] != NULL; i++) {
@@ -479,6 +481,7 @@ add_jid_to_bcastlist(char *jid, char ***bcastjids, int *nbcastids, int *bcastjid
  * @param[in] function - req type
  * @param[in] jobids - the job id list
  * @param[in] numjids - the count of job ids
+ * @param[in] mails - max num of mails to be sent
  * @param[in] extend - extend string for req
  *
  * @return     struct batch_deljob_status *
@@ -486,7 +489,7 @@ add_jid_to_bcastlist(char *jid, char ***bcastjids, int *nbcastids, int *bcastjid
  *
  */
 static struct batch_deljob_status *
-PBSD_deljoblist(int c, int function, char **jobids, int numjids, char *extend)
+PBSD_deljoblist(int c, int function, char **jobids, int numjids, int mails, char *extend)
 {
 	int i;
 	struct batch_deljob_status *last;
@@ -534,45 +537,40 @@ PBSD_deljoblist(int c, int function, char **jobids, int numjids, char *extend)
 	for (svr_itr = svr_jobid_list_hd; svr_itr != NULL; svr_itr = svr_itr->next) {
 		if (pbs_client_thread_lock_connection(svr_itr->svr_fd) != 0)
 			goto err;
-		for (i = 0; i < svr_itr->total_jobs; i = i + numjids) {
 
-			numjids = NUM_JOBS_IN_A_BATCH;
-			numjids = ((i + numjids) <= svr_itr->total_jobs) ? numjids : (svr_itr->total_jobs - i);
+		ret = deljob_to_server(svr_itr->svr_fd, function, svr_itr->jobids, svr_itr->total_jobs, mails, extend);
 
-			ret = deljob_to_server(svr_itr->svr_fd, function, &(svr_itr->jobids[i]), numjids, extend);
+		if (ret != NULL) {
+			struct batch_deljob_status *iter_list;
+			struct batch_deljob_status *prev = NULL;
+			struct batch_deljob_status *next = NULL;
 
-			if (ret != NULL) {
-				struct batch_deljob_status *iter_list;
-				struct batch_deljob_status *prev = NULL;
-				struct batch_deljob_status *next = NULL;
-
-				for (iter_list = ret; iter_list != NULL; prev = iter_list, iter_list = next) {
-					next = iter_list->next;
-					if (iter_list->code == PBSE_UNKJOBID && msvr) {
-						/* Add job to the broadcast list */
-						if (add_jid_to_bcastlist(iter_list->name, &bcastjids, &nbcastids, &bcastjidssize) != 0) {
-							pbs_client_thread_unlock_connection(svr_itr->svr_fd);
-							goto err;
-						}
-
-						/* Remove the jid from return list, will add it after broadcast if needed */
-						if (prev != NULL)
-							prev->next = next;
-						else
-							ret = next;
-
-						iter_list->next = NULL;
-						pbs_delstatfree(iter_list);
-						iter_list = prev;
+			for (iter_list = ret; iter_list != NULL; prev = iter_list, iter_list = next) {
+				next = iter_list->next;
+				if (iter_list->code == PBSE_UNKJOBID && msvr) {
+					/* Add job to the broadcast list */
+					if (add_jid_to_bcastlist(iter_list->name, &bcastjids, &nbcastids, &bcastjidssize) != 0) {
+						pbs_client_thread_unlock_connection(svr_itr->svr_fd);
+						goto err;
 					}
-				}
-				if (ret != NULL) {
-					for (last = ret; last->next != NULL; last = last->next)
-						;
 
-					last->next = retlist;
-					retlist = ret;
+					/* Remove the jid from return list, will add it after broadcast if needed */
+					if (prev != NULL)
+						prev->next = next;
+					else
+						ret = next;
+
+					iter_list->next = NULL;
+					pbs_delstatfree(iter_list);
+					iter_list = prev;
 				}
+			}
+			if (ret != NULL) {
+				for (last = ret; last->next != NULL; last = last->next)
+					;
+
+				last->next = retlist;
+				retlist = ret;
 			}
 		}
 
@@ -584,7 +582,7 @@ PBSD_deljoblist(int c, int function, char **jobids, int numjids, char *extend)
 	/* Handle the broadcast list if set */
 	if (bcastjids != NULL) {
 
-		ret = broadcast_deljob(c, function, bcastjids, nbcastids, extend);
+		ret = broadcast_deljob(c, function, bcastjids, nbcastids, mails, extend);
 		/* Add the jobs not found to the list of existing failed deletions */
 		if (ret != NULL) {
 			for (last = ret; last->next; last = last->next)
@@ -625,10 +623,10 @@ err:
  *
  */
 struct batch_deljob_status *
-__pbs_deljoblist(int c, char **jobids, int numjids, char *extend)
+__pbs_deljoblist(int c, char **jobids, int numjids, int mails, char *extend)
 {
 	if ((jobids == NULL) || (**jobids == '\0'))
 		return NULL;
 
-	return PBSD_deljoblist(c, PBS_BATCH_DeleteJobList, jobids, numjids, extend);
+	return PBSD_deljoblist(c, PBS_BATCH_DeleteJobList, jobids, numjids, mails, extend);
 }

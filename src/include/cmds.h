@@ -84,8 +84,6 @@ struct svr_jobid_list {
 #define QMGR_ALLOW_WHITE_IN_VALUE 1
 #define QMGR_NO_WHITE_IN_VALUE    0
 
-#define QDEL_MAIL_SUPPRESS 1000
-
 extern int optind, opterr;
 extern char *optarg;
 
