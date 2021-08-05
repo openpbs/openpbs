@@ -2764,37 +2764,37 @@ class Wrappers(PBSService):
         if id is None and obj_type == SERVER:
             id = self.pbs_conf['PBS_SERVER']
         bs_list = []
-        deleted = False
         if cmd == MGR_CMD_DELETE and oid is not None:
-            deleted = True
-        if deleted and obj_type == MGR_OBJ_RSC:
-            res_ret = self.du.run_cmd(cmd=[
-                os.path.join(
-                    self.pbs_conf['PBS_EXEC'],
-                    'bin',
-                    'qmgr'),
-                '-c',
-                "list resource"],
-                logerr=True)
-            ress = []
-            for x in res_ret['out']:
-                if 'Resource' in x:
-                    ress.append(x.split()[1].strip())
-            tmp_res = copy.deepcopy(self.resources)
-            for i in tmp_res:
-                if i not in ress:
-                    del self.resources[i]
-
-        elif cmd == MGR_CMD_DELETE and oid is not None and rc == 0:
-            for i in oid:
-                if obj_type == MGR_OBJ_HOOK and i in self.hooks:
-                    del self.hooks[i]
-                if obj_type in (NODE, VNODE) and i in self.nodes:
-                    del self.nodes[i]
-                if obj_type == MGR_OBJ_QUEUE and i in self.queues:
-                    del self.queues[i]
-                if obj_type == SCHED and i in self.schedulers:
-                    del self.schedulers[i]
+            if rc == 0:
+                for i in oid:
+                    if obj_type == MGR_OBJ_HOOK and i in self.hooks:
+                        del self.hooks[i]
+                    if obj_type in (NODE, VNODE) and i in self.nodes:
+                        del self.nodes[i]
+                    if obj_type == MGR_OBJ_QUEUE and i in self.queues:
+                        del self.queues[i]
+                    if obj_type == MGR_OBJ_RSC and i in self.resources:
+                        del self.resources[i]
+                    if obj_type == SCHED and i in self.schedulers:
+                        del self.schedulers[i]
+            else:
+                if obj_type == MGR_OBJ_RSC:
+                    res_ret = self.du.run_cmd(cmd=[
+                        os.path.join(
+                            self.pbs_conf['PBS_EXEC'],
+                            'bin',
+                            'qmgr'),
+                        '-c',
+                        "list resource"],
+                        logerr=True)
+                    ress = []
+                    for x in res_ret['out']:
+                        if 'Resource' in x:
+                            ress.append(x.split()[1].strip())
+                    tmp_res = copy.deepcopy(self.resources)
+                    for i in tmp_res:
+                        if i not in ress:
+                            del self.resources[i]
 
         elif cmd == MGR_CMD_SET and rc == 0 and id is not None:
             if isinstance(id, list):
