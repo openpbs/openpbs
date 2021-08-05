@@ -63,8 +63,8 @@
  * @retval	pbs_error	error
  *
  */
-static int
-PBSD_terminate(int c, int manner, char *extend)
+int
+__pbs_terminate(int c, int manner, const char *extend)
 {
 	struct batch_reply *reply;
 	int rc = 0;
@@ -79,31 +79,29 @@ PBSD_terminate(int c, int manner, char *extend)
 		return pbs_errno;
 
 	/* setup DIS support routines for following DIS calls */
-
 	DIS_tcp_funcs();
 
-	if ((rc=encode_DIS_ReqHdr(c, PBS_BATCH_Shutdown, pbs_current_user)) ||
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_Shutdown, pbs_current_user)) ||
 		(rc = encode_DIS_ShutDown(c, manner)) ||
 		(rc = encode_DIS_ReqExtend(c, extend))) {
-		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0)
 			pbs_errno = PBSE_SYSTEM;
-		} else {
+		else
 			pbs_errno = PBSE_PROTOCOL;
-		}
-		(void)pbs_client_thread_unlock_connection(c);
+
+		pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
+
 	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
-		(void)pbs_client_thread_unlock_connection(c);
+		pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
 
 	/* read in reply */
-
 	reply = PBSD_rdrpy(c);
 	rc = get_conn_errno(c);
-
 	PBSD_FreeReply(reply);
 
 	/* unlock the thread lock and update the thread context data */
@@ -111,38 +109,4 @@ PBSD_terminate(int c, int manner, char *extend)
 		return pbs_errno;
 
 	return rc;
-}
-
-
-/**
- * @brief
- *	-send termination batch_request to server.
- *
- * @param[in] c - communication handle
- * @param[in] manner - manner in which server to be terminated
- * @param[in] extend - extension string for request
- *
- * @return	int
- * @retval	0		success
- * @retval	pbs_error	error
- *
- */
-int
-__pbs_terminate(int c, int manner, char *extend)
-{
-	int rc = 0;
-	int final_rc = rc;
-	svr_conn_t **svr_conns = get_conn_svr_instances(c);
-	int i;
-
-	if (!svr_conns)
-		return PBSD_terminate(c, manner, extend);
-
-	for (i = 0; svr_conns[i]; i++) {
-		rc = PBSD_terminate(svr_conns[i]->sd, manner, extend);
-		if (rc != 0)
-			final_rc = rc;
-	}
-
-	return final_rc;
 }

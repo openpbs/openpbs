@@ -328,7 +328,7 @@ sum_a_resource(struct consumable *psum, int avail, char *value,
 static void
 sum_resources(struct batch_status *pbs,
 	struct batch_status *working,
-	char *hostn,
+	const char *hostn,
 	struct consumable *consum,
 	int	consumable_size,
 	char * various)
@@ -590,7 +590,7 @@ static struct attr_names {
 static void
 build_collective(struct batch_status *pbs,
 	struct batch_status *newbsr,
-	char *hostn,
+	const char *hostn,
 	struct consumable *consum,
 	int	consumable_size,
 	char *various)
@@ -789,7 +789,7 @@ build_collective(struct batch_status *pbs,
  *	or append to the existing list which is passed in.
  */
 struct batch_status *build_return_status(struct batch_status *bstatus,
-	char *hname,
+	const char *hname,
 	struct batch_status *curlist,
 	struct host_list  *phost_list,
 	int    host_list_size,
@@ -895,7 +895,7 @@ struct batch_status *build_return_status(struct batch_status *bstatus,
  */
 
 struct batch_status *
-__pbs_stathost(int con, char *hid, struct attrl *attrib, char *extend)
+__pbs_stathost(int con, const char *hid, struct attrl *attrib, const char *extend)
 {
 	struct batch_status *breturn;	/* the list returned to the caller */
 	struct batch_status *bstatus;	/* used internally		   */

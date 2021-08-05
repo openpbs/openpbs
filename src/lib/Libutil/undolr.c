@@ -47,6 +47,8 @@
  *
  */
 
+#include <pbs_config.h>
+
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>

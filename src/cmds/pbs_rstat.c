@@ -338,11 +338,6 @@ handle_resv(char *resv_id, char *server, int how)
 		exit(pbs_errno);
 	}
 
-	if (pbs_errno != PBSE_NONE) {
-		if (pbs_errno == PBSE_NOSERVER || pbs_errno == ECONNREFUSED)
-			show_svr_inst_fail(pbs_sd, "pbs_rstat");
-    	} 
-
 	/* check the server attribute max_job_sequence_id value */
 	if (check_width == 0) {
 		server_attrs = pbs_statserver(pbs_sd, NULL, NULL);
@@ -367,8 +362,7 @@ handle_resv(char *resv_id, char *server, int how)
 	}
 
 	bstat = pbs_statresv(pbs_sd, resv_id, NULL, NULL);
-
-	if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {
+	if (pbs_errno) {
 		errmsg = pbs_geterrmsg(pbs_sd);
 		fprintf(stderr, "pbs_rstat: %s\n", errmsg);
 	}

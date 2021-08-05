@@ -88,9 +88,9 @@ pbs_submit_with_cred(int c, struct attropl  *attrib, char *script,
 			char *destination, char  *extend, int credtype,
 			size_t credlen, char  *credbuf)
 {
-	char					*ret;
-	struct pbs_client_thread_context	*ptr;
-	struct cred_info			*cred_info;
+	char *ret;
+	struct pbs_client_thread_context *ptr;
+	struct cred_info *cred_info;
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -101,8 +101,7 @@ pbs_submit_with_cred(int c, struct attropl  *attrib, char *script,
 	if (pbs_client_thread_lock_connection(c) != 0)
 		return NULL;
 
-	ptr = (struct pbs_client_thread_context *)
-		pbs_client_thread_get_context_data();
+	ptr = (struct pbs_client_thread_context *) pbs_client_thread_get_context_data();
 	if (!ptr) {
 		pbs_errno = PBSE_INTERNAL;
 		(void)pbs_client_thread_unlock_connection(c);
@@ -155,7 +154,7 @@ pbs_submit_with_cred(int c, struct attropl  *attrib, char *script,
  *
  */
 char *
-__pbs_submit(int c, struct attropl  *attrib, char *script, char *dest, char *extend)
+__pbs_submit(int c, struct attropl  *attrib, const char *script, const char *dest, const char *extend)
 {
 	struct attropl *pal;
 	char *return_jobid = NULL;
@@ -164,14 +163,6 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *dest, char *ext
 	struct cred_info *cred_info = NULL;
 	int commit_done = 0;
 	char *lextend = NULL;
-	int msvr = multi_svr_op(c);
-	svr_conn_t **svr_conns = get_conn_svr_instances(c);
-	int nsvr = get_num_servers();
-	int rand = rand_num() % nsvr;
-	int ct;
-	int start = rand;
-	int i;
-	
 
 	/* initialize the thread context data, if not already initialized */
 	if ((pbs_errno = pbs_client_thread_init_thread_context()) != 0)
@@ -184,7 +175,7 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *dest, char *ext
 	}
 
 	/* first verify the attributes, if verification is enabled */
-	if (pbs_verify_attributes(random_srv_conn(c, svr_conns), PBS_BATCH_QueueJob, MGR_OBJ_JOB, MGR_CMD_NONE, attrib) != 0)
+	if (pbs_verify_attributes(c, PBS_BATCH_QueueJob, MGR_OBJ_JOB, MGR_CMD_NONE, attrib) != 0)
 		goto error; /* pbs_errno is already set in this case */
 
 	/* lock pthread mutex here for this connection */
@@ -207,7 +198,6 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *dest, char *ext
 		pal->op = SET;		/* force operator to SET */
 
 	cred_info = (struct cred_info *) ptr->th_cred_info;
-
 	if ((!script || (*script == '\0')) && (!cred_info || (cred_info->cred_len <= 0))) {
 		/* no cred and no script, let's request implicit commit to cut one message exchange */
 		if (extend) {
@@ -223,41 +213,10 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *dest, char *ext
 			extend = EXTEND_OPT_IMPLICIT_COMMIT;
 	}
 
-	if (msvr && !IS_EMPTY(dest)) {
-		/* Reached here means job is submitted to non default queue */
-
-		/* Since this could be a reservation queue and reservation queues are not shared,
-		 * we try to find out which server this queue resides on
-		 */
-		if ((start = get_obj_location_hint(dest, MGR_OBJ_RESV)) == -1)
-			start = rand;
-	}
-	
-	/* Queue job with null string for job id
-	* attempt again with other instances if we get a queued limit error.
-	*/
-	rc = PBSE_NONE;
-	for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
-
-		if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP) {
-			rc = PBSE_NOSERVER;
-			continue;
-		}
-
-		c = svr_conns[i]->sd;
-		return_jobid = PBSD_queuejob(c, "", dest, attrib, extend, PROT_TCP, NULL, &commit_done);
-		if (return_jobid) {
-			pbs_errno = PBSE_NONE;
-			break;
-		}
-		else if (rc == PBSE_NONE)
-			rc = pbs_errno;
-	}
-
-	if (!return_jobid) {
-		pbs_errno = rc;
+	/* Queue job with null string for job id */
+	return_jobid = PBSD_queuejob(c, "", dest, attrib, extend, PROT_TCP, NULL, &commit_done);
+	if (return_jobid == NULL)
 		goto error;
-	}
 
 	if (commit_done)
 		goto done;
@@ -275,7 +234,6 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *dest, char *ext
 
 	/* OK, the script got across, apparently, so we are */
 	/* ready to commit */
-
 	/* opaque information */
 	if (cred_info && cred_info->cred_len > 0) {
 		if (PBSD_jcred(c, cred_info->cred_type,
@@ -292,7 +250,6 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *dest, char *ext
 error:
 done:
 	free(lextend);
-
 	/* unlock the thread lock and update the thread context data */
 	pbs_client_thread_unlock_connection(c);
 	return return_jobid;

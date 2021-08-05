@@ -1125,17 +1125,6 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 			 * use that error code
 			 */
 			move_schd_error(err, failerr);
-	} else if (pbs_conf.pbs_num_servers > 1 && resresv->svr_inst_id != NULL) {
-		/* Restrict placement to local server when using buckets */
-		if (sinfo->svr_to_psets.find(resresv->svr_inst_id) != sinfo->svr_to_psets.end()) {
-
-			auto nspecs = map_buckets(policy, sinfo->svr_to_psets[resresv->svr_inst_id]->bkts, resresv, err);
-			if (!nspecs.empty())
-				return nspecs;
-		} else {	/* No nodes associated with owner server, so reject the job/reservation */
-			set_schd_error_codes(err, NOT_RUN, NO_NODE_RESOURCES);
-			return {};
-		}
 	}
 
 	return map_buckets(policy, sinfo->buckets, resresv, err);

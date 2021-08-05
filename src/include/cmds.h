@@ -45,6 +45,12 @@
  *	Header file for the PBS utilities.
  */
 
+#ifndef	_CMDS_H
+#define	_CMDS_H
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -57,6 +63,8 @@
 #include "libsec.h"
 
 /* Needed for qdel and pbs_deljoblist */
+#define DELJOB_DFLT_NUMIDS 1000
+
 typedef struct svr_jobid_list svr_jobid_list_t;
 struct svr_jobid_list {
 	int max_sz;
@@ -96,4 +104,8 @@ extern void	prt_error(char *, char *, int);
 extern int	check_max_job_sequence_id(struct batch_status *);
 extern void	set_attr_error_exit(struct attrl **, char *, char *);
 extern void	set_attr_resc_error_exit(struct attrl **, char *, char *, char *);
-extern void     show_svr_inst_fail(int, char *);
+
+#ifdef	__cplusplus
+}
+#endif
+#endif	/* _CMDS_H */

@@ -91,42 +91,6 @@ done:
 }
 
 /**
- * @brief - Start a standard peer-server message.
- *
- * @param[in] stream  - The TPP stream on which to send message
- * @param[in] command - The message type (cmd) to encode
- *
- * @return error code
- * @retval  DIS_SUCCESS - Success
- * @retval !DIS_SUCCESS - Failure
- */
-int
-ps_compose(int stream, int command)
-{
-	int	ret;
-
-	if (stream < 0)
-		return DIS_EOF;
-
-	DIS_tpp_funcs();
-
-	ret = diswsi(stream, PS_PROTOCOL);
-	if (ret != DIS_SUCCESS)
-		goto done;
-	ret = diswsi(stream, PS_PROTOCOL_VER);
-	if (ret != DIS_SUCCESS)
-		goto done;
-	ret = diswsi(stream, command);
-	if (ret != DIS_SUCCESS)
-		goto done;
-
-	return DIS_SUCCESS;
-
-done:
-	return ret;
-}
-
-/**
  * @brief - Get a unique id each time this function is called
  *
  * @par NOTE:
@@ -354,7 +318,7 @@ PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid, enum jo
  */
 
 int
-PBSD_jscript(int c, char *script_file, int prot, char **msgid)
+PBSD_jscript(int c, const char *script_file, int prot, char **msgid)
 {
 	int i;
 	int fd;
@@ -497,7 +461,7 @@ PBSD_jobfile(int c, int req_type, char *path, char *jobid, enum job_file which, 
  * @retval      pbs_error(!0)   error
  */
 char *
-PBSD_queuejob(int c, char *jobid, char *destin, struct attropl *attrib, char *extend, int prot, char **msgid, int *commit_done)
+PBSD_queuejob(int c, char *jobid, const char *destin, struct attropl *attrib, const char *extend, int prot, char **msgid, int *commit_done)
 {
 	struct batch_reply *reply;
 	char *return_jobid = NULL;

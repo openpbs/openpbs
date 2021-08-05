@@ -36,6 +36,7 @@
  * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
  * subject to Altair's trademark licensing policies.
  */
+#include <pbs_config.h>
 
 #include <sys/types.h>
 #include <unistd.h>

@@ -43,6 +43,7 @@
  * pbs_tmrsh - a replacement for rsh using the Task Management API
  *
  */
+#include <pbs_config.h>
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -306,11 +306,6 @@ reply_send(struct batch_request *request)
 	sfds = request->rq_conn;
 	rq_type = request->rq_type;
 
-#ifndef PBS_MOM
-	if (request->rq_type == PBS_BATCH_MoveJob)
-		rq_type = request->rq_ind.rq_move.orig_rq_type;
-#endif
-
 	if (rq_type == PBS_BATCH_ModifyJob_Async || rq_type == PBS_BATCH_AsyrunJob) {
 		free_br(request);
 		return 0;
@@ -394,11 +389,6 @@ reply_ack(struct batch_request *preq)
 		return;
 
 	rq_type = preq->rq_type;
-#ifndef PBS_MOM
-	if (preq->rq_type == PBS_BATCH_MoveJob)
-		rq_type = preq->rq_ind.rq_move.orig_rq_type;
-#endif
-
 	if (rq_type == PBS_BATCH_ModifyJob_Async || rq_type == PBS_BATCH_AsyrunJob) {
 		free_br(preq);
 		return;
@@ -505,11 +495,6 @@ req_reject(int code, int aux, struct batch_request *preq)
 		return;
 
 	rq_type = preq->rq_type;
-#ifndef PBS_MOM
-	if (preq->rq_type == PBS_BATCH_MoveJob)
-		rq_type = preq->rq_ind.rq_move.orig_rq_type;
-#endif
-
 	if (rq_type == PBS_BATCH_ModifyJob_Async || rq_type == PBS_BATCH_AsyrunJob) {
 		free_br(preq);
 		return;

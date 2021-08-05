@@ -68,7 +68,7 @@
  */
 
 int
-__pbs_deljob(int c, char *jobid, char *extend)
+__pbs_deljob(int c, const char *jobid, const char *extend)
 {
 	char *list[2];
 	struct batch_deljob_status *res = NULL;
@@ -76,10 +76,10 @@ __pbs_deljob(int c, char *jobid, char *extend)
 	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
-	list[0] = jobid;
+	list[0] = (char *) jobid;
 	list[1] = NULL;
 
-	res = __pbs_deljoblist(c, list, 1, extend);
+	res = pbs_deljoblist(c, list, 1, extend);
 	if (res != NULL)
 		return res->code;
 	return PBSE_NONE;

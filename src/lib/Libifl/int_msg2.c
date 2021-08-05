@@ -70,7 +70,7 @@
  * @retval      pbs_error(!0)   error
  */
 int
-PBSD_msg_put(int c, char *jobid, int fileopt, char *msg, char *extend, int prot, char **msgid)
+PBSD_msg_put(int c, const char *jobid, int fileopt, const char *msg, const char *extend, int prot, char **msgid)
 {
 	int rc = 0;
 
@@ -142,7 +142,7 @@ PBSD_py_spawn_put(int c, char *jobid, char **argv, char **envp, int prot, char *
  *	Send the RelnodesJob request, does not read the reply.
  */
 int
-PBSD_relnodes_put(int c, char *jobid, char *node_list, char *extend, int prot, char **msgid)
+PBSD_relnodes_put(int c, const char *jobid, const char *node_list, const char *extend, int prot, char **msgid)
 {
 	int rc = 0;
 

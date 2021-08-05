@@ -164,7 +164,6 @@ int get_request(char **);
 int parse(char *, int *, int *, char **, struct attropl **);
 int execute(int, int, int, char *, struct attropl *);
 int is_valid_object(struct objname *, int);
-void disconnect_from_server(struct server *);
 
 
 /* help messages */

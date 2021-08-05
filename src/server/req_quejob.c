@@ -92,6 +92,7 @@
 #include "pbs_db.h"
 #define SEQ_WIN_INCR 1000 /*save jobid number to database in this increment*/
 #endif
+#include "libutil.h"
 
 #ifdef PBS_MOM
 #include "mom_hook_func.h"
@@ -261,33 +262,15 @@ validate_perm_res_in_select(char *val, int val_exist)
 static int
 generate_objid(char *idbuf, char *clusterid, int objtype, char resv_char)
 {
-	static int svr_id = -1;
-
 	if (idbuf == NULL || server_name == NULL || clusterid == NULL)
 		return 1;
 
-	if (get_num_servers() <= 1) { /* single server setup */
-		if (objtype == MGR_OBJ_JOB)
-			sprintf(idbuf, "%lld.%s", next_svr_sequence_id, clusterid);
-		else if (objtype == MGR_OBJ_JOBARRAY_PARENT)
-			sprintf(idbuf, "%lld[].%s", next_svr_sequence_id, clusterid);
-		else if (objtype == MGR_OBJ_RESV)
-			sprintf(idbuf, "%c%lld.%s", resv_char, next_svr_sequence_id, clusterid);
-	} else { /* multi-server setup */
-		if (svr_id == -1) {
-			svr_id = get_server_index();
-			if (svr_id == -1)
-				return 1;
-		}
-
-		/* For multi-server, last 'MSVR_JID_NCHARS_SVR' chars of numeric portion are reserved for server id */
-		if (objtype == MGR_OBJ_JOB)
-			sprintf(idbuf, "%lld%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
-		else if (objtype == MGR_OBJ_JOBARRAY_PARENT)
-			sprintf(idbuf, "%lld%0*d[].%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
-		else if (objtype == MGR_OBJ_RESV)
-			sprintf(idbuf, "%c%lld%0*d.%s", resv_char, next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
-	}
+	if (objtype == MGR_OBJ_JOB)
+		sprintf(idbuf, "%lld.%s", next_svr_sequence_id, clusterid);
+	else if (objtype == MGR_OBJ_JOBARRAY_PARENT)
+		sprintf(idbuf, "%lld[].%s", next_svr_sequence_id, clusterid);
+	else if (objtype == MGR_OBJ_RESV)
+		sprintf(idbuf, "%c%lld.%s", resv_char, next_svr_sequence_id, clusterid);
 
 	return 0;
 }

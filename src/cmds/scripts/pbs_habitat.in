@@ -293,21 +293,8 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			echo "*** Error starting pbs server"
 			exit $ret
 		fi
-		server_started=1
+		server_started=1	
 
-		# Check if PBS_SERVER_INSTANCES is set for multi-server
-		if [ ! -z "${PBS_SERVER_INSTANCES}" ]; then
-			# We don't want qmgr to try to contact other servers, which may not even be up yet
-			# So, set PBS_SERVER_INSTANCES to the current server's hostname and port
-			if [ -z "${PBS_BATCH_SERVICE_PORT}" ]; then
-				PBS_BATCH_SERVICE_PORT=15001
-			fi
-			msvr_host=${PBS_SERVER_HOST_NAME}
-			if [ -z $msvr_host ]; then
-				msvr_host="$(hostname -s)"
-			fi
-			export PBS_SERVER_INSTANCES="${msvr_host}:${PBS_BATCH_SERVICE_PORT}"
-		fi
 		if is_cray_xt; then
 			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
 				set server restrict_res_to_release_on_suspend = ncpus

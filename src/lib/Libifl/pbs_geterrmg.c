@@ -66,8 +66,7 @@
 char *
 __pbs_geterrmsg(int connect)
 {
-	struct pbs_client_thread_connect_context * con =
-		pbs_client_thread_find_connect_context(connect);
+	struct pbs_client_thread_connect_context * con = pbs_client_thread_find_connect_context(connect);
 	struct pbs_client_thread_context *thrd_ctxt = pbs_client_thread_get_context_data();
 
 	/*

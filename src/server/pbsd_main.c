@@ -288,7 +288,6 @@ do_tpp(int stream)
 {
 	int			ret, proto, version;
 	void			is_request(int, int);
-	void			ps_request(int, int);
 	void			stream_eof(int, int, char *);
 
 	DIS_tpp_funcs();
@@ -311,12 +310,6 @@ do_tpp(int stream)
 			DBPRT(("%s: got an inter-server request\n", __func__))
 			is_request(stream, version);
 			break;
-
-		case	PS_PROTOCOL:
-			DBPRT(("%s: got a peer-server request\n", __func__))
-			ps_request(stream, version);
-			break;
-
 		default:
 			DBPRT(("%s: unknown request %d\n", __func__, proto))
 			stream_eof(stream, ret, NULL);
@@ -548,7 +541,7 @@ tcp_pre_process(conn_t *conn)
 
 		if (rc < (int)AUTH_STATUS_CTX_READY) {
 			errbuf[0] = '\0';
-			rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_ENCRYPT, errbuf, sizeof(errbuf));
+			rc = engage_server_auth(conn->cn_sock, conn->cn_hostname, FOR_ENCRYPT, errbuf, sizeof(errbuf));
 			if (errbuf[0] != '\0') {
 				if (rc != 0)
 					log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
@@ -566,7 +559,7 @@ tcp_pre_process(conn_t *conn)
 
 	if (rc < (int)AUTH_STATUS_CTX_READY) {
 		errbuf[0] = '\0';
-		rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_AUTH, errbuf, sizeof(errbuf));
+		rc = engage_server_auth(conn->cn_sock, conn->cn_hostname, FOR_AUTH, errbuf, sizeof(errbuf));
 		if (errbuf[0] != '\0') {
 			if (rc != 0)
 				log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);

@@ -37,6 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
+#include	<pbs_config.h>
+
 #include	<sys/stat.h>
 #include	<signal.h>
 #include	<sys/utsname.h>

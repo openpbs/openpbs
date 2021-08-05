@@ -671,9 +671,6 @@ pbsd_init(int type)
 		return (-1);
 	}
 
-	/* Initialize server instsances before loading jobs/resv */
-	init_msi();
-
 	/* Open and read in node list if one exists */
 	if ((rc = setup_nodes()) == -1) {
 		/* log_buffer set in setup_nodes */

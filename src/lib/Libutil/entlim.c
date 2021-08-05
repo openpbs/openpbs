@@ -36,12 +36,12 @@
  * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
  * subject to Altair's trademark licensing policies.
  */
+#include <pbs_config.h>
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include "pbs_entlim.h"
-#include <pbs_config.h>
 
 /* entlim iteration context structure, opaque to caller */
 typedef struct _entlim_ctx {

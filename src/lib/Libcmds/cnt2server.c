@@ -92,7 +92,10 @@ cnt2server_extend(char *server, char *extend)
 					break;
 
 				case PBSE_SYSTEM:
-					fprintf(stderr, "System call failure.\n");
+					if (errno != 0)
+						perror(NULL);
+					else
+						fprintf(stderr, "System call failure.\n");
 					break;
 
 				case PBSE_PERM:
@@ -108,8 +111,9 @@ cnt2server_extend(char *server, char *extend)
 					break;
 
 			}
-		} else if (errno != 0)
+		} else if (errno != 0) {
 			perror(NULL);
+		}
 
 		return (connect);
 	}

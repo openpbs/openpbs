@@ -86,11 +86,7 @@ typedef struct daemon_info dmn_info_t;
 
 /*
  * mominfo structure - used by both the Server and Mom
- *	to hold contact	information for an instance of a pbs_mom/pbs_server on a host
- * The server used it to represent moms and peer-servers and the mom uses it to represent peer-moms.
- * mi_data contains daemon-dependent sub-structure. 
- * So it is different to represent a mom (mom_svrinfo_t), a peer-svr (svrinfo_t) and a peer-mom (mom_vninfo_t, when used inside mom code).
- * mi_dmn_info represents the elements that are common for both mom and peer-svr. and only used within server code.
+ *	to hold contact information for an instance of a pbs_mom on a host
  */
 
 struct machine_info {
@@ -103,7 +99,6 @@ struct machine_info {
 	pbs_list_link	mi_link; /* forward/backward links */	
 };
 typedef struct machine_info mominfo_t;
-typedef struct machine_info server_t;
 
 /*
  * The following structure is used by the Server for each Mom.
@@ -264,7 +259,6 @@ struct pbsnode {
 	int nd_added_to_unlicensed_list;	/* To record if the node is added to the list of unlicensed node */
 	pbs_list_link un_lic_link;		/*Link to unlicense list */
 	int nd_svrflags;	/* server flags */
-	pbs_list_link nd_link;	/* Link to holding svr list in case if this is an alien node */
 	attribute nd_attr[ND_ATR_LAST];
 };
 typedef struct pbsnode pbs_node;
@@ -340,10 +334,9 @@ INUSE_RESVEXCL|INUSE_UNRESOLVABLE|INUSE_MAINTENANCE|INUSE_SLEEP)
 /*
  * server flags (in nd_svrflags)
  */
-#define NODE_ALIEN      0x01	/* node does not belong to this server */
-#define NODE_UNLICENSED 0x02 /* To record if the node is added to the list of unlicensed node */
-#define NODE_NEWOBJ     0x04	/* new node ? */
-#define NODE_ACCTED     0x08	/* resc recorded in job acct */
+#define NODE_UNLICENSED 0x01 /* To record if the node is added to the list of unlicensed node */
+#define NODE_NEWOBJ     0x02	/* new node ? */
+#define NODE_ACCTED     0x04	/* resc recorded in job acct */
 
 /* operators to set the state of a vnode. Nd_State_Set is "=",
  * Nd_State_Or is "|=" and Nd_State_And is "&=". This is used in set_vnode_state
@@ -410,7 +403,6 @@ extern	void	setup_notification(void);
 extern  struct	pbssubn  *find_subnodebyname(char *);
 extern	struct	pbsnode  *find_nodebyname(char *);
 extern	struct	pbsnode  *find_nodebyaddr(pbs_net_t);
-extern	pbs_node *find_alien_node(char *nodename);
 extern	void	free_prop_list(struct prop*);
 extern	void	recompute_ntype_cnts(void);
 extern	int	process_host_name_part(char*, svrattrl*, char**, int*);

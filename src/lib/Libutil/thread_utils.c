@@ -43,6 +43,8 @@
  * thread_utils.c - contains utility functions for multi-threading using pthread
  */
 
+#include <pbs_config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

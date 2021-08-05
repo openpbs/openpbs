@@ -65,7 +65,29 @@
  */
 
 struct batch_status *
-__pbs_statrsc(int c, char *id, struct attrl *attrib, char *extend)
+__pbs_statrsc(int c, const char *id, struct attrl *attrib, const char *extend)
 {
-	return PBSD_status_random(c, PBS_BATCH_StatusRsc, id, attrib, extend, MGR_OBJ_RSC);
+	struct batch_status *ret = NULL;
+	int rc;
+
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return NULL;
+
+	/* first verify the attributes, if verification is enabled */
+	rc = pbs_verify_attributes(c, PBS_BATCH_StatusRsc, MGR_OBJ_RSC,
+			MGR_CMD_NONE, (struct attropl* ) attrib);
+	if (rc)
+		return NULL;
+
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return NULL;
+
+	ret = PBSD_status(c, PBS_BATCH_StatusRsc, id, attrib, extend);
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return NULL;
+
+	return ret;
 }

@@ -124,8 +124,8 @@ int is_valid_encrypt_method(char *);
 pbs_auth_config_t *make_auth_config(char *, char *, char *, char *, void *);
 void free_auth_config(pbs_auth_config_t *);
 
-extern int engage_client_auth(int, char *, int , char *, size_t);
-extern int engage_server_auth(int, char *, char *, int, char *, size_t);
+extern int engage_client_auth(int, const char *, int , char *, size_t);
+extern int engage_server_auth(int, char *, int, char *, size_t);
 
 #ifdef __cplusplus
 }

@@ -58,127 +58,6 @@
 #include "dis.h"
 #include "pbs_ecl.h"
 
-struct reply_list {
-	struct batch_reply *reply;
-	struct reply_list *next;
-	struct reply_list *last;
-};
-
-/**
- * @brief
- *	-reads selectjob reply from stream
- *
- * @param[in] c - communication handle
- * @param[in] jlist - structure which holds job list and related counters.
- *
- * @return	string list
- * @retval	list of strings		success
- * @retval	NULL			error
- *
- */
-static void
-PBSD_select_get(int c, struct reply_list **rlist)
-{
-	struct batch_reply *reply;
-
-	/* read reply from stream */
-
-	reply = PBSD_rdrpy(c);
-	if (reply == NULL) {
-		pbs_errno = PBSE_PROTOCOL;
-	} else if (reply->brp_choice != BATCH_REPLY_CHOICE_NULL &&
-		   reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
-		   reply->brp_choice != BATCH_REPLY_CHOICE_Select) {
-		PBSD_FreeReply(reply);
-		pbs_errno = PBSE_PROTOCOL;
-	} else if (get_conn_errno(c) == 0) {
-		if (reply->brp_un.brp_select == NULL) {
-			PBSD_FreeReply(reply);
-			return;
-		}
-
-		struct reply_list *new = malloc(sizeof(struct reply_list));
-		if (!new) {
-			PBSD_FreeReply(reply);
-			pbs_errno = PBSE_SYSTEM;
-			return;
-		}
-		new->reply = reply;
-		new->next = NULL;
-		new->last = new;
-		if (*rlist) {
-			(*rlist)->last->next = new;
-			(*rlist)->last = new;
-		} else
-			*rlist = new;
-	}
-}
-
-/**
- * @brief
- *	-convert the reply list to array of jobids
- *
- * @param[in] rlist - reply list
- * Returned array is a contigous malloced space
- * The first n char * contains pointers to the jobid location
- * Then job id string is stored followed by a NULL.
- *
- * @return	string list
- * @retval	list of strings		success
- * @retval	NULL			error
- *
- */
-char **
-reply_to_joblist(struct reply_list *rlist) {
-	int i;
-	int   njobs;
-	char *sp;
-	int   stringtot;
-	size_t totsize;
-	char **retval = NULL;
-	struct reply_list *cur;
-	struct brp_select *sr = NULL;
-
-	if (!rlist)
-		return NULL;
-
-	stringtot = 0;
-	njobs = 0;
-	cur = rlist;
-	sr = cur->reply->brp_un.brp_select;
-	while (sr) {
-		stringtot += strlen(sr->brp_jobid) + 1;
-		njobs++;
-		sr = sr->brp_next;
-		if (!sr && cur->next) {
-			cur = cur->next;
-			sr = cur->reply->brp_un.brp_select;
-		}
-	}
-
-	totsize = stringtot + (njobs + 1) * (sizeof(char *));
-	retval = (char **)malloc(totsize);
-	if (retval == NULL) {
-		pbs_errno = PBSE_SYSTEM;
-		return NULL;
-	}
-	cur = rlist;
-	sr = cur->reply->brp_un.brp_select;
-	sp = (char *)retval + (njobs + 1) * sizeof(char *);
-	for (i = 0; i < njobs; i++) {
-		retval[i] = sp;
-		strcpy(sp, sr->brp_jobid);
-		sp += strlen(sp) + 1;
-		sr = sr->brp_next;
-		if (!sr && cur->next) {
-			cur = cur->next;
-			sr = cur->reply->brp_un.brp_select;
-		}
-	}
-	retval[i] = NULL;
-
-	return retval;
-}
 
 /**
  * @brief
@@ -195,73 +74,31 @@ reply_to_joblist(struct reply_list *rlist) {
  *
  */
 char **
-__pbs_selectjob(int c, struct attropl *attrib, char *extend)
+__pbs_selectjob(int c, struct attropl *attrib, const char *extend)
 {
 	char **ret = NULL;
-	int i;
-	struct reply_list *rlist = NULL;
-	struct reply_list *cur;
-	svr_conn_t **svr_conns = get_conn_svr_instances(c);
-	int *failed_conn;
-	int rc = 0;
 
-	if (!svr_conns)
-		return NULL;
-
-	failed_conn = calloc(get_num_servers(), sizeof(int));
-
+	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
 		return NULL;
 
-	if (pbs_verify_attributes(random_srv_conn(c, svr_conns), PBS_BATCH_SelectJobs, MGR_OBJ_JOB, MGR_CMD_NONE, attrib) != 0)
+	/* first verify the attributes, if verification is enabled */
+	if (pbs_verify_attributes(c, PBS_BATCH_SelectJobs, MGR_OBJ_JOB,
+		MGR_CMD_NONE, attrib))
 		return NULL;
 
+	/* lock pthread mutex here for this connection */
+	/* blocking call, waits for mutex release */
 	if (pbs_client_thread_lock_connection(c) != 0)
 		return NULL;
 
-	for (i = 0; svr_conns[i]; i++) {
+	if (PBSD_select_put(c, PBS_BATCH_SelectJobs, attrib, NULL, extend) == 0)
+		ret = PBSD_select_get(c);
 
-		if (svr_conns[i]->state != SVR_CONN_STATE_UP) {
-			pbs_errno = PBSE_NOSERVER;
-			continue;
-		}
-
-		if (pbs_client_thread_lock_connection(c) != 0)
-			goto done;
-
-		if ((rc = PBSD_select_put(svr_conns[i]->sd, PBS_BATCH_SelectJobs, attrib, NULL, extend)) != 0) {
-			failed_conn[i] = 1;
-			continue;
-		}
-	}
-
-	for (i = 0; svr_conns[i]; i++) {
-
-		if (svr_conns[i]->state != SVR_CONN_STATE_UP)
-			continue;
-
-		if (failed_conn[i])
-			continue;
-
-		PBSD_select_get(svr_conns[i]->sd, &rlist);
-
-	}
-
-	if (pbs_client_thread_unlock_connection(c) != 0)
-		goto done;
-
-	if (rc)
-		pbs_errno = rc;
-
-	free(failed_conn);
-
-done:
-	ret = reply_to_joblist(rlist);
-	while (rlist) {
-		PBSD_FreeReply(rlist->reply);
-		cur = rlist;
-		rlist = rlist->next;
-		free(cur);
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0) {
+		free_string_array(ret);
+		return NULL;
 	}
 
 	return ret;
@@ -286,9 +123,33 @@ done:
  */
 
 struct batch_status *
-__pbs_selstat(int c, struct attropl *attrib, struct attrl *rattrib, char *extend)
+__pbs_selstat(int c, struct attropl *attrib, struct attrl *rattrib, const char *extend)
 {
-	return PBSD_status_aggregate(c, PBS_BATCH_SelStat, NULL, attrib, extend, MGR_OBJ_JOB, rattrib);
+	struct batch_status *ret = NULL;
+
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return NULL;
+
+	/* first verify the attributes, if verification is enabled */
+	if (pbs_verify_attributes(c, PBS_BATCH_SelectJobs, MGR_OBJ_JOB,
+		MGR_CMD_NONE, attrib))
+		return NULL;
+
+	/* lock pthread mutex here for this connection */
+	/* blocking call, waits for mutex release */
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return NULL;
+
+
+	if (PBSD_select_put(c, PBS_BATCH_SelStat, attrib, rattrib, extend) == 0)
+		ret = PBSD_status_get(c);
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return NULL;
+
+	return ret;
 }
 
 
@@ -309,7 +170,7 @@ __pbs_selstat(int c, struct attropl *attrib, struct attrl *rattrib, char *extend
  */
 int
 PBSD_select_put(int c, int type, struct attropl *attrib,
-			struct attrl *rattrib, char *extend)
+			struct attrl *rattrib, const char *extend)
 {
 	int rc;
 
@@ -336,4 +197,60 @@ PBSD_select_put(int c, int type, struct attropl *attrib,
 	}
 
 	return 0;
+}
+
+/**
+ * @brief
+ *	-reads selectjob reply from stream
+ *
+ * @param[in] c - communication handle
+ *
+ * @return	string list
+ * @retval	list of strings		success
+ * @retval	NULL			error
+ *
+ */
+char **
+PBSD_select_get(int c)
+{
+	int   i;
+	struct batch_reply *reply;
+	int   njobs;
+	struct brp_select *sr;
+	char **retval = NULL;
+
+	/* read reply from stream */
+
+	reply = PBSD_rdrpy(c);
+	if (reply == NULL) {
+		pbs_errno = PBSE_PROTOCOL;
+	} else if (reply->brp_choice != BATCH_REPLY_CHOICE_NULL &&
+		reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
+		reply->brp_choice != BATCH_REPLY_CHOICE_Select) {
+		pbs_errno = PBSE_PROTOCOL;
+	} else if (get_conn_errno(c) == 0) {
+		njobs = reply->brp_count;
+		retval = (char ** )malloc((njobs + 1) * sizeof(char *));
+		if (retval == NULL) {
+			pbs_errno = PBSE_SYSTEM;
+			PBSD_FreeReply(reply);
+			return NULL;
+		}
+		sr = reply->brp_un.brp_select;
+		for (i = 0; i < njobs; i++) {
+			retval[i] = strdup(sr->brp_jobid);
+			if (retval[i] == NULL) {
+				free_str_array(retval);
+				pbs_errno = PBSE_SYSTEM;
+				PBSD_FreeReply(reply);
+				return NULL;
+			}
+			sr = sr->brp_next;
+		}
+		retval[i] = NULL;
+	}
+
+	PBSD_FreeReply(reply);
+
+	return retval;
 }

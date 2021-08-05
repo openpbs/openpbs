@@ -44,29 +44,15 @@
  *      within commands
  */
 
+#include <pbs_config.h>
+
+#include <errno.h>
+#include <string.h>
+
 #include "libutil.h"
 #include "libpbs.h"
+#include "libutil.h"
 
-/**
- * @brief used to display server instance failures in case of  MULTI_SERVER
- * 
- * @return void
- */
-void
-show_svr_inst_fail(int fd, char *client)
-{
-	int i;
-	svr_conn_t **svr_conns;
-
-	if (msvr_mode()) {
-		svr_conns = get_conn_svr_instances(fd);
-		for (i = 0; svr_conns[i]; i++) {
-			if (svr_conns[i]->state != SVR_CONN_STATE_UP)
-				fprintf(stderr, "%s: cannot connect to server %s runs on port %d (errno=%d)\n",
-					client, pbs_conf.psi[i].name, pbs_conf.psi[i].port, pbs_errno);
-		}
-	}
-}
 
 /**
  * @brief
@@ -106,3 +92,4 @@ prt_job_err(char *cmd, int connect, char *id)
 		fprintf(stderr, "%s: Server returned error %d for job %s\n", cmd, pbs_errno, id);
 	}
 }
+

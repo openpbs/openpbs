@@ -242,7 +242,7 @@ int set_validate_sched_attrs(int);
 
 int validate_running_user(char *exename);
 
-int send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char *execvnode, char *svr_id_job);
+int send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char *execvnode);
 
 struct batch_status *send_statsched(int virtual_fd, struct attrl *attrib, char *extend);
 

@@ -296,9 +296,6 @@ job *
 job_alloc(void)
 {
 	job *pj;
-#ifndef PBS_MOM
-	char *svr_inst_id;
-#endif
 
 	pj = (job *)malloc(sizeof(job));
 	if (pj == NULL) {
@@ -384,13 +381,6 @@ job_alloc(void)
 	/* start accruing time from the time job was created */
 	set_jattr_l_slim(pj, JOB_ATR_sample_starttime, time_now, SET);
 	set_jattr_l_slim(pj, JOB_ATR_eligible_time, 0, SET);
-
-	if ((svr_inst_id = gen_svr_inst_id()) == NULL) {
-		log_err(errno, __func__, "unable to get server_instance_id");
-		free(pj);
-		return NULL;
-	}
-	set_jattr_str_slim(pj, JOB_ATR_server_inst_id, svr_inst_id, NULL);
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
 	if (is_sattr_set(SVR_ATR_EligibleTimeEnable) && get_sattr_long(SVR_ATR_EligibleTimeEnable) == TRUE) {
@@ -1679,7 +1669,6 @@ resv_alloc(char *resvid)
 	int i;
 	resc_resv *resvp;
 	char *dot = NULL;
-	char *svr_inst_id = NULL;
 
 	resvp = (resc_resv *) calloc(1, sizeof(resc_resv));
 	if (resvp == NULL) {
@@ -1701,14 +1690,6 @@ resv_alloc(char *resvid)
 
 	if ((dot = strchr(resvid, (int)'.')) != 0)
 		*dot = '\0';
-
-	if ((svr_inst_id = gen_svr_inst_id()) == NULL) {
-		log_err(errno, __func__, "unable to get server_instance_id");
-		free(resvp);
-		return NULL;
-	}
-	set_attr_generic(&resvp->ri_wattr[RESV_ATR_server_inst_id],
-			 &resv_attr_def[RESV_ATR_server_inst_id], svr_inst_id, NULL, INTERNAL);
 
 	/*
 	 * ignore first char in given id as it can change, see req_resvSub()

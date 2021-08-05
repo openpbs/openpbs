@@ -67,7 +67,7 @@
  */
 
 char *
-PBSD_submit_resv(int connect, char *resv_id, struct attropl *attrib, char *extend)
+PBSD_submit_resv(int connect, const char *resv_id, struct attropl *attrib, const char *extend)
 {
 	struct batch_reply *reply;
 	char  *return_resv_id = NULL;

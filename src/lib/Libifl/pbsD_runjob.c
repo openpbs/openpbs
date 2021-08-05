@@ -51,20 +51,20 @@
 
 
 /**
- * @brief	Inner function for pbs_asynrunjob and pbs_asynrunjob_ack
+ * @brief	Inner function for __pbs_runjob, __pbs_asynrunjob and __pbs_asynrunjob_ack
  *
  * @param[in] c - connection handle
  * @param[in] jobid- job identifier
  * @param[in] location - string of vnodes/resources to be allocated to the job
  * @param[in] extend - extend string for encoding req
- * @param[in] req_type - one of PBS_BATCH_AsyrunJob or PBS_BATCH_AsyrunJob_ack
+ * @param[in] req_type - one of PBS_BATCH_RunJob, PBS_BATCH_AsyrunJob or PBS_BATCH_AsyrunJob_ack
  *
  * @return      int
  * @retval      0       success
  * @retval      !0      error
  */
 static int
-__runjob_inner(int c, char *jobid, char *location, char *extend, int req_type)
+__runjob_inner(int c, const char *jobid, const char *location, const char *extend, int req_type)
 {
 	int rc = 0;
 	unsigned long resch = 0;
@@ -125,59 +125,6 @@ __runjob_inner(int c, char *jobid, char *location, char *extend, int req_type)
 }
 
 /**
- * @brief	Helper function for pbs_asynrunjob and pbs_asynrunjob_ack
- *
- * @param[in] c - connection handle
- * @param[in] jobid- job identifier
- * @param[in] location - string of vnodes/resources to be allocated to the job
- * @param[in] extend - extend string for encoding req
- * @param[in] req_type - one of PBS_BATCH_AsyrunJob or PBS_BATCH_AsyrunJob_ack
- *
- * @return      int
- * @retval      0       success
- * @retval      !0      error
- */
-static int
-__runjob_helper(int c, char *jobid, char *location, char *extend, int req_type)
-{
-	int rc = 0;
-	svr_conn_t **svr_conns = get_conn_svr_instances(c);
-	int nsvr = get_num_servers();
-	int i;
-	int start = 0;
-	int ct;
-
-	if ((jobid == NULL) || (*jobid == '\0'))
-		return (pbs_errno = PBSE_IVALREQ);
-
-	if (svr_conns) {
-		if ((start = get_obj_location_hint(jobid, MGR_OBJ_JOB)) == -1)
-			start = 0;
-
-		for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
-
-			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
-				continue;
-
-			if (svr_conns[i]->sd == c) {
-				rc = __runjob_inner(svr_conns[i]->sd, jobid, location, extend, req_type);
-				break;
-			}
-
-			rc = __runjob_inner(svr_conns[i]->sd, jobid, location, extend, req_type);
-			if (rc == 0 || pbs_errno != PBSE_UNKJOBID)
-				break;
-		}
-
-		return rc;
-	}
-
-	/* Not a cluster fd. Treat it as an instance fd */
-	rc = __runjob_inner(c, jobid, location, extend, req_type);
-	return rc;
-}
-
-/**
  * @brief
  *	-send async run job batch request.
  *
@@ -191,9 +138,10 @@ __runjob_helper(int c, char *jobid, char *location, char *extend, int req_type)
  * @retval      !0      error
  *
  */
-int __pbs_asyrunjob(int c, char *jobid, char *location, char *extend)
+int
+__pbs_asyrunjob(int c, const char *jobid, const char *location, const char *extend)
 {
-	return __runjob_helper(c, jobid, location, extend, PBS_BATCH_AsyrunJob);
+	return __runjob_inner(c, jobid, location, extend, PBS_BATCH_AsyrunJob);
 }
 
 /**
@@ -212,9 +160,10 @@ int __pbs_asyrunjob(int c, char *jobid, char *location, char *extend)
  * @retval      !0      error
  *
  */
-int __pbs_asyrunjob_ack(int c, char *jobid, char *location, char *extend)
+int
+__pbs_asyrunjob_ack(int c, const char *jobid, const char *location, const char *extend)
 {
-	return __runjob_helper(c, jobid, location, extend, PBS_BATCH_AsyrunJob_ack);
+	return __runjob_inner(c, jobid, location, extend, PBS_BATCH_AsyrunJob_ack);
 }
 
 /**
@@ -233,7 +182,7 @@ int __pbs_asyrunjob_ack(int c, char *jobid, char *location, char *extend)
  */
 
 int
-__pbs_runjob(int c, char *jobid, char *location, char *extend)
+__pbs_runjob(int c, const char *jobid, const char *location, const char *extend)
 {
-	return __runjob_helper(c, jobid, location, extend, PBS_BATCH_RunJob);
+	return __runjob_inner(c, jobid, location, extend, PBS_BATCH_RunJob);
 }

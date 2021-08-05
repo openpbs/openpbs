@@ -598,7 +598,6 @@ dis_request_read(int sfds, struct batch_request *request)
 		case PBS_BATCH_StatusSched:
 		case PBS_BATCH_StatusRsc:
 		case PBS_BATCH_StatusHook:
-		case PBS_BATCH_ServerReady:
 			rc = decode_DIS_Status(sfds, request);
 			break;
 

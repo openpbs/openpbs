@@ -174,9 +174,12 @@ void
 tpp_em_destroy(void *em_ctx)
 {
 	epoll_context_t *ctx = (epoll_context_t *) em_ctx;
-	close(ctx->epoll_fd);
-	free(ctx->events);
-	free(ctx);
+
+	if (ctx != NULL) {
+		close(ctx->epoll_fd);
+		free(ctx->events);
+		free(ctx);
+	}
 }
 
 /**

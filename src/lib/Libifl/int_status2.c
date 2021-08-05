@@ -70,7 +70,7 @@
  * @retval      pbs_error(!0)   error
  */
 int
-PBSD_status_put(int c, int function, char *id, struct attrl *attrib, char *extend, int prot, char **msgid)
+PBSD_status_put(int c, int function, const char *id, struct attrl *attrib, const char *extend, int prot, char **msgid)
 {
 	int rc = 0;
 

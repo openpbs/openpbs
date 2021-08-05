@@ -127,8 +127,7 @@ main(int argc, char **argv, char **envp)
 				pbs_server, pbs_errno);
 			any_failed = pbs_errno;
 			continue;
-		} else if (pbs_errno)
-			show_svr_inst_fail(connect, argv[0]);
+		}
 
 		stat = pbs_delresv(connect, resv_id_out, dest_queue);
 		if (stat) {
