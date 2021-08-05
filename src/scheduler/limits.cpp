@@ -53,9 +53,6 @@
  * 	lim_setlimits()
  * 	has_hardlimits()
  * 	has_softlimits()
- * 	new_limcounts()
- * 	free_limcounts()
- * 	make_limcounts()
  * 	check_limits()
  * 	check_soft_limits()
  * 	check_server_max_user_run()
@@ -131,33 +128,41 @@
 #include	"resource.h"
 #include	"globals.h"
 
-struct limcounts
+class  limcounts
 {
-	counts *user;
-	counts *group;
-	counts *project;
-	counts *all;
+	public:
+	counts_umap user;
+	counts_umap group;
+	counts_umap project;
+	counts_umap all;
+	limcounts() = delete;
+	limcounts(const counts_umap &ruser,
+		  const counts_umap &rgroup,
+		  const counts_umap &rproject,
+		  const counts_umap &rall);
+	limcounts (const limcounts &);
+	limcounts &operator=(const limcounts &);
+	~limcounts();
 };
-typedef struct limcounts limcounts;
 
 static int
-check_max_group_res(resource_resv *, counts *,
+check_max_group_res(resource_resv *, counts_umap &,
 	resdef **, void *);
 static int
-check_max_project_res(resource_resv *, counts *,
+check_max_project_res(resource_resv *, counts_umap &,
 	resdef **, void *);
 static int
-check_max_user_res(resource_resv *, counts *,
+check_max_user_res(resource_resv *, counts_umap &, 
 	resdef **, void *);
 static int
 check_max_group_res_soft(resource_resv *,
-	counts *, void *, int);
+	counts_umap &, void *, int);
 static int
 check_max_project_res_soft(resource_resv *,
-	counts *, void *, int);
+	counts_umap &, void *, int);
 static int
 check_max_user_res_soft(resource_resv **, resource_resv *,
-	counts *, void *, int);
+	counts_umap &, void *, int);
 static int
 check_server_max_user_run(server_info *, queue_info *,
 	resource_resv *, limcounts *, limcounts *, schd_error *);
@@ -370,10 +375,13 @@ static void		*lim_dup_ctx(void *);
 static char		*lim_gengroupreskey(const char *);
 static char		*lim_genprojectreskey(const char *);
 static char		*lim_genuserreskey(const char *);
-static void		schderr_args_q(const std::string& , const char *, schd_error *);
+static void		schderr_args_q(const std::string&, const char *, schd_error *);
+static void		schderr_args_q(const std::string&, const std::string&, schd_error *);
 static void 		schderr_args_q_res(const std::string&, const char *, char *, schd_error *);
+static void 		schderr_args_q_res(const std::string&, const std::string&, char *, schd_error *);
 static void		schderr_args_server(const char *, schd_error *);
-static void 		schderr_args_server_res(const char *, const char *, schd_error *);
+static void		schderr_args_server(const std::string&, schd_error *);
+static void		schderr_args_server_res(std::string&, const char *, schd_error *);
 static sch_resource_t	lim_get(const char *, void *);
 static int		lim_setoldlimits(const struct attrl *, void *);
 static int		lim_setreslimits(const struct attrl *, void *);
@@ -717,91 +725,46 @@ has_softlimits(void *p)
 }
 /**
  * @brief
- *		create a new limit count structure and initialize it.
- *
- * @return	limit count structure
- * @retval	NULL	: Failed to create a limit count structure.
+ *		limitcount class constructor.
  */
-static limcounts *
-new_limcounts(void)
+// Parametrized Constructor
+limcounts::limcounts(const counts_umap &ruser,
+		     const counts_umap &rgroup,
+		     const counts_umap &rproject,
+		     const counts_umap &rall)
 {
-	limcounts *lc;
-
-	lc = static_cast<limcounts *>(malloc(sizeof(limcounts)));
-	if (lc == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-	lc->user = NULL;
-	lc->group = NULL;
-	lc->project = NULL;
-	lc->all = NULL;
-
-	return lc;
-}
-/**
- * @brief
- * 		Free the limit count structure.
- *
- * @param[in,out]	lc	-	Limit count structure which needs to be freed.
- */
-static void
-free_limcounts(limcounts *lc)
-{
-	if (lc == NULL)
-		return;
-
-	free_counts_list(lc->user);
-	free_counts_list(lc->group);
-	free_counts_list(lc->project);
-	free_counts_list(lc->all);
-	free(lc);
+	user = dup_counts_umap(ruser);
+	group = dup_counts_umap(rgroup);
+	project = dup_counts_umap(rproject);
+	all = dup_counts_umap(rall);
 }
 
-/**
- * @brief
- *		make_limcounts - create a limcounts structure by either duplicating
- *			 the passed in data
- *
- * @param[in]	user	-	user counts
- * @param[in]	group	-	group counts
- * @param[in]	project -	project counts
- * @param[in]	all	-	alljob counts
- *
- * @return	pointer to newly-created limcounts structure
- * @retval	pointer to struct limcounts	: on success
- * @retval	NULL	: on error
- */
-static limcounts *
-make_limcounts(counts *user, counts *group, counts *project, counts *all)
+// Copy Constructor
+limcounts::limcounts(const limcounts &rlimit)
 {
-	limcounts *lc;
-	lc = new_limcounts();
-	if (lc == NULL)
-		return NULL;
+	user = dup_counts_umap(rlimit.user);
+	group = dup_counts_umap(rlimit.group);
+	project = dup_counts_umap(rlimit.project);
+	all = dup_counts_umap(rlimit.all);
+}
 
-	lc->user = dup_counts_list(user);
-	if ((lc->user == NULL) && (user != NULL)) {
-		free_limcounts(lc);
-		return NULL;
-	}
-	lc->group = dup_counts_list(group);
-	if ((lc->group == NULL) && (group != NULL)) {
-		free_limcounts(lc);
-		return NULL;
-	}
-	lc->project = dup_counts_list(project);
-	if ((lc->project == NULL) && (project != NULL)) {
-		free_limcounts(lc);
-		return NULL;
-	}
-	lc->all = dup_counts_list(all);
-	if ((lc->all == NULL) && (all != NULL)) {
-		free_limcounts(lc);
-		return NULL;
-	}
+// Assignment operator
+limcounts & limcounts::operator=(const limcounts &rlimit)
+{
+	user = dup_counts_umap(rlimit.user);
+	group = dup_counts_umap(rlimit.group);
+	project = dup_counts_umap(rlimit.project);
+	all = dup_counts_umap(rlimit.all);
+	return *this;
+}
 
-	return lc;
+// destructor
+limcounts::~limcounts()
+{
+    free_counts_list(user);
+    free_counts_list(group);
+    free_counts_list(project);
+    free_counts_list(all);
 }
 
 /**
@@ -859,45 +822,27 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 
 		if (exists_run_event(si->calendar, end)) {
 			if (si->has_hard_limit) {
-				svr_counts_max = make_limcounts(si->user_counts,
+				svr_counts_max = new limcounts(si->user_counts,
 					si->group_counts,
 					si->project_counts,
 					si->alljobcounts);
-				if (svr_counts_max == NULL)
-					return SE_NONE;
 
-				svr_counts = make_limcounts(si->user_counts,
+				svr_counts = new limcounts(si->user_counts,
 					si->group_counts,
 					si->project_counts,
 					si->alljobcounts);
-				if (svr_counts == NULL) {
-					free_limcounts(svr_counts_max);
-					return SE_NONE;
-				}
 			}
 
 			if (qi->has_hard_limit) {
-				que_counts_max = make_limcounts(qi->user_counts,
-					qi->group_counts,
-					qi->project_counts,
-					qi->alljobcounts);
-				if (que_counts_max == NULL) {
-					free_limcounts(svr_counts_max);
-					free_limcounts(svr_counts);
-					return SE_NONE;
-				}
-
-				que_counts = make_limcounts(qi->user_counts,
+				que_counts_max = new limcounts(qi->user_counts,
 					qi->group_counts,
 					qi->project_counts,
 					qi->alljobcounts);
 
-				if (que_counts == NULL) {
-					free_limcounts(svr_counts_max);
-					free_limcounts(que_counts_max);
-					free_limcounts(svr_counts);
-					return SE_NONE;
-				}
+				que_counts = new limcounts(qi->user_counts,
+					qi->group_counts,
+					qi->project_counts,
+					qi->alljobcounts);
 			}
 
 			auto te = get_next_event(si->calendar);
@@ -911,43 +856,34 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 					if (te->event_type == TIMED_RUN_EVENT) {
 						if (svr_counts != NULL) {
 							cts = find_alloc_counts(svr_counts->user, te_rr->user);
-							if (svr_counts->user == NULL)
-								svr_counts->user = cts;
 							update_counts_on_run(cts, te_rr->resreq);
-							svr_counts_max->user =
-								counts_max(svr_counts_max->user, cts);
-							if (svr_counts_max->user == NULL) {
-								error = true;
+							counts_max(svr_counts_max->user, cts);
+							if (svr_counts_max->user.size() == 0) {
+								error = 1;
 								break;
 							}
 
 							cts = find_alloc_counts(svr_counts->group, te_rr->group);
-							if (svr_counts->group == NULL)
-								svr_counts->group = cts;
 							update_counts_on_run(cts, te_rr->resreq);
-							svr_counts_max->group =
-								counts_max(svr_counts_max->group, cts);
-							if (svr_counts_max->group == NULL) {
-								error = true;
+							counts_max(svr_counts_max->group, cts);
+							if (svr_counts_max->group.size() == 0) {
+								error = 1;
 								break;
 							}
 
 							cts = find_alloc_counts(svr_counts->project, te_rr->project);
-							if (svr_counts->project == NULL)
-								svr_counts->project = cts;
 							update_counts_on_run(cts, te_rr->resreq);
-							svr_counts_max->project =
-								counts_max(svr_counts_max->project, cts);
-							if (svr_counts_max->project == NULL) {
-								error = true;
+							counts_max(svr_counts_max->project, cts);
+							if (svr_counts_max->project.size() == 0) {
+								error = 1;
 								break;
 							}
 
-							update_counts_on_run(svr_counts->all, te_rr->resreq);
-							svr_counts_max->all =
-								counts_max(svr_counts_max->all, svr_counts->all);
-							if (svr_counts_max->all == NULL) {
-								error = true;
+							cts = find_alloc_counts(svr_counts->all, PBS_ALL_ENTITY);
+							update_counts_on_run(cts, te_rr->resreq);
+							counts_max(svr_counts_max->all, svr_counts->all);
+							if (svr_counts_max->all.size() == 0) {
+								error = 1;
 								break;
 							}
 						}
@@ -956,42 +892,34 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 							if (te_rr->is_job && te_rr->job != NULL) {
 								if (te_rr->job->queue == qi) {
 									cts = find_alloc_counts(que_counts->user, te_rr->user);
-									if (que_counts->user == NULL)
-										que_counts->user = cts;
 									update_counts_on_run(cts, te_rr->resreq);
-									que_counts_max->user =
-										counts_max(que_counts_max->user, cts);
-									if (que_counts_max->user == NULL) {
-										error = true;
+									counts_max(que_counts_max->user, cts);
+									if (que_counts_max->user.size() == 0) {
+										error = 1;
 										break;
 									}
 
 									cts = find_alloc_counts(que_counts->group, te_rr->group);
-									if (que_counts->group == NULL)
-										que_counts->group = cts;
 									update_counts_on_run(cts, te_rr->resreq);
-									que_counts_max->group =
-										counts_max(que_counts_max->group, cts);
-									if (que_counts_max->group == NULL) {
-										error = true;
+									counts_max(que_counts_max->group, cts);
+									if (que_counts_max->group.size() == 0) {
+										error = 1;
 										break;
 									}
 
 									cts = find_alloc_counts(que_counts->project, te_rr->project);
-									if (que_counts->project == NULL)
-										que_counts->project = cts;
 									update_counts_on_run(cts, te_rr->resreq);
-									que_counts_max->project =
-										counts_max(que_counts_max->project, cts);
-									if (que_counts_max->project == NULL) {
-										error = true;
+									counts_max(que_counts_max->project, cts);
+									if (que_counts_max->project.size() == 0) {
+										error = 1;
 										break;
 									}
 
-									update_counts_on_run(que_counts->all, te_rr->resreq);
-									que_counts_max->all = counts_max(que_counts_max->all, que_counts->all);
-									if (que_counts_max->all == NULL) {
-										error = true;
+									cts = find_alloc_counts(que_counts->all, PBS_ALL_ENTITY);
+									update_counts_on_run(cts, te_rr->resreq);
+									counts_max(que_counts_max->all, que_counts->all);
+									if (que_counts_max->all.size() == 0) {
+										error = 1;
 										break;
 									}
 								}
@@ -1001,48 +929,36 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 					else if (te->event_type == TIMED_END_EVENT) {
 						if (svr_counts != NULL) {
 							cts = find_alloc_counts(svr_counts->user, te_rr->user);
-							if (svr_counts->user == NULL)
-								svr_counts->user = cts;
 							update_counts_on_end(cts, te_rr->resreq);
 							cts = find_alloc_counts(svr_counts->group, te_rr->group);
-							if (svr_counts->group == NULL)
-								svr_counts->group = cts;
 							update_counts_on_end(cts, te_rr->resreq);
 							cts = find_alloc_counts(svr_counts->project, te_rr->project);
-							if (svr_counts->project == NULL)
-								svr_counts->project = cts;
 							update_counts_on_end(cts, te_rr->resreq);
-
-							update_counts_on_end(svr_counts->all, te_rr->resreq);
+							cts = find_alloc_counts(svr_counts->all, PBS_ALL_ENTITY);
+							update_counts_on_end(cts, te_rr->resreq);
 						}
 						if (que_counts != NULL) {
 							if (te_rr->is_job && te_rr->job != NULL) {
 								if (te_rr->job->queue == qi) {
 									cts = find_alloc_counts(que_counts->user, te_rr->user);
-									if (que_counts->user == NULL)
-										que_counts->user = cts;
 									update_counts_on_end(cts, te_rr->resreq);
 									cts = find_alloc_counts(que_counts->group, te_rr->group);
-									if (que_counts->group == NULL)
-										que_counts->group = cts;
 									update_counts_on_end(cts, te_rr->resreq);
 									cts = find_alloc_counts(que_counts->project, te_rr->project);
-									if (que_counts->project == NULL)
-										que_counts->project = cts;
 									update_counts_on_end(cts, te_rr->resreq);
-
-									update_counts_on_end(que_counts->all, te_rr->resreq);
+									cts = find_alloc_counts(que_counts->all, PBS_ALL_ENTITY);
+									update_counts_on_end(cts, te_rr->resreq);
 								}
 							}
 						}
 					}
 				}
 			}
-			free_limcounts(svr_counts);
-			free_limcounts(que_counts);
+			delete svr_counts;
+			delete que_counts;
 			if (error) {
-				free_limcounts(svr_counts_max);
-				free_limcounts(que_counts_max);
+				delete svr_counts_max;
+				delete que_counts_max;
 				return SE_NONE;
 			}
 		}
@@ -1053,43 +969,31 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 			server_lim = svr_counts_max;
 		}
 		else {
-			server_lim = make_limcounts(si->user_counts,
+			server_lim = new limcounts(si->user_counts,
 				si->group_counts,
 				si->project_counts,
 				si->alljobcounts);
-			if (server_lim == NULL)
-				return SE_NONE;
 		}
 		if (que_counts_max != NULL) {
 			queue_lim = que_counts_max;
 		}
 		else {
-			queue_lim = make_limcounts(qi->user_counts,
+			queue_lim = new limcounts(qi->user_counts,
 				qi->group_counts,
 				qi->project_counts,
 				qi->alljobcounts);
-			if (queue_lim == NULL) {
-				free_limcounts(server_lim);
-				return SE_NONE;
-			}
 		}
 	} else if ((flags & CHECK_CUMULATIVE_LIMIT)) {
 		if (!si->has_hard_limit && !qi->has_hard_limit)
 			return SE_NONE;
-		server_lim = make_limcounts(si->total_user_counts,
+		server_lim = new limcounts(si->total_user_counts,
 			si->total_group_counts,
 			si->total_project_counts,
 			si->total_alljobcounts);
-		if (server_lim == NULL)
-			return SE_NONE;
-		queue_lim = make_limcounts(qi->total_user_counts,
+		queue_lim = new limcounts(qi->total_user_counts,
 			qi->total_group_counts,
 			qi->total_project_counts,
 			qi->total_alljobcounts);
-		if (queue_lim == NULL) {
-			free_limcounts(server_lim);
-			return SE_NONE;
-		}
 	}
 	for (i = 0; i < sizeof(limfuncs) / sizeof(limfuncs[0]); i++) {
 		rc = static_cast<enum sched_error_code>((limfuncs[i])(si, qi, rr, server_lim, queue_lim, err));
@@ -1102,8 +1006,8 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 				prev_err = err;
 				err = err->next;
 				if(err == NULL) {
-					free_limcounts(server_lim);
-					free_limcounts(queue_lim);
+					delete server_lim;
+					delete queue_lim;
 					return SCHD_ERROR;
 				}
 			} else {
@@ -1113,8 +1017,8 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 		}
 	}
 
-	free_limcounts(server_lim);
-	free_limcounts(queue_lim);
+	delete server_lim;
+	delete queue_lim;
 
 	if (flags & RETURN_ALL_ERR) {
 		if (prev_err != NULL) {
@@ -1157,13 +1061,13 @@ void update_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
  * @return	int
  * @retval	Accumulated preempt_bits matching the entity
  */
-int find_preempt_bits(counts *entity_counts, const char *entity_name, resource_resv *rr)
+int find_preempt_bits(counts_umap &entity_counts, const std::string &entity_name, resource_resv *rr)
 {
 	counts *cnt = NULL;
 	resource_count *res_c;
 	int rc = 0;
 
-	if (entity_counts == NULL || entity_name == NULL)
+	if (entity_name.empty())
 	    return rc;
 
 	find_counts_elm(entity_counts, entity_name, NULL, &cnt, NULL);
@@ -1178,6 +1082,7 @@ int find_preempt_bits(counts *entity_counts, const char *entity_name, resource_r
 	}
 	return rc;
 }
+
 /**
  * @brief
  * 		check_soft_limits - check the soft limit using soft limit function.
@@ -1249,20 +1154,21 @@ check_server_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	char		*key;
-	char		*user = rr->user;
+	std::string	user;
 	int		used;
 	int		max_user_run, max_genuser_run;
-	counts		*cts = NULL;
 
-	if ((si == NULL) || (user == NULL) || (sc == NULL))
+	if ((si == NULL) || (rr == NULL) || (rr->user.empty()) || (sc == NULL))
 		return (SCHD_ERROR);
 
 	if (!si->has_user_limit)
 	    return (0);
 
-	cts = sc->user;
+	user = rr->user;
 
-	if ((key = entlim_mk_runkey(LIM_USER, user)) == NULL)
+	auto &cts = sc->user;
+
+	if ((key = entlim_mk_runkey(LIM_USER, user.c_str())) == NULL)
 		return (SCHD_ERROR);
 	max_user_run = (int) lim_get(key, LI2RUNCTX(si->liminfo));
 	free(key);
@@ -1281,7 +1187,7 @@ check_server_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 	used = find_counts_elm(cts, user, NULL, NULL, NULL);
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
 		"user %s max_*user_run (%d, %d), used %d",
-		user, max_user_run, max_genuser_run, used);
+		user.c_str(), max_user_run, max_genuser_run, used);
 
 	if (max_user_run != SCHD_INFINITY) {
 		if (max_user_run <= used) {
@@ -1319,20 +1225,21 @@ check_server_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	char		*key;
-	char		*group = rr->group;
+	std::string	group;
 	int		used;
 	int		max_group_run, max_gengroup_run;
-	counts		*cts = NULL;
 
-	if ((si == NULL) || (group == NULL) || (sc == NULL))
+	if ((si == NULL) || (rr == NULL) || (rr->group.empty()) || (sc == NULL))
 		return (SCHD_ERROR);
 
 	if (!si->has_grp_limit)
 	    return (0);
 
-	cts = sc->group;
+	group = rr->group;
 
-	if ((key = entlim_mk_runkey(LIM_GROUP, group)) == NULL)
+	auto &cts = sc->group;
+
+	if ((key = entlim_mk_runkey(LIM_GROUP, group.c_str())) == NULL)
 		return (SCHD_ERROR);
 	max_group_run = (int) lim_get(key, LI2RUNCTX(si->liminfo));
 	free(key);
@@ -1351,7 +1258,7 @@ check_server_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 	used = find_counts_elm(cts, group, NULL, NULL, NULL);
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 		"group %s max_*group_run (%d, %d), used %d",
-		group, max_group_run, max_gengroup_run, used);
+		group.c_str(), max_group_run, max_gengroup_run, used);
 
 	if (max_group_run != SCHD_INFINITY) {
 		if (max_group_run <= used) {
@@ -1390,7 +1297,6 @@ check_server_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	int		ret;
-	counts		*cts = NULL;
 	resdef		*rdef = NULL;
 
 	if ((si == NULL) || (rr == NULL) ||(sc==NULL))
@@ -1399,7 +1305,7 @@ check_server_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 	if (!si->has_user_limit)
 	    return (0);
 
-	cts = sc->user;
+	auto &cts = sc->user;
 
 	ret = check_max_user_res(rr, cts, &rdef,
 		LI2RESCTX(si->liminfo));
@@ -1446,7 +1352,6 @@ check_server_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	int		ret;
-	counts		*cts = NULL;
 	resdef		*rdef = NULL;
 
 	if ((si == NULL) || (rr == NULL) || (sc == NULL))
@@ -1455,7 +1360,7 @@ check_server_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 	if (!si->has_grp_limit)
 	    return (0);
 
-	cts = sc->group;
+	auto &cts = sc->group;
 
 	ret = check_max_group_res(rr, cts,
 		&rdef, LI2RESCTX(si->liminfo));
@@ -1501,20 +1406,21 @@ check_queue_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	char		*key;
-	char		*user = rr->user;
+	std::string	user;
 	int		used;
 	int		max_user_run, max_genuser_run;
-	counts		*cts = NULL;
 
-	if ((qi == NULL) || (user == NULL) || (qc == NULL))
+	if ((qi == NULL) || (rr == NULL) || (rr->user.empty()) || (qc == NULL))
 		return (SCHD_ERROR);
 
 	if (!qi->has_user_limit)
 	    return (0);
 
-	cts = qc->user;
+	user = rr->user;
 
-	if ((key = entlim_mk_runkey(LIM_USER, user)) == NULL)
+	auto &cts = qc->user;
+
+	if ((key = entlim_mk_runkey(LIM_USER, user.c_str())) == NULL)
 		return (SCHD_ERROR);
 	max_user_run = (int) lim_get(key, LI2RUNCTX(qi->liminfo));
 	free(key);
@@ -1533,7 +1439,7 @@ check_queue_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 	used = find_counts_elm(cts,  user, NULL, NULL, NULL);
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 		"user %s max_*user_run (%d, %d), used %d",
-		user, max_user_run, max_genuser_run, used);
+		user.c_str(), max_user_run, max_genuser_run, used);
 
 	if (max_user_run != SCHD_INFINITY) {
 		if (max_user_run <= used) {
@@ -1571,20 +1477,21 @@ check_queue_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	char		*key;
-	char		*group = rr->group;
+	std::string	group;
 	int		used;
 	int		max_group_run, max_gengroup_run;
-	counts		*cts = NULL;
 
-	if ((qi == NULL) || (group == NULL) || (qc == NULL))
+	if ((qi == NULL) || (rr == NULL) || (rr->group.empty()) || (qc == NULL))
 		return (SCHD_ERROR);
 
 	if (!qi->has_grp_limit)
 	    return (0);
 
-	cts = qc->group;
+	group = rr->group;
 
-	if ((key = entlim_mk_runkey(LIM_GROUP, group)) == NULL)
+	auto &cts = qc->group;
+
+	if ((key = entlim_mk_runkey(LIM_GROUP, group.c_str())) == NULL)
 		return (SCHD_ERROR);
 	max_group_run = (int) lim_get(key, LI2RUNCTX(qi->liminfo));
 	free(key);
@@ -1602,7 +1509,7 @@ check_queue_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 	used = find_counts_elm(cts, group, NULL, NULL, NULL);
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 		"group %s max_*group_run (%d, %d), used %d",
-		group, max_group_run, max_gengroup_run, used);
+		group.c_str(), max_group_run, max_gengroup_run, used);
 
 	if (max_group_run != SCHD_INFINITY) {
 		if (max_group_run <= used) {
@@ -1641,7 +1548,6 @@ check_queue_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	int		ret;
-	counts		*cts = NULL;
 	resdef		*rdef = NULL;
 
 	if ((qi == NULL) || (rr == NULL) || (qc == NULL))
@@ -1650,7 +1556,7 @@ check_queue_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 	if (!qi->has_user_limit)
 	    return (0);
 
-	cts = qc->user;
+	auto &cts = qc->user;
 
 	ret = check_max_user_res(rr, cts, &rdef, LI2RESCTX(qi->liminfo));
 	if (ret != 0)
@@ -1698,7 +1604,6 @@ check_queue_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	int		ret;
-	counts		*cts = NULL;
 	resdef		*rdef = NULL;
 
 	if ((qi == NULL) || (rr == NULL) || (qc == NULL))
@@ -1707,7 +1612,7 @@ check_queue_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 	if (!qi->has_grp_limit)
 	    return (0);
 
-	cts = qc->group;
+	auto &cts = qc->group;
 
 	ret = check_max_group_res(rr, cts, &rdef, LI2RESCTX(qi->liminfo));
 	if (ret != 0)
@@ -1760,15 +1665,14 @@ check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 	schd_resource	*res;
 	resource_count	*used_res;
 	counts		*c;
-	counts		*cts = NULL;
 
 	if ((qi == NULL) || (rr == NULL))
 		return (SCHD_ERROR);
 
-	if ((qc == NULL) || (qc->all == NULL))
+	if (qc == NULL)
 		return (0);
 
-	cts = qc->all;
+	auto &cts = qc->all;
 
 	c = find_counts(cts, PBS_ALL_ENTITY);
 	if (c == NULL)
@@ -1834,15 +1738,14 @@ check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 	schd_resource	*res;
 	resource_count	*used_res;
 	counts		*c;
-	counts		*cts = NULL;
 
 	if ((si == NULL) || (rr == NULL))
 		return (SCHD_ERROR);
 
-	if ((sc == NULL) || (sc->all == NULL))
+	if (sc == NULL)
 		return (0);
 
-	cts = sc->all;
+	auto &cts = sc->all;
 
 	c = find_counts(cts, PBS_ALL_ENTITY);
 	if (c == NULL)
@@ -1904,16 +1807,15 @@ check_server_max_run(server_info *si, queue_info *qi, resource_resv *rr,
 {
 	int	max_running;
 	char	*key;
-	counts	*cts = NULL;
 	int	running;
 
 	if (si == NULL)
 		return (SCHD_ERROR);
 
-	if ((sc == NULL) || (sc->all == NULL))
+	if (sc == NULL)
 		return (0);
 
-	cts = sc->all;
+	auto &cts = sc->all;
 
 	if ((key = entlim_mk_runkey(LIM_OVERALL, allparam)) == NULL)
 		return (SCHD_ERROR);
@@ -1958,16 +1860,15 @@ check_queue_max_run(server_info *si, queue_info *qi, resource_resv *rr,
 {
 	int	max_running;
 	char	*key;
-	counts	*cts = NULL;
 	int	running;
 
 	if (qi == NULL)
 		return (SCHD_ERROR);
 
-	if ((qc == NULL) || (qc->all == NULL))
+	if (qc == NULL)
 		return (0);
 
-	cts = qc->all;
+	auto &cts = qc->all;
 
 	if ((key = entlim_mk_runkey(LIM_OVERALL, allparam)) == NULL)
 		return (SCHD_ERROR);
@@ -2058,18 +1959,20 @@ static int
 check_queue_max_user_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 {
 	char		*key;
-	char		*user = rr->user;
+	std::string	user;
 	int		used;
 	int		max_user_run_soft, max_genuser_run_soft;
 	counts		*cnt = NULL;
 
-	if ((qi == NULL) || (user == NULL))
+	if ((qi == NULL) || (rr == NULL) || (rr->user.empty()))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
 	if (!qi->has_user_limit)
 	    return (0);
 
-	if ((key = entlim_mk_runkey(LIM_USER, user)) == NULL)
+	user = rr->user;
+
+	if ((key = entlim_mk_runkey(LIM_USER, user.c_str())) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 	max_user_run_soft = (int) lim_get(key, LI2RUNCTXSOFT(qi->liminfo));
 	free(key);
@@ -2088,7 +1991,7 @@ check_queue_max_user_run_soft(server_info *si, queue_info *qi, resource_resv *rr
 
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 		"user %s max_*user_run_soft (%d, %d), used %d",
-		user, max_user_run_soft, max_genuser_run_soft, used);
+		user.c_str(), max_user_run_soft, max_genuser_run_soft, used);
 
 	if (max_user_run_soft != SCHD_INFINITY) {
 		if (max_user_run_soft < used) {
@@ -2132,18 +2035,20 @@ check_queue_max_group_run_soft(server_info *si, queue_info *qi,
 	resource_resv *rr)
 {
 	char		*key;
-	char		*group = rr->group;
+	std::string	group;
 	int		used;
 	int		max_group_run_soft, max_gengroup_run_soft;
 	counts		*cnt = NULL;
 
-	if ((qi == NULL) || (group == NULL))
+	if ((qi == NULL) || (rr == NULL) || (rr->group.empty()))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
 	if (!qi->has_grp_limit)
 	    return (0);
 
-	if ((key = entlim_mk_runkey(LIM_GROUP, group)) == NULL)
+	group = rr->group;
+
+	if ((key = entlim_mk_runkey(LIM_GROUP, group.c_str())) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 	max_group_run_soft = (int) lim_get(key, LI2RUNCTXSOFT(qi->liminfo));
 	free(key);
@@ -2160,7 +2065,7 @@ check_queue_max_group_run_soft(server_info *si, queue_info *qi,
 	used = find_counts_elm(qi->group_counts, group, NULL, &cnt, NULL);
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 		"group %s max_*group_run_soft (%d, %d), used %d",
-		group, max_group_run_soft, max_gengroup_run_soft, used);
+		group.c_str(), max_group_run_soft, max_gengroup_run_soft, used);
 
 	if (max_group_run_soft != SCHD_INFINITY) {
 		if (max_group_run_soft < used) {
@@ -2279,7 +2184,7 @@ check_server_max_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 	free(key);
 
 	/* at this point, we know a limit is set for PBS_ALL*/
-	used = find_counts_elm(si->alljobcounts, PBS_ALL_ENTITY , NULL, &cnt, NULL);
+	used = find_counts_elm(si->alljobcounts, PBS_ALL_ENTITY, NULL, &cnt, NULL);
 	if (max_running != SCHD_INFINITY && used > max_running) {
 		if (cnt != NULL)
 			cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
@@ -2312,18 +2217,20 @@ check_server_max_user_run_soft(server_info *si, queue_info *qi,
 	resource_resv *rr)
 {
 	char		*key;
-	char		*user = rr->user;
+	std::string	user;
 	int		used;
 	int		max_user_run_soft, max_genuser_run_soft;
 	counts		*cnt = NULL;
 
-	if ((si == NULL) || (user == NULL))
+	if ((si == NULL) || (rr == NULL) || (rr->user.empty()))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
 	if (!si->has_user_limit)
 	    return (0);
 
-	if ((key = entlim_mk_runkey(LIM_USER, user)) == NULL)
+	user = rr->user;
+
+	if ((key = entlim_mk_runkey(LIM_USER, user.c_str())) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 	max_user_run_soft = (int) lim_get(key, LI2RUNCTXSOFT(si->liminfo));
 	free(key);
@@ -2341,7 +2248,7 @@ check_server_max_user_run_soft(server_info *si, queue_info *qi,
 	used = find_counts_elm(si->user_counts, user, NULL, &cnt, NULL);
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 		"user %s max_*user_run_soft (%d, %d), used %d",
-		user, max_user_run_soft, max_genuser_run_soft, used);
+		user.c_str(), max_user_run_soft, max_genuser_run_soft, used);
 
 	if (max_user_run_soft != SCHD_INFINITY) {
 		if (max_user_run_soft < used) {
@@ -2385,18 +2292,20 @@ check_server_max_group_run_soft(server_info *si, queue_info *qi,
 	resource_resv *rr)
 {
 	char		*key;
-	char		*group = rr->group;
+	std::string	group;
 	int		used;
 	int		max_group_run_soft, max_gengroup_run_soft;
 	counts		*cnt = NULL;
 
-	if ((si == NULL) || (group == NULL))
+	if ((si == NULL) || (rr == NULL) || (rr->group.empty()))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
 	if (!si->has_grp_limit)
 	    return (0);
 
-	if ((key = entlim_mk_runkey(LIM_GROUP, group)) == NULL)
+	group = rr->group;
+
+	if ((key = entlim_mk_runkey(LIM_GROUP, group.c_str())) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 	max_group_run_soft = (int) lim_get(key, LI2RUNCTXSOFT(si->liminfo));
 	free(key);
@@ -2415,7 +2324,7 @@ check_server_max_group_run_soft(server_info *si, queue_info *qi,
 
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 		"group %s max_*group_run_soft (%d, %d), used %d",
-		group, max_group_run_soft, max_gengroup_run_soft, used);
+		group.c_str(), max_group_run_soft, max_gengroup_run_soft, used);
 
 	if (max_group_run_soft != SCHD_INFINITY) {
 		if (max_group_run_soft < used) {
@@ -2653,11 +2562,12 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
  * @retval	-1	: on error
  */
 static int
-check_max_group_res(resource_resv *rr, counts *cts_list, resdef **rdef, void *limitctx)
+check_max_group_res(resource_resv *rr, counts_umap &cts_list,
+	resdef **rdef, void *limitctx)
 {
 	char		*groupreskey;
 	char		*gengroupreskey;
-	char		*group;
+	std::string	group;
 	schd_resource	*res;
 	sch_resource_t	max_group_res;
 	sch_resource_t	max_gengroup_res;
@@ -2676,7 +2586,7 @@ check_max_group_res(resource_resv *rr, counts *cts_list, resdef **rdef, void *li
 			continue;
 
 		/* individual group limit check */
-		if ((groupreskey = entlim_mk_reskey(LIM_GROUP, group,
+		if ((groupreskey = entlim_mk_reskey(LIM_GROUP, group.c_str(),
 			res->name)) == NULL)
 			return (-1);
 		max_group_res = lim_get(groupreskey, limitctx);
@@ -2697,7 +2607,7 @@ check_max_group_res(resource_resv *rr, counts *cts_list, resdef **rdef, void *li
 
 		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 			"group %s max_*group_res.%s (%.1lf, %.1lf), used %.1lf",
-			group, res->name, max_group_res, max_gengroup_res, used);
+			group.c_str(), res->name, max_group_res, max_gengroup_res, used);
 
 		if (max_group_res != SCHD_INFINITY) {
 			if (used + req->amount > max_group_res) {
@@ -2731,11 +2641,11 @@ check_max_group_res(resource_resv *rr, counts *cts_list, resdef **rdef, void *li
  * @retval	-1	: on error
  */
 static int
-check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, int preempt_bit)
+check_max_group_res_soft(resource_resv *rr, counts_umap &cts_list, void *limitctx, int preempt_bit)
 {
 	char		*groupreskey;
 	char		*gengroupreskey;
-	char		*group;
+	std::string	group;
 	schd_resource	*res;
 	sch_resource_t	max_group_res_soft;
 	sch_resource_t	max_gengroup_res_soft;
@@ -2756,7 +2666,7 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 			continue;
 
 		/* individual group limit check */
-		if ((groupreskey = entlim_mk_reskey(LIM_GROUP, group,
+		if ((groupreskey = entlim_mk_reskey(LIM_GROUP, group.c_str(),
 			res->name)) == NULL)
 			return (-1);
 		max_group_res_soft = lim_get(groupreskey, limitctx);
@@ -2777,7 +2687,7 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 		used = find_counts_elm(cts_list, group, res->def, NULL, &rescts);
 		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 			"group %s max_*group_res_soft.%s (%.1lf, %.1lf), used %.1lf",
-			group, res->name, max_group_res_soft, max_gengroup_res_soft, used);
+			group.c_str(), res->name, max_group_res_soft, max_gengroup_res_soft, used);
 
 		if (max_group_res_soft != SCHD_INFINITY) {
 			if (max_group_res_soft < used) {
@@ -2820,12 +2730,12 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
  * @retval	-1	: on error
  */
 static int
-check_max_user_res(resource_resv *rr, counts *cts_list, resdef **rdef,
+check_max_user_res(resource_resv *rr, counts_umap &cts_list, resdef **rdef,
 	void *limitctx)
 {
 	char		*userreskey;
 	char		*genuserreskey;
-	char		*user;
+	std::string	user;
 	schd_resource	*res;
 	sch_resource_t	max_user_res;
 	sch_resource_t	max_genuser_res;
@@ -2845,7 +2755,7 @@ check_max_user_res(resource_resv *rr, counts *cts_list, resdef **rdef,
 			continue;
 
 		/* individual user limit check */
-		if ((userreskey = entlim_mk_reskey(LIM_USER, user,
+		if ((userreskey = entlim_mk_reskey(LIM_USER, user.c_str(),
 			res->name)) == NULL)
 			return (-1);
 		max_user_res = lim_get(userreskey, limitctx);
@@ -2866,7 +2776,7 @@ check_max_user_res(resource_resv *rr, counts *cts_list, resdef **rdef,
 
 		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 			"user %s max_*user_res.%s (%.1lf, %.1lf), used %.1lf",
-			user, res->name, max_user_res, max_genuser_res, used);
+			user.c_str(), res->name, max_user_res, max_genuser_res, used);
 
 		if (max_user_res != SCHD_INFINITY) {
 			if (used + req->amount > max_user_res) {
@@ -2902,11 +2812,11 @@ check_max_user_res(resource_resv *rr, counts *cts_list, resdef **rdef,
  */
 static int
 check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
-	counts *cts_list, void *limitctx, int preempt_bit)
+	counts_umap &cts_list, void *limitctx, int preempt_bit)
 {
 	char		*userreskey;
 	char		*genuserreskey;
-	char		*user;
+	std::string	user;
 	schd_resource	*res;
 	sch_resource_t	max_user_res_soft;
 	sch_resource_t	max_genuser_res_soft;
@@ -2927,7 +2837,7 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 			continue;
 
 		/* individual user limit check */
-		if ((userreskey = entlim_mk_reskey(LIM_USER, user,
+		if ((userreskey = entlim_mk_reskey(LIM_USER, user.c_str(),
 			res->name)) == NULL)
 			return (-1);
 		max_user_res_soft = lim_get(userreskey, limitctx);
@@ -2949,7 +2859,7 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 
 		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 			"user %s max_*user_res_soft (%.1lf, %.1lf), used %.1lf",
-			user, max_user_res_soft, max_genuser_res_soft, used);
+			user.c_str(), max_user_res_soft, max_genuser_res_soft, used);
 
 		if (max_user_res_soft != SCHD_INFINITY) {
 			if (max_user_res_soft < used) {
@@ -3386,6 +3296,14 @@ schderr_args_q(const std::string& qname, const char *entity, schd_error *err)
 	if (entity != NULL)
 		set_schd_error_arg(err, ARG2, entity);
 }
+// overloaded
+static void
+schderr_args_q(const std::string& qname, const std::string& entity, schd_error *err)
+{
+	set_schd_error_arg(err, ARG1, qname.c_str());
+	if (!entity.empty())
+		set_schd_error_arg(err, ARG2, entity.c_str());
+}
 
 /**
  * @brief
@@ -3403,7 +3321,17 @@ schderr_args_q_res(const std::string& qname, const char *entity, char *res,
 	set_schd_error_arg(err, ARG1, qname.c_str());
 	set_schd_error_arg(err, ARG2, res);
 	if (entity != NULL)
-		set_schd_error_arg(err, ARG3, (char*)entity);
+		set_schd_error_arg(err, ARG3, entity);
+}
+//overload
+static void
+schderr_args_q_res(const std::string& qname, const std::string& entity, char *res,
+	schd_error *err)
+{
+	set_schd_error_arg(err, ARG1, qname.c_str());
+	set_schd_error_arg(err, ARG2, res);
+	if (!entity.empty())
+		set_schd_error_arg(err, ARG3, entity.c_str());
 }
 
 /**
@@ -3416,9 +3344,14 @@ schderr_args_q_res(const std::string& qname, const char *entity, char *res,
 static void
 schderr_args_server(const char *entity, schd_error *err)
 {
-	set_schd_error_arg(err, ARG1, (char*)entity);
+	set_schd_error_arg(err, ARG1, entity);
 }
-
+// overloaded
+static void
+schderr_args_server(const std::string &entity, schd_error *err)
+{
+	set_schd_error_arg(err, ARG1, entity.c_str());
+}
 /**
  * @brief
  *		schderr_args_server_res	log a server-related resource limit exceeded
@@ -3429,11 +3362,11 @@ schderr_args_server(const char *entity, schd_error *err)
  * @param[out]	err	-	schd_error structure to return error information
  */
 static void
-schderr_args_server_res(const char *entity, const char *res, schd_error *err)
+schderr_args_server_res(std::string &entity, const char *res, schd_error *err)
 {
-	set_schd_error_arg(err, ARG1, (char*)res);
-	if (entity != NULL)
-		set_schd_error_arg(err, ARG2, (char*)entity);
+	set_schd_error_arg(err, ARG1, res);
+	if (!entity.empty())
+		set_schd_error_arg(err, ARG2, entity.c_str());
 }
 
 
@@ -3456,20 +3389,20 @@ schderr_args_server_res(const char *entity, const char *res, schd_error *err)
  * @retval	-1	: on error
  */
 static int
-check_max_project_res(resource_resv *rr, counts *cts_list,
+check_max_project_res(resource_resv *rr, counts_umap &cts_list,
 	resdef **rdef, void *limitctx)
 {
 	char		*projectreskey;
 	char		*genprojectreskey;
 	schd_resource	*res;
-	char		*project;
+	std::string	project;
 	sch_resource_t	max_project_res;
 	sch_resource_t	max_genproject_res;
 	sch_resource_t	used = 0;
 
 	if (rr == NULL)
 		return (-1);
-	if ((limres == NULL) || (rr->resreq == NULL) || (rr->project == NULL))
+	if ((limres == NULL) || (rr->resreq == NULL) || (rr->project.empty()))
 		return (0);
 
 	project = rr->project;
@@ -3480,7 +3413,7 @@ check_max_project_res(resource_resv *rr, counts *cts_list,
 
 		/* individual project limit check */
 		if ((projectreskey = entlim_mk_reskey(LIM_PROJECT,
-			project, res->name)) == NULL)
+			project.c_str(), res->name)) == NULL)
 			return (-1);
 		max_project_res = lim_get(projectreskey, limitctx);
 		free(projectreskey);
@@ -3500,7 +3433,7 @@ check_max_project_res(resource_resv *rr, counts *cts_list,
 
 		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 			"project %s max_*project_res.%s (%.1lf, %.1lf), used %.1lf",
-			project, res->name, max_project_res, max_genproject_res, used);
+			project.c_str(), res->name, max_project_res, max_genproject_res, used);
 
 		if (max_project_res != SCHD_INFINITY) {
 			if (used + req->amount > max_project_res) {
@@ -3534,11 +3467,11 @@ check_max_project_res(resource_resv *rr, counts *cts_list,
  * @retval	-1	: on error
  */
 static int
-check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, int preempt_bit)
+check_max_project_res_soft(resource_resv *rr, counts_umap &cts_list, void *limitctx, int preempt_bit)
 {
 	char		*projectreskey;
 	char		*genprojectreskey;
-	char		*project;
+	std::string	project;
 	schd_resource	*res;
 	sch_resource_t	max_project_res_soft;
 	sch_resource_t	max_genproject_res_soft;
@@ -3548,7 +3481,7 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 
 	if (rr == NULL)
 		return (-1);
-	if ((limres == NULL) || (rr->resreq == NULL) || (rr->project == NULL))
+	if ((limres == NULL) || (rr->resreq == NULL) || (rr->project.empty()))
 		return (0);
 
 	project = rr->project;
@@ -3558,7 +3491,7 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 			continue;
 
 		/* individual project limit check */
-		if ((projectreskey = entlim_mk_reskey(LIM_PROJECT, project,
+		if ((projectreskey = entlim_mk_reskey(LIM_PROJECT, project.c_str(),
 			res->name)) == NULL)
 			return (-1);
 		max_project_res_soft = lim_get(projectreskey, limitctx);
@@ -3579,7 +3512,7 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 		used = find_counts_elm(cts_list, project, res->def, NULL, &rescts);
 		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 			"project %s max_*project_res_soft.%s (%.1lf, %.1lf), used %.1lf",
-			project, res->name, max_project_res_soft, max_genproject_res_soft, used);
+			project.c_str(), res->name, max_project_res_soft, max_genproject_res_soft, used);
 
 		if (max_project_res_soft != SCHD_INFINITY) {
 			if (max_project_res_soft < used){
@@ -3630,19 +3563,18 @@ check_server_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	int		ret;
-	counts		*cts = NULL;
 	resdef		*rdef = NULL;
 
 	if ((si == NULL) || (rr == NULL) || (sc == NULL))
 		return (SCHD_ERROR);
 
-	if (rr->project == NULL)
+	if (rr->project.empty())
 		return 0;
 
 	if (!si->has_proj_limit)
 	    return (0);
 
-	cts = sc->project;
+	auto &cts = sc->project;
 
 	ret = check_max_project_res(rr, cts,
 		&rdef, LI2RESCTX(si->liminfo));
@@ -3688,22 +3620,22 @@ check_server_max_project_run_soft(server_info *si, queue_info *qi,
 	resource_resv *rr)
 {
 	char		*key;
-	char		*project;
+	std::string	project;
 	int		used;
 	int		max_project_run_soft, max_genproject_run_soft;
 	counts		*cnt = NULL;
 
-	if (si == NULL)
+	if (si == NULL || rr == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	if (rr->project == NULL)
+	if (rr->project.empty())
 		return 0;
 
 	if (!si->has_proj_limit)
 	    return (0);
 
 	project = rr->project;
-	if ((key = entlim_mk_runkey(LIM_PROJECT, project)) == NULL)
+	if ((key = entlim_mk_runkey(LIM_PROJECT, project.c_str())) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 	max_project_run_soft = (int) lim_get(key, LI2RUNCTXSOFT(si->liminfo));
 	free(key);
@@ -3722,7 +3654,7 @@ check_server_max_project_run_soft(server_info *si, queue_info *qi,
 	used = find_counts_elm(si->project_counts, project, NULL, &cnt, NULL);
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 		"project %s max_*project_run_soft (%d, %d), used %d",
-		project, max_project_run_soft, max_genproject_run_soft, used);
+		project.c_str(), max_project_run_soft, max_genproject_run_soft, used);
 
 	if (max_project_run_soft != SCHD_INFINITY) {
 		if (max_project_run_soft < used) {
@@ -3799,19 +3731,18 @@ check_queue_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	int		ret;
-	counts		*cts = NULL;
 	resdef		*rdef = NULL;
 
 	if ((qi == NULL) || (rr == NULL) || (qc == NULL))
 		return (SCHD_ERROR);
 
-	if (rr->project == NULL)
+	if (rr->project.empty())
 		return 0;
 
 	if (!qi->has_proj_limit)
 	    return (0);
 
-	cts = qc->project;
+	auto &cts = qc->project;
 
 	ret = check_max_project_res(rr, cts, &rdef, LI2RESCTX(qi->liminfo));
 	if (ret != 0)
@@ -3855,7 +3786,7 @@ check_queue_max_project_run_soft(server_info *si, queue_info *qi,
 	resource_resv *rr)
 {
 	char		*key;
-	char		*project;
+	std::string	project;
 	int		used;
 	int		max_project_run_soft, max_genproject_run_soft;
 	counts		*cnt = NULL;
@@ -3863,14 +3794,14 @@ check_queue_max_project_run_soft(server_info *si, queue_info *qi,
 	if (qi == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	if (rr->project == NULL)
+	if (rr->project.empty())
 		return 0;
 
 	if (!qi->has_proj_limit)
 	    return (0);
 
 	project = rr->project;
-	if ((key = entlim_mk_runkey(LIM_PROJECT, project)) == NULL)
+	if ((key = entlim_mk_runkey(LIM_PROJECT, project.c_str())) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 	max_project_run_soft = (int) lim_get(key, LI2RUNCTXSOFT(qi->liminfo));
 	free(key);
@@ -3888,7 +3819,7 @@ check_queue_max_project_run_soft(server_info *si, queue_info *qi,
 
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 		"%s project %s max_*project_run_soft (%d, %d), used %d",
-		project, max_project_run_soft, max_genproject_run_soft, used);
+		project.c_str(), max_project_run_soft, max_genproject_run_soft, used);
 
 	if (max_project_run_soft != SCHD_INFINITY) {
 		if (max_project_run_soft < used) {
@@ -3968,24 +3899,23 @@ check_server_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	char		*key;
-	char		*project;
+	std::string	project;
 	int		used;
 	int		max_project_run, max_genproject_run;
-	counts		*cts = NULL;
 
 	if ((si == NULL) || (rr == NULL) || (sc == NULL))
 		return (SCHD_ERROR);
 
-	cts = sc->project;
+	auto &cts = sc->project;
 
-	if (rr->project == NULL)
+	if (rr->project.empty())
 		return 0;
 
 	if (!si->has_proj_limit)
 	    return (0);
 
 	project = rr->project;
-	if ((key = entlim_mk_runkey(LIM_PROJECT, project)) == NULL)
+	if ((key = entlim_mk_runkey(LIM_PROJECT, project.c_str())) == NULL)
 		return (SCHD_ERROR);
 	max_project_run = (int) lim_get(key, LI2RUNCTX(si->liminfo));
 	free(key);
@@ -4005,7 +3935,7 @@ check_server_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 		"project %s max_*project_run (%d, %d), used %d",
-		project, max_project_run, max_genproject_run, used);
+		project.c_str(), max_project_run, max_genproject_run, used);
 
 	if (max_project_run != SCHD_INFINITY) {
 		if (max_project_run <= used) {
@@ -4045,24 +3975,23 @@ check_queue_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	char		*key;
-	char		*project;
+	std::string	project;
 	int		used;
 	int		max_project_run, max_genproject_run;
-	counts		*cts = NULL;
 
 	if (qi == NULL || (rr == NULL) || (qc == NULL))
 		return (SCHD_ERROR);
 
-	cts = qc->project;
+	auto &cts = qc->project;
 
 	project = rr->project;
-	if (project == NULL)
+	if (project.empty())
 		return 0;
 
 	if (!qi->has_proj_limit)
 	    return (0);
 
-	if ((key = entlim_mk_runkey(LIM_PROJECT, project)) == NULL)
+	if ((key = entlim_mk_runkey(LIM_PROJECT, project.c_str())) == NULL)
 		return (SCHD_ERROR);
 	max_project_run = (int) lim_get(key, LI2RUNCTX(qi->liminfo));
 	free(key);
@@ -4082,7 +4011,7 @@ check_queue_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 
 	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, rr->name,
 		"project %s max_*project_run (%d, %d), used %d",
-		project, max_project_run, max_genproject_run, used);
+		project.c_str(), max_project_run, max_genproject_run, used);
 
 	if (max_project_run != SCHD_INFINITY) {
 		if (max_project_run <= used) {
