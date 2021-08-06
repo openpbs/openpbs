@@ -2788,9 +2788,8 @@ class Wrappers(PBSService):
                         "list resource"],
                         logerr=True)
                     ress = []
-                    for x in res_ret['out']:
-                        if 'Resource' in x:
-                            ress.append(x.split()[1].strip())
+                    ress = [x.split()[1].strip()
+                            for x in res_ret['out'] if 'Resource' in x]
                     tmp_res = copy.deepcopy(self.resources)
                     for i in tmp_res:
                         if i not in ress:
