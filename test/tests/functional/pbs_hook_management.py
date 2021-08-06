@@ -128,8 +128,8 @@ def get_hook_body_sleep(hook_msg, sleeptime=0.0):
 
 def hook_attrs_func(hook_msg):
     attributes = ["cmd", "objtype", "objname", "request_time",
-                    "reply_code", "reply_auxcode", "reply_choice",
-                    "reply_text", 'attribs']
+                  "reply_code", "reply_auxcode", "reply_choice",
+                  "reply_text", 'attribs']
     import pbs
     import pbs_ifl
     from pprint import pformat
@@ -162,7 +162,6 @@ def hook_attrs_func(hook_msg):
                         value_dct['resource'] = obj.resource
                         value_dct['sisters'] = obj.sisters
                         value_lst.append(value_dct)
-                    # pbs.logmsg(pbs.LOG_DEBUG, f"attribs=>{pformat(value_lst)}")
             elif attr == 'objtype':
                 value_str = pbs.REVERSE_MGR_OBJS[value]
                 pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} (reversed)")
@@ -681,7 +680,6 @@ class TestHookManagement(TestFunctional):
 
         self.logger.info("**************** HOOK END ****************")
 
-
     def test_hook_attrs_00(self):
         """
         Test for a set of the management hook attributes.
@@ -852,7 +850,8 @@ class TestHookManagement(TestFunctional):
 
             a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER1) + "=2]"}
             self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
-            self.server.manager(MGR_CMD_UNSET, QUEUE, 'max_run_res_soft.ncpus', 'workq')
+            self.server.manager(MGR_CMD_UNSET, QUEUE,
+                                'max_run_res_soft.ncpus', 'workq')
 
             self.server.log_match("cmd=>MGR_CMD_SET",
                                   starttime=start_time_mom)
@@ -861,67 +860,18 @@ class TestHookManagement(TestFunctional):
             self.server.log_match("objname=>%s" % mom.shortname,
                                   starttime=start_time_mom)
 
-            self.server.log_match("attribs[0]=>flags:0,flags_lst:[],name:resource"
-                                  "s_available,op:0,op_str:BATCH_OP_SET,resour"
-                                  "ce:ncpus,sisters:[],value:700000 (stringifi"
+            self.server.log_match("attribs[0]=>flags:0,flags_lst:[],name:reso"
+                                  "urces_available,op:0,op_str:BATCH_OP_SET,r"
+                                  "esource:ncpus,sisters:[],value:700000 (str"
+                                  "ingified)",
+                                  starttime=start_time_mom,
+                                  n='ALL')
+            self.server.log_match("attribs[0]=>flags:0,flags_lst:[],name:reso"
+                                  "urces_available,op:0,op_str:BATCH_OP_SET,r"
+                                  "esource:ncpus,sisters:[],value: (stringifi"
                                   "ed)",
                                   starttime=start_time_mom,
-                                  n='ALL', max_attempts=16)
-            self.server.log_match("attribs[0]=>flags:0,flags_lst:[],name:resource"
-                                  "s_available,op:0,op_str:BATCH_OP_SET,resour"
-                                  "ce:ncpus,sisters:[],value: (stringified)",
-                                  starttime=start_time_mom,
-                                  n='ALL', max_attempts=16)
-
-            # figure out where this went wrong:
-            # https://github.com/openpbs/openpbs/pull/1902/files
-
-            """07/08/2021 13:57:09.301273;0006;Server@pdw-s1;Hook;Server@pdw-s1;cmd=>MGR_CMD_SET (reversed)
-            07/08/2021 13:57:09.301282;0006;Server@pdw-s1;Hook;Server@pdw-s1;cmd=>2
-            07/08/2021 13:57:09.301288;0006;Server@pdw-s1;Hook;Server@pdw-s1;objtype=>MGR_OBJ_NODE (reversed)
-            07/08/2021 13:57:09.301292;0006;Server@pdw-s1;Hook;Server@pdw-s1;objtype=>3
-            07/08/2021 13:57:09.301297;0006;Server@pdw-s1;Hook;Server@pdw-s1;objname=>pdw-c4
-            07/08/2021 13:57:09.301301;0006;Server@pdw-s1;Hook;Server@pdw-s1;request_time=>1625752629
-            07/08/2021 13:57:09.301306;0006;Server@pdw-s1;Hook;Server@pdw-s1;reply_code=>0
-            07/08/2021 13:57:09.301310;0006;Server@pdw-s1;Hook;Server@pdw-s1;reply_auxcode=>0
-            07/08/2021 13:57:09.301314;0006;Server@pdw-s1;Hook;Server@pdw-s1;reply_choice=>BRP_CHOICE_NULL (reversed)
-            07/08/2021 13:57:09.301318;0006;Server@pdw-s1;Hook;Server@pdw-s1;reply_choice=>1
-            07/08/2021 13:57:09.301324;0006;Server@pdw-s1;Hook;Server@pdw-s1;reply_text=>None
-            07/08/2021 13:57:09.301472;0006;Server@pdw-s1;Hook;Server@pdw-s1;attribs=>[{'flags': 0,
-            'flags_lst': [],
-            'name': 'resources_available',
-            'op': 0,
-            'op_str': 'BATCH_OP_SET',
-            'resource': 'ncpus',
-            'sisters': [],
-            'value': '700000'}]"""
-
-            """07/08/2021 13:57:09.324183;0006;Server@pdw-s1;Hook;Server@pdw-s1;cmd=>MGR_CMD_UNSET (reversed)
-            07/08/2021 13:57:09.324194;0006;Server@pdw-s1;Hook;Server@pdw-s1;cmd=>3
-            07/08/2021 13:57:09.324200;0006;Server@pdw-s1;Hook;Server@pdw-s1;objtype=>MGR_OBJ_NODE (reversed)
-            07/08/2021 13:57:09.324205;0006;Server@pdw-s1;Hook;Server@pdw-s1;objtype=>3
-            07/08/2021 13:57:09.324223;0006;Server@pdw-s1;Hook;Server@pdw-s1;objname=>pdw-c4
-            07/08/2021 13:57:09.324228;0006;Server@pdw-s1;Hook;Server@pdw-s1;request_time=>1625752629
-            07/08/2021 13:57:09.324232;0006;Server@pdw-s1;Hook;Server@pdw-s1;reply_code=>0
-            07/08/2021 13:57:09.324237;0006;Server@pdw-s1;Hook;Server@pdw-s1;reply_auxcode=>0
-            07/08/2021 13:57:09.324241;0006;Server@pdw-s1;Hook;Server@pdw-s1;reply_choice=>BRP_CHOICE_NULL (reversed)
-            07/08/2021 13:57:09.324245;0006;Server@pdw-s1;Hook;Server@pdw-s1;reply_choice=>1
-            07/08/2021 13:57:09.324251;0006;Server@pdw-s1;Hook;Server@pdw-s1;reply_text=>None
-            07/08/2021 13:57:09.324482;0006;Server@pdw-s1;Hook;Server@pdw-s1;attribs=>[{'flags': 0,
-            'flags_lst': [],
-            'name': 'resources_available',
-            'op': 0,
-            'op_str': 'BATCH_OP_SET',
-            'resource': 'ncpus',
-            'sisters': [],
-            'value': ''}]
-            """
-
-
-            # self.server.log_match("Node;%s;node up" % mom.fqdn,
-            #                       starttime=start_time)
-            # self.server.log_match("Node;%s;node down" % mom.fqdn,
-            #                       starttime=start_time)
+                                  n='ALL')
 
         ret = self.server.delete_hook(hook_name_00)
         self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_00)
@@ -934,5 +884,3 @@ class TestHookManagement(TestFunctional):
                               starttime=start_time, existence=True)
 
         self.logger.info("**************** HOOK END ****************")
-
-
