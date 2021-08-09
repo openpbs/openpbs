@@ -174,13 +174,29 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   cd ${_targetdirname}
   if [ -f /src/ci ]; then
     if [ -f ${config_dir}/${CONFIGURE_OPT_FILE} ]; then
-      configure_opt="$(cat ${config_dir}/${CONFIGURE_OPT_FILE})"
-      _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
-      configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
+      PYTHON_CODE=$(cat <<END
+with open('${config_dir}/${CONFIGURE_OPT_FILE}') as f:
+  x = f.read()
+import re
+if len(x.split("'")) > 1:
+  print(re.match(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('\'')[1])
+else:
+  print(re.match(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('"')[1])
+END
+)
+      _cflags="$(python3 -c "$PYTHON_CODE")"
+      PYTHON_CODE=$(cat <<END
+with open('${config_dir}/${CONFIGURE_OPT_FILE}') as f:
+  x = f.read()
+import re
+print(re.sub(r"CFLAGS=(\"|\').*(\"|\')","",x))
+END
+)
+    configure_opt="$(python3 -c "$PYTHON_CODE")"
     else
       configure_opt='--prefix=/opt/pbs --enable-ptl'
     fi
-    if [ -z ${_cflags} ]; then
+    if [ -z "${_cflags}" ]; then
       ../configure ${configure_opt} ${swig_opt}
     else
       ../configure CFLAGS="${_cflags}" ${configure_opt} ${swig_opt}
@@ -207,13 +223,29 @@ if [ "x${ONLY_INSTALL}" == "x1" -o "x${ONLY_TEST}" == "x1" ]; then
 else
   if [ ! -f ${PBS_DIR}/${_targetdirname}/Makefile ]; then
     if [ -f ${config_dir}/${CONFIGURE_OPT_FILE} ]; then
-      configure_opt="$(cat ${config_dir}/${CONFIGURE_OPT_FILE})"
-      _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
-      configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
+      PYTHON_CODE=$(cat <<END
+with open('${config_dir}/${CONFIGURE_OPT_FILE}') as f:
+  x = f.read()
+import re
+if len(x.split("'")) > 1:
+  print(re.match(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('\'')[1])
+else:
+  print(re.match(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('"')[1])
+END
+)
+      _cflags="$(python3 -c "$PYTHON_CODE")"
+      PYTHON_CODE=$(cat <<END
+with open('${config_dir}/${CONFIGURE_OPT_FILE}') as f:
+  x = f.read()
+import re
+print(re.sub(r"CFLAGS=(\"|\').*(\"|\')","",x))
+END
+)
+      configure_opt="$(python3 -c "$PYTHON_CODE")"
     else
       configure_opt='--prefix=/opt/pbs --enable-ptl'
     fi
-    if [ -z ${_cflags} ]; then
+    if [ -z "${_cflags}" ]; then
       ../configure ${configure_opt}
     else
       ../configure CFLAGS="${_cflags}" ${configure_opt}
@@ -227,13 +259,29 @@ fi
 if [ "x${ONLY_TEST}" != "x1" ]; then
   if [ ! -f ${PBS_DIR}/${_targetdirname}/Makefile ]; then
     if [ -f ${config_dir}/${CONFIGURE_OPT_FILE} ]; then
-      configure_opt="$(cat ${config_dir}/${CONFIGURE_OPT_FILE})"
-      _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
-      configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
+      PYTHON_CODE=$(cat <<END
+with open('${config_dir}/${CONFIGURE_OPT_FILE}') as f:
+  x = f.read()
+import re
+if len(x.split("'")) > 1:
+  print(re.match(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('\'')[1])
+else:
+  print(re.match(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('"')[1])
+END
+)
+      _cflags="$(python3 -c "$PYTHON_CODE")"
+      PYTHON_CODE=$(cat <<END
+with open('${config_dir}/${CONFIGURE_OPT_FILE}') as f:
+  x = f.read()
+import re
+print(re.sub(r"CFLAGS=(\"|\').*(\"|\')","",x))
+END
+)
+    configure_opt="$(python3 -c "$PYTHON_CODE")"
     else
       configure_opt='--prefix=/opt/pbs --enable-ptl'
     fi
-    if [ -z ${_cflags} ]; then
+    if [ -z "${_cflags}" ]; then
       ../configure ${configure_opt}
     else
       ../configure CFLAGS="${_cflags}" ${configure_opt}
