@@ -902,6 +902,11 @@ class HookUtils(object):
                 'name': 'resvsub',
                 'handler': None
             }
+            if hasattr(pbs, "MODIFYRESV"):
+                self.hook_events[pbs.MODIFYRESV] = {
+                    'name': 'modifyresv',
+                    'handler': None
+                }
             self.hook_events[pbs.MOVEJOB] = {
                 'name': 'movejob',
                 'handler': None
@@ -924,6 +929,21 @@ class HookUtils(object):
                 'name': 'provision',
                 'handler': None
             }
+            if hasattr(pbs, "RESV_END"):
+                self.hook_events[pbs.RESV_END] = {
+                'name': 'resv_end',
+                'handler': None
+                }
+            if hasattr(pbs, "RESV_BEGIN"):
+                self.hook_events[pbs.RESV_BEGIN] = {
+                'name': 'resv_begin',
+                'handler': None
+                }
+            if hasattr(pbs, "RESV_CONFIRM"):
+                self.hook_events[pbs.RESV_CONFIRM] = {
+                'name': 'resv_confirm',
+                'handler': None
+                }
             self.hook_events[pbs.EXECJOB_BEGIN] = {
                 'name': 'execjob_begin',
                 'handler': self._execjob_begin_handler
@@ -2023,6 +2043,53 @@ class NodeUtils(object):
                 gpus[gpuid]['gis'] = {}
             gpus[gpuid]['gis'][giid] = gi
 
+        # Find all MIG UUIDs using nvidia-smi -L
+        # and update it later while finding the CIs
+        cmd = [self.cfg['nvidia-smi'], '-L']
+        pbs.logmsg(pbs.EVENT_DEBUG4, 'NVIDIA SMI command: %s' % cmd)
+        time_start = time.time()
+        out = []
+
+        try:
+            # Try running the nvidia-smi command
+            process = subprocess.Popen(cmd, shell=False,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       universal_newlines=True)
+            out = process.communicate()[0].split('\n')
+        except Exception:
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
+                       " ".join(cmd))
+            pbs.logmsg(pbs.EVENT_DEBUG3, '%s: No MIGs found' % caller_name())
+            return
+        elapsed_time = time.time() - time_start
+        if elapsed_time > 2.0:
+            pbs.logmsg(pbs.EVENT_DEBUG,
+                       '%s: nvidia-smi call took %f seconds' %
+                       (caller_name(), elapsed_time))
+
+        # format is:
+        # GPU gpuID: gpu_name (UUID: GPU UUID)
+        # MIG xg.ygb      Device  0: (UUID: MIG-UUID)
+        # MIG xg.ygb      Device  1: (UUID: MIG-UUID)
+
+        # Map (gpu_id, instance_id) to a MIG UUID
+        uuid_map = dict()
+        r_gpu = re.compile(r'\s*GPU\s(\d+)')
+        r_mig = re.compile(r'\s*MIG.*Device\s*(\d+)')
+        current_gpu = 0
+        for out_line in out:
+            gpu_match = r_gpu.match(out_line)
+            mig_match = r_mig.match(out_line)
+            if gpu_match:
+                current_gpu = int(gpu_match.group(1))
+                uuid_map[current_gpu] = dict()
+            if mig_match:
+                mig_uuid = out_line.split()[-1].rstrip(")")
+                uuid_map[current_gpu][int(mig_match.group(1))] = mig_uuid
+
+        pbs.logmsg(pbs.EVENT_DEBUG4, "uuid map: %s" % str(uuid_map))
+
         # now find all CIs
         cmd = [self.cfg['nvidia-smi'], 'mig', '-lci']
         pbs.logmsg(pbs.EVENT_DEBUG4, 'NVIDIA SMI command: %s' % cmd)
@@ -2060,10 +2127,16 @@ class NodeUtils(object):
         # |   0      7       MIG 1g.5gb       0         0          0:1     |
         r = re.compile(
             r'^\|\s+(\d+)\s+(\d+)\s+MIG\s+\S+\s+\d+\s+(\d+)\s+(\S+\s+)?\|$')
+
+        uuid_count = 0
+        gpu_num = 0
         for out_line in out:
             match = r.match(out_line)
             if not match:
                 continue
+            # reset count if a new gpu is parsed
+            if gpu_num != int(match.group(1)):
+                uuid_count = 0
             gpu_num = int(match.group(1))
             gpuid = 'nvidia%d' % gpu_num
             giid = int(match.group(2))
@@ -2071,7 +2144,8 @@ class NodeUtils(object):
             minor = self._discover_mig_minor(gpu_num, giid, ciid)
             if minor == -1:
                 continue
-            uuid = 'MIG-%s/%s/%s' % (gpus[gpuid]['uuid'], giid, ciid)
+            uuid = uuid_map[gpu_num][uuid_count]
+            uuid_count += 1
             ci = {'minor': minor, 'gi': giid, 'ci': ciid, 'uuid': uuid}
             pbs.logmsg(pbs.EVENT_DEBUG4, 'CI found %s' % str(ci))
             if 'cis' not in gpus[gpuid]['gis'][giid]:

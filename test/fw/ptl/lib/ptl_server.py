@@ -288,7 +288,9 @@ class Server(Wrappers):
         if self.isUp():
             if not self.stop():
                 return False
-        return self.start()
+        start_rc = self.start()
+        self.expect(NODE, {'state=state-unknown,down': 0})
+        return start_rc
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, max_attempts=None, interval=None,
@@ -1870,7 +1872,9 @@ class Server(Wrappers):
             attrib = {}
 
         error = False
+        momnum = 0
         for hostname in momhosts:
+            momnum += 1
             _pconf = self.du.parse_pbs_config(hostname)
             if 'PBS_HOME' in _pconf:
                 _hp = _pconf['PBS_HOME']
@@ -1882,6 +1886,7 @@ class Server(Wrappers):
             _np_conf = _pconf
             _np_conf['PBS_START_SERVER'] = '0'
             _np_conf['PBS_START_SCHED'] = '0'
+            _np_conf['PBS_START_COMM'] = '0'
             _np_conf['PBS_START_MOM'] = '1'
             for i in range(0, num * step_port, step_port):
                 _np = os.path.join(_hp, home_prefix + str(i))
@@ -1909,7 +1914,10 @@ class Server(Wrappers):
                     attrib['port'] = port
                     if name is None:
                         name = hostname.split('.')[0]
-                    _n = name + '-' + str(i)
+                    if momnum == 1:
+                        _n = name + '-' + str(i)
+                    else:
+                        _n = name + str(momnum) + '-' + str(i)
                     rc = self.manager(MGR_CMD_CREATE, NODE, attrib, id=_n)
                     if rc != 0:
                         self.logger.error("error creating node " + _n)

@@ -46,7 +46,7 @@
 /*
  *	query_job - takes info from a batch_status about a job and puts
  */
-resource_resv *query_job(struct batch_status *job, server_info *sinfo, schd_error *err);
+resource_resv *query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *qinfo, schd_error *err);
 
 /*
  * pthread routine for querying a chunk of jobs
@@ -350,7 +350,7 @@ resresv_set **dup_resresv_set_array(resresv_set **osets, server_info *nsinfo);
 resresv_set *create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv *resresv);
 
 /* find a resresv_set by its internal components */
-int find_resresv_set(status *policy, resresv_set **rsets, char *user, char *group, char *project, selspec *sel, place *pl, resource_req *req, queue_info *qinfo);
+int find_resresv_set(status *policy, resresv_set **rsets, const char *user, const char *group, const char *project, selspec *sel, place *pl, resource_req *req, queue_info *qinfo);
 
 /* find a resresv_set with a resresv as a template */
 int find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *resresv);
@@ -393,5 +393,8 @@ void associate_dependent_jobs(server_info *sinfo);
 
 /* This function associated the job passed in to its parent job */
 int associate_array_parent(resource_resv *pjob, server_info *sinfo);
+
+/* Set start, end, duration, and possibly STF parts of the job */
+void set_job_times(int pbs_sd, resource_resv *reseresv, time_t server_time);
 
 #endif	/* _JOB_INFO_H */

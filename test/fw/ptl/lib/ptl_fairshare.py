@@ -287,6 +287,13 @@ class Fairshare(object):
         self.sc_name = sc_name
         self.hostname = hostname
         self.user = user
+        _m = ['fairshare']
+        if self.sc_name is not None:
+            _m += ['-', str(self.sc_name)]
+        if self.user is not None:
+            _m += ['-', str(self.user)]
+        _m += [':']
+        self.logprefix = "".join(_m)
 
     def revert_fairshare(self):
         """

@@ -169,6 +169,78 @@ class MoM(PBSService):
         if not os.path.isfile(self.sleep_cmd):
             self.sleep_cmd = '/bin/sleep'
 
+    def get_formed_path(self, *argv):
+        """
+        :param argv: argument variables
+        :type argv: str
+        :returns: A string of formed path
+        """
+
+        if len(argv) == 0:
+            return None
+        return os.path.join(*argv)
+
+    def rm(self, path=None, sudo=False, runas=None, recursive=False,
+           force=False, logerr=True, as_script=False):
+        """
+        :param path: the path to the files or directories to remove
+                     for more than one files or directories pass as
+                     list
+        :type path: str or None
+        :param sudo: whether to remove files or directories as root
+                     or not.Defaults to False
+        :type sudo: boolean
+        :param runas: remove files or directories as given user
+                      Defaults to calling user
+        :param recursive: remove files or directories and their
+                          contents recursively
+        :type recursive: boolean
+        :param force: force remove files or directories
+        :type force: boolean
+        :param cwd: working directory on local host from which
+                    command is run
+        :param logerr: whether to log error messages or not.
+                       Defaults to True.
+        :type logerr: boolean
+        :param as_script: if True, run the rm in a script created
+                          as a temporary file that gets deleted after
+                          being run. This is used mainly to handle
+                          wildcard in path list. Defaults to False.
+        :type as_script: boolean
+        """
+        return self.du.rm(hostname=self.hostname, path=path, sudo=sudo,
+                          runas=runas, recursive=recursive, force=force,
+                          logerr=logerr, as_script=as_script)
+
+    def listdir(self, path=None, sudo=False, runas=None, fullpath=True):
+        """
+        :param path: The path to directory to list
+        :type path: str or None
+        :param sudo: Whether to list directory as root or not.
+                     Defaults to False
+        :type sudo: bool
+        :param runas: run command as user
+        :type runas: str or None
+        :param fullpath: Whether to return full path of contents.
+        :type fullpath: bool
+        :returns: A list containing the names of the entries in
+                  the directory or an empty list in case no files exist
+        """
+        return self.du.listdir(self.hostname, path, sudo, runas, fullpath)
+
+    def isfile(self, path=None, sudo=False, runas=None):
+        """
+        :param path: The path to the file to check
+        :type path: str or None
+        :param sudo: Whether to run the command as a privileged user
+        :type sudo: boolean
+        :param runas: run command as user
+        :type runas: str or None
+        :returns: True if file pointed to by path exists, and False
+                  otherwise
+        """
+        return self.du.isfile(self.hostname, path, sudo, runas)
+
     def create_and_format_stagein_path(self, storage_info={}, asuser=None):
         """
         Return the formatted stagein path

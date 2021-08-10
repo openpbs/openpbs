@@ -1539,6 +1539,7 @@ _pbs_v1.REVERSE_ATR_VFLAGS = {}
 _pbs_v1.REVERSE_NODE_STATE = {}
 _pbs_v1.REVERSE_JOB_STATE = {}
 _pbs_v1.REVERSE_JOB_SUBSTATE = {}
+_pbs_v1.REVERSE_RESV_STATE = {}
     
 for key, value in _pbs_v1.__dict__.items():
     if key.startswith("MGR_CMD_"):
@@ -1557,31 +1558,36 @@ for key, value in _pbs_v1.__dict__.items():
         _pbs_v1.REVERSE_JOB_STATE[value] = key
     elif key.startswith("JOB_SUBSTATE_"):
         _pbs_v1.REVERSE_JOB_SUBSTATE[value] = key
+    elif key.startswith("RESV_STATE"):
+        _pbs_v1.REVERSE_RESV_STATE[value] = key
 
 _pbs_v1.REVERSE_HOOK_EVENT = {
-	_pbs_v1.__dict__['QUEUEJOB']: "QUEUEJOB",
-	_pbs_v1.__dict__['MODIFYJOB']: "MODIFYJOB",
-	_pbs_v1.__dict__['RESVSUB']: "RESVSUB",
-	_pbs_v1.__dict__['MOVEJOB']: "MOVEJOB",
-	_pbs_v1.__dict__['RUNJOB']: "RUNJOB",
-	_pbs_v1.__dict__['ENDJOB']: "ENDJOB",
-	_pbs_v1.__dict__['MANAGEMENT']: "MANAGEMENT",
-	_pbs_v1.__dict__['MODIFYVNODE']: "MODIFYVNODE",
-	_pbs_v1.__dict__['PROVISION']: "PROVISION",
-	_pbs_v1.__dict__['RESV_END']: "RESV_END",
-	_pbs_v1.__dict__['EXECJOB_BEGIN']: "EXECJOB_BEGIN",
-	_pbs_v1.__dict__['EXECJOB_PROLOGUE']: "EXECJOB_PROLOGUE",
-	_pbs_v1.__dict__['EXECJOB_EPILOGUE']: "EXECJOB_EPILOGUE",
-	_pbs_v1.__dict__['EXECJOB_PRETERM']: "EXECJOB_PRETERM",
-	_pbs_v1.__dict__['EXECJOB_END']: "EXECJOB_END",
-	_pbs_v1.__dict__['EXECJOB_LAUNCH']: "EXECJOB_LAUNCH",
-	_pbs_v1.__dict__['EXECHOST_PERIODIC']: "EXECHOST_PERIODIC",
-	_pbs_v1.__dict__['EXECHOST_STARTUP']: "EXECHOST_STARTUP",
-	_pbs_v1.__dict__['EXECJOB_ATTACH']: "EXECJOB_ATTACH",
-	_pbs_v1.__dict__['EXECJOB_RESIZE']: "EXECJOB_RESIZE",
-	_pbs_v1.__dict__['EXECJOB_ABORT']: "EXECJOB_ABORT",
-	_pbs_v1.__dict__['EXECJOB_POSTSUSPEND']: "EXECJOB_POSTSUSPEND",
-	_pbs_v1.__dict__['EXECJOB_PRERESUME']: "EXECJOB_PRERESUME",
-	_pbs_v1.__dict__['MOM_EVENTS']: "MOM_EVENTS",
-	_pbs_v1.__dict__['PERIODIC']: "PERIODIC",
+    _pbs_v1.__dict__['QUEUEJOB']: "QUEUEJOB",
+    _pbs_v1.__dict__['MODIFYJOB']: "MODIFYJOB",
+    _pbs_v1.__dict__['RESVSUB']: "RESVSUB",
+    _pbs_v1.__dict__['MOVEJOB']: "MOVEJOB",
+    _pbs_v1.__dict__['MODIFYRESV']: "MODIFYRESV",
+    _pbs_v1.__dict__['RUNJOB']: "RUNJOB",
+    _pbs_v1.__dict__['ENDJOB']: "ENDJOB",
+    _pbs_v1.__dict__['MANAGEMENT']: "MANAGEMENT",
+    _pbs_v1.__dict__['MODIFYVNODE']: "MODIFYVNODE",
+    _pbs_v1.__dict__['PROVISION']: "PROVISION",
+    _pbs_v1.__dict__['RESV_END']: "RESV_END",
+    _pbs_v1.__dict__['RESV_BEGIN']: "RESV_BEGIN",
+    _pbs_v1.__dict__['RESV_CONFIRM']: "RESV_CONFIRM",
+    _pbs_v1.__dict__['EXECJOB_BEGIN']: "EXECJOB_BEGIN",
+    _pbs_v1.__dict__['EXECJOB_PROLOGUE']: "EXECJOB_PROLOGUE",
+    _pbs_v1.__dict__['EXECJOB_EPILOGUE']: "EXECJOB_EPILOGUE",
+    _pbs_v1.__dict__['EXECJOB_PRETERM']: "EXECJOB_PRETERM",
+    _pbs_v1.__dict__['EXECJOB_END']: "EXECJOB_END",
+    _pbs_v1.__dict__['EXECJOB_LAUNCH']: "EXECJOB_LAUNCH",
+    _pbs_v1.__dict__['EXECHOST_PERIODIC']: "EXECHOST_PERIODIC",
+    _pbs_v1.__dict__['EXECHOST_STARTUP']: "EXECHOST_STARTUP",
+    _pbs_v1.__dict__['EXECJOB_ATTACH']: "EXECJOB_ATTACH",
+    _pbs_v1.__dict__['EXECJOB_RESIZE']: "EXECJOB_RESIZE",
+    _pbs_v1.__dict__['EXECJOB_ABORT']: "EXECJOB_ABORT",
+    _pbs_v1.__dict__['EXECJOB_POSTSUSPEND']: "EXECJOB_POSTSUSPEND",
+    _pbs_v1.__dict__['EXECJOB_PRERESUME']: "EXECJOB_PRERESUME",
+    _pbs_v1.__dict__['MOM_EVENTS']: "MOM_EVENTS",
+    _pbs_v1.__dict__['PERIODIC']: "PERIODIC",
 }

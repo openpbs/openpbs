@@ -947,23 +947,17 @@ static int
 tpp_post_cmd(int tfd, char cmd, tpp_packet_t *pkt)
 {
 	int rc;
+	int slot_state;
 	phy_conn_t *conn = NULL;
 	thrd_data_t *td = NULL;
 
 	errno = 0;
 
-	if (tpp_read_lock(&cons_array_lock))
-		return -1;
+	conn = get_transport_atomic(tfd, &slot_state);
+	if (conn)
+		td = conn->td;
 
-	if (tfd >= 0 && tfd < conns_array_size) {
-		if (conns_array[tfd].conn && conns_array[tfd].slot_state == TPP_SLOT_BUSY) {
-			conn = conns_array[tfd].conn;
-			td = conn->td;
-		}
-	}
-
-	if (!td || !conn) {
-		tpp_unlock_rwlock(&cons_array_lock);
+	if (!conn || slot_state != TPP_SLOT_BUSY || !td) {
 		errno = EBADF;
 		return -1;
 	}
@@ -972,16 +966,12 @@ tpp_post_cmd(int tfd, char cmd, tpp_packet_t *pkt)
 		/* data associated that needs to be sent out, put directly into target mbox */
 		/* write to worker threads send pipe */
 		rc = tpp_mbox_post(&conn->send_mbox, tfd, cmd, (void*) pkt, pkt->totlen);
-		if (rc != 0) {
-			tpp_unlock_rwlock(&cons_array_lock);
+		if (rc != 0)
 			return rc;
-		}
 	}
 
 	/* write to worker threads send pipe, to wakeup thread */
 	rc = tpp_mbox_post(&td->mbox, tfd, cmd, NULL, 0);
-	tpp_unlock_rwlock(&cons_array_lock);
-
 	return rc;
 }
 
@@ -1724,6 +1714,8 @@ handle_disconnect(phy_conn_t *conn)
 	conn->net_state = TPP_CONN_DISCONNECTED;
 	conn->lasterr = error;
 
+	tfd = conn->sock_fd; /* store this since close_handler could unset this */
+
 	if (the_close_handler)
 		the_close_handler(conn->sock_fd, error, conn->ctx, conn->extra);
 
@@ -1739,16 +1731,15 @@ handle_disconnect(phy_conn_t *conn)
 	 *
 	 */
 	n = NULL;
-	while (tpp_mbox_clear(&conn->td->mbox, &n, conn->sock_fd, &cmd, (void **) &pkt) == 0)
+	while (tpp_mbox_clear(&conn->td->mbox, &n, tfd, &cmd, (void **) &pkt) == 0)
 		tpp_free_pkt(pkt);
 
-	conns_array[conn->sock_fd].slot_state = TPP_SLOT_FREE;
-	conns_array[conn->sock_fd].conn = NULL;
+	conns_array[tfd].slot_state = TPP_SLOT_FREE;
+	conns_array[tfd].conn = NULL;
 
 	tpp_unlock_rwlock(&cons_array_lock);
 
 	/* free old connection */
-	tfd = conn->sock_fd;
 	free_phy_conn(conn);
 	tpp_sock_close(tfd);
 

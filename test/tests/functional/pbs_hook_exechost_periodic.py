@@ -43,19 +43,14 @@ from tests.functional import *
 
 common_periodic_hook_script = """import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "In exechost_periodic hook")
-server_node = pbs.server().name
-pbs.logmsg(pbs.LOG_DEBUG, "server name is %s" % server_node)
-
 vn = pbs.event().vnode_list
-vnodes = pbs.server().vnodes()
-for node in vnodes:
-    if node.name != server_node:
-        remote_node = node.name
-        pbs.logmsg(pbs.LOG_DEBUG, "remote node is %s" % node.name)
-vn = pbs.event().vnode_list
-if remote_node not in vn:
-    vn[remote_node] = pbs.vnode(remote_node)
-vn[remote_node].resources_available["mem"] = pbs.size("90gb")
+host = pbs.get_local_nodename()
+node = ''
+for k in vn.keys():
+    if host in k:
+        node = k
+        break
+vn[node].resources_available["mem"] = pbs.size("90gb")
 other_node = "invalid_node"
 if other_node not in vn:
     vn[other_node] = pbs.vnode(other_node)
@@ -67,6 +62,8 @@ class TestHookExechostPeriodic(TestFunctional):
     """
     Tests to test exechost_periodic hook
     """
+    def setUp(self):
+        TestFunctional.setUp(self)
 
     def test_multiple_exechost_periodic_hooks(self):
         """
@@ -122,22 +119,15 @@ class TestHookExechostPeriodic(TestFunctional):
         common_msg = " as it is owned by a different mom"
         common_msg2 = "resources_available.mem=9gb per mom hook request"
 
-        msg1 = "%s;Not allowed to update vnode '%s'," % (self.momA.hostname,
-                                                         self.hostB)
-        exp_msg1 = msg1 + common_msg
-        exp_msg2 = "%s;autocreated vnode %s" % (self.momA.hostname,
-                                                other_node)
-        msg2 = "%s;Updated vnode %s's resource " % (self.momA.hostname,
+        exp_msg1 = "autocreated vnode %s" % (other_node)
+        msg1 = "%s;Updated vnode %s's resource " % (self.momA.hostname,
                                                     other_node)
-        exp_msg3 = msg2 + common_msg2
-        msg3 = "%s;Updated vnode %s's resource " % (self.momA.hostname,
-                                                    other_node)
-        exp_msg4 = msg3 + common_msg2
-        msg4 = "%s;Not allowed to update vnode '%s'," % (self.momB.hostname,
+        exp_msg2 = msg1 + common_msg2
+        msg2 = "%s;Not allowed to update vnode '%s'," % (self.momB.hostname,
                                                          other_node)
-        exp_msg5 = msg4 + common_msg
+        exp_msg3 = msg2 + common_msg
 
-        for msg in [exp_msg1, exp_msg2, exp_msg3, exp_msg4, exp_msg5]:
+        for msg in [exp_msg1, exp_msg2, exp_msg3]:
             self.server.log_match(msg)
 
         node_attribs = {'resources_available.mem': "90gb"}
@@ -200,7 +190,7 @@ class TestHookExechostPeriodic(TestFunctional):
         self.hostB = self.momB.shortname
         hook_name = "periodic"
         hook_attrs = {'event': 'exechost_periodic', 'enabled': 'True'}
-        hook_script = """vn[remote_node].resources_available["foo"] = True"""
+        hook_script = """vn[node].resources_available["foo"] = True"""
         hook_body = common_periodic_hook_script + hook_script
         self.server.create_import_hook(hook_name, hook_attrs, hook_body)
         node_attribs = {'resources_available.foo': True}

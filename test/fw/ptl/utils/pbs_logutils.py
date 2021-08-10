@@ -256,7 +256,7 @@ class PBSLogUtils(object):
             # Get epoch-timestamp assuming local timezone
             tm = t.timestamp()
         except ValueError:
-            cls.logger.debug("could not convert date time: " + str(dt))
+            cls.logger.info("could not convert date time: " + str(dt))
             return None
 
         if micro is True:
@@ -276,7 +276,8 @@ class PBSLogUtils(object):
         f.close()
         return nl
 
-    def open_log(self, log, hostname=None, sudo=False):
+    def open_log(self, log, hostname=None, sudo=False, start=None,
+                 num_records=None):
         """
         :param log: the log file name to read from
         :type log: str
@@ -286,20 +287,42 @@ class PBSLogUtils(object):
         :type sudo: boolean
         :returns: A file instance
         """
+        readcmd = ['cat', log]
+        taillogs = 10000
+        tailcmd = [self.du.which(hostname, 'tail')]
+        if start:
+            i = 0
+            while(True):
+                i += 1
+                taillogs = 10000 * i
+                tail_out = self.du.tail(hostname, log, sudo,
+                                        option='-n ' + str(taillogs))
+                line = tail_out['out'][0]
+                ts = line.split(';')[0]
+                epoch = self.convert_date_time(ts)
+                readcmd = tailcmd + ['-n', str(taillogs), log]
+                if start > epoch:
+                    break
+                elif taillogs > num_records:
+                    readcmd = ['cat', log]
+                    break
+
         try:
             if hostname is None or self.du.is_localhost(hostname):
                 if sudo:
-                    cmd = copy.copy(self.du.sudo_cmd) + ['cat', log]
+                    cmd = self.du.sudo_cmd + readcmd
                     self.logger.info('running ' + " ".join(cmd))
                     p = Popen(cmd, stdout=PIPE)
                     f = p.stdout
                 else:
-                    f = open(log)
+                    cmd = readcmd
+                    p = Popen(cmd, stdout=PIPE)
+                    f = p.stdout
             else:
                 cmd = ['ssh', hostname]
                 if sudo:
                     cmd += self.du.sudo_cmd
-                cmd += ['cat', log]
+                cmd += readcmd
                 self.logger.debug('running ' + " ".join(cmd))
                 p = Popen(cmd, stdout=PIPE)
                 f = p.stdout
@@ -785,16 +808,18 @@ class PBSLogAnalyzer(object):
             return self.summary()
 
     def _log_parser(self, filename, start, end, hostname=None, sudo=False):
+        num_records = self.logutils.get_num_lines(filename, hostname,
+                                                  sudo=sudo)
         if filename is not None:
-            records = self.logutils.open_log(filename, hostname, sudo=sudo)
+            records = self.logutils.open_log(filename, hostname, sudo=sudo,
+                                             start=start,
+                                             num_records=num_records)
         else:
             return None
 
         if records is None:
             return None
 
-        num_records = self.logutils.get_num_lines(filename, hostname,
-                                                  sudo=sudo)
         num_line = 0
         last_rec = None
         if self.show_progress:
@@ -804,6 +829,7 @@ class PBSLogAnalyzer(object):
             sys.stderr.flush()
 
         for rec in records:
+            rec = rec.decode("utf-8")
             num_line += 1
             if self.show_progress and (num_line > perc_records[0]):
                 sys.stderr.write('-' + str(perc_range[0]) + '%')

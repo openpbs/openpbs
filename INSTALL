@@ -41,7 +41,7 @@ How to install PBS using the configure script.
       libxt-dev libedit-dev libical-dev ncurses-dev perl \
       postgresql-server-dev-all postgresql-contrib python3-dev tcl-dev tk-dev swig \
       libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
-      automake gcc-c++
+      automake g++
 
   For Ubuntu-18.04 systems you should run the following command as root:
 
@@ -49,7 +49,7 @@ How to install PBS using the configure script.
       libxt-dev libedit-dev libical-dev ncurses-dev perl \
       postgresql-server-dev-all postgresql-contrib python3-dev tcl-dev tk-dev swig \
       libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
-      automake gcc-c++
+      automake g++
 
   For macOS systems using MacPorts you should run the following command as root:
 

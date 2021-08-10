@@ -461,6 +461,8 @@ e.accept()
         self.server.expect(JOB, a, subjid_1, attrop=PTL_AND)
         self.server.delete(subjid_1, extend='force')
         self.kill_and_restart_svr()
+        subjid_2 = j.create_subjob_id(j_id, 2)
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_2)
         self.server.delete(j_id, wait=True)
         self.server.manager(MGR_CMD_DELETE, QUEUE, id='workq')
 
@@ -711,18 +713,12 @@ e.accept()
         a = {'resources_available.ncpus': 200}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         j = Job(attrs={ATTR_J: '1-200'})
+        j.set_sleep_time(200)
         self.server.submit(j)
         # while the server is sending the jobs to the MoM, restart the server
         self.server.restart()
-        # make sure the mom is free so the scheduler can run jobs on it
-        self.server.expect(NODE, {'state': 'free'}, id=self.mom.shortname)
-        self.logger.info('Sleeping to ensure licenses are received')
-        time.sleep(5)
-        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'True'})
-        # ensure the sched cycle is finished
-        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'False'})
+        # triggering scheduling cycle all jobs are in R state.
+        self.scheduler.run_scheduling_cycle()
         # ensure all the subjobs are running
         self.server.expect(JOB, {'job_state=R': 200}, extend='t')
 

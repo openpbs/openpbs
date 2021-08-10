@@ -82,8 +82,8 @@ class TestMomJobDir(TestFunctional):
         jid = self.server.submit(j)
 
         # Create the job directory in mom_priv
-        conf = self.du.parse_pbs_config(self.server.hostname)
-        path = os.path.join(conf['PBS_HOME'], 'mom_priv', 'jobs', jid + '.TK')
+        path = self.mom.get_formed_path(self.mom.pbs_conf['PBS_HOME'],
+                                        'mom_priv', 'jobs', jid + '.TK')
         self.logger.info('Creating directory %s', path)
         self.du.mkdir(hostname=self.mom.hostname, path=path, sudo=True)
 
@@ -112,8 +112,8 @@ class TestMomJobDir(TestFunctional):
         jid = self.server.submit(j)
 
         # Create the job directory in mom_priv
-        conf = self.du.parse_pbs_config(self.server.hostname)
-        path = os.path.join(conf['PBS_HOME'], 'mom_priv', 'jobs', jid + '.TK')
+        path = self.mom.get_formed_path(self.mom.pbs_conf['PBS_HOME'],
+                                        'mom_priv', 'jobs', jid + '.TK')
         self.logger.info('Creating directory %s', path)
         self.du.mkdir(hostname=self.mom.hostname, path=path, sudo=True)
 

@@ -538,8 +538,20 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 				}
 			}
 		}
-		if (pvnd->nd_state & INUSE_SLEEP)
-			do_this_vnode = 0;
+		/* Skip resetting state only on cray_compute nodes when state is sleep */
+		if ((pvnd->nd_state & INUSE_SLEEP) &&
+		    (setwhen == Set_All_State_Regardless) &&
+			(bits & INUSE_SLEEP) &&
+			!(do_set)) {
+			resource_def *prd;
+			resource     *prc;
+			pat = &pvnd->nd_attr[(int)ND_ATR_ResourceAvail];
+			prd = find_resc_def(svr_resc_def, "vntype");
+			if (pat && prd && (prc = find_resc_entry(pat, prd))) {
+				if (strcmp(prc->rs_value.at_val.at_arst->as_string[0], CRAY_COMPUTE) == 0)
+						do_this_vnode = 0;
+			}
+		}
 		if (do_this_vnode == 0)
 			continue;	/* skip setting state on this vnode */
 
@@ -2154,6 +2166,8 @@ stat_update(int stream)
 				 * it may have already been changed to:
 				 * - EXITING if the OBIT arrived first.
 				 */
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid,
+				        "Received session ID for job: %ld", get_jattr_long(pjob, JOB_ATR_session_id));
 				if ((check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) ||
 					(check_job_substate(pjob, JOB_SUBSTATE_PROVISION))) {
 					/* log acct info and make RUNNING */
@@ -2179,8 +2193,10 @@ stat_update(int stream)
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB,
 					LOG_DEBUG, pjob->ji_qs.ji_jobid,
 					"update from Mom without session id");
-			} else
+			} else {
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "Received the same SID as before: %ld", get_jattr_long(pjob, JOB_ATR_session_id));
 				job_save_db(pjob);
+			}
 		}
 		(void)free(rused.ru_comment);
 		rused.ru_comment = NULL;
@@ -4334,6 +4350,7 @@ badcon:
 found:
 	psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
 	pdmninfo = pmom->mi_dmn_info;
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, "Received request2: %d", command);
 
 	switch (command) {
 
@@ -4350,7 +4367,7 @@ found:
 			}
 
 			set_all_state(pmom, 0,
-				INUSE_UNKNOWN|INUSE_NEED_ADDRS, NULL,
+				INUSE_UNKNOWN|INUSE_NEED_ADDRS|INUSE_SLEEP, NULL,
 				Set_All_State_Regardless);
 			set_all_state(pmom, 1, INUSE_DOWN|INUSE_INIT, NULL,
 				Set_ALL_State_All_Down);

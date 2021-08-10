@@ -40,6 +40,9 @@ Following parameters can be set.
 # be taken as it is and given as an argument to the configure file in PBS. The same convention follows for other configuration options as well
 ./ci --params 'configure=CFLAGS=" -O2 -Wall -Werror" --prefix=/tmp/pbs --enable-ptl'
 
+# You can also pass multiple parameter with this option for example
+./ci -p 'configure=--enable-ptl --prefix=/opt/pbs' -p 'tests=-t SmokeTest.test_basic'
+
 
 # The following are examples how to define a custom test case for pbs_benchpress.
 # NOTE: The string is passed to pbs_benchpress command therefore one can use all available options of pbs_benchpress here.

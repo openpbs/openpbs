@@ -126,9 +126,9 @@ class TestProvisioningJob(TestFunctional):
         self.assertTrue(rv)
 
         phome = self.momA.pbs_conf['PBS_HOME']
-        begin = os.path.join(phome, 'mom_priv', 'hooks', 'begin.PY')
-        ret = self.du.rm(self.momA.shortname, begin, force=True,
-                         sudo=True, logerr=False)
+        begin = self.momA.get_formed_path(phome, 'mom_priv', 'hooks',
+                                          'begin.PY')
+        ret = self.momA.rm(path=begin, force=True, sudo=True, logerr=False)
         if not ret:
             self.logger.error("problem deleting %s" % begin)
         self.momA.restart()

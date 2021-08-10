@@ -471,13 +471,13 @@ e.accept()
         a = {'resources_available.ncpus': 4}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
-        now = int(time.time())
         J = Job(TEST_USER, attrs={'Resource_List.ncpus': 4})
         jid = self.server.submit(J)
         self.server.alterjob(jid, {'Resource_List.soft_walltime': 5})
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
+        now = time.time()
         a = {'Resource_List.ncpus': 1, 'reserve_start': now + 10,
              'reserve_end': now + 130}
         R = Reservation(TEST_USER, attrs=a)

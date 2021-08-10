@@ -56,8 +56,8 @@ class TestHookDebugInput(TestFunctional):
                              'server_priv', 'hooks', 'tmp')
         if not hasattr(self, 'mom_hooks_tmp_dir'):
             self.mom_hooks_tmp_dir = \
-                os.path.join(self.mom.pbs_conf['PBS_HOME'],
-                             'mom_priv', 'hooks', 'tmp')
+                self.mom.get_formed_path(self.mom.pbs_conf['PBS_HOME'],
+                                         'mom_priv', 'hooks', 'tmp')
 
     def remove_files_match(self, pattern, mom=False):
         """
@@ -66,14 +66,21 @@ class TestHookDebugInput(TestFunctional):
         """
         if mom:
             hooks_tmp_dir = self.mom_hooks_tmp_dir
+            a = self.mom.listdir(path=hooks_tmp_dir, sudo=True)
         else:
             hooks_tmp_dir = self.server_hooks_tmp_dir
-        for item in self.du.listdir(path=hooks_tmp_dir, sudo=True):
+            a = self.du.listdir(path=hooks_tmp_dir, sudo=True)
+
+        for item in a:
             if fnmatch.fnmatch(item, pattern):
-                self.du.rm(path=item, sudo=True)
+                if mom:
+                    self.mom.rm(path=item, sudo=True)
+                    ret = self.mom.isfile(path=item, sudo=True)
+                else:
+                    self.du.rm(path=item, sudo=True)
+                    ret = self.du.isfile(path=item, sudo=True)
 
                 # Check if the file was removed
-                ret = self.du.isfile(path=item, sudo=True)
                 self.assertFalse(ret)
 
     def match_queue_name_in_input_file(self, input_file_pattern, qname):
@@ -100,17 +107,26 @@ class TestHookDebugInput(TestFunctional):
         input_file = None
         if mom:
             hooks_tmp_dir = self.mom_hooks_tmp_dir
+            a = self.mom.listdir(path=hooks_tmp_dir, sudo=True)
         else:
             hooks_tmp_dir = self.server_hooks_tmp_dir
-        for item in self.du.listdir(path=hooks_tmp_dir, sudo=True):
+            a = self.du.listdir(path=hooks_tmp_dir, sudo=True)
+
+        for item in a:
             if fnmatch.fnmatch(item, input_file_pattern):
                 input_file = item
                 break
         self.assertTrue(input_file is not None)
-        with PBSLogUtils().open_log(input_file, sudo=True) as f:
-            content = f.read().decode()
-            for entry in search_list:
-                self.assertTrue(entry in content)
+        if mom:
+            ret = self.mom.cat(filename=input_file, sudo=True)
+        else:
+            ret = self.du.cat(filename=input_file, sudo=True)
+
+        if ret['rc'] == 0 and len(ret['out']) > 0:
+            flag = False
+            if(all(x in ret['out'] for x in search_list)):
+                flag = True
+            self.assertTrue(flag)
         self.remove_files_match(input_file_pattern, mom)
 
     def test_queuejob_hook_debug_input_has_queue_name(self):
@@ -160,8 +176,10 @@ pbs.event().accept()
         attr = {'enabled': 'true', 'event': 'execjob_begin', 'debug': 'true'}
         self.server.create_import_hook(hname, attr, hook_body)
 
-        data_file_pattern = os.path.join(self.mom_hooks_tmp_dir,
-                                         'hook_execjob_begin_%s*.data' % hname)
+        data_file_pattern = self.mom.get_formed_path(
+                             self.mom_hooks_tmp_dir,
+                             'hook_execjob_begin_%s*.data'
+                             % hname)
         self.remove_files_match(data_file_pattern, mom=True)
 
         j1 = Job(TEST_USER)

@@ -41,38 +41,37 @@
 from tests.functional import *
 
 
-class TestJobPurge(TestFunctional):
+class TestCheckJobAttrib(TestFunctional):
     """
-    This test suite tests the Job purge process
+    This testsuite is to validate job attributes and values
     """
 
-    def test_job_files_after_execution(self):
+    def test_exec_vnode_after_job_rerun(self):
         """
-        Checks the job related files and ensures that files are
-        deleted successfully upon job completion
+        Test unsetting of exec_vnode of a job which got requeued
+        after stage-in and make sure stage-in files are cleaned up.
         """
-        a = {'resources_available.ncpus': 3}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
-        # Submit a normal and an array job
-        j = Job(TEST_USER)
-        j.set_sleep_time(30)
+        hook_name = "momhook"
+        hook_body = "import pbs\npbs.event().reject('my custom message')\n"
+        a = {'event': 'execjob_begin', 'enabled': 'True'}
+        self.server.create_import_hook(hook_name, a, hook_body)
+
+        self.server.log_match(".*successfully sent hook file.*" +
+                              hook_name + ".PY" + ".*", regexp=True,
+                              max_attempts=100, interval=5)
+        storage_info = {}
+        starttime = int(time.time())
+        stagein_path = self.mom.create_and_format_stagein_path(
+            storage_info, asuser=str(TEST_USER))
+        a = {ATTR_stagein: stagein_path}
+        j = Job(TEST_USER, a)
         jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=25)
-        j1 = Job(TEST_USER)
-        j1.set_sleep_time(30)
-        j1.set_attributes({ATTR_J: '1-2'})
-        jid_1 = self.server.submit(j1)
-        jobid_list = [jid, j1.create_subjob_id(jid_1, 1),
-                      j1.create_subjob_id(jid_1, 2)]
-        self.server.expect(JOB, {'job_state': 'B'}, id=jid_1)
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid_1, offset=25)
-        # Checking the job control(.JB) file, job script(.SC) file
-        # and job task(.TK) directory after successful job execution
-        jobs_suffix_list = ['.JB', '.SC', '.TK']
-        for jobid in jobid_list:
-            for suffix in jobs_suffix_list:
-                job_file = self.mom.get_formed_path(
-                            self.mom.pbs_conf['PBS_HOME'],
-                            'mom_priv', 'jobs', jobid + suffix)
-                self.assertFalse(self.mom.isfile(path=job_file, sudo=True))
+        self.server.expect(JOB, 'exec_vnode', id=jid, op=UNSET)
+        # make scheduling off to avoid any race conditions
+        # otherwise scheduler tries to run job till it reached H state
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        self.server.expect(JOB, {'run_count': (GT, 0)}, id=jid)
+        self.server.log_match('my custom message', starttime=starttime)
+        path = stagein_path.split("@")
+        msg = "Staged in file not cleaned"
+        self.assertFalse(self.mom.isfile(path[0]), msg)

@@ -790,8 +790,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
  *		clear exec strings so job can be resecheduled anywhere.
  *
  * @par Functionality:
- *		If the job has been checkpointed or has files staged in, then
- *		the job must run where it ran before or where the files where staged.
+ *		If the job has been checkpointed then the job must run where it ran before.
  *		Otherwise it is free to run anywhere when re-scheduled.  In this case,
  *		clear the exec_hosts, exec_vnodes, etc.
  *
@@ -804,8 +803,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
 void
 clear_exec_on_run_fail(job *jobp)
 {
-	if ((jobp->ji_qs.ji_svrflags &
-		(JOB_SVFLG_CHKPT | JOB_SVFLG_StagedIn)) == 0) {
+	if ((jobp->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) == 0) {
 
 		free_jattr(jobp, JOB_ATR_exec_host);
 		free_jattr(jobp, JOB_ATR_exec_host2);
@@ -1612,17 +1610,16 @@ post_sendmom(struct work_task *pwt)
 			else
 				free_nodes(jobp);
 
-			/*
-			 * If there is a checkpoint, we leave exec_vnode
-			 *    to force that it will run there again;
-			 * Or if stagein was already successful, we leave
-			 *    exec_vnode set as the files are there and
-			 *    we dont want to copy them again;
-			 * ELSE clear exec_vnode, exec_host, etc.
-			 */
+			/* delete stagein files if flag is set */
+			if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_StagedIn)
+				if (remove_stagein(jobp) != 0) {
+					/* if remove stagein is failed then */
+					/* we will remove stagedin flag from job */
+					jobp->ji_qs.ji_svrflags &= ~JOB_SVFLG_StagedIn;
+				}
 			snprintf(dest_host, sizeof(dest_host), "%s", jobp->ji_qs.ji_destin);
 			clear_exec_on_run_fail(jobp);
-
+			
 			if (!check_job_substate(jobp, JOB_SUBSTATE_ABORT)) {
 				if (preq) {
 					if ((r == SEND_JOB_HOOKERR) ||
