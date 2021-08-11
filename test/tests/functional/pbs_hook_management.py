@@ -160,7 +160,8 @@ def hook_attrs_func(hook_msg):
                                     subvalue_lst.append(str(v))
                             value_dct[f"flags_lst"] = subvalue_lst
                             value_dct['op'] = obj.op
-                            value_dct[f"op_str"] = pbs.REVERSE_BATCH_OPS[obj.op]
+                            value_dct[f"op_str"] = \
+                                pbs.REVERSE_BATCH_OPS[obj.op]
                             value_dct['resource'] = obj.resource
                             value_dct['sisters'] = obj.sisters
                             value_lst.append(value_dct)
