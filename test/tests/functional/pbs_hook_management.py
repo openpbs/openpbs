@@ -39,6 +39,7 @@
 
 import datetime
 import os
+import sys
 import socket
 import textwrap
 import time
@@ -132,6 +133,7 @@ def hook_attrs_func(hook_msg):
                   "reply_code", "reply_auxcode", "reply_choice",
                   "reply_text", 'attribs']
     import pbs
+    import sys
     import pbs_ifl
     from pprint import pformat
     missing = []
@@ -204,6 +206,9 @@ def hook_attrs_func(hook_msg):
             e.accept()
     except Exception as err:
         pbs.logmsg(pbs.LOG_DEBUG, "Error in hook:%s" % str(err))
+        errstr = str(sys.exc_info()[:2])
+        errstr = errstr.replace('\n', '||')
+        pbs.logmsg(pbs.LOG_DEBUG, "Error in hook:%s" % errstr)
         e.reject("a hook error has occurred")
 
 
@@ -890,10 +895,16 @@ class TestHookManagement(TestFunctional):
             match = self.server.log_match("Hook, processed normally.",
                                           starttime=start_time_mom)
             self.logger.info(pformat(match))
-            match = self.server.log_match("Error in hook",
-                                          starttime=start_time_mom,
-                                          existence=False)
-            self.logger.info(pformat(match))
+            try:
+                match = self.server.log_match("Error in hook",
+                                              starttime=start_time_mom,
+                                              existence=False)
+            except Exception:
+                match = self.server.log_match("Error in hook",
+                                              starttime=start_time_mom,
+                                              existence=True)
+                self.logger.info(pformat(match))
+                raise
             self.server.log_match("attribs[0]=>flags:0,flags_lst:[],name:reso"
                                   "urces_available,op:0,op_str:BATCH_OP_SET,r"
                                   "esource:ncpus,sisters:[],value:700000 (str"
