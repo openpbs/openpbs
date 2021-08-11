@@ -129,8 +129,8 @@ def get_hook_body_sleep(hook_msg, sleeptime=0.0):
 
 def hook_attrs_func(hook_msg):
     attributes = ["cmd", "objtype", "objname", "request_time",
-                "reply_code", "reply_auxcode", "reply_choice",
-                "reply_text", 'attribs']
+                  "reply_code", "reply_auxcode", "reply_choice",
+                  "reply_text", 'attribs']
     import pbs
     import pbs_ifl
     from pprint import pformat
@@ -166,13 +166,16 @@ def hook_attrs_func(hook_msg):
                             value_lst.append(value_dct)
                 elif attr == 'objtype':
                     value_str = pbs.REVERSE_MGR_OBJS[value]
-                    pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} (reversed)")
+                    pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} "
+                                              f"(reversed)")
                 elif attr == 'reply_choice':
                     value_str = pbs.REVERSE_BRP_CHOICES[value]
-                    pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} (reversed)")
+                    pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} "
+                                              f"(reversed)")
                 elif attr == 'cmd':
                     value_str = pbs.REVERSE_MGR_CMDS[value]
-                    pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} (reversed)")
+                    pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} "
+                                              f"(reversed)")
                 if attr == 'attribs':
                     lst = []
                     for idx, dct in enumerate(value_lst):
@@ -183,7 +186,8 @@ def hook_attrs_func(hook_msg):
                         # find the string correctly.
                         dct_lst = sorted(dct_lst)
                         dct_lst_str = f"{attr}[{idx}]=>{','.join(dct_lst)}"
-                        pbs.logmsg(pbs.LOG_DEBUG, f"{dct_lst_str} (stringified)")
+                        pbs.logmsg(pbs.LOG_DEBUG, f"{dct_lst_str} "
+                                                  f"(stringified)")
                 else:
                     pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value}")
         if len(missing) > 0:
@@ -873,11 +877,11 @@ class TestHookManagement(TestFunctional):
                                           )
             self.logger.info(pformat(match))
             match = self.server.log_match("Hook, processed normally.",
-                                  starttime=start_time_mom)
+                                          starttime=start_time_mom)
             self.logger.info(pformat(match))
             match = self.server.log_match("Error in hook",
-                                  starttime=start_time_mom,
-                                  existence=False)
+                                          starttime=start_time_mom,
+                                          existence=False)
             self.logger.info(pformat(match))
             self.server.log_match("attribs[0]=>flags:0,flags_lst:[],name:reso"
                                   "urces_available,op:0,op_str:BATCH_OP_SET,r"
