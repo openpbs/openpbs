@@ -178,7 +178,6 @@ def hook_attrs_func(hook_msg):
                     pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} "
                                               f"(reversed)")
                 if attr == 'attribs':
-                    lst = []
                     for idx, dct in enumerate(value_lst):
                         dct_lst = []
                         for key, value in dct.items():
@@ -189,8 +188,7 @@ def hook_attrs_func(hook_msg):
                         dct_lst_str = f"{attr}[{idx}]=>{','.join(dct_lst)}"
                         pbs.logmsg(pbs.LOG_DEBUG, f"{dct_lst_str} "
                                                   f"(stringified)")
-                else:
-                    pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value}")
+                pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value}")
         if len(missing) > 0:
             pbs.logmsg(pbs.LOG_DEBUG, "Hook, processed normally.")
             e.reject("missing attributes in pbs:" + ",".join(missing))
@@ -872,6 +870,18 @@ class TestHookManagement(TestFunctional):
             self.server.log_match("objname=>%s" % mom.shortname,
                                   starttime=start_time_mom)
             match = self.server.log_match("(stringified)",
+                                          starttime=start_time_mom,
+                                          allmatch=True,
+                                          n="ALL"
+                                          )
+            self.logger.info(pformat(match))
+            match = self.server.log_match("resources_available.ncpus",
+                                          starttime=start_time_mom,
+                                          allmatch=True,
+                                          n="ALL"
+                                          )
+            self.logger.info(pformat(match))
+            match = self.server.log_match("max_run_res_soft.ncpus",
                                           starttime=start_time_mom,
                                           allmatch=True,
                                           n="ALL"
