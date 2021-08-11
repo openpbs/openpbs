@@ -129,73 +129,79 @@ def get_hook_body_sleep(hook_msg, sleeptime=0.0):
 
 def hook_attrs_func(hook_msg):
     attributes = ["cmd", "objtype", "objname", "request_time",
-                  "reply_code", "reply_auxcode", "reply_choice",
-                  "reply_text", 'attribs']
+                "reply_code", "reply_auxcode", "reply_choice",
+                "reply_text", 'attribs']
     import pbs
     import pbs_ifl
     from pprint import pformat
     missing = []
     e = pbs.event()
-    m = e.management
-    # pbs.logmsg(pbs.LOG_DEBUG, str(dir(pbs)))
-    # pbs.logmsg(pbs.LOG_DEBUG, str(dir(e)))
-    # pbs.logmsg(pbs.LOG_DEBUG, str(dir(m)))
-    for attr in attributes:
-        if not hasattr(m, attr):
-            missing.append(attr)
-        else:
-            value = getattr(m, attr)
-            value_lst = []
-            if attr == 'attribs':
-                if type(value) == list:
-                    for obj in value:
-                        value_dct = {}
-                        value_dct['name'] = obj.name
-                        value_dct['value'] = obj.value
-                        value_dct['flags'] = obj.flags
-                        subvalue_lst = []
-                        for k, v in pbs.REVERSE_ATR_VFLAGS.items():
-                            if int(k) & int(obj.flags):
-                                subvalue_lst.append(str(v))
-                        value_dct[f"flags_lst"] = subvalue_lst
-                        value_dct['op'] = obj.op
-                        value_dct[f"op_str"] = pbs.REVERSE_BATCH_OPS[obj.op]
-                        value_dct['resource'] = obj.resource
-                        value_dct['sisters'] = obj.sisters
-                        value_lst.append(value_dct)
-            elif attr == 'objtype':
-                value_str = pbs.REVERSE_MGR_OBJS[value]
-                pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} (reversed)")
-            elif attr == 'reply_choice':
-                value_str = pbs.REVERSE_BRP_CHOICES[value]
-                pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} (reversed)")
-            elif attr == 'cmd':
-                value_str = pbs.REVERSE_MGR_CMDS[value]
-                pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} (reversed)")
-            if attr == 'attribs':
-                lst = []
-                for idx, dct in enumerate(value_lst):
-                    dct_lst = []
-                    for key, value in dct.items():
-                        dct_lst.append(f"{key}:{value}")
-                    # need to sort the list to allow for the test to
-                    # find the string correctly.
-                    dct_lst = sorted(dct_lst)
-                    dct_lst_str = f"{attr}[{idx}]=>{','.join(dct_lst)}"
-                    pbs.logmsg(pbs.LOG_DEBUG, f"{dct_lst_str} (stringified)")
-            else:
-                pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value}")
-    if len(missing) > 0:
-        e.reject("missing attributes in pbs:" + ",".join(missing))
-    else:
-        pbs.logmsg(pbs.LOG_DEBUG, 'all attributes found in pbs')
-        # pbs.logmsg(pbs.LOG_DEBUG, 'dir(pbs_ifl):')
-        # pbs.logmsg(pbs.LOG_DEBUG, str(dir(pbs_ifl)))
-        # pbs.logmsg(pbs.LOG_DEBUG, 'dir(pbs):')
-        # pbs.logmsg(pbs.LOG_DEBUG, str(dir(pbs)))
+    try:
         m = e.management
-        pbs.logmsg(pbs.LOG_DEBUG, hook_msg)
-        e.accept()
+        # pbs.logmsg(pbs.LOG_DEBUG, str(dir(pbs)))
+        # pbs.logmsg(pbs.LOG_DEBUG, str(dir(e)))
+        # pbs.logmsg(pbs.LOG_DEBUG, str(dir(m)))
+        for attr in attributes:
+            if not hasattr(m, attr):
+                missing.append(attr)
+            else:
+                value = getattr(m, attr)
+                value_lst = []
+                if attr == 'attribs':
+                    if type(value) == list:
+                        for obj in value:
+                            value_dct = {}
+                            value_dct['name'] = obj.name
+                            value_dct['value'] = obj.value
+                            value_dct['flags'] = obj.flags
+                            subvalue_lst = []
+                            for k, v in pbs.REVERSE_ATR_VFLAGS.items():
+                                if int(k) & int(obj.flags):
+                                    subvalue_lst.append(str(v))
+                            value_dct[f"flags_lst"] = subvalue_lst
+                            value_dct['op'] = obj.op
+                            value_dct[f"op_str"] = pbs.REVERSE_BATCH_OPS[obj.op]
+                            value_dct['resource'] = obj.resource
+                            value_dct['sisters'] = obj.sisters
+                            value_lst.append(value_dct)
+                elif attr == 'objtype':
+                    value_str = pbs.REVERSE_MGR_OBJS[value]
+                    pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} (reversed)")
+                elif attr == 'reply_choice':
+                    value_str = pbs.REVERSE_BRP_CHOICES[value]
+                    pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} (reversed)")
+                elif attr == 'cmd':
+                    value_str = pbs.REVERSE_MGR_CMDS[value]
+                    pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value_str} (reversed)")
+                if attr == 'attribs':
+                    lst = []
+                    for idx, dct in enumerate(value_lst):
+                        dct_lst = []
+                        for key, value in dct.items():
+                            dct_lst.append(f"{key}:{value}")
+                        # need to sort the list to allow for the test to
+                        # find the string correctly.
+                        dct_lst = sorted(dct_lst)
+                        dct_lst_str = f"{attr}[{idx}]=>{','.join(dct_lst)}"
+                        pbs.logmsg(pbs.LOG_DEBUG, f"{dct_lst_str} (stringified)")
+                else:
+                    pbs.logmsg(pbs.LOG_DEBUG, f"{attr}=>{value}")
+        if len(missing) > 0:
+            pbs.logmsg(pbs.LOG_DEBUG, "Hook, processed normally.")
+            e.reject("missing attributes in pbs:" + ",".join(missing))
+        else:
+            pbs.logmsg(pbs.LOG_DEBUG, 'all attributes found in pbs')
+            # pbs.logmsg(pbs.LOG_DEBUG, 'dir(pbs_ifl):')
+            # pbs.logmsg(pbs.LOG_DEBUG, str(dir(pbs_ifl)))
+            # pbs.logmsg(pbs.LOG_DEBUG, 'dir(pbs):')
+            # pbs.logmsg(pbs.LOG_DEBUG, str(dir(pbs)))
+            m = e.management
+            pbs.logmsg(pbs.LOG_DEBUG, hook_msg)
+            pbs.logmsg(pbs.LOG_DEBUG, "Hook, processed normally.")
+            e.accept()
+    except Exception as err:
+        pbs.logmsg(pbs.LOG_DEBUG, "Error in hook:%s" % str(err))
+        e.reject("a hook error has occurred")
 
 
 @tags('hooks', 'smoke')
@@ -866,6 +872,13 @@ class TestHookManagement(TestFunctional):
                                           n="ALL"
                                           )
             self.logger.info(pformat(match))
+            match = self.server.log_match("Hook, processed normally.",
+                                  starttime=start_time_mom)
+            self.logger.info(pformat(match))
+            match = self.server.log_match("Error in hook",
+                                  starttime=start_time_mom,
+                                  existence=False)
+            self.logger.info(pformat(match))
             self.server.log_match("attribs[0]=>flags:0,flags_lst:[],name:reso"
                                   "urces_available,op:0,op_str:BATCH_OP_SET,r"
                                   "esource:ncpus,sisters:[],value:700000 (str"
@@ -876,7 +889,6 @@ class TestHookManagement(TestFunctional):
                                   "esource:ncpus,sisters:[],value: (stringifi"
                                   "ed)",
                                   starttime=start_time_mom)
-
         ret = self.server.delete_hook(hook_name_00)
         self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_00)
         self.server.log_match("%s;deleted at request of" % hook_name_00,
