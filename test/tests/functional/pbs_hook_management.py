@@ -219,10 +219,10 @@ def hook_attrs_func(hook_msg):
             pbs.logmsg(pbs.LOG_DEBUG, "Hook, processed normally.")
             e.accept()
     except Exception as err:
-        pbs.logmsg(pbs.LOG_DEBUG, "Error in hook:%s" % str(err))
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
         pbs.logmsg(pbs.LOG_DEBUG, "%s|Error in hook:%s" %
                    (now_str, '||'.join(get_traceback())))
+        pbs.logmsg(pbs.LOG_DEBUG, "Error in hook:%s" % str(err))
         # errstr = str(sys.exc_info()[:2])
         # errstr = errstr.replace('\n', '||')
         # pbs.logmsg(pbs.LOG_DEBUG, "Error in hook:%s" % errstr)
