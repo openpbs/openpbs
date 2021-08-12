@@ -180,7 +180,7 @@ def hook_attrs_func(hook_msg):
                                 value_dct[f"op_str"] = \
                                     pbs.REVERSE_BATCH_OPS[obj.op]
                             except Exception as err:
-                                pass
+                                value_dct[f"op_str"] = "?"
                             value_dct['resource'] = obj.resource
                             value_dct['sisters'] = obj.sisters
                             value_lst.append(value_dct)
@@ -889,6 +889,12 @@ class TestHookManagement(TestFunctional):
                                   starttime=start_time_mom)
             self.server.log_match("objname=>%s" % mom.shortname,
                                   starttime=start_time_mom)
+            match = self.server.log_match("attribs[0]=>flags:0,flags_lst:[]",
+                                          starttime=start_time_mom,
+                                          existence=True,
+                                          allmatch=True,
+                                          n="ALL")
+            self.logger.info(pformat(match))
             match = self.server.log_match("(stringified)",
                                           starttime=start_time_mom,
                                           allmatch=True,
@@ -922,15 +928,16 @@ class TestHookManagement(TestFunctional):
                                               n="ALL")
                 self.logger.info(pformat(match))
                 raise
+
             self.server.log_match("attribs[0]=>flags:0,flags_lst:[],name:reso"
                                   "urces_available,op:0,op_str:BATCH_OP_SET,r"
                                   "esource:ncpus,sisters:[],value:700000 (str"
                                   "ingified)",
                                   starttime=start_time_mom)
             self.server.log_match("attribs[0]=>flags:0,flags_lst:[],name:reso"
-                                  "urces_available,op:0,op_str:BATCH_OP_SET,r"
-                                  "esource:ncpus,sisters:[],value: (stringifi"
-                                  "ed)",
+                                  "urces_available,op:1,op_str:BATCH_OP_UNSET"
+                                  ",resource:ncpus,sisters:[],value: (stringi"
+                                  "fied)",
                                   starttime=start_time_mom)
         ret = self.server.delete_hook(hook_name_00)
         self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_00)
