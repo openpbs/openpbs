@@ -129,16 +129,29 @@ def get_hook_body_sleep(hook_msg, sleeptime=0.0):
 
 
 def hook_attrs_func(hook_msg):
+    def get_traceback():
+        import os
+        import traceback
+        (exc_cls, exc, tracbk) = sys.exc_info()
+        stack = traceback.format_tb(tracbk)
+        tracebacklst = []
+        for stackpiece in stack:
+            stackpiece = stackpiece.strip()
+            stackpiece_lst = stackpiece.split(os.linesep)
+            for stack_item in stackpiece_lst:
+                tracebacklst.append("%s" % stack_item)
+        return tracebacklst
+
     attributes = ["cmd", "objtype", "objname", "request_time",
                   "reply_code", "reply_auxcode", "reply_choice",
                   "reply_text", 'attribs']
     import pbs
-    import sys
-    import pbs_ifl
-    from pprint import pformat
     missing = []
     e = pbs.event()
     try:
+        import sys
+        import pbs_ifl
+        from pprint import pformat
         m = e.management
         # pbs.logmsg(pbs.LOG_DEBUG, str(dir(pbs)))
         # pbs.logmsg(pbs.LOG_DEBUG, str(dir(e)))
@@ -206,9 +219,12 @@ def hook_attrs_func(hook_msg):
             e.accept()
     except Exception as err:
         pbs.logmsg(pbs.LOG_DEBUG, "Error in hook:%s" % str(err))
-        errstr = str(sys.exc_info()[:2])
-        errstr = errstr.replace('\n', '||')
-        pbs.logmsg(pbs.LOG_DEBUG, "Error in hook:%s" % errstr)
+        now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
+        pbs.logmsg(pbs.LOG_DEBUG, "%s|Error in hook:%s" %
+                   (now_str, '||'.join(get_traceback())))
+        # errstr = str(sys.exc_info()[:2])
+        # errstr = errstr.replace('\n', '||')
+        # pbs.logmsg(pbs.LOG_DEBUG, "Error in hook:%s" % errstr)
         e.reject("a hook error has occurred")
 
 
