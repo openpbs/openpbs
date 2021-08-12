@@ -179,7 +179,7 @@ def hook_attrs_func(hook_msg):
                             try:
                                 value_dct[f"op_str"] = \
                                     pbs.REVERSE_BATCH_OPS[obj.op]
-                            except:
+                            except Exception as err:
                                 pass
                             value_dct['resource'] = obj.resource
                             value_dct['sisters'] = obj.sisters
