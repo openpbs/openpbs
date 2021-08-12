@@ -1,0 +1,362 @@
+#!/usr/bin/env python3
+# coding: utf-8
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
+#
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
+# distribute them - whether embedded or bundled with other software -
+# under a commercial license agreement.
+#
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
+from ptl.utils.pbs_testsuite import *
+import os
+import tarfile
+import sys
+import getopt
+import time
+import math
+
+
+def set_up(ts):
+    PBSTestSuite.use_cur_setup = False
+    PBSTestSuite.parse_param()
+    PBSTestSuite.init_param()
+    PBSTestSuite.check_users_exist()
+    PBSTestSuite.init_servers()
+    PBSTestSuite.init_schedulers()
+    PBSTestSuite.init_moms()
+    PBSTestSuite.init_comms()
+    a = {ATTR_license_min: len(PBSTestSuite.moms)}
+    PBSTestSuite.server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
+    PBSTestSuite.server.restart()
+    PBSTestSuite.check_mom_bash_version()
+    # turn off opt_backfill_fuzzy to avoid unexpected calendaring behavior
+    # it can assume that scheduler will simulate each event
+    ts.revert_servers()
+    ts.revert_pbsconf()
+    ts.revert_schedulers()
+    ts.revert_moms()
+    a = {'opt_backfill_fuzzy': 'off'}
+    for schedinfo in ts.schedulers.values():
+        for schedname in schedinfo.keys():
+            ts.server.manager(MGR_CMD_SET, SCHED, a, id=schedname)
+
+
+def cleanup(ts):
+    """
+    verify that ``server`` and ``scheduler`` are up
+    clean up jobs and reservations
+    """
+    ts.server.cleanup_jobs()
+
+    for server in ts.servers.values():
+        server.cleanup_files()
+
+    for mom in ts.moms.values():
+        mom.cleanup_files()
+
+    for sched in ts.scheds:
+        ts.scheds[sched].cleanup_files()
+    ts.server.delete_sched_config()
+
+    # Delete nodes, queues, site hooks, reservations and
+    # vnodedef file
+    svr = ts.server
+    moms = ts.moms
+
+    # unset server attributes
+    svr.unset_svr_attrib()
+    # Delete site hooks
+    svr.delete_site_hooks()
+    # cleanup reservations
+    svr.cleanup_reservations()
+    # Delete vnodedef file & vnodes
+    for m in moms:
+        # Check if vnodedef file is present
+        if moms[m].has_vnode_defs():
+            moms[m].delete_vnode_defs()
+            moms[m].delete_vnodes()
+            moms[m].restart()
+    # Delete resources
+    svr.delete_resources()
+    # Delete queues
+    svr.delete_queues()
+    # Delete nodes
+    svr.delete_nodes()
+
+
+def custom_res_job(ts, jobs, res, nodes):
+    err_msg = 'Failed to get the expected resource value'
+    # create a resource
+    res_avail = math.ceil(jobs / res)
+    a = {'queue_type': 'Execution', 'enabled': 'True', 'started': 'True'}
+    ts.server.manager(MGR_CMD_CREATE, QUEUE, a, "qname")
+    ts.server.manager(MGR_CMD_CREATE, QUEUE, a, "qname1")
+    ts.server.manager(MGR_CMD_CREATE, QUEUE, a, "qname2")
+    for i in range(1, res + 1):
+        res_name = "foo" + str(i)
+        res_select = "-l select=" + str(nodes) + ":ncpus=1:"
+        res_select += res_name + "=" + str(1)
+        if i % 3 == 0:
+            ts.server.manager(MGR_CMD_CREATE, RSC, {
+                'type': 'long', 'flag': 'nh'}, id=res_name)
+            ts.scheduler.add_resource(res_name)
+            ts.server.manager(MGR_CMD_SET, QUEUE, {
+                'resources_available.' + res_name: res_avail}, id="qname")
+            for job in range(res_avail + 1):
+                runcmd = []
+                runcmd += [os.path.join(ts.server.pbs_conf['PBS_EXEC'], 'bin',
+                                        'qsub')]
+                runcmd += ['-q', 'qname', res_select]
+                runcmd += ['--',
+                           os.path.join(ts.server.pbs_conf['PBS_EXEC'],
+                                        'bin',
+                                        'pbs_sleep'),
+                           "100"]
+                ts.du.run_cmd(ts.server.hostname, runcmd, runas=TEST_USER)
+        if i % 3 == 1:
+            ts.server.manager(MGR_CMD_CREATE, RSC, {
+                'type': 'string', 'flag': 'h'}, id=res_name)
+            ts.scheduler.add_resource(res_name)
+            ts.server.manager(MGR_CMD_SET, QUEUE, {
+                'resources_available.' + res_name: res_avail}, id="qname1")
+            for job in range(res_avail + 1):
+                runcmd = []
+                runcmd += [os.path.join(ts.server.pbs_conf['PBS_EXEC'], 'bin',
+                                        'qsub')]
+                runcmd += ['-q qname1', res_select]
+                runcmd += ['--',
+                           os.path.join(ts.server.pbs_conf['PBS_EXEC'],
+                                        'bin',
+                                        'pbs_sleep'),
+                           "100"]
+        if i % 3 == 2:
+            res_select = "-q qname2 -l select=" + str(nodes) + ":ncpus=1:"
+            res_select += res_name + "=" + str(1)
+            ts.server.manager(MGR_CMD_CREATE, RSC, {
+                'type': 'float', 'flag': 'nh'}, id=res_name)
+            ts.scheduler.add_resource(res_name)
+            ts.server.manager(MGR_CMD_SET, QUEUE, {
+                'resources_available.' + res_name: res_avail}, id="qname2")
+            attrs = {ATTR_queue: "qname2", 'Resource_List.' + res_name: 1.0}
+            for job in range(res_avail + 1):
+                runcmd = []
+                runcmd += [os.path.join(ts.server.pbs_conf['PBS_EXEC'], 'bin',
+                                        'qsub')]
+                runcmd += ['-q qname2', res_select]
+                runcmd += ['--',
+                           os.path.join(ts.server.pbs_conf['PBS_EXEC'],
+                                        'bin',
+                                        'pbs_sleep'),
+                           "100"]
+
+
+def standing_reservation(ts):
+    tzone = 'America/Los_Angeles'
+    a = {'Resource_List.select': '1:ncpus=1',
+         ATTR_resv_timezone: tzone,
+         ATTR_resv_standing: '1',
+         'reserve_start': time.time() + 20,
+         'reserve_end': time.time() + 300, }
+    r = Reservation(TEST_USER, a)
+    rid = ts.server.submit(r)
+    a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+    ts.server.expect(RESV, a, id=rid)
+
+
+def advance_reservation(ts):
+    r = Reservation(TEST_USER)
+    now = int(time.time())
+    r_start_time = now + 30
+    a = {'Resource_List.select': '1:ncpus=4',
+         'reserve_start': r_start_time,
+         'reserve_end': now + 110}
+    r.set_attributes(a)
+    rid = ts.server.submit(r)
+    rid_q = rid.split('.')[0]
+    a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+    ts.server.expect(RESV, a, id=rid)
+
+    # submit a normal job and an array job to the reservation
+    a = {'Resource_List.select': '1:ncpus=1',
+         ATTR_q: rid_q}
+    j1 = Job(TEST_USER, attrs=a)
+    jid1 = ts.server.submit(j1)
+
+    a = {'Resource_List.select': '1:ncpus=1',
+         ATTR_q: rid_q, ATTR_J: '1-2'}
+    j2 = Job(TEST_USER, attrs=a)
+    jid2 = ts.server.submit(j2)
+
+    offset = r_start_time - int(time.time())
+    a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+    ts.server.expect(RESV, a, id=rid, interval=1,
+                     offset=offset)
+    ts.server.expect(JOB, {'job_state': 'R'}, jid1)
+    ts.server.expect(JOB, {'job_state': 'B'}, jid2)
+
+
+def create_vnode(ts):
+    # Create a consumable custom resources 'fooi'
+    ts.server.add_resource('fooi', 'long', 'nh')
+    # Create 2 vnodes with individual hosts
+    attr = {'resources_available.ncpus': 1}
+    ts.mom.create_vnodes(attr, 2, sharednode=False, delall=False)
+    vnode0 = ts.mom.shortname + '[0]'
+    vnode1 = ts.mom.shortname + '[1]'
+    ts.server.manager(MGR_CMD_SET, NODE,
+                      {'resources_available.fooi': 100}, vnode0)
+    ts.server.manager(MGR_CMD_SET, NODE, {'resources_available.fooi':
+                                          '@' + vnode0}, vnode1)
+    ts.server.manager(MGR_CMD_SET, NODE,
+                      {'resources_available.fooi': 100}, vnode1)
+    ts.server.expect(NODE, {'resources_assigned.fooi': ''},
+                     id=vnode1, op=UNSET, max_attempts=1)
+
+
+def snapshot_setup(ts):
+    try:
+        pbs_snapshot_path = os.path.join(
+            ts.server.pbs_conf["PBS_EXEC"], "sbin", "pbs_snapshot")
+        ret = ts.du.run_cmd(cmd=[pbs_snapshot_path, "-h"])
+        if ret['rc'] != 0:
+            pbs_snapshot_path = None
+    except Exception:
+        pbs_snapshot_path = None
+
+        # Check whether the user has root access or not
+        # pbs_snapshot only supports being run as root, so skip the entire
+        # testsuite if the user doesn't have root privileges
+    ret = ts.du.run_cmd(
+        cmd=["ls", os.path.join(os.sep, "root")], sudo=True)
+    if ret['rc'] != 0:
+        self.logger.info("pbs_snapshot/PBSSnapUtils need root privileges")
+    return pbs_snapshot_path
+
+
+def take_snapshot(ts, snapshot_cmd, snapshot_dir):
+    if snapshot_cmd is None:
+        self.logger.info("pbs_snapshot not found")
+
+    snapdirs = []
+    snaptars = []
+    parent_dir = snapshot_dir
+    snap_cmd = [snapshot_cmd, "-o", parent_dir]
+    ret = ts.du.run_cmd(cmd=snap_cmd, logerr=False, as_script=True)
+    ts.assertEqual(ret['rc'], 0)
+
+    # Get the name of the tarball that was created
+    # pbs_snapshot prints to stdout only the following:
+    #     "Snapshot available at: <path to tarball>"
+    ts.assertTrue(len(ret['out']) > 0, str(ret))
+    snap_out = ret['out'][0]
+    output_tar = snap_out.split(":")[1]
+    output_tar = output_tar.strip()
+
+    # Check that the output tarball was created
+    snapshot_ = os.path.isfile(output_tar)
+    if not snapshot_:
+        self.logger.info("Error capturing snapshot:\n" + str(ret))
+
+    # Unwrap the tarball
+    tar = tarfile.open(output_tar)
+    tar.extractall(path=parent_dir)
+    tar.close()
+
+    # snapshot directory name = <snapshot>.tgz[:-4]
+    snap_dir = output_tar[:-4]
+
+    # Check that the directory exists
+    ts.assertTrue(os.path.isdir(snap_dir))
+
+    snapdirs.append(snap_dir)
+    snaptars.append(output_tar)
+
+
+def usage():
+    msg = []
+    msg += ['Usage: ' + os.path.basename(sys.argv[0]) + ' [OPTION]\n\n']
+    msg += ['-j: number of job\n']
+    msg += ['-r: number of resources \n']
+    msg += ['-n: number of nodes \n']
+    msg += ['-d: path for snapshot \n']
+
+
+if __name__ == '__main__':
+    jobs = 10
+    res = 10
+    nodes = 1
+    snapshot_dir = os.getcwd()
+    largs = ['jobs=']
+    if len(sys.argv) < 1:
+        sys.exit(1)
+    try:
+        opts, args = getopt.getopt(
+            sys.argv[1:], 'j:r:n:d:')
+    except Exception:
+        sys.stderr.write('Unrecognized option. Exiting\n')
+        usage()
+        sys.exit(1)
+
+    if args:
+        sys.stderr.write('Invalid usage. Exiting\n')
+        usage()
+        sys.exit(1)
+
+    for o, val in opts:
+        if o == '-j':
+            jobs = int(val)
+        if o == '-r':
+            res = int(val)
+        if o == '-n':
+            nodes = int(val)
+        if o == '-d':
+            snapshot_dir = val
+    ts = PBSTestSuite()
+    set_up(ts)
+    a = {'resources_available.ncpus': jobs * 20}
+    if (len(ts.moms) < 2):
+        ts.logger.error("available moms are less than requested moms ")
+    i = 0
+    for mom in ts.moms.values():
+        i += 1
+        if i <= nodes:
+            ts.server.manager(MGR_CMD_SET, NODE, a, id=mom.shortname)
+
+    standing_reservation(ts)
+    advance_reservation(ts)
+    custom_res_job(ts, jobs, res, nodes)
+
+    create_vnode(ts)
+    snapshot_cmd = snapshot_setup(ts)
+    take_snapshot(ts, snapshot_cmd, snapshot_dir)
+    cleanup(ts)
