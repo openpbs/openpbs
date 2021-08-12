@@ -146,6 +146,7 @@ def hook_attrs_func(hook_msg):
                   "reply_code", "reply_auxcode", "reply_choice",
                   "reply_text", 'attribs']
     import pbs
+    from datetime import datetime
     missing = []
     e = pbs.event()
     try:
