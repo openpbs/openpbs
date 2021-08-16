@@ -602,9 +602,6 @@ req_deletejob(struct batch_request *preq)
 	if (preq->rq_extend && strstr(preq->rq_extend, FORCE))
 		forcedel = 1;
 
-	if (preq->rq_ind.rq_deletejoblist.rq_resume)
-		start_jobid = preq->rq_ind.rq_deletejoblist.jobid_to_resume;
-
 	/* with nomail , nomail_force , nomail_deletehist or nomailforce_deletehist options are set
 	 *  no mail is sent
 	 */
@@ -935,7 +932,6 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		while (pwtold) {
 			if ((pwtold->wt_type == WORK_Deferred_Child) ||
 			    (pwtold->wt_type == WORK_Deferred_Cmp)) {
-				preq->rq_ind.rq_deletejoblist.rq_count = 1;
 				pwtnew = set_task(pwtold->wt_type,
 						  pwtold->wt_event, resume_deletion,
 						  preq);
