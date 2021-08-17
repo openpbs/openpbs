@@ -93,33 +93,6 @@
  *
  */
 
-/**
- * @brief
- *	-decode a Delete Job Batch Request
- *
- * @par	Functionality:
- *	This function is used to decode the request for deletion of list of jobids.
- *
- *
- *      The batch_request structure must already exist (be allocated by the
- *      caller.   It is assumed that the header fields (protocol type,
- *      protocol version, request type, and user name) have already be decoded.
- *
- * @par	Data items are:\n
- *		unsigned int    command\n
- *              unsigned int    object type\n
- *              string          object name\n
- *              attropl         attributes
- *
- * @param[in] sock - socket descriptor
- * @param[out] preq - pointer to batch_request structure
- *
- * @return      int
- * @retval      DIS_SUCCESS(0)  success
- * @retval      error code      error
- *
- */
-
 int
 decode_DIS_DelJobList(int sock, struct batch_request *preq)
 {
@@ -145,37 +118,14 @@ decode_DIS_DelJobList(int sock, struct batch_request *preq)
 	}
 	tmp_jobslist[i] = NULL;
 
-	preq->rq_ind.rq_deletejoblist.rq_jobslist = tmp_jobslist;
-	preq->rq_ind.rq_deletejoblist.rq_resume = FALSE;
-	
-	return rc;
-}
-
-/**
- * @brief decodes deljoblist2
- * 
- * @param[in] sock - socket descriptor
- * @param[out] preq - pointer to batch_request structure
- *
- * @return      int
- * @retval      DIS_SUCCESS(0)  success
- * @retval      error code      error
- */
-int
-decode_DIS_DelJobList2(int sock, struct batch_request *preq)
-{
-	int rc;
-
-	rc = decode_DIS_DelJobList(sock, preq);
-	if (rc) return rc;
-
 	preq->rq_ind.rq_deletejoblist.mails = disrui(sock, &rc);
 	if (rc) {
-		free(preq->rq_ind.rq_deletejoblist.rq_jobslist);
+		free(tmp_jobslist);
 		return rc;
 	}
 
-	preq->rq_type = PBS_BATCH_DeleteJobList;
-
+	preq->rq_ind.rq_deletejoblist.rq_jobslist = tmp_jobslist;
+	preq->rq_ind.rq_deletejoblist.rq_resume = FALSE;
+	
 	return rc;
 }
