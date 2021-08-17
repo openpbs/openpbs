@@ -1299,6 +1299,15 @@ class Server(Wrappers):
         if len(job_ids) > 100:
             for host, pids in host_pid_map.items():
                 chunks = [pids[i:i + 5000] for i in range(0, len(pids), 5000)]
+                pbsnodes = os.path.join(
+                    self.client_conf['PBS_EXEC'], 'bin', 'pbsnodes')
+                ret = self.du.run_cmd(
+                    self.hostname, [pbsnodes, '-v', host],
+                    logerr=False, level=logging.DEBUG, sudo=True)
+                for i in ret['out']:
+                    if "Mom" in i:
+                        host = (i.split('='))[1]
+                        break
                 for chunk in chunks:
                     self.du.run_cmd(host, ['kill', '-9'] + chunk,
                                     runas=ROOT_USER, logerr=False)
