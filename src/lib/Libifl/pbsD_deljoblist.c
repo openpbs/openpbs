@@ -628,5 +628,5 @@ __pbs_deljoblist(int c, char **jobids, int numjids, int mails, char *extend)
 	if ((jobids == NULL) || (**jobids == '\0'))
 		return NULL;
 
-	return PBSD_deljoblist(c, PBS_BATCH_DeleteJobList, jobids, numjids, mails, extend);
+	return PBSD_deljoblist(c, PBS_BATCH_DeleteJobList2, jobids, numjids, mails, extend);
 }

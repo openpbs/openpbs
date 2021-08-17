@@ -306,8 +306,9 @@ struct batch_reply
 #define PBS_BATCH_AsyrunJob_ack  	97
 #define PBS_BATCH_RegisterSched  	98
 #define PBS_BATCH_ModifyVnode    	99
-#define PBS_BATCH_DeleteJobList  	100
+#define PBS_BATCH_DeleteJobList  	100 /* replaced by PBS_BATCH_DeleteJobList2 in release 2022 */
 #define PBS_BATCH_ServerReady    	101
+#define PBS_BATCH_DeleteJobList2  	102
 
 #define PBS_BATCH_FileOpt_Default	0
 #define PBS_BATCH_FileOpt_OFlg		1

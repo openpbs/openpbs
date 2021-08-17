@@ -502,6 +502,9 @@ dis_request_read(int sfds, struct batch_request *request)
 		case PBS_BATCH_DeleteJobList:
 			rc = decode_DIS_DelJobList(sfds, request);
 			break;
+		case PBS_BATCH_DeleteJobList2:
+			rc = decode_DIS_DelJobList2(sfds, request);
+			break;
 
 		case PBS_BATCH_DeleteJob:
 		case PBS_BATCH_DeleteResv:

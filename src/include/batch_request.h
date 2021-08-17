@@ -407,6 +407,7 @@ extern int decode_DIS_DelHookFile(int, struct batch_request *);
 extern int decode_DIS_JobObit(int, struct batch_request *);
 extern int decode_DIS_Manage(int, struct batch_request *);
 extern int decode_DIS_DelJobList(int, struct batch_request *);
+extern int decode_DIS_DelJobList2(int, struct batch_request *);
 extern int decode_DIS_MoveJob(int, struct batch_request *);
 extern int decode_DIS_MessageJob(int, struct batch_request *);
 extern int decode_DIS_ModifyResv(int, struct batch_request *);
