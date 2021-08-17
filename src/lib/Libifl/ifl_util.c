@@ -190,36 +190,6 @@ get_obj_location_hint(char *obj_id, int obj_type)
 }
 
 /**
- * @brief encode the Preempt Jobs request for sending to the server.
- *
- * @param[in] sock - socket descriptor for the connection.
- * @param[in] jobs - list of job ids.
- *
- * @return - error code while writing data to the socket.
- */
-int
-encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs)
-{
-	int	i = 0;
-	int	rc = 0;
-	int	count = 0;
-
-	if (numofjobs == -1)
-		for (; jobs_list[count]; count++);
-	else
-		count = numofjobs;
-
-	if (((rc = diswui(sock, count)) != 0))
-		return rc;
-
-	for (i = 0; i < count; i++)
-		if ((rc = diswst(sock, jobs_list[i])) != 0)
-			return rc;
-
-	return rc;
-}
-
-/**
  * @brief
  *	Finds server instance id associated with the given job and returns its fd
  *

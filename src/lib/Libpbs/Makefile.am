@@ -151,58 +151,10 @@ libpbs_la_SOURCES = \
 	../Libifl/advise.c \
 	../Libifl/auth.c \
 	../Libifl/conn_table.c \
-	../Libifl/dec_Authen.c \
-	../Libifl/dec_CopyHookFile.c \
-	../Libifl/dec_DelHookFile.c \
-	../Libifl/dec_JobCred.c \
-	../Libifl/dec_JobFile.c \
-	../Libifl/dec_JobId.c \
-	../Libifl/dec_Manage.c \
-	../Libifl/dec_DelJobList.c \
-	../Libifl/dec_MsgJob.c \
-	../Libifl/dec_MoveJob.c \
-	../Libifl/dec_UserCred.c \
-	../Libifl/dec_QueueJob.c \
-	../Libifl/dec_Reg.c \
-	../Libifl/dec_ReqExt.c \
-	../Libifl/dec_ReqHdr.c \
-	../Libifl/dec_Resc.c \
-	../Libifl/dec_RunJob.c \
-	../Libifl/dec_Shut.c \
-	../Libifl/dec_Sig.c \
-	../Libifl/dec_Status.c \
-	../Libifl/dec_Track.c \
-	../Libifl/dec_attrl.c \
-	../Libifl/dec_attropl.c \
-	../Libifl/dec_rpyc.c \
-	../Libifl/dec_svrattrl.c \
-	../Libifl/dec_ModifyResv.c \
-	../Libifl/dec_PreemptJobs.c \
-	../Libifl/enc_CopyHookFile.c \
-	../Libifl/enc_CpyFil.c \
-	../Libifl/enc_DelHookFile.c \
-	../Libifl/enc_JobCred.c \
-	../Libifl/enc_JobFile.c \
-	../Libifl/enc_JobId.c \
-	../Libifl/enc_UserCred.c \
-	../Libifl/enc_Manage.c \
-	../Libifl/enc_MsgJob.c \
-	../Libifl/enc_MoveJob.c \
-	../Libifl/enc_QueueJob.c \
-	../Libifl/enc_Reg.c \
-	../Libifl/enc_ReqExt.c \
-	../Libifl/enc_ReqHdr.c \
-	../Libifl/enc_RunJob.c \
-	../Libifl/enc_Shut.c \
-	../Libifl/enc_Sig.c \
-	../Libifl/enc_Status.c \
-	../Libifl/enc_Track.c \
-	../Libifl/enc_attrl.c \
-	../Libifl/enc_attropl.c \
+	../Libifl/DIS_decode.c \
+	../Libifl/DIS_encode.c \
+	../Libifl/dec_reply.c \
 	../Libifl/enc_reply.c \
-	../Libifl/enc_SubmitResv.c \
-	../Libifl/enc_ModifyResv.c \
-	../Libifl/enc_svrattrl.c \
 	../Libifl/entlim_parse.c \
 	../Libifl/get_svrport.c \
 	../Libifl/grunt_parse.c \
@@ -219,8 +171,6 @@ libpbs_la_SOURCES = \
 	../Libifl/int_status.c \
 	../Libifl/int_ucred.c \
 	../Libifl/int_cred.c \
-	../Libifl/enc_Cred.c \
-	../Libifl/dec_Cred.c \
 	../Libifl/int_modify_resv.c \
 	../Libifl/list_link.c \
 	../Libifl/ifl_util.c \
