@@ -545,7 +545,7 @@ PBSD_deljoblist(int c, int function, char **jobids, int numjids, int mails, char
 			struct batch_deljob_status *prev = NULL;
 			struct batch_deljob_status *next = NULL;
 
-			for (iter_list = ret; iter_list != NULL; prev = iter_list, iter_list = next) {
+			for (iter_list = ret; iter_list; prev = iter_list, iter_list = next) {
 				next = iter_list->next;
 				if (iter_list->code == PBSE_UNKJOBID && msvr) {
 					/* Add job to the broadcast list */

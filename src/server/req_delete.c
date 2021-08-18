@@ -137,6 +137,8 @@ resume_deletion(struct work_task *ptask)
 	if (preq->rq_type == PBS_BATCH_DeleteJobList)
 		preq->rq_ind.rq_deletejoblist.rq_resume = TRUE;
 
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+		"Resuming deletetion operation");
 	req_deletejob(preq);
 	return;
 }
@@ -261,7 +263,6 @@ update_deljob_rply(struct batch_request *preq, char *jid, int errcode)
 	struct batch_reply *preply = &preq->rq_reply;
 	void *idx;
 	char **data = NULL;
-	void *idx_ctx = NULL;
 
 	if (preq->rq_type != PBS_BATCH_DeleteJobList)
 		return FALSE;
@@ -281,7 +282,7 @@ update_deljob_rply(struct batch_request *preq, char *jid, int errcode)
 
 	idx = preply->brp_un.brp_deletejoblist.undeleted_job_idx;
 	if (jid) {
-		if (pbs_idx_find(idx, (void **) &jid, (void **) &data, &idx_ctx) == PBS_IDX_RET_OK)
+		if (pbs_idx_find(idx, (void **) &jid, (void **) &data, NULL) == PBS_IDX_RET_OK)
 			pbs_idx_delete(idx, jid);
 		else
 			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
@@ -546,6 +547,7 @@ delete_pending_arrayjobs(struct batch_request *preq)
 		if (jid && (is_job_array(jid) == IS_ARRAY_ArrayJob))
 			pbs_idx_delete(idx, jid);
 	}
+	pbs_idx_free_ctx(idx_ctx);
 
 	return !any_pending_jobs(preply);
 }
@@ -617,6 +619,9 @@ req_deletejob(struct batch_request *preq)
 		}
 
 		if ((time(NULL) - begin_time) > QDEL_BREAKER_SECS) {
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				   "req_delete has been running for %s seconds, Pausing for other requests",
+				   QDEL_BREAKER_SECS);
 			set_task(WORK_Interleave, 0, resume_deletion, preq);
 			return;
 		}
@@ -728,6 +733,9 @@ req_deletejob(struct batch_request *preq)
 
 				if ((time(NULL) - begin_time) > QDEL_BREAKER_SECS) {
 					preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i;
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+						"req_delete has been running for %s seconds, Pausing for other requests",
+						QDEL_BREAKER_SECS);
 					set_task(WORK_Interleave, 0, resume_deletion, preq);
 					return;
 				}
@@ -932,6 +940,8 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		while (pwtold) {
 			if ((pwtold->wt_type == WORK_Deferred_Child) ||
 			    (pwtold->wt_type == WORK_Deferred_Cmp)) {
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid,
+					   "Job in Transit state, deletion will resume once we hear back!");
 				pwtnew = set_task(pwtold->wt_type,
 						  pwtold->wt_event, resume_deletion,
 						  preq);
@@ -1550,6 +1560,7 @@ post_delete_mom1(struct work_task *pwt)
 
 	preq_sig = pwt->wt_parm1;
 	rc = preq_sig->rq_reply.brp_code;
+	/* Look for PBSE_ error code in wt_aux if brp code reports some other error */
 	if (rc && pwt->wt_aux && (rc < PBSE_) && (pwt->wt_aux > PBSE_))
 		rc = pwt->wt_aux;
 	auxcode = preq_sig->rq_reply.brp_auxcode;
