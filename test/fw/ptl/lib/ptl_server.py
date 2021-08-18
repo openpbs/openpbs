@@ -1302,12 +1302,9 @@ class Server(Wrappers):
                 pbsnodes = os.path.join(
                     self.client_conf['PBS_EXEC'], 'bin', 'pbsnodes')
                 ret = self.du.run_cmd(
-                    self.hostname, [pbsnodes, '-v', host],
+                    self.hostname, [pbsnodes, '-v', host, '-F', 'json'],
                     logerr=False, level=logging.DEBUG, sudo=True)
-                for i in ret['out']:
-                    if "Mom" in i:
-                        host = (i.split('='))[1]
-                        break
+                host = ((ret['out'][6]).split(':'))[1].split('"')[1]
                 for chunk in chunks:
                     self.du.run_cmd(host, ['kill', '-9'] + chunk,
                                     runas=ROOT_USER, logerr=False)
