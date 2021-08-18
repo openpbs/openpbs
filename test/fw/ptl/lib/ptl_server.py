@@ -1304,7 +1304,8 @@ class Server(Wrappers):
                 ret = self.du.run_cmd(
                     self.hostname, [pbsnodes, '-v', host, '-F', 'json'],
                     logerr=False, level=logging.DEBUG, sudo=True)
-                host = ((ret['out'][6]).split(':'))[1].split('"')[1]
+                pbsnodes_json = json.loads('\n'.join(ret['out']))
+                host = pbsnodes_json['nodes'][host]['Mom']
                 for chunk in chunks:
                     self.du.run_cmd(host, ['kill', '-9'] + chunk,
                                     runas=ROOT_USER, logerr=False)
