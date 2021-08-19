@@ -621,7 +621,7 @@ err:
 struct batch_deljob_status *
 __pbs_deljoblist(int c, char **jobids, int numjids, char *extend)
 {
-	if ((jobids == NULL) || (**jobids == '\0'))
+	if ((jobids == NULL) || (**jobids == '\0') || !numjids)
 		return NULL;
 
 	return PBSD_deljoblist(c, PBS_BATCH_DeleteJobList, jobids, numjids, extend);
