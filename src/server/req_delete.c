@@ -80,7 +80,6 @@
 #include "svrfunc.h"
 
 #define QDEL_BREAKER_SECS 5
-#define QDEL_MAIL_SUPPRESS 1000
 
 /* Global Data Items: */
 
@@ -434,36 +433,6 @@ decr_single_subjob_usage(job *parent)
 }
 
 /**
- * @brief Set the mail limits
- * 
- * @param[in] preq - request structure 
- */
-static void
-set_mail_count(struct batch_request *preq)
-{
-	int *mails = &preq->rq_ind.rq_deletejoblist.mails;
-	char *qdel_args;
-	char *keystr, *valuestr;
-
-	if (*mails != -1)
-		return;
-
-	/* retrieve default: suppress_email from server: default_qdel_arguments */
-	if (is_sattr_set(SVR_ATR_dfltqdelargs)) {
-		qdel_args = get_sattr_str(SVR_ATR_dfltqdelargs);
-		if (parse_equal_string(qdel_args, &keystr, &valuestr)) {
-			if (strcmp(keystr, "-Wsuppress_email") == 0)
-				*mails = atol(valuestr);
-			else
-				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR,
-					   __func__, "qdel: unsupported %s \n", qdel_args);
-		}
-	}
-	if (*mails == -1)
-		*mails = QDEL_MAIL_SUPPRESS;
-}
-
-/**
  * @brief Initialize routine for deljoblist
  * reorder the deljob list so that queued jobs will appear first.
  * do not reorder if already sorted
@@ -491,8 +460,6 @@ init_deljoblist(struct batch_request *preq)
 
 	if (preq->rq_ind.rq_deletejoblist.rq_resume)
 		return;
-
-	set_mail_count(preq);
 
 	if (!jlist || !jlist[0])
 		return;
@@ -607,9 +574,8 @@ req_deletejob(struct batch_request *preq)
 	/* with nomail , nomail_force , nomail_deletehist or nomailforce_deletehist options are set
 	 *  no mail is sent
 	 */
-	if ((preq->rq_extend && strstr(preq->rq_extend, NOMAIL)) ||
-	    (start_jobid >= preq->rq_ind.rq_deletejoblist.mails))
-		qdel_mail = 0;
+	if (preq->rq_extend && strstr(preq->rq_extend, NOMAIL))
+		qdel_mail = false;
 
 	for (j = start_jobid; j < count; j++) {
 

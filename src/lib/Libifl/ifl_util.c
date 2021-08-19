@@ -194,12 +194,11 @@ get_obj_location_hint(char *obj_id, int obj_type)
  *
  * @param[in] sock - socket descriptor for the connection.
  * @param[in] jobs - list of job ids.
- * @param[in] mails - num of mails to be sent
  *
  * @return - error code while writing data to the socket.
  */
 int
-encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs, int mails)
+encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs)
 {
 	int	i = 0;
 	int	rc = 0;
@@ -216,9 +215,6 @@ encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs, int mails)
 	for (i = 0; i < count; i++)
 		if ((rc = diswst(sock, jobs_list[i])) != 0)
 			return rc;
-
-	if (((rc = diswui(sock, mails)) != 0))
-		return rc;
 
 	return rc;
 }
