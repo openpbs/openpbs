@@ -111,13 +111,13 @@ process_deljobstat(char *clusterid, struct batch_deljob_status **list, svr_jobid
 			}
 		}
 		if (p_delstatus->code != PBSE_HISTJOBDELETED) {
-			*nfailed += 1;
 			errtxt = pbse_to_txt(p_delstatus->code);
 			if ((errtxt != NULL) && (p_delstatus->code != PBSE_HISTJOBDELETED)) {
 				fprintf(stderr, "%s: %s %s\n", "qdel", errtxt, p_delstatus->name);
 				any_failed = p_delstatus->code;
 			}
 		}
+		*nfailed += 1;
 	}
 
 	return any_failed;

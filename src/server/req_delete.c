@@ -218,26 +218,25 @@ acct_del_write(char *jid, job *pjob, struct batch_request *preq, int nomail)
 }
 
 /**
- * @brief check if there is any pending jobs
- * remaing to be deleted
+ * @brief check whether all jobs got deleted
  * 
  * @param[in] preply - reply struct
  * @return bool
- * @retval true - more jobs pending to be deleted
- * @retval false - no more jobs pending
+ * @retval true - All jobs got deleted.
+ * @retval false - more jobs pending to be deleted
  */
 static bool
-any_pending_jobs(struct batch_reply *preply)
+all_jobs_deleted(struct batch_reply *preply)
 {
 	void *idx = preply->brp_un.brp_deletejoblist.undeleted_job_idx;
 
 	if (pbs_idx_is_empty(idx)) {
 		pbs_idx_destroy(idx);
 		preply->brp_un.brp_deletejoblist.undeleted_job_idx = NULL;
-		return FALSE;
+		return TRUE;
 	}
 
-	return TRUE;
+	return FALSE;
 }
 
 /**
@@ -291,7 +290,7 @@ update_deljob_rply(struct batch_request *preq, char *jid, int errcode)
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 			  __func__, "update_deljob_rply invoked with empty job id");
 
-	return !any_pending_jobs(preply);
+	return all_jobs_deleted(preply);
 }
 
 /**
@@ -437,7 +436,7 @@ decr_single_subjob_usage(job *parent)
  * reorder the deljob list so that queued jobs will appear first.
  * do not reorder if already sorted
  * 
- * deljob can wait if jobs are in prerun or transit state.
+ * deljob can wait if jobs are in transit state.
  * This triggers other jobs in deljob list to get triggerred to be run.
  * delete will take longer to delete these running jobs as it has to contact the mom
  * meanwhile other jobs in the list will start to run
@@ -516,7 +515,7 @@ delete_pending_arrayjobs(struct batch_request *preq)
 	}
 	pbs_idx_free_ctx(idx_ctx);
 
-	return !any_pending_jobs(preply);
+	return all_jobs_deleted(preply);
 }
 
 /**
