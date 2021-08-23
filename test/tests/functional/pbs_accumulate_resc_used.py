@@ -1261,7 +1261,8 @@ time.sleep(15)
         # Submit a job
         a = {'Resource_List.select': '3:ncpus=1',
              'Resource_List.walltime': 10,
-             'Resource_List.place': "scatter"}
+             'Resource_List.place': "scatter",
+             'Keep_Files': 'oe'}
         j = Job(TEST_USER)
         j.set_attributes(a)
         j.set_sleep_time("5")

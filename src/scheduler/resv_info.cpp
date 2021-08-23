@@ -503,9 +503,9 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 
 	while (attrp != NULL) {
 		if (!strcmp(attrp->name, ATTR_resv_owner))
-			advresv->user = string_dup(attrp->value);
+			advresv->user = attrp->value;
 		else if (!strcmp(attrp->name, ATTR_egroup))
-			advresv->group = string_dup(attrp->value);
+			advresv->group = attrp->value;
 		else if (!strcmp(attrp->name, ATTR_queue))
 			advresv->resv->queuename = string_dup(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_SchedSelect)) {
