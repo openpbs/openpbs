@@ -49,6 +49,7 @@ extern "C" {
 #include "portability.h"
 #include "libutil.h"
 #include "auth.h"
+#include "stdbool.h"
 
 /*
  *
@@ -403,14 +404,6 @@ enum accrue_types {
 #define IN_LOOPBACKNET	127
 #endif
 #define LOCALHOST_SHORTNAME "localhost"
-
-#if HAVE__BOOL
-#include "stdbool.h"
-#else
-#ifndef __cplusplus
-typedef enum { false, true } bool;
-#endif
-#endif
 
 #ifdef _USRDLL		/* This is only for building Windows DLLs
 			 * and not their static libraries

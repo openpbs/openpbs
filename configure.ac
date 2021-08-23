@@ -199,6 +199,7 @@ AC_CHECK_HEADERS([ \
 	X11/X.h \
 	X11/Xlib.h \
 	zlib.h \
+	stdbool.h \
 	],, AC_MSG_ERROR([Required header file is missing.]) \
 )
 

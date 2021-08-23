@@ -1564,16 +1564,14 @@ resend:
 				return; /* will be back when replies */
 			goto resend;
 		} else if (rc == PBSE_UNKJOBID) {
-			/* if job was in prerun state, cannot delete it, even if mom does not know
-			 * about this job. Going ahead and deleting could result in a
-			 * server crash, when post_sendmom completes.
-			 */
+
 			if (check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) {
-				if (pjob->ji_pmt_preq != NULL)
-					reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
-				if (update_deljob_rply(preq_clt, pjob->ji_qs.ji_jobid, rc))
-					req_reject(rc, 0, preq_clt);
-				return;
+				/* This means the job has trigerred to run again,
+				 try deleting again! */
+				rc = issue_signal(pjob, sigtj, post_delete_mom1, preq_clt);
+				if (rc == 0)
+					return; /* will be back when replies */
+				goto resend;
 			}
 
 			/* MOM claims no knowledge, so just purge it */
@@ -1581,7 +1579,7 @@ resend:
 			/* removed the resources assigned to job */
 			free_nodes(pjob);
 			set_resc_assigned(pjob, 0, DECR);
-			if (update_deljob_rply(preq_clt, NULL, PBSE_NONE))
+			if (update_deljob_rply(preq_clt, pjob->ji_qs.ji_jobid, PBSE_NONE))
 				reply_ack(preq_clt);
 			svr_saveorpurge_finjobhist(pjob);
 		} else {

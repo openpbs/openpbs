@@ -62,14 +62,7 @@ extern "C" {
 #endif
 #include "pbs_sched.h"
 #include "server_limits.h"
-
-#if HAVE__BOOL
 #include "stdbool.h"
-#else
-#ifndef __cplusplus
-typedef enum { false, true } bool;
-#endif
-#endif
 
 #define SYNC_SCHED_HINT_NULL	0
 #define SYNC_SCHED_HINT_FIRST	1
