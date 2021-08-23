@@ -160,6 +160,7 @@ AC_CHECK_HEADERS([ \
 	pwd.h \
 	regex.h \
 	signal.h \
+	stdbool.h \
 	stddef.h \
 	stdint.h \
 	stdio.h \
@@ -199,7 +200,6 @@ AC_CHECK_HEADERS([ \
 	X11/X.h \
 	X11/Xlib.h \
 	zlib.h \
-	stdbool.h \
 	],, AC_MSG_ERROR([Required header file is missing.]) \
 )
 

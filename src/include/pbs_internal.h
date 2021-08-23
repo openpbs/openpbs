@@ -45,11 +45,11 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include "pbs_ifl.h"
 #include "portability.h"
 #include "libutil.h"
 #include "auth.h"
-#include "stdbool.h"
 
 /*
  *

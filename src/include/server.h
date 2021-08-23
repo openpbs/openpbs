@@ -57,12 +57,12 @@ extern "C" {
  * control the operation of the server itself.  This includes
  * the server attributes and resource (limits).
  */
+#include <stdbool.h>
 #ifndef	_GRUNT_H
 #include "grunt.h"
 #endif
 #include "pbs_sched.h"
 #include "server_limits.h"
-#include "stdbool.h"
 
 #define SYNC_SCHED_HINT_NULL	0
 #define SYNC_SCHED_HINT_FIRST	1
