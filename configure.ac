@@ -160,6 +160,7 @@ AC_CHECK_HEADERS([ \
 	pwd.h \
 	regex.h \
 	signal.h \
+	stdbool.h \
 	stddef.h \
 	stdint.h \
 	stdio.h \

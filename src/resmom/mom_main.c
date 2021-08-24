@@ -6715,6 +6715,7 @@ net_restore_handler(void *data)
 {
 	mom_net_up = 1;
 	mom_net_up_time = time(0);
+	time_delta_hellosvr(MOM_DELTA_RESET);
 
 	log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ALERT, __func__, "net restore handler called");
 }

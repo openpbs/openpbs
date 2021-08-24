@@ -43,6 +43,8 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
+
 #define PBS_IDX_DUPS_OK     0x01 /* duplicate key allowed in index */
 #define PBS_IDX_ICASE_CMP   0x02 /* set case-insensitive compare */
 
@@ -152,6 +154,17 @@ extern int pbs_idx_find(void *idx, void **key, void **data, void **ctx);
  *
  */
 extern void pbs_idx_free_ctx(void *ctx);
+
+/**
+ * @brief check whether idx is empty and has no key associated with it
+ * 
+ * @param[in] idx - pointer to avl index
+ * 
+ * @return int
+ * @retval 1 - idx is empty
+ * @retval 0 - idx is not empty
+ */
+extern bool pbs_idx_is_empty(void *idx);
 
 #ifdef __cplusplus
 }

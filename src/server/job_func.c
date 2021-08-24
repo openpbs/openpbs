@@ -451,7 +451,6 @@ free_job_work_tasks(job *pj)
 
 		delete_task(pwt);
 	}
-
 }
 #endif
 

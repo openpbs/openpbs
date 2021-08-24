@@ -65,24 +65,29 @@ extern void free_svrjobidlist(svr_jobid_list_t *list, int shallow);
 extern int append_jobid(svr_jobid_list_t *svr, char *jobid);
 extern int add_jid_to_list_by_name(char *job_id, char *svrname, svr_jobid_list_t **svr_jobid_list_hd);
 
+static int num_deleted = 0;
+
 /**
  * @brief	Process the deljob error response from server
  *
  * @param[in]	clusterid - cluster name (PBS_SERVER)
  * @param[in]	list - list of deljob response objects
  * @param[out]	rmtlist - return pointer to list of jobs to try deleting on remote servers
+ * @param[out]	nfailed - number of failed jobs
  *
  * @return int
  * @retval error code from server
  */
 static int
-process_deljobstat(char *clusterid, struct batch_deljob_status **list, svr_jobid_list_t **rmtlist)
+process_deljobstat(char *clusterid, struct batch_deljob_status **list, svr_jobid_list_t **rmtlist, int *nfailed)
 {
 	struct batch_deljob_status *p_delstatus;
 	struct batch_deljob_status *next = NULL;
 	struct batch_deljob_status *prev = NULL;
 	char *errtxt = NULL;
 	int any_failed = 0;
+
+	*nfailed = 0;
 
 	for (p_delstatus = *list; p_delstatus != NULL; prev = p_delstatus, p_delstatus = next) {
 		next = p_delstatus->next;
@@ -112,6 +117,7 @@ process_deljobstat(char *clusterid, struct batch_deljob_status **list, svr_jobid
 				any_failed = p_delstatus->code;
 			}
 		}
+		*nfailed += 1;
 	}
 
 	return any_failed;
@@ -183,6 +189,7 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 	char warg1[MAX_TIME_DELAY_LEN + 7];
 	svr_jobid_list_t *rmtsvr_jobid_list = NULL;
 	svr_jobid_list_t *iter_remote = NULL;
+	int nfailed = 0;
 
 	strcpy(warg1, NOMAIL);
 
@@ -205,12 +212,16 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 		mails = get_mail_suppress_count(connect);
 	if (mails == 0)
 		mails = QDEL_MAIL_SUPPRESS;
+	mails = mails - num_deleted;
+	if (mails < 0)
+		mails = 0;
 
 	/* First, delete mail limit number of jobs */
 	numofjobs = (mails <= numids) ? mails : numids;
 	p_delstatus = pbs_deljoblist(connect, jobids, numofjobs, warg);
-	any_failed = process_deljobstat(clusterid, &p_delstatus, &rmtsvr_jobid_list);
+	any_failed = process_deljobstat(clusterid, &p_delstatus, &rmtsvr_jobid_list, &nfailed);
 	pbs_delstatfree(p_delstatus);
+	num_deleted += (numofjobs - nfailed);
 
 	if (numofjobs < numids) {	/* More jobs to delete */
 		int any_failed_local = 0;
@@ -228,8 +239,9 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 		strcat(warg1, warg);
 		pbs_strncpy(warg, warg1, wargsz);
 		p_delstatus = pbs_deljoblist(connect, &jobids[numofjobs], (numids - numofjobs), warg);
-		any_failed_local = process_deljobstat(clusterid, &p_delstatus, &rmtsvr_jobid_list);
+		any_failed_local = process_deljobstat(clusterid, &p_delstatus, &rmtsvr_jobid_list, &nfailed);
 		pbs_delstatfree(p_delstatus);
+		num_deleted += ((numids - numofjobs) - nfailed);
 		if (any_failed_local)
 			any_failed = any_failed_local;
 	}
@@ -242,8 +254,9 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 		fd = pbs_connect(iter_remote->svrname);
 		if (fd > 0) {
 			p_delstatus = pbs_deljoblist(fd, iter_remote->jobids, iter_remote->total_jobs, warg);
-			any_failed_local = process_deljobstat(iter_remote->svrname, &p_delstatus, NULL);
+			any_failed_local = process_deljobstat(iter_remote->svrname, &p_delstatus, NULL, &nfailed);
 			pbs_delstatfree(p_delstatus);
+			num_deleted += (iter_remote->total_jobs - nfailed);
 			if (any_failed_local)
 				any_failed = any_failed_local;
 			pbs_disconnect(fd);

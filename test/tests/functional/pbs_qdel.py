@@ -102,3 +102,30 @@ class TestQdel(TestFunctional):
         m = "Resource busy on job"
         self.assertIn(m, e.exception.msg[0])
         self.server.delete(jid, extend='deletehist')
+
+    def test_qdel_arrayjob_in_tranit(self):
+        """
+        Test the array job deletion
+        soon after they have been signalled for running.
+        """
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'false'})
+        a = {'resources_available.ncpus': 6}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-3', 'Resource_List.select': 'ncpus=1'})
+        job_set = []
+        for i in range(4):
+            job_set.append(self.server.submit(j))
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'true'})
+        self.server.delete(job_set)
+        # Make sure that the counters are not going negative
+        msg = "job*has already been deleted from delete job list"
+        self.scheduler.log_match(msg, existence=False,
+                                 max_attempts=3, regexp=True)
+        # Make sure the last two jobs doesn't started running
+        # while the deletion is in process
+        for job in job_set[2:]:
+            jobid, server = job.split('.')
+            arrjob = jobid[-2:] + '[1]' + server
+            msg = arrjob + ";Job Run at request of Scheduler"
+            self.scheduler.log_match(msg, existence=False, max_attempts=3)

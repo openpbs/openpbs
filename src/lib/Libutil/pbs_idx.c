@@ -291,3 +291,24 @@ pbs_idx_free_ctx(void *ctx)
 		ctx = NULL;
 	}
 }
+
+/**
+ * @brief check whether idx is empty and has no key associated with it
+ * 
+ * @param[in] idx - pointer to avl index
+ * 
+ * @return bool
+ * @retval 1 - idx is empty
+ * @retval 0 - idx is not empty
+ */
+bool
+pbs_idx_is_empty(void *idx)
+{
+	void *idx_ctx = NULL;
+	char **data = NULL;
+
+	if (pbs_idx_find(idx, NULL, (void **) &data, &idx_ctx) == PBS_IDX_RET_OK)
+		return 0;
+
+	return 1;
+}
