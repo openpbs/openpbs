@@ -592,7 +592,7 @@ req_deletejob(struct batch_request *preq)
 
 		if ((time(NULL) - begin_time) > QDEL_BREAKER_SECS) {
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				   "req_delete has been running for %s seconds, Pausing for other requests",
+				   "req_delete has been running for %d seconds, Pausing for other requests",
 				   QDEL_BREAKER_SECS);
 			set_task(WORK_Interleave, 0, resume_deletion, preq);
 			return;
@@ -706,7 +706,7 @@ req_deletejob(struct batch_request *preq)
 				if ((time(NULL) - begin_time) > QDEL_BREAKER_SECS) {
 					preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i;
 					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-						"req_delete has been running for %s seconds, Pausing for other requests",
+						"req_delete has been running for %d seconds, Pausing for other requests",
 						QDEL_BREAKER_SECS);
 					set_task(WORK_Interleave, 0, resume_deletion, preq);
 					return;
