@@ -110,8 +110,8 @@ extern 	int		str_to_vnode_state(char *vnstate);
 extern	enum vnode_sharing str_to_vnode_sharing(char *vn_str);
 extern	int		str_to_vnode_ntype(char *vntype);
 extern u_Long		pps_size_to_kbytes(PyObject *l);
-extern PyObject * svrattrl_list_to_pyobject(pbs_list_head *);
-extern PyObject * svrattrl_to_server_attribute(svrattrl *);
+extern PyObject * svrattrl_list_to_pyobject(int rq_cmd, pbs_list_head *);
+extern PyObject * svrattrl_to_server_attribute(int rq_cmd, svrattrl *);
 
 
 /* A dictionary for quick access to the pbs.v1 EMBEDDED_EXTENSION_TYPES */
@@ -5879,7 +5879,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		py_attr = svrattrl_list_to_pyobject(&rqj->rq_manager.rq_attr);
+		py_attr = svrattrl_list_to_pyobject(rqj->rq_manager.rq_cmd, &rqj->rq_manager.rq_attr);
 		if (!py_attr){
 			log_err(PBSE_INTERNAL, __func__, "could not build the list of server attributes");
 			goto event_set_exit;
@@ -12755,7 +12755,7 @@ release_nodes_exit:
  * 		the returned PyObject must be cleared(Py_CLEAR) as it's a new
  * 		reference.
  */
-PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
+PyObject *svrattrl_list_to_pyobject(int rq_cmd, pbs_list_head *phead)
 {
 	svrattrl *plist = NULL;
 	PyObject* py_list = PyList_New(0);
@@ -12768,13 +12768,13 @@ PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
 
 	for (plist = (svrattrl *)GET_NEXT(*phead); plist != NULL;
 		plist = (svrattrl *)GET_NEXT(plist->al_link)) {
-		PyObject *py_server_attribute = svrattrl_to_server_attribute(plist);
+		PyObject *py_server_attribute = svrattrl_to_server_attribute(rq_cmd, plist);
 		if (py_server_attribute) {
 			svrattrl *slist = NULL;
 			PyObject* py_slist = PyObject_GetAttrString(py_server_attribute, "sisters");
 			if (py_slist) {
 				for(slist = plist->al_sister; slist != NULL; slist = slist->al_sister) {
-					PyObject *py_server_attribute_sister = svrattrl_to_server_attribute(slist);
+					PyObject *py_server_attribute_sister = svrattrl_to_server_attribute(rq_cmd, slist);
 					if (py_server_attribute_sister) {
 						PyList_Append(py_slist, py_server_attribute_sister);
 						Py_CLEAR(py_server_attribute_sister);
@@ -12810,7 +12810,7 @@ PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
  * 		the returned PyObject must be cleared(Py_CLEAR) as it's a new
  * 		reference.
  */
-PyObject *svrattrl_to_server_attribute(svrattrl *attribute)
+PyObject *svrattrl_to_server_attribute(int rq_cmd, svrattrl *attribute)
 {
 	PyObject *py_server_attribute = NULL;
 	PyObject *py_server_attribute_class = NULL;
@@ -12830,7 +12830,7 @@ PyObject *svrattrl_to_server_attribute(svrattrl *attribute)
 		attribute->al_name,
 		attribute->al_resc,
 		attribute->al_value,
-		attribute->al_op,
+		(rq_cmd != MGR_CMD_UNSET ? attribute->al_op : UNSET),
 		attribute->al_flags
 		); /* NEW ref */
 
