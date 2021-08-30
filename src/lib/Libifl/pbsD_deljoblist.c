@@ -56,7 +56,6 @@
 #include "tpp.h"
 #include <stdio.h>
 
-#define NUM_JOBS_IN_A_BATCH 10000
 #define DFLT_NUMIDS 1000
 
 /**
@@ -537,45 +536,40 @@ PBSD_deljoblist(int c, int function, char **jobids, int numjids, char *extend)
 	for (svr_itr = svr_jobid_list_hd; svr_itr != NULL; svr_itr = svr_itr->next) {
 		if (pbs_client_thread_lock_connection(svr_itr->svr_fd) != 0)
 			goto err;
-		for (i = 0; i < svr_itr->total_jobs; i = i + numjids) {
 
-			numjids = NUM_JOBS_IN_A_BATCH;
-			numjids = ((i + numjids) <= svr_itr->total_jobs) ? numjids : (svr_itr->total_jobs - i);
+		ret = deljob_to_server(svr_itr->svr_fd, function, svr_itr->jobids, svr_itr->total_jobs, extend);
 
-			ret = deljob_to_server(svr_itr->svr_fd, function, &(svr_itr->jobids[i]), numjids, extend);
+		if (ret != NULL) {
+			struct batch_deljob_status *iter_list;
+			struct batch_deljob_status *prev = NULL;
+			struct batch_deljob_status *next = NULL;
 
-			if (ret != NULL) {
-				struct batch_deljob_status *iter_list;
-				struct batch_deljob_status *prev = NULL;
-				struct batch_deljob_status *next = NULL;
-
-				for (iter_list = ret; iter_list != NULL; prev = iter_list, iter_list = next) {
-					next = iter_list->next;
-					if (iter_list->code == PBSE_UNKJOBID && msvr) {
-						/* Add job to the broadcast list */
-						if (add_jid_to_bcastlist(iter_list->name, &bcastjids, &nbcastids, &bcastjidssize) != 0) {
-							pbs_client_thread_unlock_connection(svr_itr->svr_fd);
-							goto err;
-						}
-
-						/* Remove the jid from return list, will add it after broadcast if needed */
-						if (prev != NULL)
-							prev->next = next;
-						else
-							ret = next;
-
-						iter_list->next = NULL;
-						pbs_delstatfree(iter_list);
-						iter_list = prev;
+			for (iter_list = ret; iter_list; prev = iter_list, iter_list = next) {
+				next = iter_list->next;
+				if (iter_list->code == PBSE_UNKJOBID && msvr) {
+					/* Add job to the broadcast list */
+					if (add_jid_to_bcastlist(iter_list->name, &bcastjids, &nbcastids, &bcastjidssize) != 0) {
+						pbs_client_thread_unlock_connection(svr_itr->svr_fd);
+						goto err;
 					}
-				}
-				if (ret != NULL) {
-					for (last = ret; last->next != NULL; last = last->next)
-						;
 
-					last->next = retlist;
-					retlist = ret;
+					/* Remove the jid from return list, will add it after broadcast if needed */
+					if (prev != NULL)
+						prev->next = next;
+					else
+						ret = next;
+
+					iter_list->next = NULL;
+					pbs_delstatfree(iter_list);
+					iter_list = prev;
 				}
+			}
+			if (ret != NULL) {
+				for (last = ret; last->next != NULL; last = last->next)
+					;
+
+				last->next = retlist;
+				retlist = ret;
 			}
 		}
 
@@ -630,7 +624,7 @@ err:
 struct batch_deljob_status *
 __pbs_deljoblist(int c, char **jobids, int numjids, char *extend)
 {
-	if ((jobids == NULL) || (**jobids == '\0'))
+	if ((jobids == NULL) || (**jobids == '\0') || !numjids)
 		return NULL;
 
 	return PBSD_deljoblist(c, PBS_BATCH_DeleteJobList, jobids, numjids, extend);

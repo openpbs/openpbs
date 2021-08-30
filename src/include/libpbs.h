@@ -219,10 +219,8 @@ struct batch_reply
 		pbs_list_head brp_status; /* status (svr) replies */
 		struct batch_status *brp_statc; /* status (cmd) replies) */
 		struct {
-			int tot_jobs;
-			int tot_rpys;
-			int tot_arr_jobs;
-			struct batch_deljob_status *brp_delstatc;
+			void *undeleted_job_idx; /* tracking undeleted jobs */
+			struct batch_deljob_status *brp_delstatc; /* list of failed jobs with errcode */
 		} brp_deletejoblist;
 		struct {
 			int brp_txtlen;
@@ -409,7 +407,6 @@ int get_svr_inst_fd(int vfd, char *svr_inst_id);
 int random_srv_conn(int fd, svr_conn_t **svr_conns);
 int get_obj_location_hint(char *, int obj_type);
 char *PBS_get_server(char *, char *, uint *);
-int encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs);
 int get_server_fd_from_jid(int c, char *jobid);
 int multi_svr_op(int fd);
 int get_job_svr_inst_id(int c, char *job_id);

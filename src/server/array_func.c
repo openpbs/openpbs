@@ -148,10 +148,10 @@ static enum job_atr attrs_to_copy[] = {
  * @param[in]	id - Job Id.
  *
  * @return      Job Type
- * @retval	 0  - A regular job
- * @retval	-1  - A ArrayJob
- * @retval	 2  - A single subjob
- * @retval	-3  - A range of subjobs
+ * @retval	IS_ARRAY_NO  - A regular job
+ * @retval	IS_ARRAY_ArrayJob  - A ArrayJob
+ * @retval	IS_ARRAY_Single  - A single subjob
+ * @retval	IS_ARRAY_Range  - A range of subjobs
  */
 int
 is_job_array(char *id)
@@ -869,6 +869,7 @@ dup_br_for_subjob(struct batch_request *opreq, job *pjob, int (*func)(struct bat
 			npreq->rq_ind.rq_deletejoblist = opreq->rq_ind.rq_deletejoblist;
 			npreq->rq_ind.rq_deletejoblist.rq_count = 1;
 			npreq->rq_ind.rq_deletejoblist.rq_jobslist = break_comma_list(pjob->ji_qs.ji_jobid);
+			npreq->rq_ind.rq_deletejoblist.jobid_to_resume = 0;
 			break;
 		case PBS_BATCH_DeleteJob:
 			npreq->rq_ind.rq_delete = opreq->rq_ind.rq_delete;

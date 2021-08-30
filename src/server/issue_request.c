@@ -820,7 +820,7 @@ process_DreplyTPP(int handle)
 			if (ptask->wt_type == WORK_Deferred_Reply) {
 				request = ptask->wt_parm1;
 				if (request) {
-					request->rq_reply.brp_code = rc;
+					request->rq_reply.brp_code = PBSE_NORELYMOM;
 					request->rq_reply.brp_choice = BATCH_REPLY_CHOICE_NULL;
 				}
 			}
