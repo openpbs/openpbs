@@ -320,6 +320,7 @@ extern void free_null  (attribute *attr);
 extern void free_none  (attribute *attr);
 extern svrattrl *attrlist_alloc(int szname, int szresc, int szval);
 extern svrattrl *attrlist_create(char *aname, char *rname, int szval);
+svrattrl *dup_svrattrl(svrattrl *osvrat);
 extern void free_svrattrl(svrattrl *pal);
 extern void free_attrlist(pbs_list_head *attrhead);
 extern void free_svrcache(attribute *attr);

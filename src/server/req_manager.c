@@ -1342,14 +1342,14 @@ mgr_queue_delete(struct batch_request *preq)
 void
 mgr_server_set(struct batch_request *preq, conn_t *conn)
 {
-	int	  bad_attr = 0;
-	svrattrl *tmp;
-	svrattrl *plist;
-	svrattrl *ulist;
+	int bad_attr = 0;
+	svrattrl *plist, *psvrat;
+	pbs_list_head setlist;
 	pbs_list_head unsetlist;
-	int	  rc;
+	int rc;
 	int has_log_events = 0;
 
+	CLEAR_HEAD(setlist);
 	CLEAR_HEAD(unsetlist);
 
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
@@ -1362,51 +1362,60 @@ mgr_server_set(struct batch_request *preq, conn_t *conn)
 				reply_badattr(PBSE_ATTRRO, bad_attr, plist, preq);
 				return;
 			}
-		} else if ((plist->al_atopl.value == NULL) || (plist->al_atopl.value[0] == '\0')) {
-			/*
-			 * We do not overwrite/update the entire record in the database. Therefore, to
-			 * unset attributes, we will need to find out the ones with a 0 or NULL value set.
-			 * We create a separate list for removal from the list of attributes provided, and
-			 * pass it to mgr_unset_attr, below
-			 */
-			tmp = (struct svrattrl *)GET_NEXT(plist->al_link);
-			delete_link(&plist->al_link);
-			append_link(&unsetlist, &plist->al_link, plist);
-			plist = tmp;
-			continue;
 		}
+		/*
+		 * We do not overwrite/update the entire record in the database. Therefore, to
+		 * unset attributes, we will need to find out the ones with a 0 or NULL value set.
+		 * We create a separate list for removal from the list of attributes provided, and
+		 * pass it to mgr_unset_attr, below
+		 */
+		psvrat = dup_svrattrl(plist);
+		if (psvrat == NULL) {
+			req_reject(PBSE_SYSTEM, 0, preq);
+			free_attrlist(&setlist);
+			free_attrlist(&unsetlist);
+			return;
+		}
+		if (psvrat->al_atopl.value == NULL || psvrat->al_atopl.value[0] == '\0')
+			append_link(&unsetlist, &psvrat->al_link, psvrat);
+		else
+			append_link(&setlist, &psvrat->al_link, psvrat);
+
 		plist = (struct svrattrl *)GET_NEXT(plist->al_link);
 	}
 
 	/* if the unsetist has attributes, call server_unset to remove them separately */
-	ulist = (svrattrl *)GET_NEXT(unsetlist);
-	if (ulist) {
-		rc = mgr_unset_attr(server.sv_attr, svr_attr_idx, svr_attr_def, SVR_ATR_LAST, ulist,
+	plist = (svrattrl *)GET_NEXT(unsetlist);
+	if (plist) {
+		rc = mgr_unset_attr(server.sv_attr, svr_attr_idx, svr_attr_def, SVR_ATR_LAST, plist,
 				    preq->rq_perm, &bad_attr, (void *) &server, PARENT_TYPE_SERVER, INDIRECT_RES_CHECK);
 		if (rc != 0) {
-			reply_badattr(rc, bad_attr, ulist, preq);
+			reply_badattr(rc, bad_attr, plist, preq);
+			free_attrlist(&setlist);
 			free_attrlist(&unsetlist);
 			return;
 		}
-		free_attrlist(&unsetlist); /* since this is not part of plist anymore, we must free separately */
 	}
 
-	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
+	plist = (svrattrl *)GET_NEXT(setlist);
 	if (!plist)
 		goto done;
 
 	rc = mgr_set_attr(server.sv_attr, svr_attr_idx, svr_attr_def, SVR_ATR_LAST, plist,
 		preq->rq_perm, &bad_attr, (void *)&server,
 		ATR_ACTION_ALTER);
-	if (rc != 0)
+	if (rc != 0) {
 		reply_badattr(rc, bad_attr, plist, preq);
-	else {
+	} else {
 		svr_save_db(&server);
 done:
+		free_attrlist(&setlist);
+		free_attrlist(&unsetlist);
+
 		if (has_log_events)
 			*log_event_mask = get_sattr_long(SVR_ATR_log_events);
 		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, msg_manager, msg_man_set, preq->rq_user, preq->rq_host);
-		mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_SERVER, msg_daemonname, NULL);
+		mgr_log_attr(msg_man_set, GET_NEXT(preq->rq_ind.rq_manager.rq_attr), PBS_EVENTCLASS_SERVER, msg_daemonname, NULL);
 		reply_ack(preq);
 	}
 }
@@ -1424,9 +1433,9 @@ done:
 void
 mgr_server_unset(struct batch_request *preq, conn_t *conn)
 {
-	int	  bad_attr = 0;
+	int bad_attr = 0;
 	svrattrl *plist;
-	int	  rc;
+	int rc;
 
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 
@@ -1577,7 +1586,7 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_INFO,
 			msg_daemonname, msg_manager, msg_man_uns,
 			preq->rq_user, preq->rq_host);
-		mgr_log_attr(msg_man_uns, plist, PBS_EVENTCLASS_SERVER, msg_daemonname, NULL);
+		mgr_log_attr(msg_man_uns, GET_NEXT(preq->rq_ind.rq_manager.rq_attr), PBS_EVENTCLASS_SERVER, msg_daemonname, NULL);
 		reply_ack(preq);
 	}
 }
@@ -1594,12 +1603,11 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 void
 mgr_sched_set(struct batch_request *preq)
 {
-	int	  bad_attr = 0;
-	svrattrl *tmp;
-	svrattrl *plist;
-	svrattrl *ulist;
+	int bad_attr = 0;
+	svrattrl *plist, *psvrat;
+	pbs_list_head setlist;
 	pbs_list_head unsetlist;
-	int	  rc;
+	int rc;
 	pbs_sched *psched;
 	int only_scheduling = 1;
 
@@ -1609,36 +1617,49 @@ mgr_sched_set(struct batch_request *preq)
 		return;
 	}
 
+	CLEAR_HEAD(setlist);
 	CLEAR_HEAD(unsetlist);
+
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 	while (plist) {
 		if (strcmp(plist->al_atopl.name, ATTR_scheduling)) {
 			only_scheduling = 0;
 		}
-		if (plist->al_atopl.value == NULL || plist->al_atopl.value[0] == '\0') {
-			tmp = (struct svrattrl *)GET_NEXT(plist->al_link);
-			delete_link(&plist->al_link);
-			append_link(&unsetlist, &plist->al_link, plist);
-			plist = tmp;
-			continue;
+		/*
+		 * We do not overwrite/update the entire record in the database. Therefore, to
+		 * unset attributes, we will need to find out the ones with a 0 or NULL value set.
+		 * We create a separate list for removal from the list of attributes provided, and
+		 * pass it to mgr_unset_attr, below
+		 */
+		psvrat = dup_svrattrl(plist);
+		if (psvrat == NULL) {
+			req_reject(PBSE_SYSTEM, 0, preq);
+			free_attrlist(&setlist);
+			free_attrlist(&unsetlist);
+			return;
 		}
+		if (psvrat->al_atopl.value == NULL || psvrat->al_atopl.value[0] == '\0')
+			append_link(&unsetlist, &psvrat->al_link, psvrat);
+		else
+			append_link(&setlist, &psvrat->al_link, psvrat);
+
 		plist = (struct svrattrl *)GET_NEXT(plist->al_link);
 	}
 
 	/* if the unsetlist has attributes, call server_unset to remove them separately */
-	ulist = (svrattrl *)GET_NEXT(unsetlist);
-	if (ulist) {
-		rc = mgr_unset_attr(psched->sch_attr, sched_attr_idx, sched_attr_def, SCHED_ATR_LAST, ulist,
+	plist = (svrattrl *)GET_NEXT(unsetlist);
+	if (plist) {
+		rc = mgr_unset_attr(psched->sch_attr, sched_attr_idx, sched_attr_def, SCHED_ATR_LAST, plist,
 			preq->rq_perm, &bad_attr, (void *)psched, PARENT_TYPE_SCHED, INDIRECT_RES_CHECK);
 		if (rc != 0) {
-			reply_badattr(rc, bad_attr, ulist, preq);
+			reply_badattr(rc, bad_attr, plist, preq);
+			free_attrlist(&setlist);
 			free_attrlist(&unsetlist);
 			return;
 		}
-		free_attrlist(&unsetlist); /* since this is not part of plist anymore, we must free separately */
 	}
 
-	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
+	plist = (svrattrl *)GET_NEXT(setlist);
 	if (!plist)
 		goto done;
 
@@ -1646,6 +1667,8 @@ mgr_sched_set(struct batch_request *preq)
 		SCHED_ATR_LAST, plist, preq->rq_perm, &bad_attr, (void *)psched, ATR_ACTION_ALTER);
 	if (rc != 0) {
 		reply_badattr(rc, bad_attr, plist, preq);
+		free_attrlist(&setlist);
+		free_attrlist(&unsetlist);
 		return;
 	}
 	if (only_scheduling != 1)
@@ -1654,9 +1677,11 @@ mgr_sched_set(struct batch_request *preq)
 	sched_save_db(psched);
 
 done:
+	free_attrlist(&setlist);
+	free_attrlist(&unsetlist);
 	sprintf(log_buffer, msg_manager, msg_man_set, preq->rq_user, preq->rq_host);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, log_buffer);
-	mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_SCHED, msg_daemonname, NULL);
+	mgr_log_attr(msg_man_set, GET_NEXT(preq->rq_ind.rq_manager.rq_attr), PBS_EVENTCLASS_SCHED, msg_daemonname, NULL);
 	reply_ack(preq);
 }
 
@@ -1672,9 +1697,10 @@ done:
 void
 mgr_sched_unset(struct batch_request *preq)
 {
-	int	  bad_attr = 0;
+	int bad_attr = 0;
 	svrattrl *plist, *tmp_plist;
-	int	  rc;
+	int rc;
+
 	pbs_sched *psched = find_sched(preq->rq_ind.rq_manager.rq_objname);
 	if (!psched) {
 		req_reject(PBSE_UNKSCHED, 0, preq);
@@ -1733,16 +1759,15 @@ mgr_sched_unset(struct batch_request *preq)
 void
 mgr_queue_set(struct batch_request *preq)
 {
-	int	   allques;
-	int	   bad = 0;
-	char	  *badattr;
-	svrattrl *tmp;
-	svrattrl *plist;
-	svrattrl *ulist;
+	int allques;
+	int bad = 0;
+	char *badattr;
+	svrattrl *plist, *psvrat;
+	pbs_list_head setlist;
 	pbs_list_head unsetlist;
 	pbs_queue *pque;
-	char      *qname;
-	int	   rc;
+	char *qname;
+	int rc;
 
 	if ((*preq->rq_ind.rq_manager.rq_objname == '\0') ||
 		(*preq->rq_ind.rq_manager.rq_objname == '@')) {
@@ -1761,16 +1786,29 @@ mgr_queue_set(struct batch_request *preq)
 
 	log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_QUEUE, LOG_INFO, qname, msg_manager, msg_man_set, preq->rq_user, preq->rq_host);
 
+	CLEAR_HEAD(setlist);
 	CLEAR_HEAD(unsetlist);
+
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 	while (plist) {
-		if (plist->al_atopl.value == NULL || plist->al_atopl.value[0] == '\0') {
-			tmp = (struct svrattrl *)GET_NEXT(plist->al_link);
-			delete_link(&plist->al_link);
-			append_link(&unsetlist, &plist->al_link, plist);
-			plist = tmp;
-			continue;
+		/*
+		 * We do not overwrite/update the entire record in the database. Therefore, to
+		 * unset attributes, we will need to find out the ones with a 0 or NULL value set.
+		 * We create a separate list for removal from the list of attributes provided, and
+		 * pass it to mgr_unset_attr, below
+		 */
+		psvrat = dup_svrattrl(plist);
+		if (psvrat == NULL) {
+			req_reject(PBSE_SYSTEM, 0, preq);
+			free_attrlist(&setlist);
+			free_attrlist(&unsetlist);
+			return;
 		}
+		if (psvrat->al_atopl.value == NULL || psvrat->al_atopl.value[0] == '\0')
+			append_link(&unsetlist, &psvrat->al_link, psvrat);
+		else
+			append_link(&setlist, &psvrat->al_link, psvrat);
+
 		plist = (struct svrattrl *)GET_NEXT(plist->al_link);
 	}
 
@@ -1779,28 +1817,30 @@ mgr_queue_set(struct batch_request *preq)
 
 	while (pque) {
 		/* if the unsetlist has attributes, call server_unset to remove them separately */
-		ulist = (svrattrl *)GET_NEXT(unsetlist);
-		if (ulist) {
-			rc = mgr_unset_attr(pque->qu_attr, que_attr_idx, que_attr_def, QA_ATR_LAST, ulist,
+		plist = (svrattrl *)GET_NEXT(unsetlist);
+		if (plist) {
+			rc = mgr_unset_attr(pque->qu_attr, que_attr_idx, que_attr_def, QA_ATR_LAST, plist,
 				preq->rq_perm, &bad, (void *)pque, PARENT_TYPE_QUE_ALL, INDIRECT_RES_CHECK);
 			if (rc != 0) {
-				reply_badattr(rc, bad, ulist, preq);
+				reply_badattr(rc, bad,plist, preq);
+				free_attrlist(&setlist);
 				free_attrlist(&unsetlist);
 				return;
 			}
-			free_attrlist(&unsetlist); /* since this is not part of plist anymore, we must free separately */
 		}
 
-		plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
+		plist = (svrattrl *)GET_NEXT(setlist);
 		if (plist) {
 			rc = mgr_set_attr(pque->qu_attr, que_attr_idx, que_attr_def, QA_ATR_LAST,
 				plist, preq->rq_perm, &bad, pque, ATR_ACTION_ALTER);
 			if (rc != 0) {
 				reply_badattr(rc, bad, plist, preq);
+				free_attrlist(&setlist);
+				free_attrlist(&unsetlist);
 				return;
 			} else {
 				que_save_db(pque);
-				mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_QUEUE, pque->qu_qs.qu_name, NULL);
+				mgr_log_attr(msg_man_set, GET_NEXT(preq->rq_ind.rq_manager.rq_attr), PBS_EVENTCLASS_QUEUE, pque->qu_qs.qu_name, NULL);
 			}
 		}
 		if (allques)
@@ -1808,6 +1848,8 @@ mgr_queue_set(struct batch_request *preq)
 		else
 			break;
 	}
+	free_attrlist(&setlist);
+	free_attrlist(&unsetlist);
 
 	/* check the appropriateness of the attributes based on queue type */
 
@@ -1840,13 +1882,12 @@ mgr_queue_set(struct batch_request *preq)
 void
 mgr_queue_unset(struct batch_request *preq)
 {
-	int	   allques;
-	int	   bad_attr = 0;
-	svrattrl  *plist;
+	int allques;
+	int bad_attr = 0;
+	svrattrl *plist;
 	pbs_queue *pque;
-	char      *qname;
-	int	   rc;
-
+	char *qname;
+	int rc;
 
 	if ((*preq->rq_ind.rq_manager.rq_objname == '\0') ||
 		(*preq->rq_ind.rq_manager.rq_objname == '@')) {
@@ -1924,10 +1965,9 @@ mgr_node_set(struct batch_request *preq)
 	int bad = 0;
 	char hostname[PBS_MAXHOSTNAME + 1];
 	int numnodes = 1; /* number of vnodes to be operated on */
-	svrattrl *tmp;
-	svrattrl *plist;
-	pbs_list_head unsetlist;
+	svrattrl *plist, *psvrat;
 	pbs_list_head setlist;
+	pbs_list_head unsetlist;
 	char *nodename;
 	mominfo_t *pmom = NULL;
 	mom_svrinfo_t *psvrmom = NULL;
@@ -2004,17 +2044,22 @@ mgr_node_set(struct batch_request *preq)
 
 	CLEAR_HEAD(setlist);
 	CLEAR_HEAD(unsetlist);
+
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 	while (plist) {
-		tmp = (struct svrattrl *)GET_NEXT(plist->al_link);
-
-		delete_link(&plist->al_link);
-		if (plist->al_atopl.value == NULL || plist->al_atopl.value[0] == '\0')
-			append_link(&unsetlist, &plist->al_link, plist);
+		psvrat = dup_svrattrl(plist);
+		if (psvrat == NULL) {
+			req_reject(PBSE_SYSTEM, 0, preq);
+			free_attrlist(&setlist);
+			free_attrlist(&unsetlist);
+			return;
+		}
+		if (psvrat->al_atopl.value == NULL || psvrat->al_atopl.value[0] == '\0')
+			append_link(&unsetlist, &psvrat->al_link, psvrat);
 		else
-			append_link(&setlist, &plist->al_link, plist);
+			append_link(&setlist, &psvrat->al_link, psvrat);
 
-		plist = tmp;
+		plist = (struct svrattrl *)GET_NEXT(plist->al_link);
 	}
 
 	/* set writtable attributes of node (nodes if numnodes > 1) */
@@ -2103,7 +2148,7 @@ mgr_node_set(struct batch_request *preq)
 					if ((pnode->nd_nsnfree == 0) && (pnode->nd_state == 0))
 						set_vnode_state(pnode, INUSE_JOB, Nd_State_Or);
 
-					mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_NODE, pnode->nd_name, NULL);
+					mgr_log_attr(msg_man_set, GET_NEXT(preq->rq_ind.rq_manager.rq_attr), PBS_EVENTCLASS_NODE, pnode->nd_name, NULL);
 				}
 			}
 		}
@@ -2145,8 +2190,8 @@ mgr_node_set(struct batch_request *preq)
 		}
 	} /*bottom of the while()*/
 
-	free_attrlist(&unsetlist);
 	free_attrlist(&setlist);
+	free_attrlist(&unsetlist);
 
 	warnmsg = warn_msg_build(WARN_ngrp, warn_nodes, warn_idx);
 
@@ -2221,32 +2266,31 @@ void
 mgr_node_unset(struct batch_request *preq)
 
 {
-	int		bad = 0;
-	char		hostname[PBS_MAXHOSTNAME+1];
-	int		numnodes = 1;	/* number of vnode to operate */
-	svrattrl	*plist;
-	char		*nodename;
-	mominfo_t	*pmom = NULL;
+	int bad = 0;
+	char hostname[PBS_MAXHOSTNAME + 1];
+	int numnodes = 1; /* number of vnode to operate */
+	svrattrl *plist;
+	char *nodename;
+	mominfo_t *pmom = NULL;
 	mom_svrinfo_t *psvrmom = NULL;
-	struct pbsnode  *pnode;
-	int		 rc;
-	int		 unset_que = 0;
-
-	int		i, len;
-	int		problem_cnt = 0;
-	int		momidx;
-	char		*problem_names;
-	struct pbsnode  **problem_nodes = NULL;
-	static char	*warnmsg = NULL;
-	struct pbsnode  **warn_nodes = NULL;
-	int		warn_idx = 0;
-	int		replied = 0;	/* boolean */
-	attribute	 *patr;
-	resource_def	 *prd;
-	resource	 *prc;
-	static	char *astate = ATTR_NODE_state;
-	static  char *antype = ATTR_NODE_ntype;
-	static  char *ra     = ATTR_rescavail;
+	struct pbsnode *pnode;
+	int rc;
+	int unset_que = 0;
+	int i, len;
+	int problem_cnt = 0;
+	int momidx;
+	char *problem_names;
+	struct pbsnode **problem_nodes = NULL;
+	static char *warnmsg = NULL;
+	struct pbsnode **warn_nodes = NULL;
+	int warn_idx = 0;
+	int replied = 0; /* boolean */
+	attribute *patr;
+	resource_def *prd;
+	resource *prc;
+	static char *astate = ATTR_NODE_state;
+	static char *antype = ATTR_NODE_ntype;
+	static char *ra = ATTR_rescavail;
 
 	nodename = preq->rq_ind.rq_manager.rq_objname;
 
@@ -2436,8 +2480,7 @@ mgr_node_unset(struct batch_request *preq)
 					}
 				}
 
-				mgr_log_attr(msg_man_set, plist,
-					PBS_EVENTCLASS_NODE, pnode->nd_name, NULL);
+				mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_NODE, pnode->nd_name, NULL);
 			}
 		}
 		if (numnodes == 1)
@@ -2685,24 +2728,24 @@ remove_mom_ipaddresses_list(mominfo_t *pmom)
 int
 create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbsnode **rtnpnode, int nodup, int allow_unkresc)
 {
-	struct pbsnode	*pnode;
+	struct pbsnode *pnode;
 	struct pbsnode **tmpndlist;
-	int		ntype;		/* node type, always PBS */
-	char		*pc;
-	char		*phost;		/* trial host name */
-	char		*pname;		/* node name w/o any :ts       */
-	u_long		*pul = NULL;	/* 0 terminated host adrs array*/
-	int		 rc;
-	int		 j;
-	int		 iht;
-	attribute	*pattr;
-	svrattrl	*plx;
-	mominfo_t	*pmom;
-	mom_svrinfo_t	*smp;
-	resource_def	*prdef;
-	resource	*presc;
-	char 		 realfirsthost[PBS_MAXHOSTNAME+1];
-	int		 ret;
+	int ntype; /* node type, always PBS */
+	char *pc;
+	char *phost;		/* trial host name */
+	char *pname;		/* node name w/o any :ts       */
+	u_long *pul = NULL; /* 0 terminated host adrs array*/
+	int rc;
+	int j;
+	int iht;
+	attribute *pattr;
+	svrattrl *plx;
+	mominfo_t *pmom;
+	mom_svrinfo_t *smp;
+	resource_def *prdef;
+	resource *presc;
+	char realfirsthost[PBS_MAXHOSTNAME + 1];
+	int ret;
 
 	if (rtnpnode != NULL)
 		*rtnpnode = NULL;
@@ -3098,19 +3141,19 @@ static void
 mgr_node_delete(preq)
 struct batch_request *preq;
 {
-	int		numnodes = 1;
-	struct pbsnode  *pnode;
-	struct pbssubn  *psub;
-	char		*nodename;
-	int		rc;
+	int numnodes = 1;
+	struct pbsnode *pnode;
+	struct pbssubn *psub;
+	char *nodename;
+	int rc;
 
-	int		i, len;
-	int		n;
-	int		problem_cnt = 0;
-	char		*problem_names;
-	struct pbsnode  **problem_nodes = NULL;
-	svrattrl	*plist;
-	mom_svrinfo_t	*psvrmom;
+	int i, len;
+	int n;
+	int problem_cnt = 0;
+	char *problem_names;
+	struct pbsnode **problem_nodes = NULL;
+	svrattrl *plist;
+	mom_svrinfo_t *psvrmom;
 
 	nodename = preq->rq_ind.rq_manager.rq_objname;
 
@@ -3230,8 +3273,7 @@ struct batch_request *preq;
 			i--; /* the array has been coalesced, so reset i to the earlier position */
 
 			if (nodename) {
-				mgr_log_attr(msg_man_set, plist,
-					PBS_EVENTCLASS_NODE, nodename, NULL);
+				mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_NODE, nodename, NULL);
 				free(nodename);
 				nodename = NULL;
 			}
@@ -3337,18 +3379,17 @@ mgr_sched_create(struct batch_request *preq)
  */
 
 void
-mgr_node_create(preq)
-struct batch_request *preq;
+mgr_node_create(struct batch_request *preq)
 {
-	int		 bad;
-	svrattrl	*plist;
-	int		 rc;
-	char 		*vnp; /* Temp storage to validate (v)node name */
-	long		 vn_pool;
-	struct pbsnode	*pnode;
-	mominfo_t	*mymom;
-	struct		sockaddr_in check_ip;
-	int		is_node_ip;
+	int bad;
+	svrattrl *plist;
+	int rc;
+	char *vnp; /* Temp storage to validate (v)node name */
+	long vn_pool;
+	struct pbsnode *pnode;
+	mominfo_t *mymom;
+	struct sockaddr_in check_ip;
+	int is_node_ip;
 	char *nodename;
 
 	nodename = preq->rq_ind.rq_manager.rq_objname;
@@ -3382,8 +3423,7 @@ struct batch_request *preq;
 			"Node added using IPv4 address\nVerify that PBS_MOM_NODE_NAME is configured on the respective host");
 	}
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
-	rc = create_pbs_node(nodename,
-		plist, preq->rq_perm, &bad, &pnode, TRUE);
+	rc = create_pbs_node(nodename, plist, preq->rq_perm, &bad, &pnode, TRUE);
 
 	if (rc != 0) {
 
@@ -3431,8 +3471,7 @@ struct batch_request *preq;
 			}
 		}
 	}
-	mgr_log_attr(msg_man_set, plist,
-		PBS_EVENTCLASS_NODE, nodename, NULL);
+	mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_NODE, nodename, NULL);
 
 	setup_notification();	    /*set mechanism for notifying */
 	/*other nodes of new member   */
@@ -3680,8 +3719,7 @@ mgr_resource_create(struct batch_request *preq)
 
 	log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_RESC, LOG_INFO, resc, msg_manager, msg_man_cre, preq->rq_user, preq->rq_host);
 	plist = (svrattrl *) GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
-	mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_RESC,
-		preq->rq_ind.rq_manager.rq_objname, NULL);
+	mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_RESC, preq->rq_ind.rq_manager.rq_objname, NULL);
 
 	if (flags & (ATR_DFLAG_RASSN | ATR_DFLAG_FNASSN | ATR_DFLAG_ANASSN)) {
 		update_resc_sum();
@@ -4094,7 +4132,6 @@ mgr_resource_set(struct batch_request *preq)
 
 	plist = (svrattrl *) GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 	mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_RESC, resc, NULL);
-
 
 	rc = update_resource_def_file(resc, RESDEF_UPDATE, type, flags);
 	if (rc != 0) {
@@ -4649,11 +4686,11 @@ req_manager_exit:
 int
 manager_oper_chk(attribute *pattr, void *pobject, int actmode)
 {
-	char			*entry;
-	int			 err = 0;
-	char			 hostname[PBS_MAXHOSTNAME+1];
-	int   			 i;
-	struct array_strings	*pstr;
+	char *entry;
+	int err = 0;
+	char hostname[PBS_MAXHOSTNAME + 1];
+	int i;
+	struct array_strings *pstr;
 
 	if (actmode == ATR_ACTION_FREE)
 		return (0);	/* no checking on free */
@@ -4779,7 +4816,7 @@ node_prov_enable_action(attribute *new, void *pobj, int act)
 int
 svr_max_conc_prov_action(attribute *new, void *pobj, int act)
 {
-	int 	rc;
+	int rc;
 
 	if (is_attr_set(new)) {
 
