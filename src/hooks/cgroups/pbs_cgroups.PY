@@ -931,18 +931,18 @@ class HookUtils(object):
             }
             if hasattr(pbs, "RESV_END"):
                 self.hook_events[pbs.RESV_END] = {
-                'name': 'resv_end',
-                'handler': None
+                    'name': 'resv_end',
+                    'handler': None
                 }
             if hasattr(pbs, "RESV_BEGIN"):
                 self.hook_events[pbs.RESV_BEGIN] = {
-                'name': 'resv_begin',
-                'handler': None
+                    'name': 'resv_begin',
+                    'handler': None
                 }
             if hasattr(pbs, "RESV_CONFIRM"):
                 self.hook_events[pbs.RESV_CONFIRM] = {
-                'name': 'resv_confirm',
-                'handler': None
+                    'name': 'resv_confirm',
+                    'handler': None
                 }
             self.hook_events[pbs.EXECJOB_BEGIN] = {
                 'name': 'execjob_begin',
@@ -1645,7 +1645,7 @@ class NodeUtils(object):
                             self.numa_nodes[numa_node]['nmics'] = 1
                         else:
                             self.numa_nodes[numa_node]['nmics'] += 1
-                    elif dclass == 'gpu':
+                    elif dclass == 'gpu' and not self.cfg['ngpus_ext_managed']:
                         if 'ngpus' not in self.numa_nodes[numa_node]:
                             self.numa_nodes[numa_node]['ngpus'] = 1
                         else:
@@ -2640,12 +2640,22 @@ class NodeUtils(object):
                 vnode_resc_avail = vnode_list[vnode_key].resources_available
                 # ensure that if no devices were discovered that
                 # ngpus is set to 0; otherwise MoM may still use stale value
-                vnode_resc_avail['ngpus'] = 0
+                # if ngpus_ext_managed is False then leave it alone --
+                # it's likely set in qmgr or using a v2 config file
+                if not self.cfg['ngpus_ext_managed']:
+                    vnode_resc_avail['ngpus'] = 0
                 if (vntype and self.cfg['propagate_vntype_to_server']):
                     vnode_resc_avail['vntype'] = vntype
             for key, val in sorted(self.numa_nodes[nnid].items()):
                 if key is None:
                     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: key is None'
+                               % caller_name())
+                    continue
+                if key is 'ngpus' and self.cfg['ngpus_ext_managed']:
+                    pbs.logmsg(pbs.EVENT_DEBUG,
+                               '%s: key is ngpus but ngpus marked '
+                               'as externally managed; '
+                               'skipping resources_available.ngpus'
                                % caller_name())
                     continue
                 if val is None:
@@ -2755,6 +2765,9 @@ class NodeUtils(object):
                     # This unsets it if it was defined earlier and needs to
                     # disappear
                     host_resc_avail['cgswap'] = None
+                if (not self.cfg['ngpus_ext_managed']
+                        and 'ngpus' not in vnode_resc_avail):
+                    vnode_resc_avail['ngpus'] = 0
 
                 pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %s vnode_resc_avail: %s' %
                            (caller_name(), vnode_key, vnode_resc_avail))
@@ -2906,6 +2919,11 @@ class CgroupUtils(object):
         # morph the strings that should become booleans
         # into booleans depending on host/vntype
         self.morph_config_dict_bools(self.cfg)
+
+        if self.cfg['discover_gpus'] and self.cfg['ngpus_ext_managed']:
+            pbs.logmsg(pbs.EVENT_ADMIN, "WARNING: discover_gpus disabled "
+                       "since ngpus_ext_managed is enabled")
+            self.cfg['discover_gpus'] = False
         pbs.logmsg(pbs.EVENT_DEBUG4, "Final cgroup cfg: %s" % repr(self.cfg))
 
         # Remove the added "enabled" in the cgroup section
@@ -3398,6 +3416,7 @@ class CgroupUtils(object):
         defaults['cgroup_lock_file'] = os.path.join(PBS_MOM_HOME, 'mom_priv',
                                                     'cgroups.lock')
         defaults['discover_gpus'] = True
+        defaults['ngpus_ext_managed'] = False
         defaults['nvidia-smi'] = os.path.join(os.sep, 'usr', 'bin',
                                               'nvidia-smi')
         defaults['exclude_hosts'] = []
@@ -4420,6 +4439,7 @@ class CgroupUtils(object):
         if 'mem' in requested or 'ngpus' in requested or 'nmics' in requested:
             # for multivnode systems asking memory/ngpus/nmics without asking
             # cpus is valid, need access to memory
+            # this is valid even if ngpus are externally managed
             assigned['cpuset.mems'] = socketlist
         if 'nmics' in requested and int(requested['nmics']) > 0:
             assigned['device_names'] = []
@@ -4440,7 +4460,8 @@ class CgroupUtils(object):
                 assigned['device_names'].append(val)
             for val in devices:
                 assigned['devices'].append(val)
-        if 'ngpus' in requested and int(requested['ngpus']) > 0:
+        if ('ngpus' in requested and int(requested['ngpus']) > 0
+                and not self.cfg['ngpus_ext_managed']):
             if 'device_names' not in assigned:
                 assigned['device_names'] = []
                 assigned['devices'] = []
