@@ -5397,8 +5397,8 @@ sleep 300
         self.load_config(self.cfg18 % ('true' if vnode_per_numa_node else 'false'))
 
         # We assume no test node will _really_ have a billion GPUs
+        a = {'resources_available.ngpus': 1000000000}
         if not vnode_per_numa_node:
-            a = {'resources_available.ngpus': 1000000000}
             self.server.manager(MGR_CMD_SET, NODE, a,
                                 id=self.mom.shortname)
         else:
