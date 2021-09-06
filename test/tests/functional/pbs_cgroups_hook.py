@@ -1525,6 +1525,75 @@ sleep 300
     }
 }
 """
+        self.cfg18 = """{
+    "cgroup_prefix"         : "pbs_jobs",
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : ["no_cgroups"],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : %s,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : false,
+    "ncpus_are_cores"       : false,
+    "ngpus_ext_managed"     : true,
+    "cgroup" : {
+        "cpuacct" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : []
+        },
+        "cpuset" : {
+            "enabled"            : true,
+            "exclude_cpus"       : [],
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "mem_fences"         : true,
+            "mem_hardwall"       : false,
+            "memory_spread_page" : true
+        },
+        "devices" : {
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "allow"              : [
+                "b *:* rwm",
+                "c *:* rwm"
+            ]
+        },
+        "hugetlb" : {
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "0MB",
+            "reserve_percent"    : 0,
+            "reserve_amount"     : "0MB"
+        },
+        "memory" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "soft_limit"         : false,
+            "default"            : "100MB",
+            "reserve_percent"    : 0,
+            "swappiness"         : 0,
+            "reserve_amount"     : "1GB",
+            "enforce_default"    : true,
+            "exclhost_ignore_default" : true
+        },
+        "memsw" : {
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "100MB",
+            "reserve_percent"    : 0,
+            "reserve_amount"     : "10GB",
+            "manage_cgswap"      : true,
+            "enforce_default"    : true,
+            "exclhost_ignore_default" : true
+        }
+    }
+}
+"""
 
         Job.dflt_attributes[ATTR_k] = 'oe'
         # Increase the server log level
@@ -5323,6 +5392,37 @@ sleep 300
 
         self.assertFalse(failure,
                          'Did not find correct paths for created cgroup dirs')
+
+    def test_cgroup_ngpus_ext_managed(self, vnode_per_numa_node=False):
+        self.load_config(self.cfg18 % ('true' if vnode_per_numa_node else 'false'))
+
+        # We assume no test node will _really_ have a billion GPUs
+        if not vnode_per_numa_node:
+            a = {'resources_available.ngpus': 1000000000}
+            self.server.manager(MGR_CMD_SET, NODE, a,
+                                id=self.mom.shortname)
+        else:
+            self.server.manager(MGR_CMD_SET, NODE, a,
+                                id=self.mom.shortname + '[0]')
+
+        # Reload config file to force a HUP to check that hook
+        # does not override resources_available.ngpus set above
+        self.load_config(self.cfg18 % ('true' if vnode_per_numa_node else 'false'))
+
+        a = {'Resource_List.select':
+             "1:ncpus=1:ngpus=1000000000:host=%s" % self.hosts_list[0]}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep600_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+
+        # If the job ran, then the hook did not override our
+        # resources_available.ngpus and also did not reject our request
+        # for a billion GPUs that aren't really there
+
+    def test_cgroup_ngpus_ext_managed_numa(self):
+        self.test_cgroup_ngpus_ext_managed(vnode_per_numa_node=True)
 
     def cleanup_cgroup_subsys(self, host):
         # Remove the jobdir if any under other cgroups
