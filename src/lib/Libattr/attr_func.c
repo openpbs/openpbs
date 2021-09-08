@@ -582,6 +582,60 @@ free_none(attribute *attr)
 }
 
 /**
+ *  @brief duplicate svrattrl structure
+ *
+ *  @param[in] osvrat - svrattrl to dup
+ *
+ *  @return dup'd svrattrl or NULL (failure)
+ */
+
+svrattrl *
+dup_svrattrl(svrattrl *osvrat)
+{
+	svrattrl *psvrat;
+	size_t tsize;
+
+	if (osvrat == NULL)
+		return NULL;
+
+	tsize = sizeof(svrattrl) + osvrat->al_nameln + osvrat->al_valln + 2;
+	if (osvrat->al_rescln > 0)
+		tsize += osvrat->al_rescln + 1;
+
+	if ((psvrat = (svrattrl *)malloc(tsize)) == 0)
+		return NULL;
+
+	CLEAR_LINK(psvrat->al_link);
+	psvrat->al_sister = NULL;
+	psvrat->al_atopl.next = 0;
+	psvrat->al_tsize = tsize;
+	
+	psvrat->al_name  = (char *)psvrat + sizeof(svrattrl);
+	strcpy(psvrat->al_name, osvrat->al_name);
+	psvrat->al_nameln = osvrat->al_nameln;
+
+	if (osvrat->al_rescln > 0) {
+		psvrat->al_resc = psvrat->al_name + psvrat->al_nameln + 1;
+		strcpy(psvrat->al_resc, osvrat->al_resc);
+		psvrat->al_rescln = osvrat->al_rescln;
+		psvrat->al_value = psvrat->al_resc + psvrat->al_rescln + 1;
+	} else {
+		psvrat->al_resc = NULL;
+		psvrat->al_rescln = 0;
+		psvrat->al_value = psvrat->al_name + psvrat->al_nameln + 1;
+	}
+
+	strcpy(psvrat->al_value, osvrat->al_value);
+	psvrat->al_valln  = osvrat->al_valln;
+
+	psvrat->al_flags  = osvrat->al_flags;
+	psvrat->al_refct  = 1;
+	psvrat->al_op = osvrat->al_op;
+
+	return psvrat;
+}
+
+/**
  * @brief
  * 	Adds a new entry (name_str, resc_str, val_str, flag) to the 'phead'
  *	svrattrl list.
