@@ -129,19 +129,14 @@ int find_runnable_resresv_ind(resource_resv **resresv_arr, int start_index);
 /*
  *	find_non_normal_job_ind - find the index of the next runnable express,preempted
  */
-int find_non_normal_job_ind(resource_resv **resresv_arr, int start_index);
-
-/*
- *      update_backfill_on_run - update information needed for backfilling
- *                               when a job is run
- */
-void update_backfill_on_run(server_info *sinfo, resource_resv *resresv, nspec **ns);
+int find_non_normal_job_ind(resource_resv **jobs, int start_index);
 
 /*
  *
  *      sim_run_update_resresv - simulate the running of a job
  */
-int sim_run_update_resresv(status *policy, resource_resv *resresv, nspec **ns_arr, unsigned int flags);
+bool sim_run_update_resresv(status *policy, resource_resv *resresv, std::vector<nspec *>& ns_arr, unsigned int flags);
+bool sim_run_update_resresv(status *policy, resource_resv *resresv, unsigned int flags);
 
 /*
  *
@@ -163,10 +158,12 @@ int sim_run_update_resresv(status *policy, resource_resv *resresv, nspec **ns_ar
  *	return -1 on error
  *
  */
-int
-run_update_resresv(status *policy, int pbs_sd, server_info *sinfo, queue_info *qinfo,
-	resource_resv *rresv, nspec **ns_arr, unsigned int flags, schd_error *err);
+bool run_update_job(status *policy, int pbs_sd, server_info *sinfo, queue_info *qinfo,
+		    resource_resv *resresv, std::vector<nspec *> &nspec_arr, unsigned int flags, schd_error *err);
 
+bool
+run_update_job(status *policy, int pbs_sd, server_info *sinfo, queue_info *qinfo,
+		   resource_resv *rr, unsigned int flags, schd_error *err);
 
 /*
  *	update_job_can_not_run - do post job 'can't run' processing
@@ -192,8 +189,7 @@ int add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo, resource
  *	       first move it to the local server and then run it.
  *	       if it's a local job, just run it.
  */
-int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int had_runjob_hook,
-	    schd_error *err);
+int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, schd_error *err);
 
 /*
  *	should_backfill_with_job - should we call add_job_to_calendar() with job

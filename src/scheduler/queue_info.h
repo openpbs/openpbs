@@ -65,7 +65,7 @@ queue_info *new_queue_info(int limallocflag);
 /*
  *      free_queues - frees the memory for an array
  */
-void free_queues(std::vector<queue_info *> &qinfo);
+void free_queues(std::vector<queue_info *> &qarr);
 
 /*
  *      update_queue_on_run - update the information kept in a qinfo structure
@@ -91,7 +91,7 @@ std::vector<queue_info *> dup_queues(const std::vector<queue_info *> &oqueues, s
 queue_info *find_queue_info(std::vector<queue_info *> &qinfo_arr, const std::string& name);
 
 /*
- *      update_queue_on_end - update a queue when a job has finished running
+ *	update_queue_on_end - update a queue when a job has finished running
  */
 void
 update_queue_on_end(queue_info *qinfo, resource_resv *resresv,

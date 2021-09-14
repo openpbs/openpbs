@@ -87,7 +87,7 @@ update_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name,
 int send_job_updates(int pbs_sd, resource_resv *job);
 
 /* send delayed attributes to the server for a job */
-int send_attr_updates(int virtual_fd, resource_resv *resresv, struct attrl *pattr);
+int send_attr_updates(int virtual_sd, resource_resv *resresv, struct attrl *pattr);
 
 preempt_job_info *send_preempt_jobs(int virtual_sd, char **preempt_jobs_list);
 
@@ -120,7 +120,7 @@ unset_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name, unsign
  *      update_jobs_cant_run - update an array of jobs which can not run
  */
 void
-update_jobs_cant_run(int pbs_sd, resource_resv **jinfo_arr,
+update_jobs_cant_run(int pbs_sd, resource_resv **resresv_arr,
 	resource_resv *start, struct schd_error *err, int start_where);
 
 /*
@@ -152,15 +152,15 @@ int preempt_job(status *policy, int pbs_sd, resource_resv *jinfo, server_info *s
 /*
  *      find_and_preempt_jobs - find the jobs to preempt and then preempt them
  */
-int find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjinfo, server_info *sinfo, schd_error *err);
+int find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_info *sinfo, schd_error *err);
 
 /*
  *      find_jobs_to_preempt - find jobs to preempt in order to run a high
  *                             priority job
  */
 int *
-find_jobs_to_preempt(status *policy, resource_resv *jinfo,
-	server_info *sinfo, int *fail_list, int *count);
+find_jobs_to_preempt(status *policy, resource_resv *hjob,
+	server_info *sinfo, int *fail_list, int *no_of_jobs);
 
 /*
  *      select_job_to_preempt - select the best candidite out of the running
@@ -220,7 +220,7 @@ job_info *dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info * nsinf
  *		3 if jobname is a range
  *		0 if it is not a job array
  */
-int is_job_array(char *jobid);
+int is_job_array(char *jobname);
 
 /*
  *
@@ -371,7 +371,7 @@ void create_res_released(status *policy, resource_resv *pjob);
 /*
  *This function populates resreleased job structure for a particular job.
  */
-nspec **create_res_released_array(status *policy, resource_resv *resresv);
+std::vector<nspec *> create_res_released_array(status *policy, resource_resv *resresv);
 
 /*
  * @brief create a resource_rel array for a job by accumulating all of the RASSN
@@ -395,6 +395,6 @@ void associate_dependent_jobs(server_info *sinfo);
 int associate_array_parent(resource_resv *pjob, server_info *sinfo);
 
 /* Set start, end, duration, and possibly STF parts of the job */
-void set_job_times(int pbs_sd, resource_resv *reseresv, time_t server_time);
+void set_job_times(int pbs_sd, resource_resv *resresv, time_t server_time);
 
 #endif	/* _JOB_INFO_H */

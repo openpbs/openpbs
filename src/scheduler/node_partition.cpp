@@ -57,7 +57,6 @@
  * 	node_partition_update()
  * 	free_np_cache_array()
  * 	find_alloc_np_cache()
- * 	add_np_cache()
  * 	resresv_can_fit_nodepart()
  * 	create_specific_nodepart()
  * 	create_placement_sets()
@@ -748,12 +747,8 @@ np_cache::np_cache() {
 	num_parts = UNSPECIFIED;
 }
 // overloaded
-np_cache::np_cache(node_info **rninfo_arr, const std::vector<std::string>& rresnames, node_partition **rnodepart, int rnum_parts) {
-	ninfo_arr = rninfo_arr;
-	nodepart = rnodepart;
-	resnames = rresnames;
-	num_parts = rnum_parts;
-}
+np_cache::np_cache(node_info **rninfo_arr, const std::vector<std::string>& rresnames, node_partition **rnodepart, int rnum_parts) : 
+	ninfo_arr(rninfo_arr), resnames(rresnames), nodepart(rnodepart), num_parts(rnum_parts) { }
 // Destructor
 np_cache::~np_cache() {
 	if (nodepart != NULL)
@@ -878,45 +873,6 @@ find_alloc_np_cache(status *policy, std::vector<np_cache *> &pnpc_arr,
 	return npc;
 }
 
-
-/**
- * @brief
- *		add_np_cache - add an np_cache to an array
- *
- * @param[in]	policy	-	policy info
- * @param[in,out]	pnpc_arr	-	pointer to np_cache array -- if *npc_arr == NULL
- *
- * @return	1	: on success
- * @return	0	: on failure
- */
-int
-add_np_cache(np_cache ***npc_arr, np_cache *npc)
-
-{
-	np_cache **new_cache;
-	np_cache **cur_cache;
-	int ct;
-
-	if (npc_arr == NULL || npc == NULL)
-		return 0;
-
-	cur_cache = *npc_arr;
-
-	ct = count_array(cur_cache);
-
-	/* ct+2: 1 for new element 1 for NULL ptr */
-	new_cache = static_cast<np_cache **>(realloc(cur_cache, (ct+2) * sizeof(np_cache *)));
-
-	if (new_cache == NULL)
-		return 0;
-
-	new_cache[ct] = npc;
-	new_cache[ct+1] = NULL;
-
-	*npc_arr = new_cache;
-	return 1;
-}
-
 /**
  * @brief
  * 		do an initial check to see if a resresv can fit into a node partition
@@ -937,7 +893,7 @@ add_np_cache(np_cache ***npc_arr, np_cache *npc)
  */
 int
 resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resresv,
-	int flags, schd_error *err)
+	unsigned int flags, schd_error *err)
 {
 	int i;
 	schd_error *prev_err = NULL;

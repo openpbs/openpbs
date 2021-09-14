@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    sort.c
  *
@@ -76,29 +75,27 @@
  */
 #include <pbs_config.h>
 
+#include "check.h"
+#include "constant.h"
+#include "data_types.h"
+#include "fairshare.h"
+#include "fifo.h"
+#include "globals.h"
+#include "misc.h"
+#include "node_info.h"
+#include "resource.h"
+#include "resource_resv.h"
+#include "server_info.h"
+#include "sort.h"
+#include <errno.h>
+#include <log.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <log.h>
-#include "data_types.h"
-#include "sort.h"
-#include "resource_resv.h"
-#include "misc.h"
-#include "globals.h"
-#include "fairshare.h"
-#include "fifo.h"
-#include "node_info.h"
-#include "check.h"
-#include "constant.h"
-#include "server_info.h"
-#include "resource.h"
 
 #ifdef NAS
 #include "site_code.h"
 #endif
-
-
 
 /**
  * @brief
@@ -153,14 +150,13 @@ cmp_placement_sets(const void *v1, const void *v2)
 	schd_resource *mem1, *mem2;
 	int rc = 0;
 
-
 	if (v1 == NULL && v2 == NULL)
 		return 0;
 
-	if (v1 == NULL && v2 != NULL)
+	else if (v1 == NULL && v2 != NULL)
 		return -1;
 
-	if (v1 != NULL && v2 == NULL)
+	else if (v1 != NULL && v2 == NULL)
 		return 1;
 
 	np1 = *((node_partition **) v1);
@@ -185,88 +181,41 @@ cmp_placement_sets(const void *v1, const void *v2)
 			rc = cmpres(dynamic_avail(ncpus1), dynamic_avail(ncpus2));
 	}
 
-
 	if (!rc) {
 		if (mem1 != NULL && mem2 != NULL)
 			rc = cmpres(dynamic_avail(mem1), dynamic_avail(mem2));
 	}
 
 	return rc;
-
 }
 
 /**
  * @brief
  * 		cmp_nspec - sort nspec by sequence number
- *
- * @param[in]	v1	-	nspec 1
- * @param[in]	v2	-	nspec 2
- *
- * @return	int
- * @retval	-1	: if v1 < v2
- * @retval	0 	: if v1 == v2
- * @retval	1  	: if v1 > v2
  */
-int
-cmp_nspec(const void *v1, const void *v2)
+bool
+cmp_nspec(const nspec *n1, const nspec *n2)
 {
-	int s1, s2;
-	if (v1 == NULL && v2 == NULL)
-		return 0;
-
-	if (v1 == NULL && v2 != NULL)
-		return -1;
-
-	if (v1 != NULL && v2 == NULL)
-		return 1;
-
-	s1 = (*(nspec**) v1)->seq_num;
-	s2 = (*(nspec**) v2)->seq_num;
-
-	if (s1 < s2)
-		return -1;
-	else if (s1 > s2)
-		return 1;
+	if (n1->seq_num < n2->seq_num)
+		return true;
+	else if (n1->seq_num > n2->seq_num)
+		return false;
 	else
-	    return cmp_nspec_by_sub_seq(v1, v2);
+		return cmp_nspec_by_sub_seq(n1, n2);
 }
 
 /**
  * @brief
  * 		cmp_nspec_by_sub_seq - sort nspec by sub sequence number
- *
- * @param[in]	v1	-	nspec 1
- * @param[in]	v2	-	nspec 2
- *
- * @return	int
- * @retval	-1	: if v1 < v2
- * @retval	0 	: if v1 == v2
- * @retval	1  	: if v1 > v2
  */
-int
-cmp_nspec_by_sub_seq(const void *v1, const void *v2)
+bool
+cmp_nspec_by_sub_seq(const nspec *n1, const nspec *n2)
 {
-	int ss1, ss2;
-	if (v1 == NULL && v2 == NULL)
-		return 0;
-
-	if (v1 == NULL && v2 != NULL)
-		return -1;
-
-	if (v1 != NULL && v2 == NULL)
-		return 1;
-
-	ss1 = (*(nspec**) v1)->sub_seq_num;
-	ss2 = (*(nspec**) v2)->sub_seq_num;
-
-	if (ss1 < ss2)
-		return -1;
-	else if (ss1 > ss2)
-		return 1;
+	if (n1->sub_seq_num < n2->sub_seq_num)
+		return true;
 	else
-		return 0;
+		return false;
 }
-
 
 /**
  * @brief
@@ -304,24 +253,23 @@ cmp_events(const void *v1, const void *v2)
 {
 	resource_resv *r1, *r2;
 	time_t t1, t2;
-	int run1, run2;			/* are r1 and r2 in runnable states? */
-	int end_event1 = 0, end_event2 = 0;	/* are r1 and r2 end events? */
+	int run1, run2;			    /* are r1 and r2 in runnable states? */
+	int end_event1 = 0, end_event2 = 0; /* are r1 and r2 end events? */
 
 	r1 = *((resource_resv **) v1);
 	r2 = *((resource_resv **) v2);
 
-	if (r1->start != UNSPECIFIED && r2->start ==UNSPECIFIED)
+	if (r1->start != UNSPECIFIED && r2->start == UNSPECIFIED)
 		return -1;
 
-	if (r1->start == UNSPECIFIED && r2->start ==UNSPECIFIED)
+	if (r1->start == UNSPECIFIED && r2->start == UNSPECIFIED)
 		return 0;
 
-	if (r1->start == UNSPECIFIED && r2->start !=UNSPECIFIED)
+	if (r1->start == UNSPECIFIED && r2->start != UNSPECIFIED)
 		return 1;
 
 	run1 = in_runnable_state(r1);
 	run2 = in_runnable_state(r2);
-
 
 	if (r1->start >= r1->server->server_time && run1)
 		t1 = r1->start;
@@ -351,8 +299,7 @@ cmp_events(const void *v1, const void *v2)
 			return 1;
 		else
 			return 0;
-	}
-	else
+	} else
 		return 1;
 }
 
@@ -372,11 +319,11 @@ cmp_events(const void *v1, const void *v2)
 int
 cmp_fairshare(const void *j1, const void *j2)
 {
-	resource_resv *r1 = *(resource_resv**)j1;
-	resource_resv *r2 = *(resource_resv**)j2;
+	resource_resv *r1 = *(resource_resv **) j1;
+	resource_resv *r2 = *(resource_resv **) j2;
 	if (r1->job != NULL && r1->job->ginfo != NULL &&
-		r2->job != NULL && r2->job->ginfo != NULL)
-		return compare_path(r1->job->ginfo->gpath , r2->job->ginfo->gpath);
+	    r2->job != NULL && r2->job->ginfo != NULL)
+		return compare_path(r1->job->ginfo->gpath, r2->job->ginfo->gpath);
 
 	return 0;
 }
@@ -468,7 +415,7 @@ cmp_preemption(resource_resv *r1, resource_resv *r2)
 		return 1;
 
 	/* error, allow some other sort key to take over */
-	if (r1->job == NULL || r2->job ==NULL)
+	if (r1->job == NULL || r2->job == NULL)
 		return 0;
 
 	if (r1->job->preempt < r2->job->preempt)
@@ -485,7 +432,6 @@ cmp_preemption(resource_resv *r1, resource_resv *r2)
  * repeat for all keys
  */
 
-
 /**
  * @brief
  * 		multi_sort - a multi keyed sorting compare function for jobs
@@ -501,7 +447,7 @@ multi_sort(resource_resv *r1, resource_resv *r2)
 {
 	int ret = 0;
 
-	for (const auto& si : *cstat.sort_by) {
+	for (const auto &si : *cstat.sort_by) {
 		ret = resresv_sort_cmp(r1, r2, si);
 		if (ret)
 			break;
@@ -523,13 +469,13 @@ multi_sort(resource_resv *r1, resource_resv *r2)
 int
 cmp_job_sort_formula(const void *j1, const void *j2)
 {
-	resource_resv *r1 = *(resource_resv**)j1;
-	resource_resv *r2 = *(resource_resv**)j2;
+	resource_resv *r1 = *(resource_resv **) j1;
+	resource_resv *r2 = *(resource_resv **) j2;
 
 	if (r1->job->formula_value < r2->job->formula_value)
-	    return 1;
+		return 1;
 	if (r1->job->formula_value > r2->job->formula_value)
-	    return -1;
+		return -1;
 	return 0;
 }
 
@@ -548,15 +494,23 @@ multi_node_sort(const void *n1, const void *n2)
 {
 	int ret = 0;
 
-	for (const auto& si : *cstat.node_sort) {
+	for (const auto &si : *cstat.node_sort) {
 		ret = node_sort_cmp(n1, n2, si, SOBJ_NODE);
 		if (ret)
 			break;
 	}
 
+	if (ret == 0) {
+		const node_info *r1 = *(static_cast<const node_info *const *>(n1));
+		const node_info *r2 = *(static_cast<const node_info *const *>(n2));
+		if (r1->rank < r2->rank)
+			return -1;
+		else
+			return 1;
+	}
+
 	return ret;
 }
-
 
 /**
  * @brief
@@ -573,10 +527,18 @@ multi_nodepart_sort(const void *n1, const void *n2)
 {
 	int ret = 0;
 
-	for (const auto& si : *cstat.node_sort) {
+	for (const auto &si : *cstat.node_sort) {
 		ret = node_sort_cmp(n1, n2, si, SOBJ_PARTITION);
 		if (ret)
 			break;
+	}
+	if (ret == 0) {
+		const node_partition *r1 = *(static_cast<const node_partition *const *>(n1));
+		const node_partition *r2 = *(static_cast<const node_partition *const *>(n2));
+		if (r1->rank < r2->rank)
+			return -1;
+		else
+			return 1;
 	}
 	return ret;
 }
@@ -596,7 +558,7 @@ multi_bkt_sort(const void *b1, const void *b2)
 {
 	int ret = 0;
 
-	for (const auto& si : *cstat.node_sort) {
+	for (const auto &si : *cstat.node_sort) {
 		ret = node_sort_cmp(b1, b2, si, SOBJ_BUCKET);
 		if (ret)
 			break;
@@ -618,7 +580,7 @@ multi_bkt_sort(const void *b1, const void *b2)
  *
  */
 int
-resresv_sort_cmp(resource_resv *r1, resource_resv *r2, const struct sort_info& si)
+resresv_sort_cmp(resource_resv *r1, resource_resv *r2, const struct sort_info &si)
 {
 	sch_resource_t v1, v2;
 
@@ -642,8 +604,7 @@ resresv_sort_cmp(resource_resv *r1, resource_resv *r2, const struct sort_info& s
 			return -1;
 		else
 			return 1;
-	}
-	else {
+	} else {
 		if (v1 < v2)
 			return 1;
 		else
@@ -665,7 +626,7 @@ resresv_sort_cmp(resource_resv *r1, resource_resv *r2, const struct sort_info& s
  * @retval -1, 0, 1 : standard qsort() cmp
  */
 int
-node_sort_cmp(const void *vp1, const void *vp2, const struct sort_info& si, const enum sort_obj_type obj_type)
+node_sort_cmp(const void *vp1, const void *vp2, const struct sort_info &si, const enum sort_obj_type obj_type)
 {
 	sch_resource_t v1, v2;
 	node_info **n1 = NULL;
@@ -674,7 +635,6 @@ node_sort_cmp(const void *vp1, const void *vp2, const struct sort_info& si, cons
 	node_partition **np2 = NULL;
 	node_bucket **b1 = NULL;
 	node_bucket **b2 = NULL;
-	int rank1, rank2;
 
 	if (vp1 != NULL && vp2 == NULL)
 		return -1;
@@ -685,31 +645,24 @@ node_sort_cmp(const void *vp1, const void *vp2, const struct sort_info& si, cons
 	if (vp1 == NULL && vp2 != NULL)
 		return 1;
 
-	switch(obj_type)
-	{
+	switch (obj_type) {
 		case SOBJ_NODE:
 			n1 = (node_info **) vp1;
 			n2 = (node_info **) vp2;
 			v1 = find_node_amount(*n1, si.res_name, si.def, si.res_type);
 			v2 = find_node_amount(*n2, si.res_name, si.def, si.res_type);
-			rank1 = (*n1)->rank;
-			rank2 = (*n2)->rank;
 			break;
 		case SOBJ_PARTITION:
 			np1 = (node_partition **) vp1;
 			np2 = (node_partition **) vp2;
 			v1 = find_nodepart_amount(*np1, si.res_name, si.def, si.res_type);
 			v2 = find_nodepart_amount(*np2, si.res_name, si.def, si.res_type);
-			rank1 = (*np1)->rank;
-			rank2 = (*np2)->rank;
 			break;
 		case SOBJ_BUCKET:
 			b1 = (node_bucket **) vp1;
 			b2 = (node_bucket **) vp2;
 			v1 = find_bucket_amount(*b1, si.res_name, si.def, si.res_type);
 			v2 = find_bucket_amount(*b2, si.res_name, si.def, si.res_type);
-			rank1 = 0;
-			rank2 = 0;
 			break;
 
 		default:
@@ -725,24 +678,13 @@ node_sort_cmp(const void *vp1, const void *vp2, const struct sort_info& si, cons
 			return -1;
 		else if (v1 > v2)
 			return 1;
-		else {
-			if (rank1 < rank2)
-				return -1;
-			else
-				return 1;
-		}
 	} else {
 		if (v1 < v2)
 			return 1;
 		else if (v1 > v2)
 			return -1;
-		else {
-			if (rank1 < rank2)
-				return 1;
-			else
-				return -1;
-		}
 	}
+	return 0;
 }
 
 /**
@@ -842,8 +784,8 @@ cmp_sort(const void *v1, const void *v2)
  * @return	sch_resource_t
  */
 sch_resource_t
-find_nodepart_amount(node_partition *np, const std::string& res, resdef *def,
-	enum resource_fields res_type)
+find_nodepart_amount(node_partition *np, const std::string &res, resdef *def,
+		     enum resource_fields res_type)
 {
 	schd_resource *nres;
 
@@ -859,7 +801,7 @@ find_nodepart_amount(node_partition *np, const std::string& res, resdef *def,
 			return nres->assigned;
 		else if (res_type == RF_UNUSED)
 			return nres->avail - nres->assigned;
-		else/* error */
+		else /* error */
 			return 0;
 	}
 
@@ -878,7 +820,7 @@ find_nodepart_amount(node_partition *np, const std::string& res, resdef *def,
  * @return	sch_resource_t
  */
 sch_resource_t
-find_bucket_amount(node_bucket *bkt, const std::string& res, resdef *def, enum resource_fields res_type)
+find_bucket_amount(node_bucket *bkt, const std::string &res, resdef *def, enum resource_fields res_type)
 {
 	schd_resource *nres;
 
@@ -916,17 +858,17 @@ find_bucket_amount(node_bucket *bkt, const std::string& res, resdef *def, enum r
  * @retval	0	: error
  */
 sch_resource_t
-find_node_amount(node_info *ninfo, const std::string& res, resdef *def,
-	enum resource_fields res_type)
+find_node_amount(node_info *ninfo, const std::string &res, resdef *def,
+		 enum resource_fields res_type)
 {
 	/* def is NULL on special case sort keys */
-	if(def != NULL) {
+	if (def != NULL) {
 		schd_resource *nres;
 		nres = find_resource(ninfo->res, def);
 
 		if (nres != NULL) {
-			if(nres->indirect_res != NULL)
-				nres = nres -> indirect_res;
+			if (nres->indirect_res != NULL)
+				nres = nres->indirect_res;
 			if (res_type == RF_AVAIL)
 				return nres->avail;
 			else if (res_type == RF_ASSN)
@@ -957,10 +899,10 @@ find_node_amount(node_info *ninfo, const std::string& res, resdef *def,
  * @retval	0	: on error
  */
 sch_resource_t
-find_resresv_amount(resource_resv *resresv, const std::string& res, resdef *def)
+find_resresv_amount(resource_resv *resresv, const std::string &res, resdef *def)
 {
 	/* def is NULL on special case sort keys */
-	if( def != NULL) {
+	if (def != NULL) {
 		resource_req *req;
 
 		req = find_resource_req(resresv->resreq, def);
@@ -971,26 +913,26 @@ find_resresv_amount(resource_resv *resresv, const std::string& res, resdef *def)
 
 	if (res == SORT_JOB_PRIORITY)
 #ifdef NAS /* localmod 045 */
-		return(sch_resource_t) resresv->job->NAS_pri;
+		return (sch_resource_t) resresv->job->NAS_pri;
 #else
-		return(sch_resource_t) resresv->job->priority;
+		return (sch_resource_t) resresv->job->priority;
 #endif /* localmod 045 */
 	else if (res == SORT_FAIR_SHARE && resresv->job->ginfo != NULL)
-		return(sch_resource_t) resresv->job->ginfo->tree_percentage;
+		return (sch_resource_t) resresv->job->ginfo->tree_percentage;
 	else if (res == SORT_PREEMPT)
-		return(sch_resource_t) resresv->job->preempt;
+		return (sch_resource_t) resresv->job->preempt;
 #ifdef NAS
-		/* localmod 034 */
+	/* localmod 034 */
 	else if (res == SORT_ALLOC)
-		return(sch_resource_t) (100.0 * site_get_share(resresv));
-		/* localmod 039 */
+		return (sch_resource_t)(100.0 * site_get_share(resresv));
+	/* localmod 039 */
 	else if (res == SORT_QPRI && resresv->job->queue != NULL)
-		return(sch_resource_t) resresv->job->queue->priority;
-		/* localmod 040 */
+		return (sch_resource_t) resresv->job->queue->priority;
+	/* localmod 040 */
 	else if (res == SORT_NODECT) {
 		/* return the node count - dpr */
 		int ndct = resresv->job->nodect;
-		return(sch_resource_t) ndct;
+		return (sch_resource_t) ndct;
 	}
 #endif
 	return 0;
@@ -1122,20 +1064,20 @@ cmp_job_preemption_time_asc(const void *j1, const void *j2)
 	if (r1 == NULL && r2 != NULL)
 		return 1;
 
-	if (r1->job == NULL || r2->job ==NULL)
+	if (r1->job == NULL || r2->job == NULL)
 		return 0;
 
 	/* If one job is preempted and second is not then preempted job gets priority
 	 * If both jobs are preempted, one which is preempted first gets priority
 	 */
 	if (r1->job->time_preempted == UNSPECIFIED &&
-		r2->job->time_preempted ==UNSPECIFIED)
+	    r2->job->time_preempted == UNSPECIFIED)
 		return 0;
 	else if (r1->job->time_preempted != UNSPECIFIED &&
-		r2->job->time_preempted ==UNSPECIFIED)
+		 r2->job->time_preempted == UNSPECIFIED)
 		return -1;
 	else if (r1->job->time_preempted == UNSPECIFIED &&
-		r2->job->time_preempted !=UNSPECIFIED)
+		 r2->job->time_preempted != UNSPECIFIED)
 		return 1;
 
 	if (r1->job->time_preempted < r2->job->time_preempted)
@@ -1163,8 +1105,8 @@ cmp_resv_state(const void *r1, const void *r2)
 	enum resv_states resv1_state;
 	enum resv_states resv2_state;
 
-	resv1_state = (*(resource_resv **)r1)->resv->resv_state;
-	resv2_state = (*(resource_resv **)r2)->resv->resv_state;
+	resv1_state = (*(resource_resv **) r1)->resv->resv_state;
+	resv2_state = (*(resource_resv **) r2)->resv->resv_state;
 
 	if (resv1_state != RESV_BEING_ALTERED && resv2_state == RESV_BEING_ALTERED)
 		return 1;
@@ -1202,13 +1144,13 @@ sort_jobs(status *policy, server_info *sinfo)
 			/* cycle through queues and sort them on the basis of preemption priority,
 			 * preempted jobs, and fairshare usage
 			 */
-			for (auto qinfo: sinfo->queues) {
+			for (auto qinfo : sinfo->queues) {
 				if (qinfo->sc.total > 0) {
 					qsort(qinfo->jobs, qinfo->sc.total,
-						sizeof(resource_resv*), cmp_sort);
+					      sizeof(resource_resv *), cmp_sort);
 				}
 			}
-			for (auto qinfo: sinfo->queues) {
+			for (auto qinfo : sinfo->queues) {
 				for (int index = 0; index < qinfo->sc.total; index++) {
 					sinfo->jobs[job_index] = qinfo->jobs[index];
 					job_index++;
@@ -1220,28 +1162,22 @@ sort_jobs(status *policy, server_info *sinfo)
 		else if (!policy->by_queue && !policy->round_robin) {
 			qsort(sinfo->jobs, count_array(sinfo->jobs), sizeof(resource_resv *), cmp_sort);
 		}
-	}
-	else if (policy->by_queue) {
-		for (auto qinfo: sinfo->queues) {
+	} else if (policy->by_queue) {
+		for (auto qinfo : sinfo->queues) {
 			qsort(qinfo->jobs, count_array(qinfo->jobs), sizeof(resource_resv *), cmp_sort);
 		}
-		qsort(sinfo->jobs, count_array(sinfo->jobs), sizeof(resource_resv*), cmp_sort);
-	}
-	else if (policy->round_robin) {
-		if (sinfo -> queue_list != NULL) {
+		qsort(sinfo->jobs, count_array(sinfo->jobs), sizeof(resource_resv *), cmp_sort);
+	} else if (policy->round_robin) {
+		if (sinfo->queue_list != NULL) {
 			int queue_list_size = count_array(sinfo->queue_list);
-			for (int i = 0; i < queue_list_size; i++)
-			{
+			for (int i = 0; i < queue_list_size; i++) {
 				int queue_index_size = count_array(sinfo->queue_list[i]);
-				for (int j = 0; j < queue_index_size; j++)
-				{
+				for (int j = 0; j < queue_index_size; j++) {
 					qsort(sinfo->queue_list[i][j]->jobs, count_array(sinfo->queue_list[i][j]->jobs),
-						sizeof(resource_resv *), cmp_sort);
+					      sizeof(resource_resv *), cmp_sort);
 				}
 			}
-
 		}
-	}
-	else
-		qsort(sinfo->jobs, count_array(sinfo->jobs), sizeof(resource_resv*), cmp_sort);
+	} else
+		qsort(sinfo->jobs, count_array(sinfo->jobs), sizeof(resource_resv *), cmp_sort);
 }

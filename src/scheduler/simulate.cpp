@@ -287,8 +287,8 @@ get_next_event(event_list *elist)
  *	     on the fly and returned.
  *
  * @param[in] 	sinfo 	- server containing the calendar
- * @param[in] 	advance - advance to the next event or not.  Prime status
- *			   				event creation happens if we advance or not.
+ * @param[in] 	advance - advance to the next event or not.  
+ * 			Prime status event creation happens if we advance or not.
  *
  * @return	the next event
  * @retval	NULL	: if there are no more events
@@ -594,12 +594,11 @@ perform_event(status *policy, timed_event *event)
 			break;
 		case TIMED_RUN_EVENT:	/* event_ptr type: (resource_resv *) */
 			resresv = static_cast<resource_resv *>(event->event_ptr);
-			if (sim_run_update_resresv(policy, resresv, NULL, NO_ALLPART) <= 0) {
+			if (sim_run_update_resresv(policy, resresv, NO_ALLPART) == false) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 					event->name, "Simulation: Event failed to be run");
 				ret = 0;
-			}
-			else {
+			} else {
 				sprintf(logbuf, "%s start point",
 					resresv->is_job ? "job": "reservation");
 			}
@@ -721,7 +720,7 @@ calc_run_time(const std::string& name, server_info *sinfo, int flags)
 	schd_error *err = NULL;
 	timed_event *te_start;
 	timed_event *te_end;
-	nspec **ns = NULL;
+	std::vector<nspec *> nspec_arr;
 	unsigned int ok_flags = NO_ALLPART;
 	queue_info *qinfo = NULL;
 
@@ -755,10 +754,10 @@ calc_run_time(const std::string& name, server_info *sinfo, int flags)
 		auto desc = describe_simret(ret);
 		if (desc > 0 || (desc == 0 && policy_change_info(sinfo, resresv))) {
 			clear_schd_error(err);
-			ns = is_ok_to_run(sinfo->policy, sinfo, qinfo, resresv, ok_flags, err);
+			nspec_arr = is_ok_to_run(sinfo->policy, sinfo, qinfo, resresv, ok_flags, err);
 		}
 
-		if (ns == NULL) /* event can not run */
+		if (nspec_arr.empty()) /* event can not run */
 			ret = simulate_events(sinfo->policy, sinfo, SIM_NEXT_EVENT, &sc_attrs.opt_backfill_fuzzy, &event_time);
 
 #ifdef NAS /* localmod 030 */
@@ -766,7 +765,7 @@ calc_run_time(const std::string& name, server_info *sinfo, int flags)
 			break;
 		}
 #endif /* localmod 030 */
-	} while (ns == NULL && !(ret & (TIMED_NOEVENT|TIMED_ERROR)));
+	} while (nspec_arr.empty() && !(ret & (TIMED_NOEVENT|TIMED_ERROR)));
 
 #ifdef NAS /* localmod 030 */
 	if (check_for_cycle_interrupt(0) || (ret & TIMED_ERROR)) {
@@ -774,13 +773,12 @@ calc_run_time(const std::string& name, server_info *sinfo, int flags)
 	if ((ret & TIMED_ERROR)) {
 #endif /* localmod 030 */
 		free_schd_error(err);
-		if (ns != NULL)
-			free_nspecs(ns);
+		free_nspecs(nspec_arr);
 		return -1;
 	}
 
 	/* we can't run the job, but there are no timed events left to process */
-	if (ns == NULL && (ret & TIMED_NOEVENT)) {
+	if (nspec_arr.empty() && (ret & TIMED_NOEVENT)) {
 		schdlogerr(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, resresv->name,
 				"Can't find start time estimate", err);
 		free_schd_error(err);
@@ -800,16 +798,14 @@ calc_run_time(const std::string& name, server_info *sinfo, int flags)
 	te_start = create_event(TIMED_RUN_EVENT, resresv->start,
 		(event_ptr_t *) resresv, NULL, NULL);
 	if (te_start == NULL) {
-		if (ns != NULL)
-			free_nspecs(ns);
+		free_nspecs(nspec_arr);
 		return -1;
 	}
 
 	te_end = create_event(TIMED_END_EVENT, resresv->end,
 		(event_ptr_t *) resresv, NULL, NULL);
 	if (te_end == NULL) {
-		if (ns != NULL)
-			free_nspecs(ns);
+		free_nspecs(nspec_arr);
 		free_timed_event(te_start);
 		return -1;
 	}
@@ -818,9 +814,9 @@ calc_run_time(const std::string& name, server_info *sinfo, int flags)
 	add_event(calendar, te_end);
 
 	if (flags & SIM_RUN_JOB)
-		sim_run_update_resresv(sinfo->policy, resresv, ns, NO_ALLPART);
+		sim_run_update_resresv(sinfo->policy, resresv, nspec_arr, NO_ALLPART);
 	else
-		free_nspecs(ns);
+		free_nspecs(nspec_arr);
 
 	return event_time;
 }

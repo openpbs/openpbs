@@ -1103,13 +1103,11 @@ query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *
 				resresv->job->max_run_subjobs = count;
 		}
 		else if (!strcmp(attrp->name, ATTR_execvnode)) {
-			nspec **tmp_nspec_arr;
-			tmp_nspec_arr = parse_execvnode(attrp->value, sinfo, NULL);
+			auto tmp_nspec_arr = parse_execvnode(attrp->value, sinfo, NULL);
 			resresv->nspec_arr = combine_nspec_array(tmp_nspec_arr);
 			free_nspecs(tmp_nspec_arr);
 
-			if (resresv->nspec_arr != NULL)
-				resresv->ninfo_arr = create_node_array_from_nspec(resresv->nspec_arr);
+			resresv->ninfo_arr = create_node_array_from_nspec(resresv->nspec_arr);
 		} else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
 			resreq = find_alloc_resource_req_by_str(resresv->resreq, attrp->resource);
 			if (resreq == NULL) {
@@ -1235,7 +1233,7 @@ query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *
 	    resresv->select->total_chunks > 1)
 		resresv->will_use_multinode = true;
 
-	if (resresv->job->is_queued && resresv->nspec_arr != NULL)
+	if (resresv->job->is_queued && !resresv->nspec_arr.empty())
 		resresv->job->is_checkpointed = true;
 
 	/* If we did not wait for mom to start the job (throughput mode),
@@ -1250,12 +1248,12 @@ query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *
 	 * again, we will replace the job on the exact vnodes/resources it originally used.
 	 */
 	std::string selectspec;
-	if (resresv->job->is_suspended && resresv->job->resreleased != NULL)
+	if (resresv->job->is_suspended && !resresv->job->resreleased.empty())
 		/* For jobs that are suspended and have resource_released, the "select"
 		 * we create is based off of resources_released instead of the exec_vnode.
 		 */
 		selectspec = create_select_from_nspec(resresv->job->resreleased);
-	else if (resresv->nspec_arr != NULL)
+	else if (!resresv->nspec_arr.empty())
 		selectspec = create_select_from_nspec(resresv->nspec_arr);
 
 	if (!selectspec.empty())
@@ -1284,7 +1282,7 @@ query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *
 	if (conf.fairshare_ent == "queue") {
 		if (sinfo->fstree != NULL) {
 			resresv->job->ginfo =
-				find_alloc_ginfo(qinfo->name.c_str(), sinfo->fstree->root);
+				find_alloc_ginfo(qinfo->name, sinfo->fstree->root);
 		} else
 			resresv->job->ginfo = NULL;
 	}
@@ -1308,7 +1306,7 @@ query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *
 	}
 #ifdef NAS /* localmod 034 */
 	if (resresv->job->sh_info == NULL) {
-		sprintf(fairshare_name, "%s:%s", resresv->group, resresv->user);
+		sprintf(fairshare_name, "%s:%s", resresv->group.c_str(), resresv->user.c_str());
 		resresv->job->sh_info = site_find_alloc_share(sinfo,
 							      fairshare_name);
 	}
@@ -1387,7 +1385,6 @@ new_job_info()
 	jinfo->max_run_subjobs = UNSPECIFIED;
 	jinfo->running_subjobs = 0;
 	jinfo->attr_updates = NULL;
-	jinfo->resreleased = NULL;
 	jinfo->resreq_rel = NULL;
 	jinfo->depend_job_str = NULL;
 	jinfo->dependent_jobs = NULL;
@@ -1613,7 +1610,7 @@ update_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name,
 	if (!resresv->is_job)
 		return 0;
 
-	/* if running in simulation then don't update but simulate that we have*/
+	/* if running in simulation then don't update but simulate that we have */
 	if (pbs_sd == SIMULATE_SD)
 		return 1;
 
@@ -2994,7 +2991,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 
 	if (done) {
 		clear_schd_error(err);
-		auto ret = run_update_resresv(policy, pbs_sd, sinfo, hjob->job->queue, hjob, NULL, RURR_ADD_END_EVENT, err);
+		auto ret = run_update_job(policy, pbs_sd, sinfo, hjob->job->queue, hjob, RURR_ADD_END_EVENT, err);
 
 		/* oops... we screwed up.. the high priority job didn't run.  Forget about
 		 * running it now and resume preempted work
@@ -3013,7 +3010,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 				job = find_resource_resv_by_indrank(sinfo->jobs, -1, preempted_list[i]);
 				if (job != NULL && !job->job->is_running) {
 					clear_schd_error(serr);
-					if (run_update_resresv(policy, pbs_sd, sinfo, job->job->queue, job, NULL, RURR_NO_FLAGS, serr) == 0) {
+					if (run_update_job(policy, pbs_sd, sinfo, job->job->queue, job, RURR_NO_FLAGS, serr) == 0) {
 						schdlogerr(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, job->name, "Failed to rerun job:", serr);
 					}
 				}
@@ -3077,7 +3074,6 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	int rc = 0;
 	int retval = 0;
 	char log_buf[MAX_LOG_SIZE];
-	nspec **ns_arr = NULL;
 	schd_error *err = NULL;
 
 	enum sched_error_code old_errorcode = SUCCESS;
@@ -3147,7 +3143,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		return NULL;
 	}
 
-	ns_arr = is_ok_to_run(policy, sinfo, hjob->job->queue, hjob, RETURN_ALL_ERR, full_err);
+	auto ns_arr = is_ok_to_run(policy, sinfo, hjob->job->queue, hjob, RETURN_ALL_ERR, full_err);
 
 	/* This should be NULL, but just in case */
 	free_nspecs(ns_arr);
@@ -3255,16 +3251,13 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	/* sort jobs in ascending preemption priority and starttime... we want to preempt them
 	 * from lowest prio to highest
 	 */
-	if (sc_attrs.preempt_sort == PS_MIN_T_SINCE_START) {
-		qsort(rjobs, rjobs_count, sizeof(job_info *),
-			cmp_preempt_stime_asc);
-	}
+	if (sc_attrs.preempt_sort == PS_MIN_T_SINCE_START)
+		qsort(rjobs, rjobs_count, sizeof(job_info *), cmp_preempt_stime_asc);
 	else {
 		/* sort jobs in ascending preemption priority... we want to preempt them
 		 * from lowest prio to highest
 		 */
-		qsort(rjobs, rjobs_count, sizeof(job_info *),
-		cmp_preempt_priority_asc);
+		qsort(rjobs, rjobs_count, sizeof(job_info *), cmp_preempt_priority_asc);
 	}
 
 	err = dup_schd_error(full_err);	/* only first element */
@@ -3342,20 +3335,17 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		pjobs[j++] = pjob;
 		pjobs[j] = NULL;
 
-		if (err != NULL) {
-			old_errorcode = err->error_code;
-			if (err->rdef != NULL) {
-				old_rdef = err->rdef;
-			} else
-				old_rdef = NULL;
-		}
+		old_errorcode = err->error_code;
+		if (err->rdef != NULL) {
+			old_rdef = err->rdef;
+		} else
+			old_rdef = NULL;
 
 		clear_schd_error(err);
-		if ((ns_arr = is_ok_to_run(npolicy, nsinfo,
-			nhjob->job->queue, nhjob, NO_ALLPART, err)) != NULL) {
-
+		ns_arr = is_ok_to_run(npolicy, nsinfo, nhjob->job->queue, nhjob, NO_ALLPART, err);
+		if (!ns_arr.empty()) {
 			/* Normally when running a subjob, we do not care about the subjob. We just care that it successfully runs.
-			 * We allow run_update_resresv() to enqueue and run the subjob.  In this case, we need to act upon the
+			 * We allow run_update_job() to enqueue and run the subjob.  In this case, we need to act upon the
 			 * subjob after it runs.  To handle this case, we enqueue it first then we run it.
 			 */
 			if (nhjob->job->is_array) {
@@ -3451,10 +3441,12 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			clear_schd_error(err);
 			if (preemption_similarity(nhjob, pjobs[j], full_err) == 0) {
 				remove_job = 1;
-			} else if ((ns_arr = is_ok_to_run(npolicy, nsinfo,
-				pjobs[j]->job->queue, pjobs[j], NO_ALLPART, err)) != NULL) {
-				remove_job = 1;
-				sim_run_update_resresv(npolicy, pjobs[j], ns_arr, NO_ALLPART);
+			} else {
+				ns_arr = is_ok_to_run(npolicy, nsinfo, pjobs[j]->job->queue, pjobs[j], NO_ALLPART, err);
+				if (!ns_arr.empty()) {
+					remove_job = 1;
+					sim_run_update_resresv(npolicy, pjobs[j], ns_arr, NO_ALLPART);
+				}
 			}
 
 
@@ -4299,6 +4291,10 @@ update_accruetype(int pbs_sd, server_info *sinfo,
 
 	if (sinfo->eligible_time_enable == 0)
 		return;
+	
+	/* If we're simulating, don't update the job on the server */
+	if (pbs_sd == SIMULATE_SD)
+		return;
 
 	/* behavior of job array's eligible_time calc differs from jobs/subjobs,
 	 *  it depends on:
@@ -4313,7 +4309,7 @@ update_accruetype(int pbs_sd, server_info *sinfo,
 		return;
 	}
 
-	if ((resresv->job->preempt_status & PREEMPT_QUEUE_SERVER_SOFTLIMIT) >0) {
+	if ((resresv->job->preempt_status & PREEMPT_QUEUE_SERVER_SOFTLIMIT) > 0) {
 		make_ineligible(pbs_sd, resresv);
 		return;
 	}
@@ -4744,9 +4740,9 @@ preemption_similarity(resource_resv *hjob, resource_resv *pjob, schd_error *full
 void create_res_released(status *policy, resource_resv *pjob)
 {
 	std::string selectspec ;
-	if (pjob->job->resreleased == NULL) {
+	if (pjob->job->resreleased.empty()) {
 		pjob->job->resreleased = create_res_released_array(policy, pjob);
-		if (pjob->job->resreleased == NULL) {
+		if (pjob->job->resreleased.empty()) {
 			return;
 		}
 		pjob->job->resreq_rel = create_resreq_rel_list(policy, pjob);
@@ -4765,26 +4761,25 @@ void create_res_released(status *policy, resource_resv *pjob)
  * @param[in] policy - policy object
  * @param[in] resresv - Job to create resources_released
  *
- * @return nspec **
+ * @return vector<nspec *>
  * @retval nspec array of released resources
  * @retval NULL
  *
  */
-nspec **create_res_released_array(status *policy, resource_resv *resresv)
+std::vector<nspec *> create_res_released_array(status *policy, resource_resv *resresv)
 {
-	nspec **nspec_arr = NULL;
 	resource_req *req;
 
-	if ((resresv == NULL) || (resresv->nspec_arr == NULL) || (resresv->ninfo_arr == NULL))
-		return NULL;
+	if ((resresv == NULL) || (resresv->nspec_arr.empty()) || (resresv->ninfo_arr == NULL))
+		return {};
 
-	nspec_arr = dup_nspecs(resresv->nspec_arr, resresv->ninfo_arr, NULL);
-	if (nspec_arr == NULL)
-		return NULL;
+	auto nspec_arr = dup_nspecs(resresv->nspec_arr, resresv->ninfo_arr, NULL);
+	if (nspec_arr.empty())
+		return {};
 	if (!policy->rel_on_susp.empty()) {
-		for (int i = 0; nspec_arr[i] != NULL; i++) {
-			for (req = nspec_arr[i]->resreq; req != NULL; req = req->next) {
-				auto ros = policy->rel_on_susp;
+		for (auto ns : nspec_arr) {
+			for (req = ns->resreq; req != NULL; req = req->next) {
+				auto& ros = policy->rel_on_susp;
 				if (req->type.is_consumable == 1 && ros.find(req->def) == ros.end())
 					req->amount = 0;
 			}

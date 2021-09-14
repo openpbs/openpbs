@@ -166,7 +166,6 @@ sch_resource_t
 time_to_ded_boundary(status *policy, resource_resv *njob)
 {
 	sch_resource_t 		min_time_left = UNSPECIFIED;
-	sch_resource_t 		start = UNSPECIFIED;
 	sch_resource_t 		end = UNSPECIFIED;
 	sch_resource_t 		min_end = UNSPECIFIED;
 
@@ -179,6 +178,8 @@ time_to_ded_boundary(status *policy, resource_resv *njob)
 	sch_resource_t time_left = calc_time_left_STF(njob, &min_time_left);
 
 	if (!ded) {
+		sch_resource_t start = UNSPECIFIED;
+
 		if (njob->start == UNSPECIFIED && njob->end ==UNSPECIFIED) {
 			start = njob->server->server_time;
 			min_end = start + min_time_left;
@@ -300,14 +301,13 @@ time_to_prime_boundary(status *policy, resource_resv *njob)
  *	@retval NULL	: if job/resv can not run/error
  *
  */
-nspec **
+std::vector<nspec *>
 shrink_to_boundary(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
-	nspec** ns_arr = NULL;
-
+	std::vector<nspec *> ns_arr;
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
-		return NULL;
+		return {};
 	/* No need to shrink the job to prime/dedicated boundary,
 	 * if it is not hitting */
 	if (err->error_code == CROSS_PRIME_BOUNDARY ||
@@ -315,11 +315,11 @@ shrink_to_boundary(status *policy, server_info *sinfo,
 		auto orig_duration = njob->duration;
 		auto time_to_dedboundary = time_to_ded_boundary(policy, njob);
 		if (time_to_dedboundary == UNSPECIFIED)
-			return NULL;
+			return {};
 
 		auto time_to_primeboundary = time_to_prime_boundary(policy, njob);
 		if (time_to_primeboundary == UNSPECIFIED)
-			return NULL;
+			return {};
 		clear_schd_error(err);
 		/* Shrink job to prime/ded boundary if hitting,
 		 * If both prime and ded boundaries are getting hit
@@ -327,14 +327,14 @@ shrink_to_boundary(status *policy, server_info *sinfo,
 		 */
 		njob->duration = time_to_dedboundary < time_to_primeboundary ? time_to_dedboundary : time_to_primeboundary;
 		ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
-		if (ns_arr && orig_duration > njob->duration) {
+		if (!ns_arr.empty() && orig_duration > njob->duration) {
 			char timebuf[TIMEBUF_SIZE];
 			convert_duration_to_str(njob->duration, timebuf, TIMEBUF_SIZE);
 			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name,
 				"Considering shrinking job to duration=%s, due to a prime/dedicated time conflict", timebuf);
 		}
 	}
-	return (ns_arr);
+	return ns_arr;
 }
 
 /**
@@ -354,19 +354,17 @@ shrink_to_boundary(status *policy, server_info *sinfo,
  *	@par NOTE
  *		return value is required to be freed by caller
  *	@return	node solution of where job will run - more info in err
- *	@retval	nspec** array
+ *	@retval	vector<nspec *> array
  *	@retval NULL	: if job/resv can not run/error
  **/
-nspec **
+std::vector<nspec *>
 shrink_to_minwt(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
-	nspec** ns_arr = NULL;
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
-		return NULL;
+		return {};
 	njob->duration = njob->min_duration;
-	ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
-	return (ns_arr);
+	return is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
 }
 
 /**
@@ -439,22 +437,22 @@ shrink_to_minwt(status *policy, server_info *sinfo,
  *		return value is required to be freed by caller
  *
  *	@return	node solution of where job will run - more info in err
- *	@retval	nspec** array
+ *	@retval	vector<nspec*> array
  *	@retval	NULL	: if job/resv can not run/error
  *
  */
-nspec **
+std::vector<nspec *>
 shrink_to_run_event(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
-	nspec** ns_arr = NULL;
+	std::vector<nspec*> ns_arr;
 	timed_event *te = NULL;
 	timed_event *initial_event = NULL;
 	timed_event *farthest_event = NULL;
 	unsigned int event_mask = TIMED_RUN_EVENT;
 
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
-		return NULL;
+		return {};
 
 	auto orig_duration = njob->duration;
 	auto servertime_now = sinfo->server_time;
@@ -508,7 +506,7 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 			clear_schd_error(err);
 			ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
 			/* break if success */
-			if (ns_arr != NULL)
+			if (!ns_arr.empty())
 				break;
 			last_skipped_event = NULL;/* This event does not get skipped */
 			last_tried_event_time = te->event_time;
@@ -517,16 +515,16 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 			retry_count--;
 		}
 	}
-	if (ns_arr && njob->duration == njob->min_duration)
+	if (!ns_arr.empty() && njob->duration == njob->min_duration)
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name,
 			"Considering shrinking job to it's minimum walltime");
-	else if (ns_arr && orig_duration > njob->duration) {
+	else if (!ns_arr.empty() && orig_duration > njob->duration) {
 		char timebuf[TIMEBUF_SIZE];
 		convert_duration_to_str(njob->duration, timebuf, TIMEBUF_SIZE);
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name,
 			"Considering shrinking job to duration=%s, due to a reservation/top job conflict", timebuf);
 	}
-	return (ns_arr);
+	return ns_arr;
 }
 
 /**
@@ -546,19 +544,18 @@ shrink_to_run_event(status *policy, server_info *sinfo,
  *		return value is required to be freed by caller
  *
  *	@return	node solution of where job will run - more info in err
- *	@retval	nspec** array
+ *	@retval	vector<nspec*> array
  *	@retval NULL	: if job/resv can not run/error
  **/
-nspec **
+std::vector<nspec *>
 shrink_job_algorithm(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
-	nspec **ns_arr = NULL;/* node solution for job */
-	nspec **ns_arr_minwt = NULL;/* node solution for job if run for min_duration */
+	std::vector<nspec *> ns_arr;		/* node solution for job */
 	time_t transient_duration;
 
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
-		return NULL;
+		return {};
 	/* We are here because job could not run with full duration, check the error code
 	 * and see if dedicated/prime conflict was found, if yes, try shrinking to boundary
 	 */
@@ -569,7 +566,8 @@ shrink_job_algorithm(status *policy, server_info *sinfo,
 		 * prime/dedicated boundary. If min walltime is still hitting prime/dedicated
 		 * boundary, the err will not be cleared.
 		 */
-		if ((ns_arr = shrink_to_boundary(policy, sinfo, qinfo, njob, flags, err)) != NULL)
+		ns_arr = shrink_to_boundary(policy, sinfo, qinfo, njob, flags, err);
+		if (!ns_arr.empty())
 			return ns_arr;
 	}
 	/* Inside shrink_to_boundary(), job's duration would be set to time upto the
@@ -579,30 +577,29 @@ shrink_job_algorithm(status *policy, server_info *sinfo,
 	 * since we know that minimum duration of the job, itself is hitting boundary.
 	 */
 	transient_duration = njob->duration;
-	if (ns_arr == NULL &&
+	if (ns_arr.empty() &&
 		err->error_code != CROSS_PRIME_BOUNDARY &&
 		err->error_code != CROSS_DED_TIME_BOUNDRY) {
 		/* Try with lesser time durations */
 		/* Clear any scheduling errors we got during earlier shrink attempts. */
 		clear_schd_error(err);
-		ns_arr_minwt = shrink_to_minwt(policy, sinfo, qinfo, njob, flags, err);
+		auto ns_arr_minwt = shrink_to_minwt(policy, sinfo, qinfo, njob, flags, err);
 		/* Return NULL if job can't run at all */
-		if (ns_arr_minwt == NULL)
-			return NULL;
+		if (ns_arr_minwt.empty())
+			return {};
 		else { /* If success with min walltime, try running with a bigger walltime possible */
 			njob->duration = transient_duration;
 			clear_schd_error(err);
 			ns_arr = shrink_to_run_event(policy, sinfo, qinfo, njob, flags, err);
 			/* If job still could not be run, should be run with min_duration */
-			if (ns_arr == NULL) {
+			if (ns_arr.empty()) {
 				ns_arr = ns_arr_minwt;
 				njob->duration = njob->min_duration;
-			}
-			else
+			} else
 				free_nspecs(ns_arr_minwt);
 		}
 	}
-	return (ns_arr);
+	return ns_arr;
 }
 
 /**
@@ -623,38 +620,38 @@ shrink_job_algorithm(status *policy, server_info *sinfo,
  *	@retval	nspec** array
  *	@retval NULL	: if job/resv can not run/error
  */
-nspec **
+std::vector<nspec *>
 is_ok_to_run_STF(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err,
-	nspec **(*shrink_heuristic)(status *policy, server_info *sinfo,
+	std::vector<nspec *>(*shrink_heuristic)(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err))
 {
-	nspec **ns_arr = NULL; /* node solution for job */
+	std::vector<nspec *> ns_arr; /* node solution for job */
 	sch_resource_t orig_duration;
 
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
-		return NULL;
+		return {};
 
 	orig_duration = njob->duration;
 
 	/* First see if it can run with full walltime */
 	ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
 	/* If the job can not run for non-calender reasons, return NULL*/
-	if (ns_arr != NULL)
-		return (ns_arr);
+	if (!ns_arr.empty())
+		return ns_arr;
 
 	if (err->error_code == DED_TIME ||
 		err->error_code == PRIME_ONLY ||
 		err->error_code == NONPRIME_ONLY)
-		return NULL;
+		return {};
 	/* Apply the shrink heuristic  and try running the job after shrinking it */
 	ns_arr = shrink_heuristic(policy, sinfo, qinfo, njob, flags, err);
 	/* Reset the job duration on failure */
-	if (ns_arr == NULL)
+	if (ns_arr.empty())
 		njob->duration = orig_duration;
 	else
 		njob->hard_duration = njob->duration;
-	return (ns_arr);
+	return ns_arr;
 }
 
 /**
@@ -694,24 +691,23 @@ is_ok_to_run_STF(status *policy, server_info *sinfo,
  *
  *
  */
-nspec **
+std::vector<nspec *>
 is_ok_to_run(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *perr)
 {
 	enum sched_error_code rc = SE_NONE;			/* Return Code */
 	schd_resource	*res = NULL;		/* resource list to check */
 	int		endtime = 0;		/* end time of job if started now */
-	nspec		**ns_arr = NULL;	/* node solution of where request will run */
 	node_partition	*allpart = NULL;	/* all partition to use (queue's or servers) */
 	schd_error	*prev_err = NULL;
 	schd_error	*err;
 	resource_req	*resreq = NULL;
 
 	if (sinfo == NULL || resresv == NULL || perr == NULL)
-		return NULL;
+		return {};
 
 	if (resresv->is_job && qinfo == NULL)
-		return NULL;
+		return {};
 
 	err = perr;
 
@@ -720,7 +716,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 	   resresv->ec_index != UNSPECIFIED &&
 	   sinfo->equiv_classes[resresv->ec_index]->can_not_run) {
 		copy_schd_error(err, sinfo->equiv_classes[resresv->ec_index]->err);
-		return NULL;
+		return {};
 	}
 
 	if (resresv->is_job) {
@@ -729,11 +725,11 @@ is_ok_to_run(status *policy, server_info *sinfo,
 			add_err(&prev_err, err);
 
 			if (!(flags & RETURN_ALL_ERR))
-				return NULL;
+				return {};
 			else {
 				err = new_schd_error();
 				if (err == NULL)
-					return NULL;
+					return {};
 			}
 		}
 	}
@@ -744,11 +740,11 @@ is_ok_to_run(status *policy, server_info *sinfo,
 			add_err(&prev_err, err);
 
 			if (!(flags & RETURN_ALL_ERR))
-				return NULL;
+				return {};
 
 			err = new_schd_error();
 			if (err == NULL)
-				return NULL;
+				return {};
 		}
 
 		/* There are 3 [sub]states a reservation is in that can be confirmed
@@ -764,11 +760,11 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				add_err(&prev_err, err);
 
 				if (!(flags & RETURN_ALL_ERR))
-					return NULL;
+					return {};
 
 				err = new_schd_error();
 				if (err == NULL)
-					return NULL;
+					return {};
 			}
 		}
 	}
@@ -799,7 +795,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 			if (toterr == NULL) {
 				if(err != perr)
 					free_schd_error(err);
-				return NULL;
+				return {};
 			}
 			/* We can't fit now, lets see if we can ever fit */
 			if (resresv_can_fit_nodepart(policy, allpart, resresv, flags|COMPARE_TOTAL, toterr) == 0) {
@@ -810,7 +806,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 			add_err(&prev_err, err);
 			if (!(flags & RETURN_ALL_ERR)) {
 				free_schd_error(toterr);
-				return NULL;
+				return {};
 			}
 			/* reuse toterr since we've already allocated it*/
 			err = toterr;
@@ -831,12 +827,12 @@ is_ok_to_run(status *policy, server_info *sinfo,
 
 				add_err(&prev_err, err);
 				if (rc == SCHD_ERROR)
-					return NULL;
+					return {};
 				if (!(flags & RETURN_ALL_ERR))
-					return NULL;
+					return {};
 				err = new_schd_error();
 				if (err == NULL)
-					return NULL;
+					return {};
 
 			}
 			/* check for max_run_subjobs limits only when its not a qrun job */
@@ -846,11 +842,11 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				add_err(&prev_err, err);
 
 				if (!(flags & RETURN_ALL_ERR))
-					return NULL;
+					return {};
 				else {
 					err = new_schd_error();
 					if (err == NULL)
-						return NULL;
+						return {};
 				}
 			}
 
@@ -858,11 +854,11 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				/* err is set inside check_prime_boundary() */
 				add_err(&prev_err, err);
 				if (!(flags & RETURN_ALL_ERR))
-					return NULL;
+					return {};
 
 				err = new_schd_error();
 				if (err == NULL)
-					return NULL;
+					return {};
 
 			}
 
@@ -870,22 +866,22 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				set_schd_error_codes(err, NOT_RUN, rc);
 				add_err(&prev_err, err);
 				if (!(flags & RETURN_ALL_ERR))
-					return NULL;
+					return {};
 
 				err = new_schd_error();
 				if (err == NULL)
-					return NULL;
+					return {};
 			}
 
 			if ((rc = check_prime_queue(policy, qinfo))) {
 				set_schd_error_codes(err, NOT_RUN, rc);
 				add_err(&prev_err, err);
 				if (!(flags & RETURN_ALL_ERR))
-					return NULL;
+					return {};
 
 				err = new_schd_error();
 				if (err == NULL)
-					return NULL;
+					return {};
 			}
 
 			if ((rc = check_nonprime_queue(policy, qinfo))) {
@@ -897,11 +893,11 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				set_schd_error_codes(err, scode, rc);
 				add_err(&prev_err, err);
 				if (!(flags & RETURN_ALL_ERR))
-					return NULL;
+					return {};
 
 				err = new_schd_error();
 				if (err == NULL)
-					return NULL;
+					return {};
 			}
 #ifdef NAS /* localmod 034 */
 				if ((rc = site_check_cpu_share(sinfo, policy, resresv))) {
@@ -922,10 +918,10 @@ is_ok_to_run(status *policy, server_info *sinfo,
 			set_schd_error_codes(err, NOT_RUN, rc);
 			add_err(&prev_err, err);
 			if (!(flags & RETURN_ALL_ERR))
-				return NULL;
+				return {};
 			err = new_schd_error();
 			if (err == NULL)
-				return NULL;
+				return {};
 		}
 	}
 
@@ -951,11 +947,11 @@ is_ok_to_run(status *policy, server_info *sinfo,
 							set_schd_error_codes(err, NOT_RUN, INSUFFICIENT_RESOURCE);
 							add_err(&prev_err, err);
 							if (!(flags & RETURN_ALL_ERR))
-								return NULL;
+								return {};
 
 							err = new_schd_error();
 							if (err == NULL)
-								return NULL;
+								return {};
 						}
 					}
 				}
@@ -978,7 +974,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				if(toterr == NULL) {
 					if(err != perr)
 						free_schd_error(err);
-					return NULL;
+					return {};
 				}
 				/* We can't fit now, lets see if we can ever fit */
 				if (check_avail_resources(res, resreq,
@@ -994,7 +990,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				if (!(flags & RETURN_ALL_ERR)) {
 					if(err != perr)
 						free_schd_error(err);
-					return NULL;
+					return {};
 				}
 			}
 		}
@@ -1019,7 +1015,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				if (toterr == NULL) {
 					if (err != perr)
 						free_schd_error(err);
-					return NULL;
+					return {};
 				}
 				/* We can't fit now, lets see if we can ever fit */
 				if (check_avail_resources(res, resreq,
@@ -1036,13 +1032,13 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				if (!(flags & RETURN_ALL_ERR)) {
 					if (err != perr)
 						free_schd_error(err);
-					return NULL;
+					return {};
 				}
 			}
 		}
 	}
 
-	ns_arr = check_nodes(policy, sinfo, qinfo, resresv, flags, err);
+	auto ns_arr = check_nodes(policy, sinfo, qinfo, resresv, flags, err);
 
 
 	if (err->error_code != SUCCESS)
@@ -1520,14 +1516,14 @@ dedtime_conflict(resource_resv *resresv)
  *					USE_BUCKETS - use the bucket code path
  * @param[out]	err	-	error structure on why job/resv can't run
  *
- * @return	nspec **
+ * @return	vector<nspec *>
  * @retval	node solution of where the job/resv will run
  * @retval	NULL	: if the job/resv can't run now
 
  */
-nspec **
+std::vector<nspec *>
 check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err) {
-	nspec **ns_arr;
+	std::vector<nspec *>ns_arr;
 
 	if (sinfo->pset_metadata_stale)
 		update_all_nodepart(policy, sinfo, (flags & NO_ALLPART));
@@ -1555,15 +1551,15 @@ check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv
  *					EVAL_EXCLSET - allocate entire nodelist exclusively
  * @param[out]	err	-	error structure on why job/resv can't run
  *
- * @return	nspec **
+ * @return	vector<nspec *>
  * @retval	node solution of where the job/resv will run
  * @retval	NULL	: if the job/resv can't run now
  *
  */
-nspec **
+std::vector<nspec *>
 check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err)
 {
-	nspec **nspec_arr = NULL;
+	std::vector<nspec *> nspec_arr;
 	selspec *spec = NULL;
 	place *pl = NULL;
 	int rc = 0;
@@ -1579,18 +1575,18 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 	if (sinfo == NULL || resresv == NULL || err == NULL) {
 		if (err != NULL)
 			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
-		return NULL;
+		return {};
 	}
 
 	if (resresv->is_job) {
 		if (qinfo == NULL)
-			return NULL;
+			return {};
 
 		if (resresv->job == NULL)
-			return NULL;
+			return {};
 
 		if (resresv->job->resv != NULL && resresv->job->resv->resv == NULL)
-			return NULL;
+			return {};
 	}
 
 	get_resresv_spec(resresv, &spec, &pl);
@@ -1648,7 +1644,7 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 			} else if (resresv->is_resv || (resresv->job != NULL && resresv->job->is_array)) {
 				/* No nodes associated with owner server, so reject the job array/reservation */
 				set_schd_error_codes(err, NOT_RUN, NO_NODE_RESOURCES);
-				return NULL;
+				return {};
 			}
 		}
 	}
@@ -1684,9 +1680,11 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 	}
 
 	if (ninfo_arr == NULL || error)
-		return NULL;
+		return {};
 
-	rc = eval_selspec(policy, spec, pl, ninfo_arr, nodepart, resresv, flags, &nspec_arr, err);
+	nspec_arr.reserve(spec->total_chunks);
+
+	rc = eval_selspec(policy, spec, pl, ninfo_arr, nodepart, resresv, flags, nspec_arr, err);
 
 	/* We can run, yippie! */
 	if (rc > 0)
@@ -1698,7 +1696,7 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 
 	free_nspecs(nspec_arr);
 
-	return NULL;
+	return {};
 }
 
 /**

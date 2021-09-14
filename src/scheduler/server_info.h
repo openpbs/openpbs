@@ -55,13 +55,13 @@ enum counts_on_run {
  *      query_server - creates a structure of arrays consisting of a server
  *                      and all the queues and jobs that reside in that server
  */
-server_info *query_server(status *policy, int pbs_sd);
+server_info *query_server(status *pol, int pbs_sd);
 
 /*
  *	query_server_info - collect information out of a statserver call
  *			    into a server_info structure
  */
-server_info *query_server_info(status *policy, struct batch_status *server);
+server_info *query_server_info(status *pol, struct batch_status *server);
 
 /*
  * 	query_server_dyn_res - execute all configured server_dyn_res scripts
@@ -91,12 +91,12 @@ schd_resource *find_resource(schd_resource *reslist, resdef *def);
 /*
  *      free_resource - free a resource struct
  */
-void free_resource(schd_resource *res);
+void free_resource(schd_resource *resp);
 
 /*
  *      free_resource_list - free a resource list
  */
-void free_resource_list(schd_resource *res_list);
+void free_resource_list(schd_resource *reslist);
 
 /*
  *      new_resource - allocate and initialize new resoruce struct
@@ -288,6 +288,9 @@ int check_run_job(resource_resv *job, const void *arg);
  *      update_universe_on_end - update a pbs universe when a job/resv ends
  */
 void update_universe_on_end(status *policy, resource_resv *resresv, const char *job_state, unsigned int flags);
+
+bool update_universe_on_run(status *policy, int pbs_sd, resource_resv *rr, std::vector<nspec *> &orig_ns, unsigned int flags);
+bool update_universe_on_run(status *policy, int pbs_sd, resource_resv *rr, unsigned int flags);
 
 /*
  *

@@ -155,7 +155,6 @@ resource_resv::resource_resv(const std::string& rname): name(rname)
 	resreq = NULL;
 	server = NULL;
 	ninfo_arr = NULL;
-	nspec_arr = NULL;
 
 	job = NULL;
 	resv = NULL;
@@ -788,7 +787,7 @@ is_resource_resv_valid(resource_resv *resresv, schd_error *err)
 	}
 
 	if (is_resresv_running(resresv)) {
-		if (resresv->nspec_arr == NULL) {
+		if (resresv->nspec_arr.empty()) {
 			set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
 			set_schd_error_arg(err, SPECMSG, "Is running w/o exec_vnode1");
 			return 0;
@@ -801,13 +800,13 @@ is_resource_resv_valid(resource_resv *resresv, schd_error *err)
 	}
 	}
 
-	if (resresv->ninfo_arr != NULL && resresv->nspec_arr == NULL) {
+	if (resresv->ninfo_arr != NULL && resresv->nspec_arr.empty()) {
 		set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
 		set_schd_error_arg(err, SPECMSG, "exec_vnode mismatch 1");
 		return 0;
 	}
 
-	if (resresv->nspec_arr != NULL && resresv->ninfo_arr == NULL) {
+	if (!resresv->nspec_arr.empty() && resresv->ninfo_arr == NULL) {
 		set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
 		set_schd_error_arg(err, SPECMSG, "exec_vnode mismatch 2");
 		return 0;
@@ -1478,22 +1477,21 @@ compare_resource_req_list(resource_req *req1, resource_req *req2, std::unordered
  * @return	void
  */
 void
-update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
+update_resresv_on_run(resource_resv *resresv, std::vector<nspec *>& nspec_arr)
 {
 	queue_info *resv_queue;
 	int ret;
 
-	if (resresv == NULL || nspec_arr == NULL)
+	if (resresv == NULL)
 		return;
 
 	if (resresv->is_job) {
 		if (resresv->job->is_suspended) {
-			for (int ns_size = 0; nspec_arr[ns_size] != NULL; ns_size++)
-				nspec_arr[ns_size]->ninfo->num_susp_jobs--;
-			if (resresv->job->resreleased != NULL) {
+			for (auto ns : nspec_arr)
+				ns->ninfo->num_susp_jobs--;
+			if (!resresv->job->resreleased.empty())
 				free_nspecs(resresv->job->resreleased);
-				resresv->job->resreleased = NULL;
-			}
+
 			if (resresv->job->resreq_rel != NULL) {
 				free_resource_req_list(resresv->job->resreq_rel);
 				resresv->job->resreq_rel = NULL;
@@ -1511,8 +1509,8 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 		resresv->job->accrue_type = JOB_RUNNING;
 
 		if (resresv->aoename != NULL) {
-			for (int i = 0; nspec_arr[i] != NULL; i++) {
-				if (nspec_arr[i]->go_provision) {
+			for (const auto ns: nspec_arr) {
+				if (ns->go_provision) {
 					resresv->job->is_provisioning = 1;
 					break;
 				}
@@ -1591,13 +1589,9 @@ update_resresv_on_end(resource_resv *resresv, const char *job_state)
 	if (resresv->is_job && resresv->job != NULL) {
 		set_job_state(job_state, resresv->job);
 		if (resresv->job->is_suspended) {
-#ifndef NAS /* localmod 005 */
-			int i;
-#endif /* localmod 005 */
-			nspec **ns = resresv->nspec_arr;
 			resresv->job->is_susp_sched = 1;
-			for (i = 0; ns[i] != NULL; i++)
-				ns[i]->ninfo->num_susp_jobs++;
+			for (auto ns : resresv->nspec_arr)
+				ns->ninfo->num_susp_jobs++;
 		} else {
 			if (resresv->job->is_subjob && resresv->job->parent_job &&
 			    resresv->job->parent_job->job->max_run_subjobs != UNSPECIFIED)
@@ -1611,7 +1605,6 @@ update_resresv_on_end(resource_resv *resresv, const char *job_state)
 			free(resresv->ninfo_arr);
 			resresv->ninfo_arr = NULL;
 			free_nspecs(resresv->nspec_arr);
-			resresv->nspec_arr = NULL;
 			free_resource_req_list(resresv->job->resused);
 			resresv->job->resused = NULL;
 			if (resresv->nodepart_name != NULL) {
@@ -2327,31 +2320,30 @@ compare_non_consumable(schd_resource *res, resource_req *req)
  * @return	converted select string
  */
 std::string
-create_select_from_nspec(nspec **nspec_array)
+create_select_from_nspec(std::vector<nspec *>& nspec_arr)
 {
 	std::string select_spec;
 	char buf[2048];
 	resource_req *req;
-	int i;
 
-	if (nspec_array == NULL || nspec_array[0] == NULL)
-		return NULL;
+	if (nspec_arr.empty())
+		return {};
 
 	/* convert form (node:foo=X:bar=Y) into 1:vnode=node:foo=X:bay=Y*/
-	for (i = 0; nspec_array[i] != NULL; i++) {
+	for (const auto& ns : nspec_arr) {
 		/* Don't add exclhost chunks into our select. They will be added back when
 		 * we call eval_selspec() with the original place=exclhost.  If we added
 		 * them, we'd have issues placing chunks w/o resources
 		 */
-		if (nspec_array[i]->resreq != NULL) {
-			if (nspec_array[i]->ninfo != NULL) {
+		if (ns->resreq != NULL) {
+			if (ns->ninfo != NULL) {
 				select_spec += "1:vnode=";
-				select_spec += nspec_array[i]->ninfo->name;
+				select_spec += ns->ninfo->name;
 			} else {
 				/* We need the resources back, but not necessarily on the same node */
 				select_spec += "1";
 			}
-			for (req = nspec_array[i]->resreq; req != NULL; req = req->next) {
+			for (req = ns->resreq; req != NULL; req = req->next) {
 				char resstr[MAX_LOG_SIZE];
 
 				res_to_str_r(req, RF_REQUEST, resstr, sizeof(resstr));
