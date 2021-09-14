@@ -2077,7 +2077,6 @@ class TestPbsResvAlter(TestFunctional):
 
         rid, start, end, rnodes = self.alter_select_initial(True, select)
 
-
         self.alter_select(
             rid, start, end, True, aselect1, 4, [], 1)
 
@@ -2149,7 +2148,6 @@ class TestPbsResvAlter(TestFunctional):
         aselect3 = "1:ncpus=1:mem=3gb"
 
         rid, start, end, rnodes = self.alter_select_initial(True, select)
-
 
         rnodes2 = self.alter_select(rid, start, end,
                                     True, aselect1, 5, [], 1)
@@ -2259,7 +2257,7 @@ class TestPbsResvAlter(TestFunctional):
 
         w = 1
         if not success:
-            w  = 3
+            w = 3
         self.alter_a_reservation(rid, start, end, select=selectN,
                                  confirm=confirm, sequence=seq, whichMessage=w)
 
