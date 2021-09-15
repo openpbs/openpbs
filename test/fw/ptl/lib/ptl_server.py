@@ -1867,7 +1867,15 @@ class Server(Wrappers):
             except PbsManagerError as e:
                 rc = e.rc
             if rc:
-                if len(self.status(NODE)) > 0:
+                node_length = 0
+                try:
+                    node_length = len(self.status(NODE))
+                except PbsStatusError as err:
+                    if "Server has no node list" not in err.msg[0]:
+                        self.logger.error(
+                            "Error while checking node length:" + str(err))
+                        return False
+                if node_length > 0:
                     self.logger.error("create_moms: Error deleting all nodes")
                     return False
 
