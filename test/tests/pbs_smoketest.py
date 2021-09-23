@@ -1037,6 +1037,11 @@ class SmokeTest(PBSTestSuite):
         self.server.runjob(jobid=j1id)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=j1id)
 
+        # test to make sure server can still start with job_sort_formula set
+        self.server.restart()
+        restart_msg = 'Failed to restart PBS'
+        self.assertTrue(self.server.isUp(), restart_msg)
+
     def isSuspended(self, ppid):
         """
         Check wether <ppid> is in Suspended state, return True if

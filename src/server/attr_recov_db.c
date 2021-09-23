@@ -256,21 +256,20 @@ decode_attr_db(void *parent, pbs_list_head *attr_list, void *padef_idx, struct a
 				int act_rc = 0;
 				if (padef[index].at_action)
 					if ((act_rc = (padef[index].at_action(&pattr[index], parent, ATR_ACTION_RECOV)))) {
-						log_errf(act_rc, __func__, "Action function failed for %s attr, errn %d", (padef + index)->at_name, act_rc);
+						log_errf(act_rc, __func__, "Action function failed for %s attr, errn %d...unsetting attribute", (padef+index)->at_name, act_rc);
 						for (index++; index <= limit; index++) {
 							while (pal) {
 								tmp_pal = pal->al_sister;
+								delete_link(&pal->al_link);
 								free(pal);
 								pal = tmp_pal;
 							}
 							if (index < limit)
 								pal = palarray[index];
 						}
-						free(palarray);
-						/* bailing out from this function */
-						/* any previously allocated attrs will be */
-						/* freed by caller (parent obj recov function) */
-						return -1;
+						if (padef[index].at_free)
+							padef[index].at_free(&pattr[index]);
+						break;
 					}
 			}
 			(pattr + index)->at_flags = (pal->al_flags & ~ATR_VFLAG_MODIFY) | ATR_VFLAG_MODCACHE;
