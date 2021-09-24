@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /**
  * @file	DIS_encode.c
  * 
@@ -46,10 +44,8 @@
  * DIS encode routines
  */
 
-
 #include "batch_request.h"
 #include "dis.h"
-
 
 /**
  * @brief encode the Preempt Jobs request for sending to the server.
@@ -62,12 +58,13 @@
 int
 encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs)
 {
-	int	i = 0;
-	int	rc = 0;
-	int	count = 0;
+	int i = 0;
+	int rc = 0;
+	int count = 0;
 
 	if (numofjobs == -1)
-		for (; jobs_list[count]; count++);
+		for (; jobs_list[count]; count++)
+			;
 	else
 		count = numofjobs;
 
@@ -106,13 +103,13 @@ encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs)
 int
 encode_DIS_CopyHookFile(int sock, int seq, char *buf, int len, char *filename)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswui(sock, seq) != 0) ||
-		(rc = diswui(sock, len) != 0) ||
-		(rc = diswst(sock, filename) != 0) ||
-		(rc = diswcs(sock, buf, len) != 0))
-			return rc;
+	    (rc = diswui(sock, len) != 0) ||
+	    (rc = diswst(sock, filename) != 0) ||
+	    (rc = diswcs(sock, buf, len) != 0))
+		return rc;
 
 	return 0;
 }
@@ -132,35 +129,35 @@ encode_DIS_CopyHookFile(int sock, int seq, char *buf, int len, char *filename)
 int
 encode_DIS_CopyFiles(int sock, struct batch_request *preq)
 {
-	int   pair_ct = 0;
+	int pair_ct = 0;
 	char *nullstr = "";
 	struct rqfpair *ppair;
-	int   rc;
+	int rc;
 
-	ppair = (struct rqfpair *)GET_NEXT(preq->rq_ind.rq_cpyfile.rq_pair);
+	ppair = (struct rqfpair *) GET_NEXT(preq->rq_ind.rq_cpyfile.rq_pair);
 	while (ppair) {
 		++pair_ct;
-		ppair = (struct rqfpair *)GET_NEXT(ppair->fp_link);
+		ppair = (struct rqfpair *) GET_NEXT(ppair->fp_link);
 	}
 
 	if ((rc = diswst(sock, preq->rq_ind.rq_cpyfile.rq_jobid) != 0) ||
-		(rc = diswst(sock, preq->rq_ind.rq_cpyfile.rq_owner) != 0) ||
-		(rc = diswst(sock, preq->rq_ind.rq_cpyfile.rq_user) != 0) ||
-		(rc = diswst(sock, preq->rq_ind.rq_cpyfile.rq_group) != 0) ||
-		(rc = diswui(sock, preq->rq_ind.rq_cpyfile.rq_dir) != 0))
-			return rc;
+	    (rc = diswst(sock, preq->rq_ind.rq_cpyfile.rq_owner) != 0) ||
+	    (rc = diswst(sock, preq->rq_ind.rq_cpyfile.rq_user) != 0) ||
+	    (rc = diswst(sock, preq->rq_ind.rq_cpyfile.rq_group) != 0) ||
+	    (rc = diswui(sock, preq->rq_ind.rq_cpyfile.rq_dir) != 0))
+		return rc;
 
 	if ((rc = diswui(sock, pair_ct) != 0))
 		return rc;
-	ppair = (struct rqfpair *)GET_NEXT(preq->rq_ind.rq_cpyfile.rq_pair);
+	ppair = (struct rqfpair *) GET_NEXT(preq->rq_ind.rq_cpyfile.rq_pair);
 	while (ppair) {
 		if (ppair->fp_rmt == NULL)
 			ppair->fp_rmt = nullstr;
 		if ((rc = diswui(sock, ppair->fp_flag) != 0) ||
-			(rc = diswst(sock, ppair->fp_local) != 0) ||
-			(rc = diswst(sock, ppair->fp_rmt) != 0))
-				return  rc;
-		ppair = (struct rqfpair *)GET_NEXT(ppair->fp_link);
+		    (rc = diswst(sock, ppair->fp_local) != 0) ||
+		    (rc = diswst(sock, ppair->fp_rmt) != 0))
+			return rc;
+		ppair = (struct rqfpair *) GET_NEXT(ppair->fp_link);
 	}
 
 	return 0;
@@ -201,46 +198,48 @@ encode_DIS_CopyFiles(int sock, struct batch_request *preq)
 int
 encode_DIS_CopyFiles_Cred(int sock, struct batch_request *preq)
 {
-	int			pair_ct = 0;
-	char			*nullstr = "";
-	struct rqfpair		*ppair;
-	int			rc;
-	size_t			clen;
-	struct	rq_cpyfile	*rcpyf;
+	int pair_ct = 0;
+	char *nullstr = "";
+	struct rqfpair *ppair;
+	int rc;
+	size_t clen;
+	struct rq_cpyfile *rcpyf;
 
-	clen = (size_t)preq->rq_ind.rq_cpyfile_cred.rq_credlen;
+	clen = (size_t) preq->rq_ind.rq_cpyfile_cred.rq_credlen;
 	rcpyf = &preq->rq_ind.rq_cpyfile_cred.rq_copyfile;
-	ppair = (struct rqfpair *)GET_NEXT(rcpyf->rq_pair);
+	ppair = (struct rqfpair *) GET_NEXT(rcpyf->rq_pair);
 
 	while (ppair) {
 		++pair_ct;
-		ppair = (struct rqfpair *)GET_NEXT(ppair->fp_link);
+		ppair = (struct rqfpair *) GET_NEXT(ppair->fp_link);
 	}
 
 	if ((rc = diswst(sock, rcpyf->rq_jobid) != 0) ||
-		(rc = diswst(sock, rcpyf->rq_owner) != 0) ||
-		(rc = diswst(sock, rcpyf->rq_user) != 0) ||
-		(rc = diswst(sock, rcpyf->rq_group) != 0) ||
-		(rc = diswui(sock, rcpyf->rq_dir) != 0))
-			return rc;
+	    (rc = diswst(sock, rcpyf->rq_owner) != 0) ||
+	    (rc = diswst(sock, rcpyf->rq_user) != 0) ||
+	    (rc = diswst(sock, rcpyf->rq_group) != 0) ||
+	    (rc = diswui(sock, rcpyf->rq_dir) != 0))
+		return rc;
 
 	if ((rc = diswui(sock, pair_ct) != 0))
 		return rc;
-	ppair = (struct rqfpair *)GET_NEXT(rcpyf->rq_pair);
+	ppair = (struct rqfpair *) GET_NEXT(rcpyf->rq_pair);
 	while (ppair) {
 		if (ppair->fp_rmt == NULL)
 			ppair->fp_rmt = nullstr;
 		if ((rc = diswui(sock, ppair->fp_flag) != 0) ||
-			(rc = diswst(sock, ppair->fp_local) != 0) ||
-			(rc = diswst(sock, ppair->fp_rmt) != 0))
-				return  rc;
-		ppair = (struct rqfpair *)GET_NEXT(ppair->fp_link);
+		    (rc = diswst(sock, ppair->fp_local) != 0) ||
+		    (rc = diswst(sock, ppair->fp_rmt) != 0))
+			return rc;
+		ppair = (struct rqfpair *) GET_NEXT(ppair->fp_link);
 	}
 
 	rc = diswui(sock, preq->rq_ind.rq_cpyfile_cred.rq_credtype);
-	if (rc != 0) return rc;
+	if (rc != 0)
+		return rc;
 	rc = diswcs(sock, preq->rq_ind.rq_cpyfile_cred.rq_pcred, clen);
-	if (rc != 0) return rc;
+	if (rc != 0)
+		return rc;
 
 	return 0;
 }
@@ -263,7 +262,7 @@ encode_DIS_CopyFiles_Cred(int sock, struct batch_request *preq)
 int
 encode_DIS_DelHookFile(int sock, char *filename)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswst(sock, filename) != 0))
 		return rc;
@@ -298,14 +297,14 @@ encode_DIS_DelHookFile(int sock, char *filename)
 int
 encode_DIS_Cred(int sock, char *jobid, char *credid, int type, char *data, size_t size, long validity)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswst(sock, jobid) != 0) ||
-		(rc = diswst(sock, credid) != 0) ||
-		(rc = diswui(sock, type) != 0) ||
-		(rc = diswcs(sock, data, size) != 0) ||
-		(rc = diswul(sock, validity) != 0))
-			return rc;
+	    (rc = diswst(sock, credid) != 0) ||
+	    (rc = diswui(sock, type) != 0) ||
+	    (rc = diswcs(sock, data, size) != 0) ||
+	    (rc = diswul(sock, validity) != 0))
+		return rc;
 
 	return rc;
 }
@@ -331,11 +330,11 @@ encode_DIS_Cred(int sock, char *jobid, char *credid, int type, char *data, size_
 int
 encode_DIS_JobCred(int sock, int type, char *cred, int len)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswui(sock, type)) != 0)
 		return rc;
-	rc = diswcs(sock, cred, (size_t)len);
+	rc = diswcs(sock, cred, (size_t) len);
 
 	return rc;
 }
@@ -359,16 +358,16 @@ encode_DIS_JobCred(int sock, int type, char *cred, int len)
 int
 encode_DIS_JobFile(int sock, int seq, char *buf, int len, char *jobid, int which)
 {
-	int   rc;
+	int rc;
 
 	if (jobid == NULL)
 		jobid = "";
 	if ((rc = diswui(sock, seq) != 0) ||
-		(rc = diswui(sock, which) != 0) ||
-		(rc = diswui(sock, len) != 0) ||
-		(rc = diswst(sock, jobid) != 0) ||
-		(rc = diswcs(sock, buf, len) != 0))
-			return rc;
+	    (rc = diswui(sock, which) != 0) ||
+	    (rc = diswui(sock, len) != 0) ||
+	    (rc = diswst(sock, jobid) != 0) ||
+	    (rc = diswcs(sock, buf, len) != 0))
+		return rc;
 
 	return 0;
 }
@@ -422,12 +421,12 @@ encode_DIS_JobId(int sock, char *jobid)
 int
 encode_DIS_Manage(int sock, int command, int objtype, char *objname, struct attropl *aoplp)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswui(sock, command) != 0) ||
-		(rc = diswui(sock, objtype) != 0) ||
-		(rc = diswst(sock, objname) != 0))
-			return rc;
+	    (rc = diswui(sock, objtype) != 0) ||
+	    (rc = diswst(sock, objname) != 0))
+		return rc;
 
 	return (encode_DIS_attropl(sock, aoplp));
 }
@@ -444,14 +443,14 @@ encode_DIS_Manage(int sock, int command, int objtype, char *objname, struct attr
 int
 encode_DIS_ModifyResv(int sock, char *resv_id, struct attropl *aoplp)
 {
-	int   rc = 0;
+	int rc = 0;
 
 	if (resv_id == NULL)
 		resv_id = "";
 
 	if (((rc = diswui(sock, MGR_OBJ_RESV)) != 0) ||
-		((rc = diswst(sock, resv_id)) != 0))
-			return rc;
+	    ((rc = diswst(sock, resv_id)) != 0))
+		return rc;
 
 	return (encode_DIS_attropl(sock, aoplp));
 }
@@ -474,11 +473,11 @@ encode_DIS_ModifyResv(int sock, char *resv_id, struct attropl *aoplp)
 int
 encode_DIS_MoveJob(int sock, char *jobid, char *destin)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswst(sock, jobid) != 0) ||
-		(rc = diswst(sock, destin) != 0))
-			return rc;
+	    (rc = diswst(sock, destin) != 0))
+		return rc;
 
 	return 0;
 }
@@ -501,12 +500,12 @@ encode_DIS_MoveJob(int sock, char *jobid, char *destin)
 int
 encode_DIS_MessageJob(int sock, char *jobid, int fileopt, char *msg)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswst(sock, jobid) != 0) ||
-		(rc = diswui(sock, fileopt) != 0) ||
-		(rc = diswst(sock, msg) != 0))
-			return rc;
+	    (rc = diswui(sock, fileopt) != 0) ||
+	    (rc = diswst(sock, msg) != 0))
+		return rc;
 
 	return 0;
 }
@@ -531,14 +530,14 @@ encode_DIS_MessageJob(int sock, char *jobid, int fileopt, char *msg)
 int
 encode_DIS_PySpawn(int sock, char *jobid, char **argv, char **envp)
 {
-	int	rc, i;
-	char	*cp;
+	int rc, i;
+	char *cp;
 
 	if ((rc = diswst(sock, jobid)) != DIS_SUCCESS)
 		return rc;
 
 	if (argv != NULL) {
-		for (i=0; (cp = argv[i]) != NULL; i++) {
+		for (i = 0; (cp = argv[i]) != NULL; i++) {
 			if ((rc = diswcs(sock, cp, strlen(cp))) != DIS_SUCCESS)
 				return rc;
 		}
@@ -547,7 +546,7 @@ encode_DIS_PySpawn(int sock, char *jobid, char **argv, char **envp)
 		return rc;
 
 	if (envp != NULL) {
-		for (i=0; (cp = envp[i]) != NULL; i++) {
+		for (i = 0; (cp = envp[i]) != NULL; i++) {
 			if ((rc = diswcs(sock, cp, strlen(cp))) != DIS_SUCCESS)
 				return rc;
 		}
@@ -560,11 +559,11 @@ encode_DIS_PySpawn(int sock, char *jobid, char **argv, char **envp)
 int
 encode_DIS_RelnodesJob(int sock, char *jobid, char *node_list)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswst(sock, jobid) != 0) ||
-		(rc = diswst(sock, node_list) != 0))
-			return rc;
+	    (rc = diswst(sock, node_list) != 0))
+		return rc;
 
 	return 0;
 }
@@ -590,7 +589,7 @@ encode_DIS_RelnodesJob(int sock, char *jobid, char *node_list)
 int
 encode_DIS_QueueJob(int sock, char *jobid, char *destin, struct attropl *aoplp)
 {
-	int   rc;
+	int rc;
 
 	if (jobid == NULL)
 		jobid = "";
@@ -598,8 +597,8 @@ encode_DIS_QueueJob(int sock, char *jobid, char *destin, struct attropl *aoplp)
 		destin = "";
 
 	if ((rc = diswst(sock, jobid) != 0) ||
-		(rc = diswst(sock, destin) != 0))
-			return rc;
+	    (rc = diswst(sock, destin) != 0))
+		return rc;
 
 	return (encode_DIS_attropl(sock, aoplp));
 }
@@ -632,15 +631,15 @@ encode_DIS_QueueJob(int sock, char *jobid, char *destin, struct attropl *aoplp)
 int
 encode_DIS_Register(int sock, struct batch_request *preq)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswst(sock, preq->rq_ind.rq_register.rq_owner) != 0) ||
-		(rc = diswst(sock, preq->rq_ind.rq_register.rq_parent) != 0) ||
-		(rc = diswst(sock, preq->rq_ind.rq_register.rq_child) != 0) ||
-		(rc = diswui(sock, preq->rq_ind.rq_register.rq_dependtype) != 0) ||
-		(rc = diswui(sock, preq->rq_ind.rq_register.rq_op) != 0) ||
-		(rc = diswsl(sock, preq->rq_ind.rq_register.rq_cost) != 0))
-			return rc;
+	    (rc = diswst(sock, preq->rq_ind.rq_register.rq_parent) != 0) ||
+	    (rc = diswst(sock, preq->rq_ind.rq_register.rq_child) != 0) ||
+	    (rc = diswui(sock, preq->rq_ind.rq_register.rq_dependtype) != 0) ||
+	    (rc = diswui(sock, preq->rq_ind.rq_register.rq_op) != 0) ||
+	    (rc = diswsl(sock, preq->rq_ind.rq_register.rq_cost) != 0))
+		return rc;
 
 	return 0;
 }
@@ -697,10 +696,10 @@ encode_DIS_ReqHdr(int sock, int reqt, char *user)
 {
 	int rc;
 
-	if ((rc = diswui(sock, PBS_BATCH_PROT_TYPE))	||
-		(rc = diswui(sock, PBS_BATCH_PROT_VER))	||
-		(rc = diswui(sock, reqt))			||
-		(rc = diswst(sock, user))) {
+	if ((rc = diswui(sock, PBS_BATCH_PROT_TYPE)) ||
+	    (rc = diswui(sock, PBS_BATCH_PROT_VER)) ||
+	    (rc = diswui(sock, reqt)) ||
+	    (rc = diswst(sock, user))) {
 		return rc;
 	}
 	return 0;
@@ -725,12 +724,12 @@ encode_DIS_ReqHdr(int sock, int reqt, char *user)
 int
 encode_DIS_Run(int sock, char *id, char *where, unsigned long arg)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswst(sock, id) != 0) ||
-		(rc = diswst(sock, where) != 0) ||
-		(rc = diswul(sock, arg)   != 0))
-			return rc;
+	    (rc = diswst(sock, where) != 0) ||
+	    (rc = diswul(sock, arg) != 0))
+		return rc;
 
 	return 0;
 }
@@ -771,11 +770,11 @@ encode_DIS_ShutDown(int sock, int manner)
 int
 encode_DIS_SignalJob(int sock, char *jobid, char *signal)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswst(sock, jobid) != 0) ||
-		(rc = diswst(sock, signal) != 0))
-			return rc;
+	    (rc = diswst(sock, signal) != 0))
+		return rc;
 
 	return 0;
 }
@@ -797,11 +796,11 @@ encode_DIS_SignalJob(int sock, char *jobid, char *signal)
 int
 encode_DIS_Status(int sock, char *objid, struct attrl *pattrl)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswst(sock, objid) != 0) ||
-		(rc = encode_DIS_attrl(sock, pattrl) != 0))
-			return rc;
+	    (rc = encode_DIS_attrl(sock, pattrl) != 0))
+		return rc;
 
 	return 0;
 }
@@ -827,7 +826,7 @@ encode_DIS_Status(int sock, char *objid, struct attrl *pattrl)
 int
 encode_DIS_SubmitResv(int sock, char *resv_id, struct attropl *aoplp)
 {
-	int   rc;
+	int rc;
 
 	if (resv_id == NULL)
 		resv_id = "";
@@ -836,8 +835,8 @@ encode_DIS_SubmitResv(int sock, char *resv_id, struct attropl *aoplp)
 	 * This is done so the server can use the queuejob structure
 	 */
 	if ((rc = diswst(sock, resv_id) != 0) ||
-		(rc = diswst(sock, "") != 0))
-			return rc;
+	    (rc = diswst(sock, "") != 0))
+		return rc;
 
 	return (encode_DIS_attropl(sock, aoplp));
 }
@@ -868,13 +867,13 @@ encode_DIS_SubmitResv(int sock, char *resv_id, struct attropl *aoplp)
 int
 encode_DIS_TrackJob(int sock, struct batch_request *preq)
 {
-	int   rc;
+	int rc;
 
 	if ((rc = diswst(sock, preq->rq_ind.rq_track.rq_jid) != 0) ||
-		(rc = diswui(sock, preq->rq_ind.rq_track.rq_hopcount) != 0) ||
-		(rc = diswst(sock, preq->rq_ind.rq_track.rq_location) != 0) ||
-		(rc = diswuc(sock, preq->rq_ind.rq_track.rq_state[0]) != 0))
-			return rc;
+	    (rc = diswui(sock, preq->rq_ind.rq_track.rq_hopcount) != 0) ||
+	    (rc = diswst(sock, preq->rq_ind.rq_track.rq_location) != 0) ||
+	    (rc = diswuc(sock, preq->rq_ind.rq_track.rq_state[0]) != 0))
+		return rc;
 
 	return 0;
 }
@@ -898,14 +897,13 @@ encode_DIS_TrackJob(int sock, struct batch_request *preq)
 int
 encode_DIS_UserCred(int sock, char *user, int type, char *cred, int len)
 {
-	int   rc;
-
+	int rc;
 
 	if ((rc = diswst(sock, user)) != 0)
 		return rc;
 	if ((rc = diswui(sock, type)) != 0)
 		return rc;
-	rc = diswcs(sock, cred, (size_t)len);
+	rc = diswcs(sock, cred, (size_t) len);
 
 	return rc;
 }
@@ -957,7 +955,7 @@ encode_DIS_attrl(int sock, struct attrl *pattrl)
 	for (ps = pattrl; ps; ps = ps->next) {
 		/* length of three strings */
 		value = ps->value ? ps->value : "";
-		name_len = (int)strlen(ps->name) + (int)strlen(value) + 2;
+		name_len = (int) strlen(ps->name) + (int) strlen(value) + 2;
 		if (ps->resource)
 			name_len += strlen(ps->resource) + 1;
 
@@ -974,9 +972,9 @@ encode_DIS_attrl(int sock, struct attrl *pattrl)
 			if ((rc = diswui(sock, 0)) != 0) /* no resource name */
 				break;
 		}
-		if ((rc = diswst(sock, value))	||
-			(rc = diswui(sock, (unsigned int)SET)))
-				break;
+		if ((rc = diswst(sock, value)) ||
+		    (rc = diswui(sock, (unsigned int) SET)))
+			break;
 	}
 
 	return rc;
@@ -1034,7 +1032,7 @@ encode_DIS_attropl(int sock, struct attropl *pattropl)
 
 	for (ps = pattropl; ps; ps = ps->next) {
 		/* length of three strings */
-		name_len = (int)strlen(ps->name) + (int)strlen(ps->value) + 2;
+		name_len = (int) strlen(ps->name) + (int) strlen(ps->value) + 2;
 		if (ps->resource)
 			name_len += strlen(ps->resource) + 1;
 
@@ -1051,9 +1049,9 @@ encode_DIS_attropl(int sock, struct attropl *pattropl)
 			if ((rc = diswui(sock, 0)) != 0) /* no resource name */
 				break;
 		}
-		if ((rc = diswst(sock, ps->value))	||
-			(rc = diswui(sock, (unsigned int)ps->op)))
-				break;
+		if ((rc = diswst(sock, ps->value)) ||
+		    (rc = diswui(sock, (unsigned int) ps->op)))
+			break;
 	}
 	return rc;
 }
@@ -1095,17 +1093,17 @@ encode_DIS_svrattrl(int sock, svrattrl *psattl)
 
 	/* count how many */
 
-	for (ps = psattl; ps; ps = (svrattrl *)GET_NEXT(ps->al_link)) {
+	for (ps = psattl; ps; ps = (svrattrl *) GET_NEXT(ps->al_link)) {
 		++ct;
 	}
 
 	if ((rc = diswui(sock, ct)) != 0)
 		return rc;
 
-	for (ps = psattl; ps; ps = (svrattrl *)GET_NEXT(ps->al_link)) {
+	for (ps = psattl; ps; ps = (svrattrl *) GET_NEXT(ps->al_link)) {
 		/* length of three strings */
-		name_len = (int)strlen(ps->al_atopl.name) +
-			(int)strlen(ps->al_atopl.value) + 2;
+		name_len = (int) strlen(ps->al_atopl.name) +
+			   (int) strlen(ps->al_atopl.value) + 2;
 		if (ps->al_atopl.resource)
 			name_len += strlen(ps->al_atopl.resource) + 1;
 
@@ -1113,7 +1111,7 @@ encode_DIS_svrattrl(int sock, svrattrl *psattl)
 			break;
 		if ((rc = diswst(sock, ps->al_atopl.name)) != 0)
 			break;
-		if (ps->al_rescln) {	/* has a resource name */
+		if (ps->al_rescln) { /* has a resource name */
 			if ((rc = diswui(sock, 1)) != 0)
 				break;
 			if ((rc = diswst(sock, ps->al_atopl.resource)) != 0)
@@ -1122,9 +1120,9 @@ encode_DIS_svrattrl(int sock, svrattrl *psattl)
 			if ((rc = diswui(sock, 0)) != 0) /* no resource name */
 				break;
 		}
-		if ((rc = diswst(sock, ps->al_atopl.value))	||
-			(rc = diswui(sock, (unsigned int)ps->al_op)))
-				break;
+		if ((rc = diswst(sock, ps->al_atopl.value)) ||
+		    (rc = diswui(sock, (unsigned int) ps->al_op)))
+			break;
 	}
 	return rc;
 }
