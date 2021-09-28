@@ -168,11 +168,7 @@ get_server(char *job_id_in, char *job_id_out, char *server_out)
 
 		strcat(job_id_out, ".");
 
-#ifdef NAS_CANON_JOBID /* localmod 086 */
-		strcat(job_id_out, host_server);
-#else
 		strcat(job_id_out, parent_server);
-#endif /* localmod 086 */
 		if (server_out[0] == '\0')
 			strcpy(server_out, parent_server);
 		free(parent_server);
