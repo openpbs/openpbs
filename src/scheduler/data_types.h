@@ -1126,8 +1126,8 @@ class nspec
 	 * We can't have the default copy constructor copy everything, because
 	 * we'd end up with a pointer to the same resreq
 	 */
-	nspec(nspec&) = delete;
-	nspec &operator=(nspec &) = delete;
+	nspec(const nspec&) = delete;
+	nspec &operator=(const nspec &) = delete;
 };
 
 struct nameval

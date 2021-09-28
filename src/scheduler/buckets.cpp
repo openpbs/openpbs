@@ -806,7 +806,7 @@ chunk_to_nspec(status *policy, chunk *chk, node_info *node, char *aoename)
  * @param resresv - the job
  * @return vector<nspec*>
  * @retval nspec array to run the job on
- * @retval NULL on error
+ * @retval empty vector on error
  */
 std::vector<nspec *>
 bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv)
@@ -1046,7 +1046,7 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
  * @param[out] err - schd_error structure to return reason why the job can't run
  * @return vector<nspec *>
  * @retval place job can run
- * @retval NULL if job can't run
+ * @retval empty vector if job can't run
  */
 std::vector<nspec *>
 check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, schd_error *err)
