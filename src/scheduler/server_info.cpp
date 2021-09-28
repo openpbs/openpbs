@@ -177,7 +177,6 @@ query_server(status *pol, int pbs_sd)
 	struct batch_status *server;	/* info about the server */
 	struct batch_status *bs_resvs;	/* batch status of the reservations */
 	server_info *sinfo;		/* scheduler internal form of server info */
-	counts *cts;			/* used to count running per user/grp */
 	int num_express_queues = 0;	/* number of express queues */
 	status *policy;
 	int job_arrays_associated = FALSE;
@@ -346,6 +345,8 @@ query_server(status *pol, int pbs_sd)
 		job_arrays_associated = TRUE;
 		/* set the user, group , project counts */
 		for (int i = 0; sinfo->running_jobs[i] != NULL; i++) {
+			counts *cts; /* used to count running per user/grp */
+
 			cts = find_alloc_counts(sinfo->user_counts,
 						sinfo->running_jobs[i]->user);
 
@@ -1122,26 +1123,28 @@ free_resource(schd_resource *resp)
 void server_info::init_server_info()
 {
 
-	has_soft_limit = 0;
-	has_hard_limit = 0;
-	has_user_limit = 0;
-	has_grp_limit = 0;
-	has_proj_limit = 0;
-	has_all_limit = 0;
-	has_mult_express = 0;
-	has_multi_vnode = 0;
-	has_prime_queue = 0;
-	has_nonprime_queue = 0;
-	has_nodes_assoc_queue = 0;
-	has_ded_queue = 0;
-	has_runjob_hook = 0;
-	node_group_enable = 0;
-	eligible_time_enable = 0;
-	provision_enable = 0;
-	power_provisioning = 0;
-	use_hard_duration = 0;
-	pset_metadata_stale = 0;
+	has_soft_limit = false;
+	has_hard_limit = false;
+	has_user_limit = false;
+	has_grp_limit = false;
+	has_proj_limit = false;
+	has_all_limit = false;
+	has_mult_express = false;
+	has_multi_vnode = false;
+	has_prime_queue = false;
+	has_nonprime_queue = false;
+	has_nodes_assoc_queue = false;
+	has_ded_queue = false;
+	has_runjob_hook = false;
+	node_group_enable = false;
+	eligible_time_enable = false;
+	provision_enable = false;
+	power_provisioning = false;
+	use_hard_duration = false;
+	pset_metadata_stale = false;
 	num_parts = 0;
+	has_nonCPU_licenses = 0;
+	num_preempted = 0;
 	res = NULL;
 	queue_list = NULL;
 	jobs = NULL;
@@ -1205,7 +1208,7 @@ new_resource()
 {
 	schd_resource *resp;		/* the new resource */
 
-	if ((resp = static_cast<schd_resource *>(calloc(1,  sizeof(schd_resource)))) == NULL) {
+	if ((resp = static_cast<schd_resource *>(calloc(1, sizeof(schd_resource)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -2449,18 +2452,16 @@ is_unassoc_node(node_info *ninfo, void *arg)
 }
 
 // counts constructor
-counts::counts(const std::string &rname)
+counts::counts(const std::string &rname) : name(rname)
 {
-	name = rname;
 	running = 0;
 	rescts = NULL;
 	soft_limit_preempt_bit = 0;
 }
 
 // counts copy constructor
-counts::counts(const counts &rcount)
+counts::counts(const counts &rcount) : name(rcount.name)
 {
-	name = rcount.name;
 	running = rcount.running;
 	rescts = dup_resource_count_list(rcount.rescts);
 	soft_limit_preempt_bit = rcount.soft_limit_preempt_bit;
@@ -2801,6 +2802,189 @@ update_universe_on_end(status *policy, resource_resv *resresv, const char *job_s
 	site_update_on_end(sinfo, qinfo, resresv);
 #endif /* localmod 057 */
 	update_preemption_priority(sinfo, resresv);
+}
+
+/**
+ * @brief Update scheduler's cache of the universe when a job/resv runs
+ * 
+ * @param[in] policy - policy info
+ * @param[in] pbs_sd - connection descriptor to pbs server or SIMULATE_SD if we're simulating
+ * @param[in] rr - the job or reservations
+ * @param[in] sinfo - the server
+ * @param[in] qinfo - the queue in the case of a job
+ * @param[in] flags - flags which modify behavior
+ * 				RURR_ADD_END_EVENT - add an end event to calendar for this job
+ * 				RURR_NOPRINT - don't print 'Job run'
+
+ * @return true 
+ * @return false 
+ */
+bool
+update_universe_on_run_helper(status *policy, int pbs_sd, resource_resv *rr, unsigned int flags)
+{
+	char old_state = 0;
+	resource_resv *array = NULL;
+	server_info *sinfo;
+	queue_info *qinfo = NULL;
+
+	if (rr == NULL)
+		return false;
+
+	if (!(flags & RURR_NOPRINT))
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, rr->name, "Job run");
+
+	sinfo = rr->server;
+	if (rr->is_job)
+		qinfo = rr->job->queue;
+
+	if (rr->is_job && rr->job != NULL && rr->job->parent_job != NULL)
+		array = rr->job->parent_job;
+
+	/* any resresv marked can_not_run will be ignored by the scheduler
+	 * so just incase we run by this resresv again, we want to ignore it
+	 * since it is already running
+	 */
+	rr->can_not_run = true;
+
+	if (rr->is_job && rr->job->is_suspended)
+		old_state = 'S';
+
+	update_resresv_on_run(rr, rr->nspec_arr);
+
+	if ((flags & RURR_ADD_END_EVENT)) {
+		auto te = create_event(TIMED_END_EVENT, rr->end, rr, NULL, NULL);
+		if (te == NULL)
+			return false;
+
+		add_event(sinfo->calendar, te);
+	}
+
+	if (array != NULL) {
+		update_array_on_run(array->job, rr->job);
+
+		/* Subjobs inherit all attributes from their parent job array. This means
+		 * we need to make sure the parent resresv array has its accrue_type set
+		 * before running the job.  If all subresresvs have run,
+		 * then resresv array's accrue_type becomes ineligible.
+		 */
+		if (array->is_job &&
+		    range_next_value(array->job->queued_subjobs, -1) < 0)
+			update_accruetype(pbs_sd, sinfo, ACCRUE_MAKE_INELIGIBLE, SUCCESS, array);
+		else
+			update_accruetype(pbs_sd, sinfo, ACCRUE_MAKE_ELIGIBLE, SUCCESS, array);
+	}
+
+	if (!rr->nspec_arr.empty()) {
+		bool sort_nodepart = false;
+		for (auto n : rr->nspec_arr) {
+			update_node_on_run(n, rr, &old_state);
+			if (n->ninfo->np_arr != NULL) {
+				node_partition **npar = n->ninfo->np_arr;
+				for (int j = 0; npar[j] != NULL; j++) {
+					modify_resource_list(npar[j]->res, n->resreq, SCHD_INCR);
+					if (!n->ninfo->is_free)
+						npar[j]->free_nodes--;
+					sort_nodepart = true;
+					update_buckets_for_node(npar[j]->bkts, n->ninfo);
+				}
+			}
+			/* if the node is being provisioned, it's brought down in
+			 * update_node_on_run().  We need to add an event in the calendar to
+			 * bring it back up.
+			 */
+			if (n->go_provision) {
+				if (add_prov_event(sinfo->calendar, sinfo->server_time + PROVISION_DURATION, n->ninfo) == 0)
+					return false;
+			}
+		}
+		if (sort_nodepart)
+			sort_all_nodepart(policy, sinfo);
+	}
+
+	update_queue_on_run(qinfo, rr, &old_state);
+
+	update_server_on_run(policy, sinfo, qinfo, rr, &old_state);
+
+	/* update soft limits for jobs that are not in reservation */
+	if (rr->is_job && rr->job->resv_id == NULL) {
+		/* update the entity preempt bit */
+		update_soft_limits(sinfo, qinfo, rr);
+		/* update the job preempt status */
+		set_preempt_prio(rr, qinfo, sinfo);
+	}
+
+	/* update_preemption_priority() must be called post queue/server update */
+	update_preemption_priority(sinfo, rr);
+
+	if (sinfo->policy->fair_share)
+		update_usage_on_run(rr);
+
+	if (rr->is_job && rr->job->is_preempted) {
+		unset_job_attr(pbs_sd, rr, ATTR_sched_preempted, UPDATE_LATER);
+		rr->job->is_preempted = 0;
+		rr->job->time_preempted = UNSPECIFIED;
+		sinfo->num_preempted--;
+	}
+
+#ifdef NAS /* localmod 057 */
+	site_update_on_run(sinfo, qinfo, rr, ns);
+#endif /* localmod 057 */
+
+	return true;
+}
+
+/**
+ * @brief Update scheduler's cache of the universe when a job/resv runs
+ * 
+ * @param[in] policy - policy info
+ * @param[in] pbs_sd - connection descriptor to pbs server or SIMULATE_SD if we're simulating
+ * @param[in] rr - the job or reservations
+ * @param[in] orig_ns - where we're running the job/resv
+ * @param[in] sinfo - the server
+ * @param[in] qinfo - the queue in the case of a job
+ * @param[in] flags - flags which modify behavior
+ * 				RURR_ADD_END_EVENT - add an end event to calendar for this job
+ * 				RURR_NOPRINT - don't print 'Job run'
+ * @return true - success
+ * @return false - failure
+ */
+bool
+update_universe_on_run(status *policy, int pbs_sd, resource_resv *rr, std::vector<nspec *> &orig_ns, unsigned int flags)
+{
+	if (!rr->nspec_arr.empty())
+		free_nspecs(rr->nspec_arr);
+
+	rr->nspec_arr = combine_nspec_array(orig_ns);
+
+	if (rr->is_resv) {
+		if (rr->resv->orig_nspec_arr.empty())
+			free_nspecs(rr->resv->orig_nspec_arr);
+		rr->resv->orig_nspec_arr = std::move(orig_ns);
+	} else
+		free_nspecs(orig_ns);
+
+	return update_universe_on_run_helper(policy, pbs_sd, rr, flags);
+}
+
+/**
+ * @brief Update scheduler's cache of the universe when a job/resv runs.  This overload
+ * 	does not pass an ns_arr parameter and uses the nspec array from the job/resv itself.
+ * 
+ * @param[in] policy - policy info
+ * @param[in] pbs_sd - connection descriptor to pbs server or SIMULATE_SD if we're simulating
+ * @param[in] rr - the job or reservations
+ * @param[in] sinfo - the server
+ * @param[in] qinfo - the queue in the case of a job
+ * @param[in] flags - flags which modify behavior
+ * 				RURR_ADD_END_EVENT - add an end event to calendar for this job
+ * 				RURR_NOPRINT - don't print 'Job run'
+ * @return true - success
+ * @return false - failure
+ */
+bool
+update_universe_on_run(status *policy, int pbs_sd, resource_resv *rr, unsigned int flags)
+{
+	return update_universe_on_run_helper(policy, pbs_sd, rr, flags);
 }
 
 /**
@@ -3477,13 +3661,9 @@ create_resource_assn_for_node(node_info *ninfo)
 		for (i = 0; ninfo->job_arr[i] != NULL; i++) {
 			/* ignore jobs in reservations.  The resources will be accounted for with the reservation itself.  */
 			if (ninfo->job_arr[i]->job != NULL && ninfo->job_arr[i]->job->resv == NULL) {
-				if (ninfo->job_arr[i]->nspec_arr != NULL) {
-					int j;
-					for (j = 0; ninfo->job_arr[i]->nspec_arr[j] != NULL; j++) {
-						nspec *n = ninfo->job_arr[i]->nspec_arr[j];
-						if (n->ninfo->rank == ninfo->rank)
-							add_req_list_to_assn(ninfo->res, n->resreq);
-					}
+				for (auto& n : ninfo->job_arr[i]->nspec_arr) {
+					if (n->ninfo->rank == ninfo->rank)
+						add_req_list_to_assn(ninfo->res, n->resreq);
 				}
 			}
 		}
@@ -3492,13 +3672,9 @@ create_resource_assn_for_node(node_info *ninfo)
 	/* Next up, account for running reservations.  Running reservations consume all resources on the node when they start.  */
 	if (ninfo->run_resvs_arr != NULL) {
 		for (i = 0; ninfo->run_resvs_arr[i] != NULL; i++) {
-			if (ninfo->run_resvs_arr[i]->nspec_arr != NULL) {
-				int j;
-				for (j = 0; ninfo->run_resvs_arr[i]->nspec_arr[j] != NULL; j++) {
-					nspec *n = ninfo->run_resvs_arr[i]->nspec_arr[j];
-					if (n->ninfo->rank == ninfo->rank)
-						add_req_list_to_assn(ninfo->res, n->resreq);
-				}
+			for (auto& n : ninfo->run_resvs_arr[i]->nspec_arr) {
+				if (n->ninfo->rank == ninfo->rank)
+					add_req_list_to_assn(ninfo->res, n->resreq);
 			}
 		}
 	}

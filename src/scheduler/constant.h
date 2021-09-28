@@ -385,11 +385,10 @@ enum incr_decr {
 };
 
 /* run update resresv flags is a bitfield = 0, 1, 2, 4, 8, ...*/
-enum run_update_resresv_flags
-{
+enum run_update_resresv_flags {
 	RURR_NO_FLAGS = 0,
 	RURR_ADD_END_EVENT = 1, /* add end events to calendar for job */
-	RURR_NOPRINT = 2       /* don't print messages */
+	RURR_NOPRINT = 2	/* don't print messages */
 	/* next value 4 */
 };
 

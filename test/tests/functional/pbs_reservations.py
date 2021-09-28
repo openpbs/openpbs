@@ -2279,8 +2279,12 @@ class TestReservations(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         solution = '(' + vn[0] + ':ncpus=2)+(' + resv_node2 + ':ncpus=1)'
-        a = {'reserve_substate': '5', 'resv_nodes': solution}
+        a = {'reserve_substate': '5'}
         self.server.expect(RESV, a, id=rid)
+        self.server.status(RESV)
+        rnodes = self.server.reservations[rid].get_vnodes()
+        self.assertIn(vn[0], rnodes, "Wrong node assigned to resv")
+        self.assertIn(resv_node2, rnodes, "Wrong node assigned to resv")
 
     def test_standing_resv_with_start_in_past(self):
         """

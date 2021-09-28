@@ -46,6 +46,6 @@
  *      create_prev_job_info - create the prev_job_info array from an array
  *                              of jobs
  */
-void create_prev_job_info(resource_resv **resresv_arr);
+void create_prev_job_info(resource_resv **jobs);
 
 #endif	/* _PREV_JOB_INFO_H */

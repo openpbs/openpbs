@@ -37,37 +37,35 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * Miscellaneous functions of scheduler.
  */
 #include <pbs_config.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <time.h>
-#include <ctype.h>
-#include <string.h>
-#include <errno.h>
-#include <math.h>
-#include <sstream>
-#include <algorithm>
-#include <pbs_ifl.h>
-#include <pbs_internal.h>
-#include <pbs_error.h>
-#include <log.h>
-#include <pbs_share.h>
-#include <libutil.h>
-#include <libpbs.h>
 #include "config.h"
 #include "constant.h"
-#include "misc.h"
-#include "globals.h"
 #include "fairshare.h"
-#include "resource_resv.h"
+#include "globals.h"
+#include "misc.h"
 #include "resource.h"
-
+#include "resource_resv.h"
+#include <algorithm>
+#include <ctype.h>
+#include <errno.h>
+#include <libpbs.h>
+#include <libutil.h>
+#include <log.h>
+#include <math.h>
+#include <pbs_error.h>
+#include <pbs_ifl.h>
+#include <pbs_internal.h>
+#include <pbs_share.h>
+#include <sstream>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 /**
  * @brief
@@ -148,12 +146,12 @@ add_str_to_array(char ***str_arr, char *str)
 	else
 		cnt = count_array(*str_arr);
 
-	tmp_arr = static_cast<char **>(realloc(*str_arr, (cnt+2)*sizeof(char*)));
+	tmp_arr = static_cast<char **>(realloc(*str_arr, (cnt + 2) * sizeof(char *)));
 	if (tmp_arr == NULL)
 		return -1;
 
 	tmp_arr[cnt] = string_dup(str);
-	tmp_arr[cnt+1] = NULL;
+	tmp_arr[cnt + 1] = NULL;
 
 	*str_arr = tmp_arr;
 
@@ -177,13 +175,13 @@ add_str_to_array(char ***str_arr, char *str)
 sch_resource_t
 res_to_num(const char *res_str, struct resource_type *type)
 {
-	sch_resource_t count = SCHD_INFINITY_RES;	/* convert string resource to numeric */
-	sch_resource_t count2 = SCHD_INFINITY_RES;	/* convert string resource to numeric */
-	char *endp;				/* used for strtol() */
-	char *endp2;				/* used for strtol() */
-	long multiplier = 1;			/* multiplier to count */
-	int is_size = 0;			/* resource value is a size type */
-	int is_time = 0;			/* resource value is a time spec */
+	sch_resource_t count = SCHD_INFINITY_RES;  /* convert string resource to numeric */
+	sch_resource_t count2 = SCHD_INFINITY_RES; /* convert string resource to numeric */
+	char *endp;				   /* used for strtol() */
+	char *endp2;				   /* used for strtol() */
+	long multiplier = 1;			   /* multiplier to count */
+	int is_size = 0;			   /* resource value is a size type */
+	int is_time = 0;			   /* resource value is a time spec */
 
 	if (res_str == NULL)
 		return SCHD_INFINITY_RES;
@@ -194,67 +192,56 @@ res_to_num(const char *res_str, struct resource_type *type)
 			type->is_non_consumable = 1;
 		}
 		count = 1;
-	}
-	else if (!strcasecmp(ATR_FALSE, res_str)) {
+	} else if (!strcasecmp(ATR_FALSE, res_str)) {
 		if (type != NULL) {
 			type->is_boolean = 1;
 			type->is_non_consumable = 1;
 		}
 		count = 0;
-	}
-	else if (!is_num(res_str)) {
+	} else if (!is_num(res_str)) {
 		if (type != NULL) {
 			type->is_string = 1;
 			type->is_non_consumable = 1;
 		}
 		count = SCHD_INFINITY_RES;
-	}
-	else {
+	} else {
 		count = (sch_resource_t) strtod(res_str, &endp);
 
 		if (*endp == ':') { /* time resource -> convert to seconds */
-			count2 = (sch_resource_t) strtod(endp+1, &endp2);
+			count2 = (sch_resource_t) strtod(endp + 1, &endp2);
 			if (*endp2 == ':') { /* form of HH:MM:SS */
 				count *= 3600;
 				count += count2 * 60;
 				count += strtol(endp2 + 1, &endp, 10);
 				if (*endp != '\0')
 					count = SCHD_INFINITY_RES;
-			}
-			else			 { /* form of MM:SS */
+			} else { /* form of MM:SS */
 				count *= 60;
 				count += count2;
 			}
 			multiplier = 1;
 			is_time = 1;
-		}
-		else if (*endp == 'k' || *endp == 'K') {
+		} else if (*endp == 'k' || *endp == 'K') {
 			multiplier = 1;
 			is_size = 1;
-		}
-		else if (*endp == 'm' || *endp == 'M') {
+		} else if (*endp == 'm' || *endp == 'M') {
 			multiplier = MEGATOKILO;
 			is_size = 1;
-		}
-		else if (*endp == 'g' || *endp == 'G') {
+		} else if (*endp == 'g' || *endp == 'G') {
 			multiplier = GIGATOKILO;
 			is_size = 1;
-		}
-		else if (*endp == 't' || *endp == 'T') {
+		} else if (*endp == 't' || *endp == 'T') {
 			multiplier = TERATOKILO;
 			is_size = 1;
-		}
-		else if (*endp == 'b' || *endp == 'B') {
+		} else if (*endp == 'b' || *endp == 'B') {
 			count = ceil(count / KILO);
 			multiplier = 1;
 			is_size = 1;
-		}
-		else if (*endp == 'w') {
+		} else if (*endp == 'w') {
 			count = ceil(count / KILO);
 			multiplier = SIZEOF_WORD;
 			is_size = 1;
-		}
-		else	/* catch all */
+		} else /* catch all */
 			multiplier = 1;
 
 		if (*endp != '\0' && *(endp + 1) == 'w')
@@ -289,7 +276,7 @@ res_to_num(const char *res_str, struct resource_type *type)
 int
 skip_line(char *line)
 {
-	int skip = 0;				/* whether or not to skil the line */
+	int skip = 0; /* whether or not to skil the line */
 
 	if (line != NULL) {
 		while (isspace((int) *line))
@@ -320,8 +307,8 @@ skip_line(char *line)
  *	@return nothing
  */
 void
-schdlogerr(int event, int event_class, int sev, const std::string& name, const char *text,
-	schd_error *err)
+schdlogerr(int event, int event_class, int sev, const std::string &name, const char *text,
+	   schd_error *err)
 {
 
 	if (err == NULL)
@@ -352,7 +339,7 @@ schdlogerr(int event, int event_class, int sev, const std::string& name, const c
  * @return void
  */
 void
-log_eventf(int eventtype, int objclass, int sev, const std::string& objname, const char *fmt, ...)
+log_eventf(int eventtype, int objclass, int sev, const std::string &objname, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
@@ -381,7 +368,7 @@ log_eventf(int eventtype, int objclass, int sev, const std::string& objname, con
  */
 
 void
-log_event(int eventtype, int objclass, int sev, const std::string& objname, const char *text)
+log_event(int eventtype, int objclass, int sev, const std::string &objname, const char *text)
 {
 	if (will_log_event(eventtype))
 		log_record(eventtype, objclass, sev, objname.c_str(), text);
@@ -411,10 +398,10 @@ log_event(int eventtype, int objclass, int sev, const std::string& objname, cons
  * @return	void ** filtered array.
  */
 void **
-filter_array(void **ptrarr, int (*filter_func)(void*, void*),
-	void *arg, int flags)
+filter_array(void **ptrarr, int (*filter_func)(void *, void *),
+	     void *arg, int flags)
 {
-	void **new_arr = NULL;                      /* the filtered array */
+	void **new_arr = NULL; /* the filtered array */
 	void **tmp;
 	int i, j;
 	int size;
@@ -438,7 +425,7 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 	new_arr[j] = NULL;
 
 	if (!(flags & FILTER_FULL)) {
-		if ((tmp = static_cast<void **>(realloc(new_arr, (j+1) * sizeof(void *)))) == NULL) {
+		if ((tmp = static_cast<void **>(realloc(new_arr, (j + 1) * sizeof(void *)))) == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			free(new_arr);
 			return NULL;
@@ -463,7 +450,8 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
  * @retval	SA_NO_MATCH	: no match
  *
  */
-enum match_string_array_ret match_string_array(const char * const *strarr1, const char * const *strarr2)
+enum match_string_array_ret
+match_string_array(const char *const *strarr1, const char *const *strarr2)
 {
 	int match = 0;
 	int i;
@@ -492,14 +480,15 @@ enum match_string_array_ret match_string_array(const char * const *strarr1, cons
 	return SA_NO_MATCH;
 }
 // overloaded
-enum match_string_array_ret match_string_array(const std::vector<std::string> &strarr1, const std::vector<std::string> &strarr2)
+enum match_string_array_ret
+match_string_array(const std::vector<std::string> &strarr1, const std::vector<std::string> &strarr2)
 {
 	unsigned int match = 0;
 
 	if (strarr1.empty() || strarr2.empty())
 		return SA_NO_MATCH;
 
-	for (auto &str1: strarr1) {
+	for (auto &str1 : strarr1) {
 		if (std::find(strarr2.begin(), strarr2.end(), str1) != strarr2.end())
 			match++;
 	}
@@ -580,7 +569,7 @@ calc_used_walltime(resource_resv *resresv)
 	if (resresv == NULL)
 		return 0;
 
-	if (resresv->is_job && resresv->job !=NULL) {
+	if (resresv->is_job && resresv->job != NULL) {
 		used = find_resource_req(resresv->job->resused, allres["walltime"]);
 
 		/* If we can't find the used structure, we will just assume no usage */
@@ -609,9 +598,9 @@ calc_used_walltime(resource_resv *resresv)
  * 	@retval	-1	: on error
  */
 int
-calc_time_left_STF(resource_resv *resresv, sch_resource_t* min_time_left)
+calc_time_left_STF(resource_resv *resresv, sch_resource_t *min_time_left)
 {
-	time_t 		used_amount = 0;
+	time_t used_amount = 0;
 
 	if (min_time_left == NULL || resresv->duration == UNSPECIFIED)
 		return -1;
@@ -674,10 +663,10 @@ cstrcmp(const char *s1, const char *s2)
 	if (s1 == NULL && s2 == NULL)
 		return 0;
 
-	if (s1 == NULL && s2 != NULL)
+	else if (s1 == NULL && s2 != NULL)
 		return -1;
 
-	if (s1 != NULL && s2 == NULL)
+	else if (s1 != NULL && s2 == NULL)
 		return 1;
 
 	return strcmp(s1, s2);
@@ -723,7 +712,7 @@ is_num(const char *str)
 	if ((i == (str_len - 2)) || (i == (str_len - 1))) {
 		auto c = tolower(str[i]);
 		if (c == 'k' || c == 'm' || c == 'g' || c == 't') {
-			c = tolower(str[i+1]);
+			c = tolower(str[i + 1]);
 			if (c == 'b' || c == 'w' || c == '\0')
 				return 1;
 		} else if (i == (str_len - 1)) {
@@ -735,7 +724,7 @@ is_num(const char *str)
 
 	/* last but not least, make sure we didn't stop on a decmal point */
 	if (str[i] == '.') {
-		for (i++ ; i < str_len && isdigit(str[i]); i++)
+		for (i++; i < str_len && isdigit(str[i]); i++)
 			;
 
 		/* number is a float */
@@ -746,7 +735,6 @@ is_num(const char *str)
 	/* the string is not a number or a size or time */
 	return 0;
 }
-
 
 /**
  * @brief
@@ -791,12 +779,12 @@ dup_array(void *ptr)
 	void **arr;
 	int len = 0;
 
-	arr = (void **)ptr;
+	arr = (void **) ptr;
 	if (arr == NULL)
 		return NULL;
 
 	len = count_array(arr);
-	ret = static_cast<void **>(malloc((len +1) * sizeof(void *)));
+	ret = static_cast<void **>(malloc((len + 1) * sizeof(void *)));
 	if (ret == NULL)
 		return NULL;
 	memcpy(ret, arr, len * sizeof(void *));
@@ -908,7 +896,7 @@ is_valid_pbs_name(char *str, int len)
 		if (str[i] == '\0')
 			break;
 		if (!(isalpha(str[i]) || isdigit(str[i]) || str[i] == '.' ||
-			str[i] == '-' || str[i] == '_' || str[i] == ' ' || str[i] == ':')) {
+		      str[i] == '-' || str[i] == '_' || str[i] == ' ' || str[i] == ':')) {
 			valid = 0;
 		}
 	}
@@ -950,7 +938,8 @@ clear_schd_error(schd_error *err)
  * @retval	NULL	: Error
  */
 schd_error *
-new_schd_error() {
+new_schd_error()
+{
 	schd_error *err;
 	if ((err = static_cast<schd_error *>(calloc(1, sizeof(schd_error)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -970,13 +959,14 @@ new_schd_error() {
  * @retval	NULL	: Error
  */
 schd_error *
-dup_schd_error(schd_error *oerr) {
+dup_schd_error(schd_error *oerr)
+{
 	schd_error *nerr;
-	if(oerr == NULL)
+	if (oerr == NULL)
 		return NULL;
 
 	nerr = new_schd_error();
-	if(nerr == NULL)
+	if (nerr == NULL)
 		return NULL;
 
 	nerr->rdef = oerr->rdef;
@@ -999,7 +989,8 @@ dup_schd_error(schd_error *oerr) {
  *
  * @return	nothing
  */
-void move_schd_error(schd_error *err, schd_error *oerr)
+void
+move_schd_error(schd_error *err, schd_error *oerr)
 {
 	if (oerr == NULL || err == NULL)
 		return;
@@ -1053,12 +1044,14 @@ copy_schd_error(schd_error *err, schd_error *oerr)
  *
  * @return	nothing
  */
-void set_schd_error_arg(schd_error *err, enum schd_error_args arg_field, const char *arg) {
+void
+set_schd_error_arg(schd_error *err, enum schd_error_args arg_field, const char *arg)
+{
 
-	if(err == NULL)
+	if (err == NULL)
 		return;
 
-	switch(arg_field) {
+	switch (arg_field) {
 		case ARG1:
 			free(err->arg1);
 			if (arg != NULL)
@@ -1090,7 +1083,6 @@ void set_schd_error_arg(schd_error *err, enum schd_error_args arg_field, const c
 		default:
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, "Invalid schd_error arg message type");
 	}
-
 }
 
 /**
@@ -1106,13 +1098,14 @@ void set_schd_error_arg(schd_error *err, enum schd_error_args arg_field, const c
  *
  * @return	nothing
  */
-void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error_code error_code)
+void
+set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error_code error_code)
 {
-	if(err == NULL)
+	if (err == NULL)
 		return;
-	if(status_code < SCHD_UNKWN || status_code >= SCHD_STATUS_HIGH)
+	if (status_code < SCHD_UNKWN || status_code >= SCHD_STATUS_HIGH)
 		return;
-	if(error_code < PBSE_NONE || error_code > ERR_SPECIAL)
+	if (error_code < PBSE_NONE || error_code > ERR_SPECIAL)
 		return;
 
 	err->status_code = status_code;
@@ -1128,7 +1121,7 @@ void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enu
 void
 free_schd_error(schd_error *err)
 {
-	if(err == NULL)
+	if (err == NULL)
 		return;
 
 	free(err->arg1);
@@ -1148,7 +1141,8 @@ free_schd_error(schd_error *err)
  * @param[in]	 err_list	-	Error list.
  */
 void
-free_schd_error_list(schd_error *err_list) {
+free_schd_error_list(schd_error *err_list)
+{
 	schd_error *err, *tmp;
 
 	err = err_list;
@@ -1157,7 +1151,6 @@ free_schd_error_list(schd_error *err_list) {
 		free_schd_error(err);
 		err = tmp;
 	}
-
 }
 
 /**
@@ -1169,11 +1162,12 @@ free_schd_error_list(schd_error *err_list) {
  *
  * @return	new schd_error
  */
-schd_error *create_schd_error(enum sched_error_code error_code, enum schd_err_status status_code)
+schd_error *
+create_schd_error(enum sched_error_code error_code, enum schd_err_status status_code)
 {
 	schd_error *nse;
 	nse = new_schd_error();
-	if(nse == NULL)
+	if (nse == NULL)
 		return NULL;
 	set_schd_error_codes(nse, status_code, error_code);
 	return nse;
@@ -1194,24 +1188,25 @@ schd_error *create_schd_error(enum sched_error_code error_code, enum schd_err_st
  *
  * @return	new schd_error
  */
-schd_error *create_schd_error_complex(enum sched_error_code error_code, enum schd_err_status status_code, char *arg1, char *arg2, char *arg3, char *specmsg)
+schd_error *
+create_schd_error_complex(enum sched_error_code error_code, enum schd_err_status status_code, char *arg1, char *arg2, char *arg3, char *specmsg)
 {
 	schd_error *nse;
 
 	nse = create_schd_error(error_code, status_code);
-	if(nse == NULL)
+	if (nse == NULL)
 		return NULL;
 
-	if(arg1 != NULL)
+	if (arg1 != NULL)
 		set_schd_error_arg(nse, ARG1, arg1);
 
-	if(arg2 != NULL)
+	if (arg2 != NULL)
 		set_schd_error_arg(nse, ARG2, arg2);
 
-	if(arg3 != NULL)
+	if (arg3 != NULL)
 		set_schd_error_arg(nse, ARG3, arg3);
 
-	if(specmsg != NULL)
+	if (specmsg != NULL)
 		set_schd_error_arg(nse, SPECMSG, specmsg);
 
 	return nse;
@@ -1242,20 +1237,20 @@ schd_error *create_schd_error_complex(enum sched_error_code error_code, enum sch
  *
  * @note	nothing stops duplicate entries from being added
  */
-void add_err(schd_error **prev_err, schd_error *err)
+void
+add_err(schd_error **prev_err, schd_error *err)
 {
 	schd_error *cur = NULL;
 
 	if (err == NULL || prev_err == NULL)
 		return;
 
-	if(*prev_err == NULL)
+	if (*prev_err == NULL)
 		(*prev_err) = err;
 	else
 		(*prev_err)->next = err;
 
-
-	if(err->next != NULL) {
+	if (err->next != NULL) {
 		for (cur = err; cur->next != NULL; cur = cur->next)
 			;
 		(*prev_err) = cur;
@@ -1294,7 +1289,6 @@ res_to_str(void *p, enum resource_fields fld)
 	}
 
 	return res_to_str_re(p, fld, &resbuf, &resbuf_size, NO_FLAGS);
-
 }
 
 /**
@@ -1315,7 +1309,7 @@ res_to_str(void *p, enum resource_fields fld)
  */
 char *
 res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
-	char *buf, int bufsize)
+	     char *buf, int bufsize)
 {
 	schd_resource res = {0};
 	resource_req req = {0};
@@ -1336,7 +1330,7 @@ res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
 			req.name = def->name.c_str();
 			req.type = def->type;
 			req.res_str = const_cast<char *>("unknown");
-			return res_to_str_re(((void*) &req), fld, &buf, &bufsize, NOEXPAND);
+			return res_to_str_re(((void *) &req), fld, &buf, &bufsize, NOEXPAND);
 			break;
 		case RF_AVAIL:
 		default:
@@ -1348,7 +1342,7 @@ res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
 			res.orig_str_avail = const_cast<char *>("unknown");
 			res.str_avail = const_cast<char **>(unknown);
 			res.str_assigned = const_cast<char *>("unknown");
-			return res_to_str_re(((void*) &res), fld, &buf, &bufsize, NOEXPAND);
+			return res_to_str_re(((void *) &res), fld, &buf, &bufsize, NOEXPAND);
 	}
 	return const_cast<char *>("");
 }
@@ -1392,7 +1386,7 @@ res_to_str_r(void *p, enum resource_fields fld, char *buf, int bufsize)
  */
 char *
 res_to_str_re(void *p, enum resource_fields fld, char **buf,
-	int *bufsize, unsigned int flags)
+	      int *bufsize, unsigned int flags)
 {
 	schd_resource *res = NULL;
 	resource_req *req = NULL;
@@ -1421,8 +1415,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 			if ((*buf = static_cast<char *>(malloc(1024))) == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
 				return const_cast<char *>("");
-			}
-			else
+			} else
 				*bufsize = 1024;
 		}
 	}
@@ -1487,30 +1480,27 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 			snprintf(*buf, *bufsize, "%s", str);
 		else
 			ret = pbs_strcat(buf, bufsize, str);
-	}
-	else if (rt->is_boolean) {
+	} else if (rt->is_boolean) {
 		if (flags & NOEXPAND)
 			snprintf(*buf, *bufsize, "%s", amount ? ATR_TRUE : ATR_FALSE);
 		else
 			ret = pbs_strcat(buf, bufsize, amount ? ATR_TRUE : ATR_FALSE);
-	}
-	else if (rt->is_size) {
+	} else if (rt->is_size) {
 		if (amount == 0) /* need to special case 0 or it falls into tb case */
 			snprintf(localbuf, sizeof(localbuf), "0kb");
-		else if (((long)amount % TERATOKILO) == 0)
-			snprintf(localbuf, sizeof(localbuf), "%ldtb", (long) (amount/TERATOKILO));
-		else if (((long)amount % GIGATOKILO) == 0)
-			snprintf(localbuf, sizeof(localbuf), "%ldgb", (long) (amount/GIGATOKILO));
-		else if (((long)amount % MEGATOKILO) == 0)
-			snprintf(localbuf, sizeof(localbuf), "%ldmb", (long) (amount/MEGATOKILO));
+		else if (((long) amount % TERATOKILO) == 0)
+			snprintf(localbuf, sizeof(localbuf), "%ldtb", (long) (amount / TERATOKILO));
+		else if (((long) amount % GIGATOKILO) == 0)
+			snprintf(localbuf, sizeof(localbuf), "%ldgb", (long) (amount / GIGATOKILO));
+		else if (((long) amount % MEGATOKILO) == 0)
+			snprintf(localbuf, sizeof(localbuf), "%ldmb", (long) (amount / MEGATOKILO));
 		else
 			snprintf(localbuf, sizeof(localbuf), "%ldkb", (long) amount);
 		if (flags & NOEXPAND)
 			snprintf(*buf, *bufsize, "%s", localbuf);
 		else
 			ret = pbs_strcat(buf, bufsize, localbuf);
-	}
-	else if (rt->is_num) {
+	} else if (rt->is_num) {
 		int const_print = 0;
 		if (amount == UNSPECIFIED_RES) {
 			if (flags & PRINT_INT_CONST) {
@@ -1535,7 +1525,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 		if (const_print == 0) {
 			if (rt->is_float)
 				snprintf(localbuf, sizeof(localbuf), "%.*f",
-					float_digits(amount, FLOAT_NUM_DIGITS), (double) amount);
+					 float_digits(amount, FLOAT_NUM_DIGITS), (double) amount);
 			else
 				snprintf(localbuf, sizeof(localbuf), "%ld", (long) amount);
 			if (flags & NOEXPAND)
@@ -1571,7 +1561,7 @@ free_ptr_array(void *inp)
 	if (inp == NULL)
 		return;
 
-	arr = (void **)inp;
+	arr = (void **) inp;
 
 	for (i = 0; arr[i] != NULL; i++)
 		free(arr[i]);

@@ -79,7 +79,7 @@ struct prev_job_info;
 class group_info;
 struct usage_info;
 class counts;
-struct nspec;
+class nspec;
 struct node_partition;
 struct range;
 struct place;
@@ -113,7 +113,6 @@ typedef struct resource_req resource_req;
 typedef struct resource_count resource_count;
 typedef struct usage_info usage_info;
 typedef struct resv_info resv_info;
-typedef struct nspec nspec;
 typedef struct node_partition node_partition;
 typedef struct place place;
 typedef struct schd_error schd_error;
@@ -474,7 +473,7 @@ class server_info
 	share_head *share_head;	/* root of share info */
 #endif
 	// Class methods
-	server_info(const char *);
+	explicit server_info(const char *);
 	server_info() = delete;
 	server_info(const server_info &);
 	virtual ~server_info();
@@ -615,7 +614,7 @@ struct job_info
 
 	struct attrl *attr_updates;	/* used to federate all attr updates to server*/
 	float formula_value;		/* evaluated job sort formula value */
-	nspec **resreleased;		/* list of resources released by the job on each node */
+	std::vector<nspec *> resreleased;		/* list of resources released by the job on each node */
 	resource_req *resreq_rel;	/* list of resources released */
 	char *depend_job_str;		/* dependent jobs in a ':' separated string */
 	resource_resv **dependent_jobs; /* dependent jobs with runone depenency */
@@ -734,7 +733,7 @@ class node_info
 	node_partition **np_arr;	/* array of node partitions node is in */
 	char *svr_inst_id;
 
-	explicit node_info(const std::string& name);
+	explicit node_info(const std::string& nname);
 	virtual ~node_info();
 };
 
@@ -764,7 +763,7 @@ struct resv_info
 	char *partition;		/* name of the partition in which the reservation was confirmed */
 	selspec *select_orig;		/* original schedselect pre-alter */
 	selspec *select_standing;	/* original schedselect for standing reservations */
-	nspec **orig_nspec_arr;		/* original non-shrunk exec_vnode with exec_vnode chunk mapped to select chunk */
+	std::vector<nspec *> orig_nspec_arr;		/* original non-shrunk exec_vnode with exec_vnode chunk mapped to select chunk */
 };
 
 /* resource reservation - used for both jobs and advanced reservations */
@@ -809,7 +808,7 @@ class resource_resv
 
 	server_info *server;		/* pointer to server which owns res resv */
 	node_info **ninfo_arr; 		/* nodes belonging to res resv */
-	nspec **nspec_arr;		/* exec vnode of object in internal sched form (one nspec per node) */
+	std::vector<nspec *> nspec_arr;		/* exec vnode of object in internal sched form (one nspec per node) */
 
 	job_info *job;			/* pointer to job specific structure */
 	resv_info *resv;		/* pointer to reservation specific structure */
@@ -896,7 +895,7 @@ class prev_job_info
 	resource_req *resused;	/* resources used by the job */
 	prev_job_info(const std::string& pname, const std::string& ename, resource_req *rused);
 	prev_job_info(const prev_job_info &);
-	prev_job_info(prev_job_info &&) noexcept;
+	prev_job_info(prev_job_info &&);
 	prev_job_info& operator=(const prev_job_info&);
 	virtual ~prev_job_info();
 };
@@ -908,7 +907,7 @@ class counts
 	int running;			/* count of running jobs in object */
 	int soft_limit_preempt_bit;	/* Place to store preempt bit if entity is over limits */
 	resource_count *rescts;		/* resources used */
-	counts(const std::string &);
+	explicit counts(const std::string &);
 	counts(const counts &);
 	counts& operator=(const counts &);
 	virtual ~counts();
@@ -940,7 +939,7 @@ class fairshare_head
 class group_info
 {
 	public:
-	const std::string name;				/* name of user/group */
+	std::string name;				/* name of user/group */
 	int resgroup;				/* resgroup the group is in */
 	int cresgroup;				/* resgroup of the children of group */
 	int shares;				/* number of shares this group has */
@@ -961,8 +960,9 @@ class group_info
 	group_info *parent;			/* parent node */
 	group_info *sibling;			/* sibling node */
 	group_info *child;			/* child node */
-	group_info(const std::string& gname);
+	explicit group_info(const std::string& gname);
 	group_info(group_info&);
+	group_info &operator=(const group_info &);
 };
 
 /**
@@ -1003,10 +1003,10 @@ struct node_partition
 class np_cache
 {
 	public:
-	std::vector<std::string> resnames;		/* resource names used to create partitions */
 	node_info **ninfo_arr;		/* ptr to array of nodes used to create pools */
-	int num_parts;			/* number of partitions in nodepart */
+	std::vector<std::string> resnames;		/* resource names used to create partitions */
 	node_partition **nodepart;	/* node partitions */
+	int num_parts;			/* number of partitions in nodepart */
 	np_cache();
 	np_cache(node_info **, const std::vector<std::string>&, node_partition **, int);
 	np_cache(const np_cache &) = delete;
@@ -1108,8 +1108,9 @@ struct peer_queue
 	peer_queue(const char *lqueue, const char *rqueue, const char *rserver): local_queue(lqueue), remote_queue(rqueue), remote_server(rserver) {peer_sd = -1;}
 };
 
-struct nspec
+class nspec
 {
+	public:
 	bool end_of_chunk:1; /* used for putting parens into the execvnode */
 	bool go_provision:1; /* used to mark a node to be provisioned */
 	int seq_num;			/* sequence number of chunk */
@@ -1117,6 +1118,16 @@ struct nspec
 	node_info *ninfo;
 	resource_req *resreq;
 	chunk *chk;
+
+	nspec();
+	nspec(const nspec &, node_info **, selspec *);
+	~nspec();
+	/* We need to have the copy constructor dup everything inside the nspec
+	 * We can't have the default copy constructor copy everything, because
+	 * we'd end up with a pointer to the same resreq
+	 */
+	nspec(const nspec&) = delete;
+	nspec &operator=(const nspec &) = delete;
 };
 
 struct nameval
@@ -1281,7 +1292,7 @@ class sched_exception: public std::exception
 {
 	public:
 	sched_exception(const sched_exception &e);
-	sched_exception &operator=(const sched_exception &e);
+	sched_exception &operator=(const sched_exception &err);
 	sched_exception (const std::string &str, const enum sched_error_code e);
 	const char *what();
 	enum sched_error_code get_error_code() const;

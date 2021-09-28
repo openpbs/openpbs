@@ -110,9 +110,6 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	/* array of pointers to internal scheduling structure for queues */
 	std::vector<queue_info *> qinfo_arr;
 
-	/* the current queue we are working on */
-	queue_info *qinfo;
-
 	/* return code */
 	sched_error_code ret;
 
@@ -152,6 +149,8 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	}
 
 	for (cur_queue = queues; cur_queue != NULL && !err; cur_queue = cur_queue->next) {
+		queue_info *qinfo;
+
 		/* convert queue information from batch_status to queue_info */
 		if ((qinfo = query_queue_info(policy, cur_queue, sinfo)) == NULL) {
 			free_schd_error(sch_err);

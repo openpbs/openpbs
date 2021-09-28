@@ -53,12 +53,12 @@ int cmpres(sch_resource_t r1, sch_resource_t r2);
  * cmp_nspec - sort nspec by sequence number
  *
  */
-int cmp_nspec(const void *v1, const void *v2);
+bool cmp_nspec(const nspec *n1, const nspec *n2);
 
 /*
  * cmp_nspec_by_sub_seq - sort nspec by sub sequence number
  */
-int cmp_nspec_by_sub_seq(const void *v1, const void *v2);
+bool cmp_nspec_by_sub_seq(const nspec *n1, const nspec *n2);
 
 /*
  *	cmp_placement_sets - sort placement sets by
@@ -97,7 +97,7 @@ int cmp_preempt_priority_asc(const void *j1, const void *j2);
  *      cmp_preempt_stime_asc - used to soft jobs in ascending preemption
  *                              start time
  */
-int cmp_preempt_stime_asc(const void *v1, const void *v2);
+int cmp_preempt_stime_asc(const void *j1, const void *j2);
 
 /*
  *      multi_sort - a multi keyed sortint compare function

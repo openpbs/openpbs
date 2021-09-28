@@ -55,7 +55,7 @@ int parse_ded_file(const char *filename);
  *      cmp_ded_time - compare function for qsort for the ded time array
  *
  */
-bool cmp_ded_time(const timegap& v1, const timegap& v2);
+bool cmp_ded_time(const timegap& t1, const timegap& t2);
 
 /*
  *      is_ded_time - checks if it is currently dedicated time
