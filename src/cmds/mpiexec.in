@@ -204,16 +204,8 @@ init()
 	if [ -n "$PBS_MPI_DEBUG" ]
 	then
 		debug=1
-		if [ -n "$NASMODE" ] ; then
-			# NAS localmod 073
-			mpirunverbose=-v
-		fi
 	else
 		debug=0
-		if [ -n "$NASMODE" ] ; then
-			# NAS localmod 073
-			mpirunverbose=''
-		fi
 	fi
 }
 
@@ -321,12 +313,7 @@ reset_rank()
 usage()
 {
 	printf "Usage:\n"
-	if [ -n "$NASMODE" ] ; then
-		# NAS localmod 073
-		printf "\t%s\n" "mpiexec [-v] -n    <maxprocs>"
-	else
-		printf "\t%s\n" "mpiexec -n    <maxprocs>"
-	fi
+	printf "\t%s\n" "mpiexec -n    <maxprocs>"
 	printf "\t%s\n" "-soft  <        >"
 	printf "\t%s\n" "-host  <        >"
 	printf "\t%s\n" "-arch  <        >"
@@ -363,34 +350,18 @@ evalsimpleargs()
 		arg="$2"
 	fi
 
-	if [ -n "$NASMODE" ] ; then
-		case "$opt" in
-			"-n")		maxprocs=$arg	;;
-			"-np")		maxprocs=$arg	;;	# NAS localmod 073
-			"-soft")	set=$arg	;;	# unimplemented?
-			"-host")	host=$arg	;;
-			"-arch")	arch=$arg	;;
-			"-wdir")	wdir=$arg	;;
-			"-path")	path=$arg	;;
-			"-file")	file=$arg	;;
-			*)		logerr "internal error - option \"$opt\""
-					exit 1
-					;;
-		esac
-	else
-		case "$opt" in
-			"-n")		maxprocs=$arg	;;
-			"-soft")	set=$arg	;;	# unimplemented?
-			"-host")	host=$arg	;;
-			"-arch")	arch=$arg	;;
-			"-wdir")	wdir=$arg	;;
-			"-path")	path=$arg	;;
-			"-file")	file=$arg	;;
-			*)		logerr "internal error - option \"$opt\""
-					exit 1
-					;;
-		esac
-	fi
+	case "$opt" in
+		"-n")		maxprocs=$arg	;;
+		"-soft")	set=$arg	;;	# unimplemented?
+		"-host")	host=$arg	;;
+		"-arch")	arch=$arg	;;
+		"-wdir")	wdir=$arg	;;
+		"-path")	path=$arg	;;
+		"-file")	file=$arg	;;
+		*)		logerr "internal error - option \"$opt\""
+				exit 1
+				;;
+	esac
 }
 
 #	debugging hook
@@ -584,19 +555,10 @@ sgiconfig()
 		PBS_LIB_PATH=${PBS_EXEC}/lib64
 	fi
 
-	if [ -n "$NASMODE" ] ; then
-		# NAS localmod 073
-		awkfile=${awkfile:-${PBS_LIB_PATH}/MPI/sgiMPI.awk}
-		awk -f $awkfile				-v configfile="$1"	\
-							-v runfile="$runfile"	\
-							-v pbs_exec="$PBS_EXEC"	\
-							-v debug=$debug
-	else
-		awk -f ${PBS_LIB_PATH}/MPI/sgiMPI.awk	-v configfile="$1"	\
-							-v runfile="$runfile"	\
-							-v pbs_exec="$PBS_EXEC"	\
-							-v debug=$debug
-	fi
+	awk -f ${PBS_LIB_PATH}/MPI/sgiMPI.awk	-v configfile="$1"	\
+						-v runfile="$runfile"	\
+						-v pbs_exec="$PBS_EXEC"	\
+						-v debug=$debug
 }
 
 #	... and execute it.
@@ -621,18 +583,7 @@ sgimpirun()
 		a_opt="-a $PBS_MPI_SGIARRAY"
 	fi
 
-	if [ -n "$NASMODE" ] ; then
-		set -- $mpirunverbose "${mpirun_args[@]}" $a_opt -f $runfile
-		if [ $debug -eq 1 ]
-		then
-			report_run "$@"
-			exit
-		fi
-
-		mpirun "$@"
-	else
-		mpirun $a_opt -f $runfile
-	fi
+	mpirun $a_opt -f $runfile
 }
 
 #	debugging hooks
@@ -643,18 +594,12 @@ report_config()
 }
 report_run()
 {
-	# NAS localmod 073
-	if [ -n "$NASMODE" ] ; then
-		echo mpirun "$@"
+	if [ -n "$PBS_MPI_SGIARRAY" ]
+	then
+		echo "mpirun -a $PBS_MPI_SGIARRAY -f $runfile"
 	else
-		if [ -n "$PBS_MPI_SGIARRAY" ]
-		then
-			echo "mpirun -a $PBS_MPI_SGIARRAY -f $runfile"
-		else
-			echo "mpirun -f $runfile"
-	 	fi
+		echo "mpirun -f $runfile"
 	fi
-
 	echo "where $runfile contains:"
 	cat $runfile | sed -e 's/^/\t/'
 }
@@ -665,145 +610,65 @@ MyName="`basename $0`"					# must occur first
 
 init ${1+"$@"}
 
-if [ -n "$NASMODE" ] ; then
-	# NAS localmod 073
-	declare -a mpirun_args
-	in_rankdef=0
-	while [ $# -gt 0 ]
-	do
-		# NAS localmod 073
-		case "$1" in
-			"-n"|"-np"|"-soft"|"-host"|"-arch"|"-wdir"|"-path"|"-file")
-				in_rankdef=1
-				evalsimpleargs ${1+"$@"}
-				shift 2
-				;;
-			"-configfile")
-				if [ $in_rankdef -eq 1 ]
+in_rankdef=0
+while [ $# -gt 0 ]
+do
+	case "$1" in
+		"-n"|"-soft"|"-host"|"-arch"|"-wdir"|"-path"|"-file")
+			in_rankdef=1
+			evalsimpleargs ${1+"$@"}
+			shift 2
+			;;
+		"-configfile")
+			if [ $in_rankdef -eq 1 ]
+			then
+				logerr "-configfile in rank definition"
+				exit 1
+			fi
+			# first "-configfile" option terminates argument parsing
+			shift
+			configfile="$1"
+			vendor_config $configfile && vendor_run
+			exit $?
+			;;
+		":")
+			in_rankdef=0
+			shift
+			evalsimpleargs ${1+"$@"}
+			while [ $# -gt 0 -a "$1" != ":" ]
+			do
+				shift
+			done
+			;;
+		*)
+			prog="$1"
+			shift
+			while [ $# -gt 0 ]
+			do
+				if [ "$1" = ":" ]
 				then
-					logerr "-configfile in rank definition"
-					exit 1
-				fi
-				# first "-configfile" option terminates argument parsing
-				shift
-				configfile="$1"
-				vendor_config $configfile && vendor_run
-				exit $?
-				;;
-			# NAS localmod 073
-			"-v")
-				mpirunverbose=-v
-				shift
-				;;
-			":")
-				in_rankdef=0
-				shift
-				evalsimpleargs ${1+"$@"}
-				while [ $# -gt 0 -a "$1" != ":" ]
-				do
-					shift
-				done
-				;;
-			# NAS localmod 073
-			-*)
-				mpirun_args=("${mpirun_args[@]}" "$1")
-				shift
-				if [ "$1" = "${1#-}" ]; then
-					mpirun_args=("${mpirun_args[@]}" "$1")
-					shift
-				fi
-				;;
-			*)
-				prog="$1"
-				shift
-				while [ $# -gt 0 ]
-				do
-					if [ "$1" = ":" ]
-					then
-						in_rankdef=0
-						dorank
-						break
-					else
-						progargs="$progargs $1"
-					fi
-					shift
-				done
-				if [ $# -gt 0 ]
-				then
-					if [ `expr substr "$1" 1 1` = ":" ]
-					then
-						shift
-					fi
-				else
-					ranknum=`expr $ranknum + 1`
 					in_rankdef=0
 					dorank
-				fi
-				;;
-		esac
-	done
-else
-	in_rankdef=0
-	while [ $# -gt 0 ]
-	do
-		case "$1" in
-			"-n"|"-soft"|"-host"|"-arch"|"-wdir"|"-path"|"-file")
-				in_rankdef=1
-				evalsimpleargs ${1+"$@"}
-				shift 2
-				;;
-			"-configfile")
-				if [ $in_rankdef -eq 1 ]
-				then
-					logerr "-configfile in rank definition"
-					exit 1
-				fi
-				# first "-configfile" option terminates argument parsing
-				shift
-				configfile="$1"
-				vendor_config $configfile && vendor_run
-				exit $?
-				;;
-			":")
-				in_rankdef=0
-				shift
-				evalsimpleargs ${1+"$@"}
-				while [ $# -gt 0 -a "$1" != ":" ]
-				do
-					shift
-				done
-				;;
-			*)
-				prog="$1"
-				shift
-				while [ $# -gt 0 ]
-				do
-					if [ "$1" = ":" ]
-					then
-						in_rankdef=0
-						dorank
-						break
-					else
-						progargs="$progargs $1"
-					fi
-					shift
-				done
-				if [ $# -gt 0 ]
-				then
-					if [ `expr substr "$1" 1 1` = ":" ]
-					then
-						shift
-					fi
+					break
 				else
-					ranknum=`expr $ranknum + 1`
-					in_rankdef=0
-					dorank
+					progargs="$progargs $1"
 				fi
-				;;
-		esac
-	done
-
-fi
+				shift
+			done
+			if [ $# -gt 0 ]
+			then
+				if [ `expr substr "$1" 1 1` = ":" ]
+				then
+					shift
+				fi
+			else
+				ranknum=`expr $ranknum + 1`
+				in_rankdef=0
+				dorank
+			fi
+			;;
+	esac
+done
 
 if [ $in_rankdef -eq 1 -a -z "$prog" ]
 then

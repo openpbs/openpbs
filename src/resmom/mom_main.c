@@ -109,9 +109,7 @@
 #include	"pbs_internal.h"
 #include	"pbs_idx.h"
 #ifdef HWLOC
-#ifndef NAS /* localmod 113 */
 #include	"hwloc.h"
-#endif /* localmod 113 */
 #endif
 #include	"hook.h"
 #include	"mom_hook_func.h"
@@ -9554,7 +9552,6 @@ check_busy(double mla)
 void
 mom_topology(void)
 {
-#ifndef NAS /* localmod 113 */
 	extern char mom_short_name[];
 	extern callfunc_t vn_callback;
 	int ret = -1;
@@ -9750,5 +9747,4 @@ bad:
 #else
 	;
 #endif
-#endif /* localmod 113 */
 }

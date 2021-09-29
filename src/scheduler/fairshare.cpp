@@ -593,11 +593,7 @@ rec_write_usage(group_info *root, FILE *fp)
 	 * usage defaults to 1 so don't bother writing those out either
 	 * It is possible that the unknown group is empty.  Don't want to write it out
 	 */
-#ifdef NAS /* localmod 043 */
-	if (root->child == NULL) {
-#else
 	if (root->usage != 1 && root->child == NULL && root->name != UNKNOWN_GROUP_NAME) {
-#endif /* localmod 043 */
 		memset(&grp, 0, sizeof(struct group_node_usage_v2));
 		snprintf(grp.name, sizeof(grp.name), "%s", root->name.c_str());
 		grp.usage = root->usage;

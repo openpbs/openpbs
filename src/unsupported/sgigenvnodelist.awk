@@ -99,7 +99,6 @@ BEGIN {
 	# Sort cpus, mems, and vnodes numerically
 	PROCINFO["sorted_in"] = "@ind_num_asc";
 
-	nas_mode = 0;			#	enable NAS mod 80
 	deftype = "m";			#	by default, output for pbs_mom
 	exitval = 0;			#	used to elide END actions
 	listsep = ", "
@@ -595,16 +594,7 @@ function printmompsdefs(			cpusfmt, cpuspernode, i, j, id,
 
 		#	Make sure that the vnode name we construct maps directly
 		#	to the node number in the sn_topology file.
-		# NAS localmod 080
-		if(nas_mode) { 
-			vnodename = nodename "[" id "]";
-			if (id ~ /#/) {
-				sub(/#.*\]$/, "]", vnodename);
-			}
-		}
-		else {
-			vnodename = nodename "[" nodenums[id] "]";
-		}
+		vnodename = nodename "[" nodenums[id] "]";
 
 		printf("%s:  sharing = default_excl\n", vnodename);
 
@@ -632,28 +622,25 @@ function printmompsdefs(			cpusfmt, cpuspernode, i, j, id,
 		} else
 			printf(memfmt, vnodename, 0);
 
-		# NAS localmod 080
-		if(nas_mode == 0) {
-			if ((cpuspernode > 0) || (meminfo > 0)) {
-				firsttime = 1;
-				ptmp = "";
-				#	Make sure that the router names in the placement
-				#	set values map directly to the router numbers in
-				#	the sn_topology file.
-				for (j = 0; j < nrouters; j++) {
-					rid = routerid[j];
-					if (index(nodesof[rid], id))
-						if (firsttime) {
-							firsttime = 0;
-							ptmp = pshort routernum[rid];
-						} else
-							ptmp = ptmp "," pshort routernum[rid];
-				}
-				if (ptmp != "") {
-					#	add a value for the whole machine
-					ptmp = ptmp "," nodename;
-					printf(psfmt, vnodename, ptype, ptmp);
-				}
+		if ((cpuspernode > 0) || (meminfo > 0)) {
+			firsttime = 1;
+			ptmp = "";
+			#	Make sure that the router names in the placement
+			#	set values map directly to the router numbers in
+			#	the sn_topology file.
+			for (j = 0; j < nrouters; j++) {
+				rid = routerid[j];
+				if (index(nodesof[rid], id))
+					if (firsttime) {
+						firsttime = 0;
+						ptmp = pshort routernum[rid];
+					} else
+						ptmp = ptmp "," pshort routernum[rid];
+			}
+			if (ptmp != "") {
+				#	add a value for the whole machine
+				ptmp = ptmp "," nodename;
+				printf(psfmt, vnodename, ptype, ptmp);
 			}
 		}
 	}
@@ -992,10 +979,7 @@ END {
 	}
 
 	numhops = genhops();
-	# NAS localmod 080
-	if( nas_mode == 0 ) {
-		genps(numhops);
-	}
+	genps(numhops);
 
 	if (type == "m") {
 		momprologue();

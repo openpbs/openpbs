@@ -1100,11 +1100,6 @@ check_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
 	if (si == NULL || qi == NULL || rr == NULL)
 		return 0;
 
-#ifdef NAS /* localmod 097 */
-	if (!si->has_soft_limit) {
-		return rc;
-	}
-#endif /* localmod 097 */
 	if (si->has_soft_limit) {
 		if (si->has_user_limit)
 			rc |= find_preempt_bits(si->user_counts, rr->user, rr);

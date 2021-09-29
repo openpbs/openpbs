@@ -61,12 +61,7 @@ if [ "${PBS_NODEFILE:-XX}" = "XX" ]; then
 fi
 
 list=""
-if [ -n "$NASMODE"] ; then
-# NAS localmod 074
-	usernp=1
-else
-	usernp=`cat ${PBS_NODEFILE} | wc -l`
-fi
+usernp=`cat ${PBS_NODEFILE} | wc -l`
 
 while [ $# -gt 0 ]; do
 	if [ "XX$1" = "XX-np" ]; then

@@ -620,16 +620,6 @@ req_confirmresv(struct batch_request *preq)
 		}
 	}
 
-#ifdef NAS /* localmod 122 */
-	/* If an advance reservation has already been confirmed there's no
-	 * work to be done.
-	 */
-	if (presv->ri_qs.ri_state == RESV_CONFIRMED && !get_rattr_long(presv, RESV_ATR_resv_standing)) {
-		reply_ack(preq);
-		return;
-	}
-#endif /* localmod 122 */
-
 	if (is_being_altered)
 		free_rattr(presv, RESV_ATR_alter_revert);
 
