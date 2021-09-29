@@ -759,7 +759,6 @@ send_cycle_end(void)
 	if (got_sigpipe)
 		goto reconnect;
 
-	got_sigpipe = 0;
 	return;
 
 reconnect:

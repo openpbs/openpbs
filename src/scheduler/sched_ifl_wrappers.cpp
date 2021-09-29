@@ -51,31 +51,6 @@
 #include "server_info.h"
 #include "libutil.h"
 
-
-/**
- * @brief	Handle partition tolerance related issues
- * 			Right now, just checks if pbs_errno was set to PBSE_NOSERVER and clears it if
- * 			partition tolerance is on
- *
- * @param	ret	-	original return value of IFL
- * @return	void *
- * @retval	original return value of IFL if no error, or error is due to a server being down
- * @retval	NULL if error or a server went down in the middle of the cycle
- */
-static void *
-handle_part_tolerance(void *ret)
-{
-	if (got_sigpipe)
-		return NULL;
-
-	if (pbs_errno == PBSE_NOSERVER && part_tolerance) {
-		/* In partition tolerance mode, one/more servers can be down, so clear this error */
-		pbs_errno = PBSE_NONE;
-	}
-
-	return ret;
-}
-
 /**
  * @brief	Send the relevant runjob request to server
  *
@@ -173,16 +148,7 @@ send_attr_updates(int sd, resource_resv *resresv, struct attrl *pattr)
 preempt_job_info *
 send_preempt_jobs(int sd, char **preempt_jobs_list)
 {
-	preempt_job_info *ret;
-
-    ret = pbs_preempt_jobs(sd, preempt_jobs_list);
-
-	if (handle_part_tolerance(ret) == NULL) {
-		free(ret);
-		return NULL;
-	}
-
-	return ret;
+    return pbs_preempt_jobs(sd, preempt_jobs_list);
 }
 
 /**
@@ -199,14 +165,7 @@ send_preempt_jobs(int sd, char **preempt_jobs_list)
 int
 send_sigjob(int sd, resource_resv *resresv, const char *signal, char *extend)
 {
-	int ret = 0;
-
-	ret = pbs_sigjob(sd, const_cast<char *>(resresv->name.c_str()), const_cast<char *>(signal), extend);
-
-	if (handle_part_tolerance(&ret) == NULL)
-		return 1;
-
-	return ret;
+	return pbs_sigjob(sd, const_cast<char *>(resresv->name.c_str()), const_cast<char *>(signal), extend);
 }
 
 /**
@@ -225,14 +184,7 @@ send_sigjob(int sd, resource_resv *resresv, const char *signal, char *extend)
 int
 send_confirmresv(int sd, resource_resv *resv, const char *location, unsigned long start, const char *extend)
 {
-	int ret = 0;
-
-	ret = pbs_confirmresv(sd, const_cast<char *>(resv->name.c_str()), const_cast<char *>(location), start, const_cast<char *>(extend));
-
-	if (handle_part_tolerance(&ret) == NULL)
-		return 1;
-
-	return ret;
+	return pbs_confirmresv(sd, const_cast<char *>(resv->name.c_str()), const_cast<char *>(location), start, const_cast<char *>(extend));
 }
 
 /**
@@ -250,13 +202,7 @@ send_confirmresv(int sd, resource_resv *resv, const char *location, unsigned lon
 struct batch_status *
 send_selstat(int sd, struct attropl *attrib, struct attrl *rattrib, char *extend)
 {
-	auto ret = pbs_selstat(sd, attrib, rattrib, extend);
-	if (handle_part_tolerance(ret) == NULL) {
-		pbs_statfree(ret);
-		return NULL;
-	}
-
-	return ret;
+	return pbs_selstat(sd, attrib, rattrib, extend);
 }
 
 /**
@@ -274,13 +220,7 @@ send_selstat(int sd, struct attropl *attrib, struct attrl *rattrib, char *extend
 struct batch_status *
 send_statvnode(int sd, char *id, struct attrl *attrib, char *extend)
 {
-	auto ret = pbs_statvnode(sd, id, attrib, extend);
-	if (handle_part_tolerance(ret) == NULL) {
-		pbs_statfree(ret);
-		return NULL;
-	}
-
-	return ret;
+	return pbs_statvnode(sd, id, attrib, extend);
 }
 
 /**
@@ -297,13 +237,7 @@ send_statvnode(int sd, char *id, struct attrl *attrib, char *extend)
 struct batch_status *
 send_statsched(int sd, struct attrl *attrib, char *extend)
 {
-	auto ret = pbs_statsched(sd, attrib, extend);
-	if (handle_part_tolerance(ret) == NULL) {
-		pbs_statfree(ret);
-		return NULL;
-	}
-
-	return ret;
+	return pbs_statsched(sd, attrib, extend);
 }
 
 /**
@@ -321,13 +255,7 @@ send_statsched(int sd, struct attrl *attrib, char *extend)
 struct batch_status *
 send_statqueue(int sd, char *id, struct attrl *attrib, char *extend)
 {
-	auto ret = pbs_statque(sd, id, attrib, extend);
-	if (handle_part_tolerance(ret) == NULL) {
-		pbs_statfree(ret);
-		return NULL;
-	}
-
-	return ret;
+	return pbs_statque(sd, id, attrib, extend);
 }
 
 /**
@@ -344,13 +272,7 @@ send_statqueue(int sd, char *id, struct attrl *attrib, char *extend)
 struct batch_status *
 send_statserver(int sd, struct attrl *attrib, char *extend)
 {
-	auto ret = pbs_statserver(sd, attrib, extend);
-	if (handle_part_tolerance(ret) == NULL) {
-		pbs_statfree(ret);
-		return NULL;
-	}
-
-	return ret;
+	return pbs_statserver(sd, attrib, extend);
 }
 
 /**
@@ -368,13 +290,7 @@ send_statserver(int sd, struct attrl *attrib, char *extend)
 struct batch_status *
 send_statrsc(int sd, char *id, struct attrl *attrib, char *extend)
 {
-	auto ret = pbs_statrsc(sd, id, attrib, extend);
-	if (handle_part_tolerance(ret) == NULL) {
-		pbs_statfree(ret);
-		return NULL;
-	}
-
-	return ret;
+	return pbs_statrsc(sd, id, attrib, extend);
 }
 
 /**
@@ -392,11 +308,5 @@ send_statrsc(int sd, char *id, struct attrl *attrib, char *extend)
 struct batch_status *
 send_statresv(int sd, char *id, struct attrl *attrib, char *extend)
 {
-	auto ret = pbs_statresv(sd, id, attrib, extend);
-	if (handle_part_tolerance(ret) == NULL) {
-		pbs_statfree(ret);
-		return NULL;
-	}
-
-	return ret;
+	return pbs_statresv(sd, id, attrib, extend);
 }

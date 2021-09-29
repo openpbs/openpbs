@@ -732,7 +732,6 @@ scheduling_cycle(int sd, const sched_cmd *cmd)
 static int
 get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 {
-	int i;
 	sched_cmd cmd;
 	int rc;
 
