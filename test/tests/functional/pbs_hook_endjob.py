@@ -1002,10 +1002,7 @@ class TestHookEndJob(TestFunctional):
             delete_user=TEST_USER,
             job_rerunnable=True)
 
-    # FIXME: Possible server bug?  When a rerunnable job is deleted while the
-    # mom is stopped and restarted, the job is killed and requeued as expected.
-    # The job is rerun after the MoM is restarted and runs to completion;
-    # however, the job's substate indicates that it was deleted.
+    @skip("issue 2485")
     def test_hook_jobobit_delete_running_single_job_as_root_rm(self):
         """
         Run a single rerunable job, but delete as root before completion after
@@ -1018,10 +1015,7 @@ class TestHookEndJob(TestFunctional):
             restart_moms=True,
             job_rerunnable=True)
 
-    # FIXME: Possible server bug?  When a rerunnable job is deleted while the
-    # mom is stopped and restarted, the job is killed and requeued as expected.
-    # The job is rerun after the MoM is restarted and runs to completion;
-    # however, the job's substate indicates that it was deleted.
+    @skip("issue 2485")
     def test_hook_jobobit_delete_running_single_job_as_user_rm(self):
         """
         Run a single rerunable job, but delete as root before completion after
@@ -1060,14 +1054,7 @@ class TestHookEndJob(TestFunctional):
             restart_moms=True,
             job_rerunnable=True)
 
-    # FIXME: Possible bug in the server or qdel.  When an active job array with
-    # running subjobs is deleted while the MoM is stopped, deleting the job
-    # array appears to result in qdel returning success (exit code 0)
-    # immediately despite the server being unable to contact the mom and thus
-    # the deletion of the subjobs failing.  The subjobs are requeued and run
-    # again when resources are available, which seems to be the opposite of a
-    # successful delete.  Shouldn't qdel return a non-zero exit status since
-    # the delete was unsuccessful?
+    @skip("issue 2486")
     def test_hook_jobobit_delete_running_array_job_as_root_sm(self):
         """
         Run an array job, but delete as root before completion after stopping
@@ -1077,14 +1064,7 @@ class TestHookEndJob(TestFunctional):
             self.jobobit_delete_running_job_moms_stopped,
             subjob_count=self.job_array_num_subjobs)
 
-    # FIXME: Possible bug in the server or qdel.  When an active job array with
-    # running subjobs is deleted while the MoM is stopped, deleting the job
-    # array appears to result in qdel returning success (exit code 0)
-    # immediately despite the server being unable to contact the mom and thus
-    # the deletion of the subjobs failing.  The subjobs are requeued and run
-    # again when resources are available, which seems to be the opposite of a
-    # successful delete.  Shouldn't qdel return a non-zero exit status since
-    # the delete was unsuccessful?
+    @skip("issue 2486")
     def test_hook_jobobit_delete_running_array_job_as_user_sm(self):
         """
         Run an array job, but delete as user before completion after stopping
