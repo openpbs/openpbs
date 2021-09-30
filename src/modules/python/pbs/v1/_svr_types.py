@@ -1568,7 +1568,7 @@ _pbs_v1.REVERSE_HOOK_EVENT = {
     _pbs_v1.__dict__['MOVEJOB']: "MOVEJOB",
     _pbs_v1.__dict__['MODIFYRESV']: "MODIFYRESV",
     _pbs_v1.__dict__['RUNJOB']: "RUNJOB",
-    _pbs_v1.__dict__['ENDJOB']: "ENDJOB",
+    _pbs_v1.__dict__['JOBOBIT']: "JOBOBIT",
     _pbs_v1.__dict__['MANAGEMENT']: "MANAGEMENT",
     _pbs_v1.__dict__['MODIFYVNODE']: "MODIFYVNODE",
     _pbs_v1.__dict__['PROVISION']: "PROVISION",

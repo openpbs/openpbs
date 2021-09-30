@@ -42,7 +42,7 @@ import time
 from tests.functional import *
 
 
-def endjob_hook(hook_func_name):
+def jobobit_hook(hook_func_name):
     import pbs
     import sys
 
@@ -52,33 +52,36 @@ def endjob_hook(hook_func_name):
         e = pbs.event()
         job = e.job
         pbs.logjobmsg(
-            job.id, 'endjob hook started for test %s' % (hook_func_name,))
-        pbs.logjobmsg(job.id, 'endjob hook, job starttime:%s' % (job.stime,))
-        pbs.logjobmsg(job.id, 'endjob hook, job endtime:%s' % (job.endtime,))
-        # pbs.logjobmsg(job.id, 'endjob hook, job_dir=%s' % (dir(job),))
-        pbs.logjobmsg(job.id, 'endjob hook, job_state=%s' % (job.job_state,))
-        pbs.logjobmsg(job.id, 'endjob hook, job_substate=%s' % (job.substate,))
+            job.id, 'jobobit hook started for test %s' % (hook_func_name,))
+        pbs.logjobmsg(job.id, 'jobobit hook, job starttime:%s' % (job.stime,))
+        pbs.logjobmsg(
+            job.id, 'jobobit hook, job obittime:%s' % (job.obittime,))
+        # pbs.logjobmsg(job.id, 'jobobit hook, job_dir=%s' % (dir(job),))
+        pbs.logjobmsg(job.id, 'jobobit hook, job_state=%s' % (job.job_state,))
+        pbs.logjobmsg(
+            job.id, 'jobobit hook, job_substate=%s' % (job.substate,))
         state_desc = pbs.REVERSE_JOB_STATE.get(job.job_state, '(None)')
         substate_desc = pbs.REVERSE_JOB_SUBSTATE.get(job.substate, '(None)')
         pbs.logjobmsg(
-            job.id, 'endjob hook, job_state_desc=%s' % (state_desc,))
+            job.id, 'jobobit hook, job_state_desc=%s' % (state_desc,))
         pbs.logjobmsg(
-            job.id, 'endjob hook, job_substate_desc=%s' % (substate_desc,))
-        pbs.logjobmsg(job.id, 'endjob hook, job endtime:%d' % (job.endtime,))
+            job.id, 'jobobit hook, job_substate_desc=%s' % (substate_desc,))
+        pbs.logjobmsg(
+            job.id, 'jobobit hook, job obittime:%d' % (job.obittime,))
         if hasattr(job, "resv") and job.resv:
             pbs.logjobmsg(
-                job.id, 'endjob hook, resv:%s' % (job.resv.resvid,))
+                job.id, 'jobobit hook, resv:%s' % (job.resv.resvid,))
             pbs.logjobmsg(
                 job.id,
-                'endjob hook, resv_nodes:%s' % (job.resv.resv_nodes,))
+                'jobobit hook, resv_nodes:%s' % (job.resv.resv_nodes,))
             pbs.logjobmsg(
                 job.id,
-                'endjob hook, resv_state:%s' % (job.resv.reserve_state,))
+                'jobobit hook, resv_state:%s' % (job.resv.reserve_state,))
         else:
-            pbs.logjobmsg(job.id, 'endjob hook, resv:(None)')
+            pbs.logjobmsg(job.id, 'jobobit hook, resv:(None)')
         # pbs.logjobmsg(pbs.REVERSE_JOB_STATE.get(job.state))
         pbs.logjobmsg(
-            job.id, 'endjob hook finished for test %s' % (hook_func_name,))
+            job.id, 'jobobit hook finished for test %s' % (hook_func_name,))
     except Exception as err:
         ty, _, tb = sys.exc_info()
         pbs.logmsg(
@@ -131,7 +134,7 @@ class TestHookEndJob(TestFunctional):
         self.node_count = len(self.server.moms)
         self.hook_name = test_body_func.__name__
 
-        self.logger.info("***** ENDJOB HOOK TEST START *****")
+        self.logger.info("***** JOBOBIT HOOK TEST START *****")
 
         a = {
             'resources_available.ncpus': self.node_cpu_count,
@@ -140,7 +143,7 @@ class TestHookEndJob(TestFunctional):
             self.server.manager(MGR_CMD_SET, NODE, a, mom.shortname)
 
         a = {
-            'event': 'endjob',
+            'event': 'jobobit',
             'enabled': 'True',
         }
 
@@ -153,7 +156,7 @@ class TestHookEndJob(TestFunctional):
         ret = self.server.create_hook(self.hook_name, a)
         self.assertTrue(ret, "Could not create hook %s" % self.hook_name)
 
-        hook_body = generate_hook_body_from_func(endjob_hook, self.hook_name)
+        hook_body = generate_hook_body_from_func(jobobit_hook, self.hook_name)
         ret = self.server.import_hook(self.hook_name, hook_body)
         self.assertTrue(ret, "Could not import hook %s" % self.hook_name)
 
@@ -168,7 +171,7 @@ class TestHookEndJob(TestFunctional):
         self.log_start_time = time.time()
         try:
             test_body_func(*args, **kwargs)
-            self.check_log_for_endjob_hook_messages()
+            self.check_log_for_jobobit_hook_messages()
         finally:
             # make an effort to start the MoMs if they are not running
             for mom in self.moms.values():
@@ -180,37 +183,38 @@ class TestHookEndJob(TestFunctional):
             ret = self.server.delete_hook(self.hook_name)
             self.assertTrue(ret, "Could not delete hook %s" % self.hook_name)
 
-        self.logger.info("***** ENDJOB HOOK TEST END *****")
+        self.logger.info("***** JOBOBIT HOOK TEST END *****")
 
-    def job_verify_endjob_hook_messages(self, job_id, existence):
+    def job_verify_jobobit_hook_messages(self, job_id, existence):
         """
-        Look for messages logged by the endjob hook.  This method assumes that
+        Look for messages logged by the jobobit hook.  This method assumes that
         a started job have been verified as terminated (ended/requeued) or
-        forced deleted, thus insuring that the endjob hook has run for the job.
+        forced deleted, thus insuring that the jobobit hook has run for the 
+        job.
         """
         self.server.log_match(
-            '%s;endjob hook started for test %s' % (job_id, self.hook_name),
+            '%s;jobobit hook started for test %s' % (job_id, self.hook_name),
             starttime=self.log_start_time, n='ALL', max_attempts=1,
             existence=existence)
         # TODO: add checks for expected job state and substate
         self.server.log_match(
-            '%s;endjob hook, resv:%s' % (job_id, self.resv_queue or "(None)"),
+            '%s;jobobit hook, resv:%s' % (job_id, self.resv_queue or "(None)"),
             starttime=self.log_start_time, n='ALL', max_attempts=1,
             existence=existence)
         self.server.log_match(
-            '%s;endjob hook finished for test %s' % (job_id, self.hook_name),
+            '%s;jobobit hook finished for test %s' % (job_id, self.hook_name),
             starttime=self.log_start_time, n='ALL', max_attempts=1,
             existence=existence)
 
-    def check_log_for_endjob_hook_messages(self):
+    def check_log_for_jobobit_hook_messages(self):
         """
-        Look for messages logged by the endjob hook.  This method assumes that
+        Look for messages logged by the jobobit hook.  This method assumes that
         all started jobs have been verified as terminated or forced deleted,
-        thus insuring that the endjob hook has run for those jobs.
+        thus insuring that the jobobit hook has run for those jobs.
         """
         for jid in [self.job_id] + self.subjob_ids:
             job_ended = jid in self.ended_job_ids or jid in self.rerun_job_ids
-            self.job_verify_endjob_hook_messages(jid, job_ended)
+            self.job_verify_jobobit_hook_messages(jid, job_ended)
             # remove any jobs that ended from the list of started and deleted
             # jobs.  at this point, they should no longer exist and thus are
             # irrelevant in either set.
@@ -274,7 +278,7 @@ class TestHookEndJob(TestFunctional):
         try:
             self.server.rerunjob(list(jids), extend=extend, runas=user)
         except PbsRerunError:
-            # a failed rerun should eventually result in the endjob hook being
+            # a failed rerun should eventually result in the jobobit hook being
             # run and the job being requeued
             pass
         if self.is_array_job and self.job_id in jids:
@@ -453,38 +457,38 @@ class TestHookEndJob(TestFunctional):
 
     # -------------------------------------------------------------------------
 
-    def endjob_simple_run_job(self, subjob_count=0):
+    def jobobit_simple_run_job(self, subjob_count=0):
         self.job_submit(subjob_count=subjob_count)
         self.job_verify_queued()
         self.job_verify_started()
         self.job_verify_ended()
 
-    def test_hook_endjob_run_single_job(self):
+    def test_hook_jobobit_run_single_job(self):
         """
         Run a single job to completion and verify that the end job hook is
         executed.
         """
         self.run_test_func(
-            self.endjob_simple_run_job)
+            self.jobobit_simple_run_job)
 
     @tags('smoke')
-    def test_hook_endjob_run_array_job(self):
+    def test_hook_jobobit_run_array_job(self):
         """
         Run an array of jobs to completion and verify that the end job hook is
         executed for all subjobs and the array job.
         """
         self.run_test_func(
-            self.endjob_simple_run_job,
+            self.jobobit_simple_run_job,
             subjob_count=self.job_array_num_subjobs)
 
     # -------------------------------------------------------------------------
 
-    def test_hook_endjob_run_array_job_in_resv(self):
+    def test_hook_jobobit_run_array_job_in_resv(self):
         """
         Run an array of jobs to completion within a reservation and verify that
         that the end job hook is executed for all subjobs and the array job.
         """
-        def endjob_run_array_job_in_resv():
+        def jobobit_run_array_job_in_resv():
             self.resv_submit()
             self.resv_verify_confirmed()
             a = {ATTR_queue: self.resv_queue}
@@ -497,11 +501,11 @@ class TestHookEndJob(TestFunctional):
             self.job_verify_started()
             self.job_verify_ended()
 
-        self.run_test_func(endjob_run_array_job_in_resv)
+        self.run_test_func(jobobit_run_array_job_in_resv)
 
     # -------------------------------------------------------------------------
 
-    def endjob_rerun_job(
+    def jobobit_rerun_job(
             self,
             subjob_count=0,
             rerun_force=False,
@@ -517,133 +521,133 @@ class TestHookEndJob(TestFunctional):
             self.moms_stop()
         self.job_rerun(force=rerun_force, user=rerun_user)
         self.job_verify_queued()
-        self.check_log_for_endjob_hook_messages()
+        self.check_log_for_jobobit_hook_messages()
         if restart_moms:
             self.moms_start()
         if not stop_moms or restart_moms:
             self.job_verify_started()
         self.job_verify_ended()
 
-    def test_hook_endjob_rerun_single_job_as_root(self):
+    def test_hook_jobobit_rerun_single_job_as_root(self):
         """
         Start a single job, issue a rerun as root, and verify that the end job
         hook is executed for both runs.
         """
         self.run_test_func(
-            self.endjob_rerun_job)
+            self.jobobit_rerun_job)
 
-    def test_hook_endjob_rerun_single_job_as_mgr(self):
+    def test_hook_jobobit_rerun_single_job_as_mgr(self):
         """
         Start a single job, issue a rerun as manager, and verify that the end
         job hook is executed for both runs.
         """
         self.run_test_func(
-            self.endjob_rerun_job,
+            self.jobobit_rerun_job,
             rerun_user=MGR_USER)
 
-    def test_hook_endjob_force_rerun_single_job_as_root(self):
+    def test_hook_jobobit_force_rerun_single_job_as_root(self):
         """
         Start a single job, issue a rerun as root, and verify that the end job
         hook is executed for both runs.
         """
         self.run_test_func(
-            self.endjob_rerun_job,
+            self.jobobit_rerun_job,
             rerun_force=True)
 
-    def test_hook_endjob_force_rerun_single_job_as_mgr(self):
+    def test_hook_jobobit_force_rerun_single_job_as_mgr(self):
         """
         Start a single job, force issue a rerun as manager, and verify that the
         end job hook is executed for both runs.
         """
         self.run_test_func(
-            self.endjob_rerun_job,
+            self.jobobit_rerun_job,
             rerun_force=True,
             rerun_user=MGR_USER)
 
-    def test_hook_endjob_rerun_single_job_stop_moms(self):
+    def test_hook_jobobit_rerun_single_job_stop_moms(self):
         """
         Start a single job, issue a rerun after stopping the MoMs. Verify that
         the job is requeued and that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_rerun_job,
+            self.jobobit_rerun_job,
             stop_moms=True,
             restart_moms=False)
 
-    def test_hook_endjob_force_rerun_single_job_stop_moms(self):
+    def test_hook_jobobit_force_rerun_single_job_stop_moms(self):
         """
         Start a single job, issue a force rerun after stopping the MoMs. Verify
         that the job is requeued and that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_rerun_job,
+            self.jobobit_rerun_job,
             rerun_force=True,
             stop_moms=True,
             restart_moms=False)
 
-    def test_hook_endjob_rerun_single_job_restart_moms(self):
+    def test_hook_jobobit_rerun_single_job_restart_moms(self):
         """
         Start a single job, issue a rerun after stopping the MoMs, then enable
         the MoMs again, verifying that the end job hook is executed for both
         runs.
         """
         self.run_test_func(
-            self.endjob_rerun_job,
+            self.jobobit_rerun_job,
             stop_moms=True,
             restart_moms=True)
 
-    def test_hook_endjob_force_rerun_single_job_restart_moms(self):
+    def test_hook_jobobit_force_rerun_single_job_restart_moms(self):
         """
         Start a single job, issue a force rerun after stopping the MoMs, then
         enable the MoMs again, verifying that the end job hook is executed for
         both runs.
         """
         self.run_test_func(
-            self.endjob_rerun_job,
+            self.jobobit_rerun_job,
             rerun_force=True,
             stop_moms=True,
             restart_moms=True)
 
-    def test_hook_endjob_rerun_array_job(self):
+    def test_hook_jobobit_rerun_array_job(self):
         """
         Start an array job, issue a rerun, and verify that the end job hook is
         executed for all subjob on both runs and only once for the array job.
         """
         self.run_test_func(
-            self.endjob_rerun_job,
+            self.jobobit_rerun_job,
             subjob_count=self.job_array_num_subjobs)
 
-    def test_hook_endjob_force_rerun_array_job(self):
+    def test_hook_jobobit_force_rerun_array_job(self):
         """
         Start an array job, issue a force rerun, and verify that the end job
         hook is executed for all subjob on both runs and only once for the
         array job.
         """
         self.run_test_func(
-            self.endjob_rerun_job,
+            self.jobobit_rerun_job,
             subjob_count=self.job_array_num_subjobs,
             rerun_force=True)
 
-    def test_hook_endjob_rerun_array_job_restart_moms(self):
+    def test_hook_jobobit_rerun_array_job_restart_moms(self):
         """
         Start an array job, issue a rerun after stopping the MoMs, then start
         the MoMs again, verifying that the end job hook is executed for both
         runs.
         """
         self.run_test_func(
-            self.endjob_rerun_job,
+            self.jobobit_rerun_job,
             subjob_count=self.job_array_num_subjobs,
             stop_moms=True,
             restart_moms=True)
 
-    def test_hook_endjob_force_rerun_array_job_restart_moms(self):
+    def test_hook_jobobit_force_rerun_array_job_restart_moms(self):
         """
         Start an array job, issue a force rerun after stopping the MoMs, then
         start the MoMs again, verifying that the end job hook is executed for
         both runs.
         """
         self.run_test_func(
-            self.endjob_rerun_job,
+            self.jobobit_rerun_job,
             subjob_count=self.job_array_num_subjobs,
             rerun_force=True,
             stop_moms=True,
@@ -651,7 +655,7 @@ class TestHookEndJob(TestFunctional):
 
     # -------------------------------------------------------------------------
 
-    def endjob_rerun_and_delete_job(
+    def jobobit_rerun_and_delete_job(
             self,
             subjob_count=0,
             delete_force=False):
@@ -661,51 +665,51 @@ class TestHookEndJob(TestFunctional):
         self.job_verify_started()
         self.job_rerun()
         self.job_verify_queued()
-        self.check_log_for_endjob_hook_messages()
+        self.check_log_for_jobobit_hook_messages()
         self.job_delete(force=delete_force)
         self.job_verify_ended()
 
-    def test_hook_endjob_rerun_and_delete_single_job(self):
+    def test_hook_jobobit_rerun_and_delete_single_job(self):
         """
         Start a single job, issue a rerun and immediately delete it.  Verify
         that the end job hook is only executed once.
         """
         self.run_test_func(
-            self.endjob_rerun_and_delete_job)
+            self.jobobit_rerun_and_delete_job)
 
-    def test_hook_endjob_rerun_and_force_delete_single_job(self):
+    def test_hook_jobobit_rerun_and_force_delete_single_job(self):
         """
         Start a single job, issue a rerun and immediately force delete it.
         Verify that the end job hook is only executed once.
         """
         self.run_test_func(
-            self.endjob_rerun_and_delete_job,
+            self.jobobit_rerun_and_delete_job,
             delete_force=True)
 
-    def test_hook_endjob_rerun_and_delete_array_job(self):
+    def test_hook_jobobit_rerun_and_delete_array_job(self):
         """
         Start an array job, issue a rerun and immediately delete it. Verify
         that the end job hook is only executed once for each subjob and the
         job array.
         """
         self.run_test_func(
-            self.endjob_rerun_and_delete_job,
+            self.jobobit_rerun_and_delete_job,
             subjob_count=self.job_array_num_subjobs)
 
-    def test_hook_endjob_rerun_and_force_delete_array_job(self):
+    def test_hook_jobobit_rerun_and_force_delete_array_job(self):
         """
         Start an array job, issue a rerun and immediately force delete it.
         Verify that the end job hook is only executed once for each subjob and
         the job array.
         """
         self.run_test_func(
-            self.endjob_rerun_and_delete_job,
+            self.jobobit_rerun_and_delete_job,
             subjob_count=self.job_array_num_subjobs,
             delete_force=True)
 
     # -------------------------------------------------------------------------
 
-    def endjob_delete_unstarted_job(
+    def jobobit_delete_unstarted_job(
             self,
             subjob_count=0,
             delete_force=False,
@@ -719,85 +723,85 @@ class TestHookEndJob(TestFunctional):
         self.job_delete(force=delete_force, user=delete_user)
         self.job_verify_ended()
 
-    def test_hook_endjob_delete_unstarted_single_job_as_root(self):
+    def test_hook_jobobit_delete_unstarted_single_job_as_root(self):
         """
         Queue a single job, but delete it as root before it starts.  Verify
         that the end job hook is not executed.
         """
         self.run_test_func(
-            self.endjob_delete_unstarted_job)
+            self.jobobit_delete_unstarted_job)
 
-    def test_hook_endjob_delete_unstarted_single_job_as_user(self):
+    def test_hook_jobobit_delete_unstarted_single_job_as_user(self):
         """
         Queue a single job, but delete it as the user before it starts.  Verify
         that the end job hook is not executed.
         """
         self.run_test_func(
-            self.endjob_delete_unstarted_job,
+            self.jobobit_delete_unstarted_job,
             delete_user=TEST_USER)
 
-    def test_hook_endjob_force_delete_unstarted_single_job_as_root(self):
+    def test_hook_jobobit_force_delete_unstarted_single_job_as_root(self):
         """
         Queue a single job, but force delete it as root before it starts.
         Verify that the end job hook is not executed.
         """
         self.run_test_func(
-            self.endjob_delete_unstarted_job,
+            self.jobobit_delete_unstarted_job,
             delete_force=True)
 
-    def test_hook_endjob_force_delete_unstarted_single_job_as_user(self):
+    def test_hook_jobobit_force_delete_unstarted_single_job_as_user(self):
         """
         Queue a single job, but force delete it as the user before it starts.
         Verify that the end job hook is not executed.
         """
         self.run_test_func(
-            self.endjob_delete_unstarted_job,
+            self.jobobit_delete_unstarted_job,
             delete_force=True,
             delete_user=TEST_USER)
 
-    def test_hook_endjob_delete_unstarted_array_job_as_root(self):
+    def test_hook_jobobit_delete_unstarted_array_job_as_root(self):
         """
         Queue an array job, but delete it as root before it starts.  Verify
         that the end job hook is not executed.
         """
         self.run_test_func(
-            self.endjob_delete_unstarted_job,
+            self.jobobit_delete_unstarted_job,
             subjob_count=self.job_array_num_subjobs)
 
-    def test_hook_endjob_delete_unstarted_array_job_as_user(self):
+    def test_hook_jobobit_delete_unstarted_array_job_as_user(self):
         """
         Queue an array job, but delete it as the user before it starts.  Verify
         that the end job hook is not executed.
         """
         self.run_test_func(
-            self.endjob_delete_unstarted_job,
+            self.jobobit_delete_unstarted_job,
             subjob_count=self.job_array_num_subjobs,
             delete_user=TEST_USER)
 
-    def test_hook_endjob_force_delete_unstarted_array_job_as_root(self):
+    def test_hook_jobobit_force_delete_unstarted_array_job_as_root(self):
         """
         Queue an array job, but force delete it as root before it starts.
         Verify that the end job hook is not executed.
         """
         self.run_test_func(
-            self.endjob_delete_unstarted_job,
+            self.jobobit_delete_unstarted_job,
             subjob_count=self.job_array_num_subjobs,
             delete_force=True)
 
-    def test_hook_endjob_force_delete_unstarted_array_job_as_user(self):
+    def test_hook_jobobit_force_delete_unstarted_array_job_as_user(self):
         """
         Queue an array job, but force delete it as the user before it starts.
         Verify that the end job hook is not executed.
         """
         self.run_test_func(
-            self.endjob_delete_unstarted_job,
+            self.jobobit_delete_unstarted_job,
             subjob_count=self.job_array_num_subjobs,
             delete_force=True,
             delete_user=TEST_USER)
 
     # -------------------------------------------------------------------------
 
-    def endjob_delete_running_job(
+    def jobobit_delete_running_job(
             self,
             subjob_count=0,
             job_rerunnable=True,
@@ -812,89 +816,89 @@ class TestHookEndJob(TestFunctional):
         self.job_delete(force=delete_force, user=delete_user)
         self.job_verify_ended()
 
-    def test_hook_endjob_delete_running_single_job_as_root(self):
+    def test_hook_jobobit_delete_running_single_job_as_root(self):
         """
         Run a single job, but delete as root before completion.  Verify that
         the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job)
+            self.jobobit_delete_running_job)
 
-    def test_hook_endjob_delete_running_single_job_as_user(self):
+    def test_hook_jobobit_delete_running_single_job_as_user(self):
         """
         Run a single job, but delete as the user before completion.  Verify
         that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job,
+            self.jobobit_delete_running_job,
             delete_user=TEST_USER)
 
-    def test_hook_endjob_force_delete_running_single_job_as_root(self):
+    def test_hook_jobobit_force_delete_running_single_job_as_root(self):
         """
         Run a single job, but force delete as root before completion.  Verify
         that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job,
+            self.jobobit_delete_running_job,
             delete_force=True)
 
-    def test_hook_endjob_force_delete_running_single_job_as_user(self):
+    def test_hook_jobobit_force_delete_running_single_job_as_user(self):
         """
         Run a single job, but force delete as the user before completion.
         Verify that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job,
+            self.jobobit_delete_running_job,
             delete_force=True,
             delete_user=TEST_USER)
 
-    def test_hook_endjob_delete_running_array_job_as_root(self):
+    def test_hook_jobobit_delete_running_array_job_as_root(self):
         """
         Run an array job, where all jobs are started but also deleted (by root)
         before completion.  Verify that the end job hook is executed for all
         subjobs and the array job.
         """
         self.run_test_func(
-            self.endjob_delete_running_job,
+            self.jobobit_delete_running_job,
             subjob_count=self.job_array_num_subjobs)
 
-    def test_hook_endjob_delete_running_array_job_as_user(self):
+    def test_hook_jobobit_delete_running_array_job_as_user(self):
         """
         Run an array job, where all jobs have started but also deleted (by the
         user) before completion.  Verify that the end job hook is executed for
         all subjobs and the array job.
         """
         self.run_test_func(
-            self.endjob_delete_running_job,
+            self.jobobit_delete_running_job,
             subjob_count=self.job_array_num_subjobs,
             delete_user=TEST_USER)
 
-    def test_hook_endjob_force_delete_running_array_job_as_root(self):
+    def test_hook_jobobit_force_delete_running_array_job_as_root(self):
         """
         Run an array job, where all jobs are started but also force deleted (by
         root) before completion.  Verify that the end job hook is executed for
         all subjobs and the array job.
         """
         self.run_test_func(
-            self.endjob_delete_running_job,
+            self.jobobit_delete_running_job,
             delete_force=True,
             subjob_count=self.job_array_num_subjobs)
 
-    def test_hook_endjob_force_delete_running_array_job_as_user(self):
+    def test_hook_jobobit_force_delete_running_array_job_as_user(self):
         """
         Run an array job, where all jobs have started but also force deleted
         (by the user) before completion.  Verify that the end job hook is
         executed for all subjobs and the array job.
         """
         self.run_test_func(
-            self.endjob_delete_running_job,
+            self.jobobit_delete_running_job,
             subjob_count=self.job_array_num_subjobs,
             delete_force=True,
             delete_user=TEST_USER)
 
     # -------------------------------------------------------------------------
 
-    def endjob_delete_running_job_moms_stopped(
+    def jobobit_delete_running_job_moms_stopped(
             self,
             subjob_count=0,
             job_rerunnable=True,
@@ -910,90 +914,90 @@ class TestHookEndJob(TestFunctional):
         self.job_delete(force=delete_force, user=delete_user)
         if job_rerunnable and not delete_force:
             self.job_verify_queued()
-            self.check_log_for_endjob_hook_messages()
+            self.check_log_for_jobobit_hook_messages()
             if restart_moms:
                 self.moms_start()
                 self.job_verify_started()
         self.job_verify_ended()
 
-    def test_hook_endjob_delete_running_single_job_as_root_nrr_sm(self):
+    def test_hook_jobobit_delete_running_single_job_as_root_nrr_sm(self):
         """
         Run a single non-rerunable job, but delete as root before completion
         after stopping the MoM. Verify that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             job_rerunnable=False)
 
-    def test_hook_endjob_delete_running_single_job_as_user_nrr_sm(self):
+    def test_hook_jobobit_delete_running_single_job_as_user_nrr_sm(self):
         """
         Run a single non-rerunable job, but delete as user before completion
         after stopping the MoM. Verify that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             delete_user=TEST_USER,
             job_rerunnable=False)
 
-    def test_hook_endjob_force_delete_running_single_job_as_root_nrr_sm(self):
+    def test_hook_jobobit_force_delete_running_single_job_as_root_nrr_sm(self):
         """
         Run a single non-rerunable job, but force delete as root before
         completion after stopping the MoM. Verify that the end job hook is
         executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             delete_force=True,
             job_rerunnable=False)
 
-    def test_hook_endjob_force_delete_running_single_job_as_user_nrr_sm(self):
+    def test_hook_jobobit_force_delete_running_single_job_as_user_nrr_sm(self):
         """
         Run a single non-rerunable job, but force delete as user before
         completion after stopping the MoM. Verify that the end job hook is
         executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             delete_force=True,
             delete_user=TEST_USER,
             job_rerunnable=False)
 
-    def test_hook_endjob_delete_running_single_job_as_root_sm(self):
+    def test_hook_jobobit_delete_running_single_job_as_root_sm(self):
         """
         Run a single rerunable job, but delete as user before completion
         after stopping the MoM. Verify that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             job_rerunnable=True)
 
-    def test_hook_endjob_delete_running_single_job_as_user_sm(self):
+    def test_hook_jobobit_delete_running_single_job_as_user_sm(self):
         """
         Run a single rerunable job, but delete as user before completion
         after stopping the MoM. Verify that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             delete_user=TEST_USER,
             job_rerunnable=True)
 
-    def test_hook_endjob_force_delete_running_single_job_as_root_sm(self):
+    def test_hook_jobobit_force_delete_running_single_job_as_root_sm(self):
         """
         Run a single rerunable job, but force delete as root before completion
         after stopping the MoM. Verify that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             delete_force=True,
             job_rerunnable=True)
 
-    def test_hook_endjob_force_delete_running_single_job_as_user_sm(self):
+    def test_hook_jobobit_force_delete_running_single_job_as_user_sm(self):
         """
         Run a single rerunable job, but force delete as user before completion
         after stopping the MoM. Verify that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             delete_force=True,
             delete_user=TEST_USER,
             job_rerunnable=True)
@@ -1002,7 +1006,7 @@ class TestHookEndJob(TestFunctional):
     # mom is stopped and restarted, the job is killed and requeued as expected.
     # The job is rerun after the MoM is restarted and runs to completion;
     # however, the job's substate indicates that it was deleted.
-    def test_hook_endjob_delete_running_single_job_as_root_rm(self):
+    def test_hook_jobobit_delete_running_single_job_as_root_rm(self):
         """
         Run a single rerunable job, but delete as root before completion after
         stopping the MoM. Verify that the end job hook is executed.  Then
@@ -1010,7 +1014,7 @@ class TestHookEndJob(TestFunctional):
         job hook is executed again.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             restart_moms=True,
             job_rerunnable=True)
 
@@ -1018,7 +1022,7 @@ class TestHookEndJob(TestFunctional):
     # mom is stopped and restarted, the job is killed and requeued as expected.
     # The job is rerun after the MoM is restarted and runs to completion;
     # however, the job's substate indicates that it was deleted.
-    def test_hook_endjob_delete_running_single_job_as_user_rm(self):
+    def test_hook_jobobit_delete_running_single_job_as_user_rm(self):
         """
         Run a single rerunable job, but delete as root before completion after
         stopping the MoM. Verify that the end job hook is executed.  Then
@@ -1026,31 +1030,31 @@ class TestHookEndJob(TestFunctional):
         job hook is executed again.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             delete_user=TEST_USER,
             restart_moms=True,
             job_rerunnable=True)
 
-    def test_hook_endjob_force_delete_running_single_job_as_root_rm(self):
+    def test_hook_jobobit_force_delete_running_single_job_as_root_rm(self):
         """
         Run a single rerunable job, but force delete as root before completion
         after stopping the MoM. Verify that the end job hook is executed.  Then
         restart the mom and verify that the end job hook is not executed again.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             delete_force=True,
             restart_moms=True,
             job_rerunnable=True)
 
-    def test_hook_endjob_force_delete_running_single_job_as_user_rm(self):
+    def test_hook_jobobit_force_delete_running_single_job_as_user_rm(self):
         """
         Run a single rerunable job, but force delete as user before completion
         after stopping the MoM. Verify that the end job hook is executed.  Then
         restart the mom and verify that the end job hook is not executed again.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             delete_force=True,
             delete_user=TEST_USER,
             restart_moms=True,
@@ -1064,13 +1068,13 @@ class TestHookEndJob(TestFunctional):
     # again when resources are available, which seems to be the opposite of a
     # successful delete.  Shouldn't qdel return a non-zero exit status since
     # the delete was unsuccessful?
-    def test_hook_endjob_delete_running_array_job_as_root_sm(self):
+    def test_hook_jobobit_delete_running_array_job_as_root_sm(self):
         """
         Run an array job, but delete as root before completion after stopping
         the MoM. Verify that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             subjob_count=self.job_array_num_subjobs)
 
     # FIXME: Possible bug in the server or qdel.  When an active job array with
@@ -1081,40 +1085,40 @@ class TestHookEndJob(TestFunctional):
     # again when resources are available, which seems to be the opposite of a
     # successful delete.  Shouldn't qdel return a non-zero exit status since
     # the delete was unsuccessful?
-    def test_hook_endjob_delete_running_array_job_as_user_sm(self):
+    def test_hook_jobobit_delete_running_array_job_as_user_sm(self):
         """
         Run an array job, but delete as user before completion after stopping
         the MoM. Verify that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             subjob_count=self.job_array_num_subjobs,
             delete_user=TEST_USER)
 
-    def test_hook_endjob_force_delete_running_array_job_as_root_sm(self):
+    def test_hook_jobobit_force_delete_running_array_job_as_root_sm(self):
         """
         Run an array job, but force delete as root before completion after
         stopping the MoM. Verify that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             subjob_count=self.job_array_num_subjobs,
             delete_force=True)
 
-    def test_hook_endjob_force_delete_running_array_job_as_user_sm(self):
+    def test_hook_jobobit_force_delete_running_array_job_as_user_sm(self):
         """
         Run an array job, but force delete as user before completion after
         stopping the MoM. Verify that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_delete_running_job_moms_stopped,
+            self.jobobit_delete_running_job_moms_stopped,
             subjob_count=self.job_array_num_subjobs,
             delete_force=True,
             delete_user=TEST_USER)
 
     # -------------------------------------------------------------------------
 
-    def endjob_job_running_during_mom_restart(
+    def jobobit_job_running_during_mom_restart(
             self,
             subjob_count=0,
             mom_preserve_jobs=True,
@@ -1140,45 +1144,45 @@ class TestHookEndJob(TestFunctional):
             if self.is_array_job:
                 self.rerun_job_ids.remove(self.job_id)
             self.job_verify_queued()
-            self.check_log_for_endjob_hook_messages()
+            self.check_log_for_jobobit_hook_messages()
         self.moms_start(**mom_start_kwargs)
         if not mom_preserve_jobs:
             self.job_verify_started()
         self.job_verify_ended()
 
-    def test_hook_endjob_finish_single_job_during_mom_restart(self):
+    def test_hook_jobobit_finish_single_job_during_mom_restart(self):
         """
         Run a single rerunable job and restart the MoMs.  Verify that the job
         successfully completes without being rerun and that the end job hook
         is executed.
         """
         self.run_test_func(
-            self.endjob_job_running_during_mom_restart
+            self.jobobit_job_running_during_mom_restart
         )
 
-    def test_hook_endjob_finish_single_job_during_mom_restart_delayed(self):
+    def test_hook_jobobit_finish_single_job_during_mom_restart_delayed(self):
         """
         Run a single rerunable job.  Stop the MoMs long enough for the job to
         complete and then restart the MoMs.  Verify that the job successfully
         completes without being rerun and that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_job_running_during_mom_restart,
+            self.jobobit_job_running_during_mom_restart,
             mom_restart_delayed=True
         )
 
-    def test_hook_endjob_rerun_single_job_during_mom_restart(self):
+    def test_hook_jobobit_rerun_single_job_during_mom_restart(self):
         """
         Run a single rerunable job and restart the MoMs.  Verify that the job
         is requeued and successfully completes, and that the end job hook is
         executed twice.
         """
         self.run_test_func(
-            self.endjob_job_running_during_mom_restart,
+            self.jobobit_job_running_during_mom_restart,
             mom_preserve_jobs=False
         )
 
-    def test_hook_endjob_rerun_single_job_during_mom_restart_delayed(self):
+    def test_hook_jobobit_rerun_single_job_during_mom_restart_delayed(self):
         """
         Run a single rerunable job.  Stop the MoMs long enough for the job to
         complete and then restart the MoMs.  Verify that the job is requeued
@@ -1186,47 +1190,47 @@ class TestHookEndJob(TestFunctional):
         twice.
         """
         self.run_test_func(
-            self.endjob_job_running_during_mom_restart,
+            self.jobobit_job_running_during_mom_restart,
             mom_preserve_jobs=False,
             mom_restart_delayed=True
         )
 
-    def test_hook_endjob_finish_array_job_during_mom_restart(self):
+    def test_hook_jobobit_finish_array_job_during_mom_restart(self):
         """
         Run an array job and restart the MoMs.  Verify that the subjobs
         successfully complete without being rerun and that the end job hook
         is executed.
         """
         self.run_test_func(
-            self.endjob_job_running_during_mom_restart,
+            self.jobobit_job_running_during_mom_restart,
             subjob_count=self.job_array_num_subjobs
         )
 
-    def test_hook_endjob_finish_array_job_during_mom_restart_delayed(self):
+    def test_hook_jobobit_finish_array_job_during_mom_restart_delayed(self):
         """
         Run an array job.  Stop the MoMs long enough for the job to
         complete and then restart the MoMs.  Verify that the job successfully
         completes without being rerun and that the end job hook is executed.
         """
         self.run_test_func(
-            self.endjob_job_running_during_mom_restart,
+            self.jobobit_job_running_during_mom_restart,
             subjob_count=self.job_array_num_subjobs,
             mom_restart_delayed=True
         )
 
-    def test_hook_endjob_rerun_array_job_during_mom_restart(self):
+    def test_hook_jobobit_rerun_array_job_during_mom_restart(self):
         """
         Run an array job and restart the MoMs without preserving existing jobs.
         Verify that the subjobs are successfully rerun and that the end job
         hook is executed twice for each subjob.
         """
         self.run_test_func(
-            self.endjob_job_running_during_mom_restart,
+            self.jobobit_job_running_during_mom_restart,
             subjob_count=self.job_array_num_subjobs,
             mom_preserve_jobs=False
         )
 
-    def test_hook_endjob_rerun_array_job_during_mom_restart_delayed(self):
+    def test_hook_jobobit_rerun_array_job_during_mom_restart_delayed(self):
         """
         Run an array job.  Stop the MoMs long enough for the job to complete
         and then restart the MoMs without preserving existing jobs.  Verify
@@ -1234,7 +1238,7 @@ class TestHookEndJob(TestFunctional):
         executed twice for each subjob.
         """
         self.run_test_func(
-            self.endjob_job_running_during_mom_restart,
+            self.jobobit_job_running_during_mom_restart,
             subjob_count=self.job_array_num_subjobs,
             mom_preserve_jobs=False,
             mom_restart_delayed=True
@@ -1247,12 +1251,12 @@ class TestHookEndJob(TestFunctional):
     # TODO: test deletion of individual and ranges of subjobs in an array job.
 
     # TODO: test delete and rerun of an array job when a subset of the possible
-    # subjobs are running.  Verify that the endjob hooks are called for all
+    # subjobs are running.  Verify that the jobobit hooks are called for all
     # jobs/subjobs that were previously started.
 
     # TODO: test various scenarios of the server being stopped and restarted,
-    # insuring that the endjob hooks are called for all jobs/subjobs that were
+    # insuring that the jobobit hooks are called for all jobs/subjobs that were
     # previously started.
 
-    # TODO: test deletion of job during provisioning to insure that the endjob
+    # TODO: test deletion of job during provisioning to insure that the jobobit
     # hook is not run.

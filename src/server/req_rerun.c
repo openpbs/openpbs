@@ -145,24 +145,24 @@ force_reque(job *pjob)
 	char hook_msg[HOOK_MSG_SIZE] = {0};
 	int rc;
 
-    /* set job endtime to time_now */
-	pjob->ji_qs.ji_endtime = time_now;
-	set_jattr_l_slim(pjob, JOB_ATR_endtime, pjob->ji_qs.ji_endtime, SET);
+    /* set job obittime to time_now */
+	pjob->ji_qs.ji_obittime = time_now;
+	set_jattr_l_slim(pjob, JOB_ATR_obittime, pjob->ji_qs.ji_obittime, SET);
 
-	/* Allocate space for the endjob hook event params */
-	preq = alloc_br(PBS_BATCH_EndJob);
+	/* Allocate space for the jobobit hook event params */
+	preq = alloc_br(PBS_BATCH_JobObit);
 
 	if (preq == NULL) {
-		log_err(PBSE_INTERNAL, __func__, "rq_endjob alloc failed");
+		log_err(PBSE_INTERNAL, __func__, "rq_jobobit alloc failed");
 	} else {
-		(preq->rq_ind.rq_end).rq_pjob = pjob;
+		(preq->rq_ind.rq_obit).rq_pjob = pjob;
 
 		/*
 		 * Call process_hooks
 	 	 */
 		rc = process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 		if (rc == -1) {
-			sprintf(log_buffer, "rq_endjob force_reque process_hooks call failed");
+			sprintf(log_buffer, "rq_jobobit force_reque process_hooks call failed");
 			log_err(-1, __func__, log_buffer);
 		}
 		free_br(preq);

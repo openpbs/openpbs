@@ -185,7 +185,7 @@ extern "C" {
 #define ATTR_runcount	"run_count"
 #define ATTR_run_version	"run_version"
 #define ATTR_stime	"stime"
-#define ATTR_endtime	"endtime"
+#define ATTR_obittime	"obittime"
 #define ATTR_executable		"executable"
 #define ATTR_Arglist		"argument_list"
 #define	ATTR_version	"pbs_version"
