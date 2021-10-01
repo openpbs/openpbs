@@ -704,15 +704,9 @@ is_request(int stream, int version)
 			if (ret != DIS_SUCCESS)
 				goto err;
 
-			nsvrs = disrsi(stream, &ret);
-			if (ret != DIS_SUCCESS)
+			ret = process_cluster_addrs(stream);
+			if (ret != 0)
 				goto err;
-
-			if (nsvrs == 1) {
-				ret = process_cluster_addrs(stream);
-				if (ret != 0)
-					goto err;
-			}
 
 			 /* return a IS_REGISTERMOM followed by an UPDATE or UPDATE2 */
 
