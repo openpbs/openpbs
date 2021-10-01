@@ -93,7 +93,7 @@ def jobobit_hook(hook_func_name):
 
 
 @tags('hooks')
-class TestHookEndJob(TestFunctional):
+class TestHookJobObit(TestFunctional):
     node_cpu_count = 4
     job_default_nchunks = 1
     job_default_ncpus = 1
