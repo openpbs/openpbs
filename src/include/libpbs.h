@@ -271,7 +271,7 @@ struct batch_reply
 #define PBS_BATCH_RegistDep		52
 #define PBS_BATCH_CopyFiles		54
 #define PBS_BATCH_DelFiles		55
-#define PBS_BATCH_JobObit		56
+/* Unused -- #define PBS_BATCH_JobObit 56 */
 #define PBS_BATCH_MvJobFile		57
 #define PBS_BATCH_StatusNode		58
 #define PBS_BATCH_Disconnect		59
