@@ -346,9 +346,6 @@ reply_hellosvr(int stream, int need_inv)
 	if ((ret = diswsi(stream, need_inv)) != DIS_SUCCESS)
 		return ret;
 
-	if ((ret = diswsi(stream, 1)) != DIS_SUCCESS)
-		return ret;
-
 	if ((ret = send_ip_addrs_to_mom(stream, 1)) != DIS_SUCCESS)
 		return ret;
 

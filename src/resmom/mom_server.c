@@ -129,8 +129,6 @@ extern	char	*path_hooks;
 extern	unsigned long	hooks_rescdef_checksum;
 extern	int	report_hook_checksums;
 
-int nsvrs = 0;
-
 /*
  * Tree search generalized from Knuth (6.2.2) Algorithm T just like
  * the AT&T man page says.
