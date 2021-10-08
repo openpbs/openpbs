@@ -201,7 +201,7 @@
       </member_verify_function>
    </attributes>
    <attributes>
-      <member_index>JOB_ATR_in_resv</member_index>
+      <member_index>JOB_ATR_resv</member_index>
       <member_name>ATTR_resv</member_name>
       <member_at_decode>decode_str</member_at_decode>
       <member_at_encode>encode_str</member_at_encode>

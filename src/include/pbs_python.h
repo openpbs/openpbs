@@ -146,7 +146,7 @@ typedef struct	hook_input_param {
 	void		*rq_move;
 	void		*rq_prov;
 	void		*rq_run;
-	void        *rq_end;
+	void		*rq_end;
 	char		*progname;
 	pbs_list_head	*argv_list;
 	char		*env;
