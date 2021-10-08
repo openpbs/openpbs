@@ -75,10 +75,7 @@
  */
 
 int
-parse_equal_string(start, name, value)
-char  *start;
-char **name;
-char **value;
+parse_equal_string(char  *start, char **name, char **value)
 {
 	static char *pc;	/* where prior call left off */
 	char        *backup;

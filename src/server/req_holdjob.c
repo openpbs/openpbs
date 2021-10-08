@@ -306,6 +306,8 @@ req_releasejob(struct batch_request *preq)
 		return;
 	}
 
+// clang-format off
+
 	/* every thing went well, if holds changed, update the job state */
 
 #ifndef NAS /* localmod 105 Always reset etime on release */
@@ -368,6 +370,8 @@ req_releasejob(struct batch_request *preq)
 		pjob->ji_qs.ji_jobid, log_buffer);
 	reply_ack(preq);
 }
+
+// clang-format on
 
 /**
  * @brief

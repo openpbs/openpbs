@@ -7483,6 +7483,9 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
  * The definition of element_handler_t above explains the different
  * structure elements.
  */
+
+// clang-format off
+
 static element_handler_t handler[] =
 {
 	{
@@ -7769,3 +7772,5 @@ static element_handler_t handler[] =
 	}
 };
 #endif /* MOM_ALPS */
+
+// clang-format on

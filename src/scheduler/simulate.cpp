@@ -125,13 +125,15 @@ struct policy_change_func_name
 	const char *str;
 };
 
+// clang-format off
 static const struct policy_change_func_name policy_change_func_name[] =
-	{
+{
 	{(event_func_t)init_prime_time, "prime time"},
 	{(event_func_t)init_non_prime_time, "non-prime time"},
 	{NULL, NULL}
 };
 
+// clang-format on
 
 /**
  * @brief

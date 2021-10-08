@@ -157,12 +157,15 @@ extern int do_schedselect(char *, void *, void *, char **, char **);
 #include "placementsets.h"
 extern int prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **good_vnodes, char *err_msg, int err_msg_sz);
 
+// clang-format off
 #define FREE_VNLS(vnf, vng) { \
 vnl_free(vnf); \
 vnf = NULL; \
 vnl_free(vng); \
 vng = NULL; \
 }
+
+// clang-format on
 
 #ifdef	__cplusplus
 }

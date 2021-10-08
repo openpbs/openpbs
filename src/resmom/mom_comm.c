@@ -2898,6 +2898,8 @@ pre_finish_exec(job *pjob, int do_job_setup_send)
 	return PRE_FINISH_SUCCESS;
 }
 
+// clang-format off
+
 /**
  * @brief
  *	Input is coming from another MOM over a DIS on tpp stream.
@@ -5469,6 +5471,8 @@ fini:
 	free(errmsg);
 	free(nodehost);
 }
+
+// clang-format on
 
 /**
  * @brief

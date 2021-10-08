@@ -89,10 +89,7 @@ extern int ptc;
  *
  */
 static int
-read_net(sock, buf, amt)
-int    sock;
-char  *buf;
-int    amt;
+read_net(int sock, char *buf, int amt)
 {
 	int got;
 	int total = 0;
@@ -217,8 +214,7 @@ int fd;
  */
 
 int
-rcvwinsize(sock)
-int sock;
+rcvwinsize(int sock)
 {
 	char buf[PBS_TERM_BUF_SZ];
 

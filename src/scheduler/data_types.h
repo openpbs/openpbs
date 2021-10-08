@@ -49,6 +49,8 @@
  * free().  You are just an array of pointers that are referencing objects.
  */
 
+// clang-format off
+
 #ifndef	_DATA_TYPES_H
 #define	_DATA_TYPES_H
 
@@ -1303,3 +1305,5 @@ class sched_exception: public std::exception
 
 };
 #endif	/* _DATA_TYPES_H */
+
+// clang-format on

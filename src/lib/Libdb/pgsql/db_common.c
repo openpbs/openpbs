@@ -81,7 +81,7 @@ extern int pbs_decrypt_pwd(char *, int, size_t, char **, const unsigned char *, 
 extern unsigned char pbs_aes_key[][16];
 extern unsigned char pbs_aes_iv[][16];
 
-
+// clang-format off
 /**
  * An array of structures(of function pointers) for each of the database object
  */
@@ -151,6 +151,8 @@ pg_db_fn_t db_fn_arr[PBS_DB_NUM_TYPES] = {
 		pbs_db_del_attr_resv
 	}
 };
+
+// clang-format on
 
 /**
  * @brief

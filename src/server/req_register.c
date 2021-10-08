@@ -366,12 +366,10 @@ req_register(struct batch_request *preq)
 								/* no "on" and no prior - return error */
 								rc = PBSE_BADDEPEND;
 							} else {
-								pdj = find_dependjob(pdep,
-									preq->rq_ind.rq_register.rq_child);
+								pdj = find_dependjob(pdep, preq->rq_ind.rq_register.rq_child);
 								if (pdj) {
 									/* has prior register, update it */
-									(void)strcpy(pdj->dc_svr,
-										preq->rq_ind.rq_register.rq_svr);
+									(void)strcpy(pdj->dc_svr, preq->rq_ind.rq_register.rq_svr);
 								}
 							}
 						} else if ((rc=register_dep(pattr, preq, type, &made)) == 0) {
@@ -1663,10 +1661,7 @@ encode_depend(const attribute *attr, pbs_list_head *phead, char *atname, char *r
  */
 
 int
-set_depend(attr, new, op)
-attribute *attr;
-attribute *new;
-enum batch_op op;
+set_depend(attribute *attr, attribute *new, enum batch_op op)
 {
 	struct depend *pdnew;
 	struct depend *pdold;
@@ -1712,9 +1707,7 @@ enum batch_op op;
  */
 
 int
-comp_depend(attr, with)
-attribute *attr;
-attribute *with;
+comp_depend(attribute *attr, attribute *with)
 {
 
 	return (-1);

@@ -171,8 +171,7 @@ set_node_ct(resource *pnodesp, attribute *pattr, void *pobj, int type, int actmo
 			return (PBSE_SYSTEM);
 	}
 
-	if (((pncpus->rs_value.at_flags & (ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) ==
-		ATR_VFLAG_SET) && (actmode == ATR_ACTION_NEW)) {
+	if (((pncpus->rs_value.at_flags & (ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == ATR_VFLAG_SET) && (actmode == ATR_ACTION_NEW)) {
 		/* ncpus is already set and not a default and new job */
 
 		nc = pncpus->rs_value.at_val.at_long;

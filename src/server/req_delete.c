@@ -156,8 +156,7 @@ resume_deletion(struct work_task *ptask)
  */
 
 int
-remove_stagein(pjob)
-job *pjob;
+remove_stagein(job *pjob)
 {
 	struct batch_request *preq = 0;
 	int rc = 0;

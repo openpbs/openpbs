@@ -574,10 +574,10 @@ req_deletejob(struct batch_request *preq)
 		/* This is a duplicate request just return from here. */
 		return;
 
-	/*
-	 * check to see is there any copy request pending
-	 * for this job ?
-	 */
+		/*
+		* check to see is there any copy request pending
+		* for this job ?
+		*/
 #ifdef WIN32
 	if (get_copyinfo_from_list(jobid) != NULL)
 #else

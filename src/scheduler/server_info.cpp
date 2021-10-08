@@ -3068,8 +3068,7 @@ find_indirect_resource(schd_resource *res, node_info **nodes)
 
 	cur_res = res;
 
-	for (i = 0; i < max && cur_res != NULL &&
-		cur_res->indirect_vnode_name != NULL && !error; i++) {
+	for (i = 0; i < max && cur_res != NULL && cur_res->indirect_vnode_name != NULL && !error; i++) {
 		auto ninfo = find_node_info(nodes, cur_res->indirect_vnode_name);
 		if (ninfo != NULL) {
 			cur_res = find_resource(ninfo->res, cur_res->def);

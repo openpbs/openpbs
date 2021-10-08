@@ -194,6 +194,7 @@ extern "C" {
 /* Default value of preempt_sort */
 #define PBS_PREEMPT_SORT_DEFAULT	"min_time_since_start"
 
+// clang-format off
 struct pbs_config
 {
 	unsigned loaded:1;			/* has the conf file been loaded? */
@@ -254,6 +255,8 @@ struct pbs_config
 };
 
 extern struct pbs_config pbs_conf;
+
+// clang-format off
 
 /*
  * NOTE: PBS_CONF_PATH is no longer defined here. It has moved into

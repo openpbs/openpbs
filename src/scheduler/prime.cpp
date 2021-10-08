@@ -542,8 +542,7 @@ load_day(enum days d, enum prime_time pr, const char *tok)
  * @retval	SCHD_INFINITY	-	if the current prime status never ends
  */
 static time_t
-end_prime_status_rec(time_t start, time_t date,
-	enum prime_time prime_status)
+end_prime_status_rec(time_t start, time_t date, enum prime_time prime_status)
 {
 	struct tm *tmptr;
 	enum days day;
@@ -586,16 +585,13 @@ end_prime_status_rec(time_t start, time_t date,
 		/* We are currently in primetime. */
 		/* If there is no non-primetime scheduled today, recurse into tomorrow. */
 		if (conf.prime[day][NON_PRIME].none)
-			return end_prime_status_rec(start, date + time_left_today(tmptr),
-				prime_status);
+			return end_prime_status_rec(start, date + time_left_today(tmptr), prime_status);
 		/* If there is no non-primetime left today, recurse into tomorrow. */
 		if (conf.prime[day][NON_PRIME].hour < static_cast<unsigned int>(tmptr->tm_hour))
-			return end_prime_status_rec(start, date + time_left_today(tmptr),
-				prime_status);
+			return end_prime_status_rec(start, date + time_left_today(tmptr), prime_status);
 		if (conf.prime[day][NON_PRIME].hour == static_cast<unsigned int>(tmptr->tm_hour) &&
-			conf.prime[day][NON_PRIME].min < static_cast<unsigned int>(tmptr->tm_min))
-			return end_prime_status_rec(start, date + time_left_today(tmptr),
-				prime_status);
+		    conf.prime[day][NON_PRIME].min < static_cast<unsigned int>(tmptr->tm_min))
+			return end_prime_status_rec(start, date + time_left_today(tmptr), prime_status);
 		/* Non-primetime started at the beginning of the day, return it. */
 		if (conf.prime[day][NON_PRIME].all || is_holiday(tmptr->tm_yday + 1))
 			return date;

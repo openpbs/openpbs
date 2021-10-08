@@ -382,9 +382,7 @@ print_db_job(char *id, int no_attributes)
  * @retval	1	: failure
  */
 int
-main(argc, argv)
-int argc;
-char *argv[];
+main(int argc, char *argv[])
 {
 	int amt;
 	int err = 0;

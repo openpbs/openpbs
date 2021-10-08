@@ -1997,13 +1997,13 @@ shell_escape_timeout(void)
  *
  *	where "NAME is     default	   range of values	*/
 
-int	delta_percent_over   = 50;	/* 0   <= I <= 100	*/
-double	delta_cpufactor      = 1.05;    /* 1.0 <= D		*/
-double	delta_weightup       = 0.4;	/* 0.0 <= D <= 1.0	*/
-double	delta_weightdown     = 0.1;     /* 0.0 <= D <= 1.0	*/
-int	average_percent_over = 50;	/* 0   <= I <= 100	*/
-double	average_cpufactor    = 1.025;   /* 1.0 <= D		*/
-int	average_trialperiod  = 120;	/* 0   <= I		*/
+int	delta_percent_over      = 50;	   /* 0   <= I <= 100	*/
+double delta_cpufactor      = 1.05;    /* 1.0 <= D		*/
+double delta_weightup       = 0.4;	   /* 0.0 <= D <= 1.0	*/
+double delta_weightdown     = 0.1;     /* 0.0 <= D <= 1.0	*/
+int	average_percent_over    = 50;	   /* 0   <= I <= 100	*/
+double average_cpufactor    = 1.025;   /* 1.0 <= D		*/
+int	average_trialperiod     = 120;	   /* 0   <= I		*/
 /*
  * or the form of:  $enforce [!]NAME
  * where NAME is:
@@ -8234,6 +8234,7 @@ main(int argc, char *argv[])
 	}
 
 	/* recover & abort Jobs which were under MOM's control */
+// clang-format off
 #ifdef	WIN32
 	old_winsta = GetProcessWindowStation();
 
@@ -8304,6 +8305,7 @@ main(int argc, char *argv[])
 
 #endif	/* WIN32 */
 
+// clang-format on
 
 	/* recover vnode to host map from file in case Server is not yet up */
 	if ((c = recover_vmap()) != 0) {

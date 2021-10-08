@@ -312,10 +312,7 @@ group_jobs_by_cluster(char **jobids, int numjids, int *any_failed)
 }
 
 int
-main(argc, argv, envp) /* qdel */
-int argc;
-char **argv;
-char **envp;
+main(int argc, char **argv, char **envp) /* qdel */
 {
 	int c;
 	int errflg = 0;

@@ -514,8 +514,7 @@ create_node_partitions(status *policy, node_info **nodes, const std::vector<std:
 
 		np_arr[np_i]->ninfo_arr[0] = NULL;
 
-		for (node_i = 0; nodes[node_i] != NULL &&
-			i < np_arr[np_i]->tot_nodes; node_i++) {
+		for (node_i = 0; nodes[node_i] != NULL && i < np_arr[np_i]->tot_nodes; node_i++) {
 			if (nodes[node_i]->is_stale)
 				continue;
 

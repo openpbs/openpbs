@@ -66,10 +66,7 @@
  */
 
 int
-locate_job(job_id, parent_server, located_server)
-char *job_id;
-char *parent_server;
-char *located_server;
+locate_job(char *job_id, char *parent_server, char *located_server)
 {
 	int connect;
 	char jid_server[PBS_MAXCLTJOBID+1];
