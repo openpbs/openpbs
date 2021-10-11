@@ -1941,11 +1941,7 @@ set_chunk_sum(attribute  *pselectattr, attribute *pattr)
 	if (rc != 0)
 		return rc;
 	while (chunk) {
-#ifdef NAS /* localmod 082 */
-		if (parse_chunk(chunk, 0, &nchk, &nelem, &pkvp, NULL) == 0)
-#else
 		if (parse_chunk(chunk, &nchk, &nelem, &pkvp, NULL) == 0)
-#endif /* localmod 082 */
 		{
 			total_chunks += nchk;
 			for (j=0; j<nelem; ++j) {
