@@ -1076,7 +1076,6 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 					reply_ack(preq);
 			}
 
-			/* set job obittime to time_now */
 			pjob->ji_qs.ji_obittime = time_now;
 			set_jattr_l_slim(pjob, JOB_ATR_obittime, pjob->ji_qs.ji_obittime, SET);
 
@@ -1085,15 +1084,10 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			if (temp_preq == NULL) {
 				log_err(PBSE_INTERNAL, __func__, "rq_jobobit alloc failed");
 			} else {
-				(temp_preq->rq_ind.rq_obit).rq_pjob = pjob;
-
-				/*
-				* Call process_hooks
-				*/
+				temp_preq->rq_ind.rq_obit.rq_pjob = pjob;
 				rc = process_hooks(temp_preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 				if (rc == -1) {
-					sprintf(log_buffer, "rq_jobobit process_hooks call failed");
-					log_err(-1, __func__, log_buffer);
+					log_err(-1, __func__, "rq_jobobit process_hooks call failed");
 				}
 				free_br(temp_preq);
 			}

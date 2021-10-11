@@ -136,23 +136,17 @@ class TestHookJobObit(TestFunctional):
 
         self.logger.info("***** JOBOBIT HOOK TEST START *****")
 
-        a = {
-            'resources_available.ncpus': self.node_cpu_count,
-        }
+        a = {'resources_available.ncpus': self.node_cpu_count}
         for mom in self.moms.values():
             self.server.manager(MGR_CMD_SET, NODE, a, mom.shortname)
 
-        a = {
-            'event': 'jobobit',
-            'enabled': 'True',
-        }
-
         try:
-            # if hook exists from a previous test, remove it
+            # If hook exists from a previous test, remove it
             self.server.delete_hook(self.hook_name)
         except PtlException:
             pass
 
+        a = {'event': 'jobobit', 'enabled': 'True'}
         ret = self.server.create_hook(self.hook_name, a)
         self.assertTrue(ret, "Could not create hook %s" % self.hook_name)
 
@@ -173,7 +167,7 @@ class TestHookJobObit(TestFunctional):
             test_body_func(*args, **kwargs)
             self.check_log_for_jobobit_hook_messages()
         finally:
-            # make an effort to start the MoMs if they are not running
+            # Make an effort to start the MoMs if they are not running
             for mom in self.moms.values():
                 if not self.mom.isUp(max_attempts=3):
                     try:
@@ -196,7 +190,7 @@ class TestHookJobObit(TestFunctional):
             '%s;jobobit hook started for test %s' % (job_id, self.hook_name),
             starttime=self.log_start_time, n='ALL', max_attempts=1,
             existence=existence)
-        # TODO: add checks for expected job state and substate
+        # TODO: Add checks for expected job state and substate
         self.server.log_match(
             '%s;jobobit hook, resv:%s' % (job_id, self.resv_queue or "(None)"),
             starttime=self.log_start_time, n='ALL', max_attempts=1,
@@ -215,8 +209,8 @@ class TestHookJobObit(TestFunctional):
         for jid in [self.job_id] + self.subjob_ids:
             job_ended = jid in self.ended_job_ids or jid in self.rerun_job_ids
             self.job_verify_jobobit_hook_messages(jid, job_ended)
-            # remove any jobs that ended from the list of started and deleted
-            # jobs.  at this point, they should no longer exist and thus are
+            # Remove any jobs that ended from the list of started and deleted
+            # jobs.  At this point, they should no longer exist and thus are
             # irrelevant in either set.
             if job_ended:
                 self.started_job_ids.discard(jid)
@@ -224,8 +218,8 @@ class TestHookJobObit(TestFunctional):
                 self.deleted_job_ids.discard(jid)
                 self.delete_failed_job_ids.discard(jid)
                 self.ended_job_ids.discard(jid)
-        # reset the start time so that searches on requeued jobs don't match
-        # state or log messages prior to the current search.  this assumes that
+        # Reset the start time so that searches on requeued jobs don't match
+        # state or log messages prior to the current search.  This assumes that
         # previous state and log messages for a test will not contain a time
         # stamp equal to or greater than the new start time.
         self.log_start_time = time.time()
@@ -246,7 +240,7 @@ class TestHookJobObit(TestFunctional):
             job_rerunnable=True,
             job_attrs={}):
         if self.scheduling_enabled:
-            # disable scheduling so that jobs won't be immediately started
+            # Disable scheduling so that jobs won't be immediately started
             # until we've verified that they have been queued
             self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
             self.scheduling_enabled = False
@@ -269,7 +263,7 @@ class TestHookJobObit(TestFunctional):
 
     def job_rerun(self, job_ids=None, force=False, user=None):
         if self.scheduling_enabled:
-            # disable scheduling so that requeued (rerun) jobs won't be
+            # Disable scheduling so that requeued (rerun) jobs won't be
             # immediately restarted
             self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
             self.scheduling_enabled = False
@@ -278,7 +272,7 @@ class TestHookJobObit(TestFunctional):
         try:
             self.server.rerunjob(list(jids), extend=extend, runas=user)
         except PbsRerunError:
-            # a failed rerun should eventually result in the jobobit hook being
+            # A failed rerun should eventually result in the jobobit hook being
             # run and the job being requeued
             pass
         if self.is_array_job and self.job_id in jids:
@@ -289,7 +283,7 @@ class TestHookJobObit(TestFunctional):
 
     def job_delete(self, job_ids=None, force=False, user=None):
         if self.scheduling_enabled:
-            # disable scheduling so that requeued (rerun) jobs won't be
+            # Disable scheduling so that requeued (rerun) jobs won't be
             # immediately restarted
             self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
             self.scheduling_enabled = False
@@ -298,7 +292,7 @@ class TestHookJobObit(TestFunctional):
         try:
             self.server.delete(list(jids), extend=extend, runas=user)
         except PbsDeleteError:
-            # this assumes that if deleting one job fails then the delete
+            # This assumes that if deleting one job fails then the delete
             # failed for all jobs, which in our controlled testing is likely
             # true
             job_id_set = self.delete_failed_job_ids
@@ -308,14 +302,14 @@ class TestHookJobObit(TestFunctional):
         if self.is_array_job:
             if self.job_id in jids:
                 job_id_set.update(self.subjob_ids)
-            # if a single subjob is deleted (TERMINATED), the substate for the
+            # If a single subjob is deleted (TERMINATED), the substate for the
             # array job is also set to TERMINATED.
             self.deleted_job_ids.add(self.job_id)
 
     def job_verify_queued(self, job_ids=None):
-        # verifying that the jobs are queued should only be performed when the
+        # Verifying that the jobs are queued should only be performed when the
         # scheduler has been disabled before submitting or rerunning the jobs.
-        # if the scheduler is active, then the jobs may have been started and
+        # If the scheduler is active, then the jobs may have been started and
         # thus may no longer be in the queued state.
         self.assertFalse(self.scheduling_enabled, "scheduling is enabled!")
         jids = self.get_job_id_set(job_ids)
@@ -333,7 +327,7 @@ class TestHookJobObit(TestFunctional):
         for jid in jids:
             self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
             if jid in self.started_job_ids:
-                # jobs/subjobs that were started and then requeued need to be
+                # Jobs/Subjobs that were started and then requeued need to be
                 # added to the rerun list to indicate that output from the hook
                 # should be present.
                 self.rerun_job_ids.add(jid)
@@ -350,7 +344,7 @@ class TestHookJobObit(TestFunctional):
 
     def job_verify_started(self, job_ids=None):
         if not self.scheduling_enabled:
-            # if scheduling was previously disabled to allow time for log
+            # If scheduling was previously disabled to allow time for log
             # scraping, etc. before requeued jobs were restarted, then enabling
             # scheduling again.
             self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
@@ -382,9 +376,9 @@ class TestHookJobObit(TestFunctional):
             else:
                 jids.remove(self.job_id)
         for jid in jids & self.started_job_ids:
-            # if the job failed, the verify that the substate is FAILED (93).
-            # if the job was deleted, then verify that the substate is set to
-            # TERMINATED (91).  otherwise, verify that the substate is set to
+            # If the job failed, the verify that the substate is FAILED (93).
+            # If the job was deleted, then verify that the substate is set to
+            # TERMINATED (91).  Otherwise, verify that the substate is set to
             # FINISHED (92).
             if jid in self.delete_failed_job_ids:
                 substate = 93
@@ -395,7 +389,7 @@ class TestHookJobObit(TestFunctional):
             self.server.expect(
                 JOB, {'job_state': 'F', 'substate': substate}, extend='x',
                 id=jid)
-            # if the job was deleted without the force flag and the moms were
+            # If the job was deleted without the force flag and the moms were
             # stopped and not restarted, then an accounting 'E' record will not
             # be immediately written.
             if not (jid in self.delete_failed_job_ids and self.moms_stopped):
@@ -1226,17 +1220,17 @@ class TestHookJobObit(TestFunctional):
 
     # -------------------------------------------------------------------------
 
-    # TODO: test aborted single/array job for going over time.
+    # TODO: Test aborted single/array job for going over time.
 
-    # TODO: test deletion of individual and ranges of subjobs in an array job.
+    # TODO: Test deletion of individual and ranges of subjobs in an array job.
 
-    # TODO: test delete and rerun of an array job when a subset of the possible
+    # TODO: Test delete and rerun of an array job when a subset of the possible
     # subjobs are running.  Verify that the jobobit hooks are called for all
     # jobs/subjobs that were previously started.
 
-    # TODO: test various scenarios of the server being stopped and restarted,
+    # TODO: Test various scenarios of the server being stopped and restarted,
     # insuring that the jobobit hooks are called for all jobs/subjobs that were
     # previously started.
 
-    # TODO: test deletion of job during provisioning to insure that the jobobit
+    # TODO: Test deletion of job during provisioning to insure that the jobobit
     # hook is not run.

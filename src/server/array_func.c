@@ -349,33 +349,24 @@ chk_array_doneness(job *parent)
 		parent->ji_qs.ji_un.ji_exect.ji_momaddr = 0;
 		parent->ji_qs.ji_un.ji_exect.ji_momport = 0;
 
-		parent->ji_qs.ji_un.ji_exect.ji_exitstat = get_jattr_long(parent, JOB_ATR_exit_status);		
+		parent->ji_qs.ji_un.ji_exect.ji_exitstat = get_jattr_long(parent, JOB_ATR_exit_status);
 
 		check_block(parent, "");
 		if (check_job_state(parent, JOB_STATE_LTR_BEGUN)) {
 			char acctbuf[40];
 
-			/* set parent obittime to time_now */
 			parent->ji_qs.ji_obittime = time_now;
 			set_jattr_l_slim(parent, JOB_ATR_obittime, parent->ji_qs.ji_obittime, SET);
 
 			/* Allocate space for the jobobit hook event params */
 			preq = alloc_br(PBS_BATCH_JobObit);
 			if (preq) {
-				(preq->rq_ind.rq_obit).rq_pjob = parent;
-
-				/* update parent job state to 'F' */
-				sprintf(log_buffer, "rq_jobobit svr_setjobstate update parent job state to 'F'");
-				log_err(-1, __func__, log_buffer);
+				preq->rq_ind.rq_obit.rq_pjob = parent;
+				DBPRT(("rq_jobobit svr_setjobstate update parent job state to 'F'"));
 				svr_setjobstate(parent, JOB_STATE_LTR_FINISHED, JOB_SUBSTATE_FINISHED);
-
-				/*
-				* Call process_hooks
-				*/
 				rc = process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 				if (rc == -1) {
-					sprintf(log_buffer, "rq_jobobit process_hooks call failed");
-					log_err(-1, __func__, log_buffer);
+					log_err(-1, __func__, "rq_jobobit process_hooks call failed");
 				}
 				free_br(preq);
 			} else {
