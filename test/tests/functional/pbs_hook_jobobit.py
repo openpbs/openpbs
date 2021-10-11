@@ -177,7 +177,7 @@ class TestHookJobObit(TestFunctional):
         """
         Look for messages logged by the jobobit hook.  This method assumes that
         a started job have been verified as terminated (ended/requeued) or
-        forced deleted, thus insuring that the jobobit hook has run for the 
+        forced deleted, thus insuring that the jobobit hook has run for the
         job.
         """
         self.server.log_match(
