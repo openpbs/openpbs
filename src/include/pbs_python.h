@@ -146,7 +146,7 @@ typedef struct	hook_input_param {
 	void		*rq_move;
 	void		*rq_prov;
 	void		*rq_run;
-	void        *rq_obit;
+	void		*rq_obit;
 	char		*progname;
 	pbs_list_head	*argv_list;
 	char		*env;
@@ -191,7 +191,7 @@ typedef struct	hook_output_param {
 	void		*rq_move;
 	void		*rq_prov;
 	void		*rq_run;
-	void        *rq_obit;
+	void		*rq_obit;
 	char		**progname;
 	pbs_list_head	*argv_list;
 	char		**env;
