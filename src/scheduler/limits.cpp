@@ -798,7 +798,6 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 	limcounts *que_counts_max = NULL;
 	limcounts *server_lim = NULL;
 	limcounts *queue_lim = NULL;
-	counts *cts;
 	schd_error *prev_err = NULL;
 
 	if (si == NULL || qi == NULL || rr == NULL)
@@ -855,7 +854,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 				if ((te_rr != rr) && te_rr->is_job) {
 					if (te->event_type == TIMED_RUN_EVENT) {
 						if (svr_counts != NULL) {
-							cts = find_alloc_counts(svr_counts->user, te_rr->user);
+							auto cts = find_alloc_counts(svr_counts->user, te_rr->user);
 							update_counts_on_run(cts, te_rr->resreq);
 							counts_max(svr_counts_max->user, cts);
 							if (svr_counts_max->user.size() == 0) {
@@ -891,7 +890,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 						if (que_counts != NULL) {
 							if (te_rr->is_job && te_rr->job != NULL) {
 								if (te_rr->job->queue == qi) {
-									cts = find_alloc_counts(que_counts->user, te_rr->user);
+									auto cts = find_alloc_counts(que_counts->user, te_rr->user);
 									update_counts_on_run(cts, te_rr->resreq);
 									counts_max(que_counts_max->user, cts);
 									if (que_counts_max->user.size() == 0) {
@@ -928,7 +927,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 					}
 					else if (te->event_type == TIMED_END_EVENT) {
 						if (svr_counts != NULL) {
-							cts = find_alloc_counts(svr_counts->user, te_rr->user);
+							auto cts = find_alloc_counts(svr_counts->user, te_rr->user);
 							update_counts_on_end(cts, te_rr->resreq);
 							cts = find_alloc_counts(svr_counts->group, te_rr->group);
 							update_counts_on_end(cts, te_rr->resreq);
@@ -940,7 +939,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 						if (que_counts != NULL) {
 							if (te_rr->is_job && te_rr->job != NULL) {
 								if (te_rr->job->queue == qi) {
-									cts = find_alloc_counts(que_counts->user, te_rr->user);
+									auto cts = find_alloc_counts(que_counts->user, te_rr->user);
 									update_counts_on_end(cts, te_rr->resreq);
 									cts = find_alloc_counts(que_counts->group, te_rr->group);
 									update_counts_on_end(cts, te_rr->resreq);
@@ -1101,11 +1100,6 @@ check_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
 	if (si == NULL || qi == NULL || rr == NULL)
 		return 0;
 
-#ifdef NAS /* localmod 097 */
-	if (!si->has_soft_limit) {
-		return rc;
-	}
-#endif /* localmod 097 */
 	if (si->has_soft_limit) {
 		if (si->has_user_limit)
 			rc |= find_preempt_bits(si->user_counts, rr->user, rr);

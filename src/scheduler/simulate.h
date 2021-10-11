@@ -54,7 +54,7 @@ simulate_events(status *policy, server_info *sinfo,
  *	is_timed - check if a resresv is a timed event
  * 			 (i.e. has a start and end time)
  */
-int is_timed(event_ptr_t *resresv);
+int is_timed(event_ptr_t *event_ptr);
 
 /*
  *      get_next_event - get the next_event from an event list
@@ -146,7 +146,7 @@ timed_event *find_timed_event(timed_event *te_list, time_t event_time);
  *
  *      \return the next event or NULL if there are no more events
  */
-timed_event *next_event(server_info *sinfo, int dont_move);
+timed_event *next_event(server_info *sinfo, int advance);
 
 /*
  *      perform_event - takes a timed_event and performs any actions
@@ -181,7 +181,7 @@ event_list *create_event_list(server_info *sinfo);
  *	returns 1: there exists a run event
  *		0: there doesn't exist a run event
  */
-int exists_run_event(event_list *calendar, time_t end_time);
+int exists_run_event(event_list *calendar, time_t end);
 
 /* Checks to see if there is a run event on a node before the end time */
 int exists_run_event_on_node(node_info *ninf, time_t end);
@@ -218,7 +218,7 @@ event_list *new_event_list();
  *
  *      \return duplicated event_list
  */
-event_list *dup_event_list(event_list *oel, server_info *nsinfo);
+event_list *dup_event_list(event_list *oelist, server_info *nsinfo);
 
 /*
  * free_event_list - event_list destructor

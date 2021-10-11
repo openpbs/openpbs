@@ -3117,7 +3117,7 @@ que_no_args:
 					break;
 				} else if (pbs_errno)
 					show_svr_inst_fail(conn, argv[0]);
-				
+
 				p_status = pbs_statque(conn, queue_name_out, NULL, NULL);
 				if (p_status == NULL) {
 					if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {
@@ -3167,7 +3167,7 @@ svr_no_args:
 					break;
 				} else if (pbs_errno)
 					show_svr_inst_fail(conn, argv[0]);
-				
+
 				p_status = pbs_statserver(conn, NULL, NULL);
 				if (p_status == NULL) {
 					if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {

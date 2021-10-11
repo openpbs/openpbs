@@ -48,7 +48,7 @@ sched_exception::sched_exception(const sched_exception &e)
 }
 
 // Assignment Operator
-sched_exception &sched_exception::operator =(const sched_exception &e)
+sched_exception &sched_exception::operator=(const sched_exception &e)
 {
 	message = e.get_message();
 	error_code = e.get_error_code();
@@ -56,11 +56,7 @@ sched_exception &sched_exception::operator =(const sched_exception &e)
 }
 
 // Parametrized Constructor
-sched_exception::sched_exception(const std::string &str, const enum sched_error_code err)
-{
-    message = str;
-    error_code = err;
-}
+sched_exception::sched_exception(const std::string &str, const enum sched_error_code err) : message(str), error_code(err) { }
 
 // Getter function for error_code
 enum sched_error_code sched_exception::get_error_code() const

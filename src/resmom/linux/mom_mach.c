@@ -86,9 +86,6 @@
 #include "pbs_ifl.h"
 #include "placementsets.h"
 #include "mom_vnode.h"
-#ifndef NAS /* localmod 113 */
-#include "hwloc.h"
-#endif /* localmod 113 */
 
 /**
  * @file
@@ -112,10 +109,6 @@
  *		idletime	seconds of idle time (see mom_main.c)
  *		walltime	wall clock time for a pid
  *		loadave		current load average
- #ifdef NAS
- localmod 090
- *		times		Epoch time host booted and current time
- #endif
  */
 
 
@@ -174,13 +167,6 @@ static char	*totmem		(struct rm_attribute *attrib);
 static char	*availmem	(struct rm_attribute *attrib);
 static char	*ncpus		(struct rm_attribute *attrib);
 static char	*walltime	(struct rm_attribute *attrib);
-#ifdef NAS
-/* localmod 005 */
-static void proc_new		(int, int);
-/* localmod 090 */
-static unsigned linux_time = 0;
-static char	*sys_clocks	(struct rm_attribute *attrib);
-#endif
 
 extern char	*loadave	(struct rm_attribute *attrib);
 extern char	*nullproc	(struct rm_attribute *attrib);
@@ -212,37 +198,10 @@ struct	config	dependent_config[] = {
 	{ "ncpus",	{ ncpus } },
 	{ "loadave",	{ loadave } },
 	{ "walltime",	{ walltime } },
-#ifdef NAS
-	/* localmod 090 */
-	{ "times",	{ sys_clocks } },
-#endif
 	{ NULL,		{ nullproc } },
 };
 
-#ifdef NAS
-/* localmod 090 */
-/**
- * @brief
- *	returns present time
- *
- * @return 	char *
- * @retval 	time
- *
- */
-
-static char *
-sys_clocks(struct rm_attribute *attrib)
-{
-	sprintf(ret_string, "%lu/%lu", (unsigned long) linux_time,
-		(unsigned long) time_now);
-	return ret_string;
-}
-
-#endif /* NAS */
-
-#ifndef NAS /* localmod 090 */
 unsigned linux_time = 0;
-#endif /* localmod 090 */
 /**
  * @brief
  * 	support routine for getting system time -- sets linux_time

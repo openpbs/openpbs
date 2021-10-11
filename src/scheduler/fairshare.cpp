@@ -199,27 +199,6 @@ find_alloc_ginfo(const std::string& name, group_info *root)
 
 /**
  * @brief
- *		new_group_info - allocate a new group_info struct and initalize it
- *
- * @return	a ptr to the new group_info
- *
- */
-group_info::group_info(const std::string& gname) : name(gname)
-{
-	resgroup = UNSPECIFIED;
-	cresgroup = UNSPECIFIED;
-	shares = UNSPECIFIED;
-	tree_percentage = 0.0;
-	group_percentage = 0.0;
-	usage = FAIRSHARE_MIN_USAGE;
-	temp_usage = FAIRSHARE_MIN_USAGE;
-	usage_factor = 0.0;
-	parent = NULL;
-	sibling = NULL;
-	child = NULL;}
-
-/**
- * @brief
  * 		parse the resource group file
  *
  * @param[in]	fname	-	name of the file
@@ -614,11 +593,7 @@ rec_write_usage(group_info *root, FILE *fp)
 	 * usage defaults to 1 so don't bother writing those out either
 	 * It is possible that the unknown group is empty.  Don't want to write it out
 	 */
-#ifdef NAS /* localmod 043 */
-	if (root->child == NULL) {
-#else
 	if (root->usage != 1 && root->child == NULL && root->name != UNKNOWN_GROUP_NAME) {
-#endif /* localmod 043 */
 		memset(&grp, 0, sizeof(struct group_node_usage_v2));
 		snprintf(grp.name, sizeof(grp.name), "%s", root->name.c_str());
 		grp.usage = root->usage;
@@ -836,19 +811,58 @@ over_fs_usage(group_info *ginfo)
 	return ginfo->gpath[0]->usage * ginfo->tree_percentage < ginfo->usage;
 }
 
-group_info::group_info(group_info& root) : name(root.name)
+/**
+ * @brief
+ *		new_group_info - allocate a new group_info struct and initalize it
+ *
+ * @return	a ptr to the new group_info
+ *
+ */
+group_info::group_info(const std::string &gname) : name(gname)
 {
-	resgroup = root.resgroup;
-	cresgroup = root.cresgroup;
-	shares = root.shares;
-	tree_percentage = root.tree_percentage;
-	group_percentage = root.group_percentage;
-	usage = root.usage;
-	usage_factor = root.usage_factor;
-	temp_usage = root.temp_usage;
+	resgroup = UNSPECIFIED;
+	cresgroup = UNSPECIFIED;
+	shares = UNSPECIFIED;
+	tree_percentage = 0.0;
+	group_percentage = 0.0;
+	usage = FAIRSHARE_MIN_USAGE;
+	temp_usage = FAIRSHARE_MIN_USAGE;
+	usage_factor = 0.0;
+	parent = NULL;
+	sibling = NULL;
+	child = NULL;
+}
+
+group_info::group_info(group_info& oginfo) : name(oginfo.name)
+{
+	resgroup = oginfo.resgroup;
+	cresgroup = oginfo.cresgroup;
+	shares = oginfo.shares;
+	tree_percentage = oginfo.tree_percentage;
+	group_percentage = oginfo.group_percentage;
+	usage = oginfo.usage;
+	usage_factor = oginfo.usage_factor;
+	temp_usage = oginfo.temp_usage;
 	sibling = NULL;
 	child = NULL;
 	parent = NULL;
+}
+
+group_info& group_info::operator=(const group_info& oginfo)
+{
+	resgroup = oginfo.resgroup;
+	cresgroup = oginfo.cresgroup;
+	shares = oginfo.shares;
+	tree_percentage = oginfo.tree_percentage;
+	group_percentage = oginfo.group_percentage;
+	usage = oginfo.usage;
+	usage_factor = oginfo.usage_factor;
+	temp_usage = oginfo.temp_usage;
+	sibling = NULL;
+	child = NULL;
+	parent = NULL;
+
+	return *this;
 }
 
 /**

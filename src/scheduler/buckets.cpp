@@ -763,9 +763,7 @@ chunk_to_nspec(status *policy, chunk *chk, node_info *node, char *aoename)
 	if (policy == NULL || chk == NULL || node == NULL)
 		return NULL;
 
-	ns = new_nspec();
-	if (ns == NULL)
-		return NULL;
+	ns = new nspec();
 
 	ns->ninfo = node;
 	ns->seq_num = get_sched_rank();
@@ -776,7 +774,7 @@ chunk_to_nspec(status *policy, chunk *chk, node_info *node, char *aoename)
 			ns->go_provision = 1;
 			req = create_resource_req("aoe", aoename);
 			if (req == NULL) {
-				free_nspec(ns);
+				delete ns;
 				return NULL;
 			}
 			ns->resreq = req;
@@ -787,7 +785,7 @@ chunk_to_nspec(status *policy, chunk *chk, node_info *node, char *aoename)
 		if (cur_req->def->type.is_consumable && policy->resdef_to_check.find(cur_req->def) != policy->resdef_to_check.end()) {
 			req = dup_resource_req(cur_req);
 			if (req == NULL) {
-				free_nspec(ns);
+				delete ns;
 				return NULL;
 			}
 			if (prev_req == NULL)
@@ -806,11 +804,11 @@ chunk_to_nspec(status *policy, chunk *chk, node_info *node, char *aoename)
  * @param[in] policy - policy info
  * @param[in] cb_map - chunk_map->node_bits are the nodes to allocate
  * @param resresv - the job
- * @return nspec **
+ * @return vector<nspec*>
  * @retval nspec array to run the job on
- * @retval NULL on error
+ * @retval empty vector on error
  */
-nspec **
+std::vector<nspec *>
 bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv)
 {
 	int i;
@@ -818,18 +816,14 @@ bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv)
 	int k;
 	int cnt = 1;
 	int n = 0;
-	nspec **ns_arr;
+	std::vector<nspec *> ns_arr;
 	server_info *sinfo;
 
 	if (policy == NULL || cb_map == NULL || resresv == NULL)
-		return NULL;
+		return {};
 
 	sinfo = resresv->server;
-	ns_arr = static_cast<nspec **>(calloc(resresv->select->total_chunks + 1, sizeof(nspec*)));
-	if (ns_arr == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
+	ns_arr.reserve(resresv->select->total_chunks);
 
 	for (i = 0; cb_map[i] != NULL; i++) {
 		int chunks_needed = cb_map[i]->chk->num_chunks;
@@ -852,16 +846,16 @@ bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv)
 			 * For the final chunk, we might allocate less.
 			 */
 			for( ; cnt > 0 && chunks_needed > 0; cnt--, chunks_needed--, n++) {
-				ns_arr[n] = chunk_to_nspec(policy, cb_map[i]->chk, sinfo->unordered_nodes[j], resresv->aoename);
-				if (ns_arr[n] == NULL) {
+				auto ns = chunk_to_nspec(policy, cb_map[i]->chk, sinfo->unordered_nodes[j], resresv->aoename);
+				if (ns == NULL) {
 					free_nspecs(ns_arr);
-					return NULL;
+					return {};
 				}
+				ns_arr.push_back(ns);
 			}
 		}
 
 	}
-	ns_arr[n] = NULL;
 
 	return ns_arr;
 }
@@ -1050,20 +1044,20 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
  * @param[in] qinfo - the queue the job is in
  * @param[in] resresv - the job
  * @param[out] err - schd_error structure to return reason why the job can't run
- * @return nspec **
+ * @return vector<nspec *>
  * @retval place job can run
- * @retval NULL if job can't run
+ * @retval empty vector if job can't run
  */
-nspec **
+std::vector<nspec *>
 check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, schd_error *err)
 {
 	node_partition **nodepart = NULL;
 
 	if (policy == NULL || sinfo == NULL || resresv == NULL || err == NULL)
-		return NULL;
+		return {};
 
 	if (resresv->is_job && qinfo == NULL)
-		return NULL;
+		return {};
 
 	if (resresv->is_job && qinfo->nodepart != NULL)
 		nodepart = qinfo->nodepart;
@@ -1097,18 +1091,18 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 		if (failerr == NULL) {
 			failerr = new_schd_error();
 			if (failerr == NULL)
-				return NULL;
+				return {};
 		} else
 			clear_schd_error(failerr);
 
 		for (i = 0; nodepart[i] != NULL; i++) {
-			nspec **nspecs;
+			std::vector<nspec *> nspecs;
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
 				"Evaluating placement set: %s", nodepart[i]->name);
 
 			clear_schd_error(err);
 			nspecs = map_buckets(policy, nodepart[i]->bkts, resresv, err);
-			if (nspecs != NULL)
+			if (!nspecs.empty())
 				return nspecs;
 			if (err->status_code == NOT_RUN) {
 				if (failerr->status_code == SCHD_UNKWN)
@@ -1120,7 +1114,7 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 		if (can_run == 0) {
 			if (sc_attrs.do_not_span_psets) {
 				set_schd_error_codes(err, NEVER_RUN, CANT_SPAN_PSET);
-				return NULL;
+				return {};
 			}
 			else {
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Request won't fit into any placement sets, will use all nodes");
@@ -1134,14 +1128,13 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 	} else if (pbs_conf.pbs_num_servers > 1 && resresv->svr_inst_id != NULL) {
 		/* Restrict placement to local server when using buckets */
 		if (sinfo->svr_to_psets.find(resresv->svr_inst_id) != sinfo->svr_to_psets.end()) {
-			nspec **nspecs;
 
-			nspecs = map_buckets(policy, sinfo->svr_to_psets[resresv->svr_inst_id]->bkts, resresv, err);
-			if (nspecs != NULL)
+			auto nspecs = map_buckets(policy, sinfo->svr_to_psets[resresv->svr_inst_id]->bkts, resresv, err);
+			if (!nspecs.empty())
 				return nspecs;
 		} else {	/* No nodes associated with owner server, so reject the job/reservation */
 			set_schd_error_codes(err, NOT_RUN, NO_NODE_RESOURCES);
-			return NULL;
+			return {};
 		}
 	}
 
@@ -1158,18 +1151,17 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
  *
  * @return place resresv can run or NULL if it can't
  */
-nspec **
+std::vector<nspec *>
 map_buckets(status *policy, node_bucket **bkts, resource_resv *resresv, schd_error *err)
 {
 	chunk_map **cmap;
-	nspec **ns_arr;
 
 	if (policy == NULL || bkts == NULL || resresv == NULL || err == NULL)
-		return NULL;
+		return {};
 
 	cmap = find_correct_buckets(policy, bkts, resresv, err);
 	if (cmap == NULL)
-		return NULL;
+		return {};
 
 	clear_schd_error(err);
 	if (bucket_match(cmap, resresv, err) == 0) {
@@ -1177,10 +1169,10 @@ map_buckets(status *policy, node_bucket **bkts, resource_resv *resresv, schd_err
 			set_schd_error_codes(err, NOT_RUN, NO_NODE_RESOURCES);
 
 		free_chunk_map_array(cmap);
-		return NULL;
+		return {};
 	}
 
-	ns_arr = bucket_to_nspecs(policy, cmap, resresv);
+	auto ns_arr = bucket_to_nspecs(policy, cmap, resresv);
 
 	free_chunk_map_array(cmap);
 	return ns_arr;

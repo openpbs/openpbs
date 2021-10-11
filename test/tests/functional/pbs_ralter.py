@@ -2077,14 +2077,10 @@ class TestPbsResvAlter(TestFunctional):
 
         rid, start, end, rnodes = self.alter_select_initial(True, select)
 
-        nodes = [4, rnodes, 0, [], 0, []]
-
         self.alter_select(
-            rid, start, end, True, aselect1, 4, nodes, 1)
+            rid, start, end, True, aselect1, 4, [], 1)
 
-        nodes = [2, rnodes, 0, [], 0, []]
-
-        self.alter_select(rid, start, end, True, aselect2, 2, nodes, 2)
+        self.alter_select(rid, start, end, True, aselect2, 2, [], 2)
 
     def test_alter_select_basic_running(self):
         """
@@ -2099,14 +2095,9 @@ class TestPbsResvAlter(TestFunctional):
 
         rid, start, end, rnodes = self.alter_select_initial(False, select)
 
-        nodes = [0, [], 4, rnodes[2:6], 0, []]
+        rnodes2 = self.alter_select(rid, start, end, False, aselect1, 4, [], 1)
 
-        rnodes2 = self.alter_select(
-            rid, start, end, False, aselect1, 4, nodes, 1)
-
-        nodes = [0, [], 2, rnodes2, 0, []]
-
-        self.alter_select(rid, start, end, False, aselect2, 2, nodes, 2)
+        self.alter_select(rid, start, end, False, aselect2, 2, [], 2)
 
     def test_alter_select_complex(self):
         """
@@ -2121,13 +2112,9 @@ class TestPbsResvAlter(TestFunctional):
 
         rid, start, end, rnodes = self.alter_select_initial(True, select)
 
-        nodes = [4, rnodes, 0, [], 0, []]
+        self.alter_select(rid, start, end, True, aselect1, 4, [], 1)
 
-        self.alter_select(rid, start, end, True, aselect1, 4, nodes, 1)
-
-        nodes = [1, rnodes, 0, [], 0, []]
-
-        self.alter_select(rid, start, end, True, aselect2, 1, nodes, 2)
+        self.alter_select(rid, start, end, True, aselect2, 1, [], 2)
 
     def test_alter_select_complex_running(self):
         """
@@ -2142,14 +2129,10 @@ class TestPbsResvAlter(TestFunctional):
 
         rid, start, end, rnodes = self.alter_select_initial(False, select)
 
-        nodes = [1, rnodes[0:2], 2, rnodes[2:6], 1, rnodes[6:]]
-
         rnodes2 = self.alter_select(rid, start, end, False,
-                                    aselect1, 4, nodes, 1)
+                                    aselect1, 4, [], 1)
 
-        nodes = [0, [], 1, rnodes2, 0, []]
-
-        self.alter_select(rid, start, end, False, aselect2, 1, nodes, 2)
+        self.alter_select(rid, start, end, False, aselect2, 1, [], 2)
 
     def test_alter_select_complex2(self):
         """
@@ -2166,18 +2149,12 @@ class TestPbsResvAlter(TestFunctional):
 
         rid, start, end, rnodes = self.alter_select_initial(True, select)
 
-        nodes = [5, rnodes, 0, [], 0, []]
-
         rnodes2 = self.alter_select(rid, start, end,
-                                    True, aselect1, 5, nodes, 1)
+                                    True, aselect1, 5, [], 1)
 
-        nodes = [2, rnodes, 0, [], 0, []]
+        self.alter_select(rid, start, end, True, aselect2, 2, [], 2)
 
-        self.alter_select(rid, start, end, True, aselect2, 2, nodes, 2)
-
-        nodes = [1, rnodes, 0, [], 0, []]
-
-        self.alter_select(rid, start, end, True, aselect3, 1, nodes, 3)
+        self.alter_select(rid, start, end, True, aselect3, 1, [], 3)
 
     def test_alter_select_complex_running2(self):
         """
@@ -2194,19 +2171,53 @@ class TestPbsResvAlter(TestFunctional):
 
         rid, start, end, rnodes = self.alter_select_initial(False, select)
 
-        nodes = [2, rnodes[0:3], 1, rnodes[3:5], 2, rnodes[5:]]
-
         rnodes2 = self.alter_select(rid, start, end,
-                                    False, aselect1, 5, nodes, 1)
-
-        nodes = [1, rnodes2[0:2], 0, [], 1, rnodes2[3:]]
+                                    False, aselect1, 5, [], 1)
 
         rnodes3 = self.alter_select(rid, start, end,
-                                    False, aselect2, 2, nodes, 2)
+                                    False, aselect2, 2, [], 2)
 
-        nodes = [0, [], 0, [], 1, rnodes3[1:]]
+        self.alter_select(rid, start, end, False, aselect3, 1, [], 3)
 
-        self.alter_select(rid, start, end, False, aselect3, 1, nodes, 3)
+    def test_alter_select_complex_running3(self):
+        """
+        A complex set of ralters with running jobs
+        """
+        select = "3:ncpus=1:mem=1gb+2:ncpus=1:mem=2gb+3:ncpus=1:mem=3gb"
+        aselect1 = "2:ncpus=1:mem=1gb+1:ncpus=1:mem=2gb+2:ncpus=1:mem=3gb"
+        aselect2 = "1:ncpus=1:mem=1gb+1:ncpus=1:mem=3gb"
+        aselect3 = "1:ncpus=1:mem=3gb"
+
+        rid, start, end, rnodes = self.alter_select_initial(False, select)
+        rq = rid.split('.')[0]
+
+        a = {'queue': rq, 'Resource_List.select': '1:ncpus=1:mem=3gb'}
+        J1 = Job(attrs=a)
+        jid1 = self.server.submit(J1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        a['Resource_List.select'] = '1:ncpus=1:mem=1gb'
+        J2 = Job(attrs=a)
+        jid2 = self.server.submit(J2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        st = self.server.status(JOB)
+
+        nodes1 = J1.get_vnodes(st[0]['exec_vnode'])
+        nodes2 = J2.get_vnodes(st[1]['exec_vnode'])
+        needed_nodes = [nodes1[0], nodes2[0]]
+
+        self.alter_select(rid, start, end, False, aselect1, 5, needed_nodes, 1)
+
+        self.alter_select(rid, start, end, False, aselect2, 2, needed_nodes, 2)
+
+        # Alter will fail because we're trying to release Jid2's node
+
+        self.alter_select(rid, start, end, False, aselect3, 2,
+                          needed_nodes, 1, False)
+
+        self.server.delete(jid2, wait=True)
+
+        self.alter_select(rid, start, end, False, aselect3, 1, nodes1, 3)
 
     def alter_select_initial(self, confirm, select):
         """
@@ -2239,13 +2250,16 @@ class TestPbsResvAlter(TestFunctional):
         return rid, start, end, resv_nodes
 
     def alter_select(self, rid, start, end,
-                     confirm, selectN, numnodes, nodes, seq):
+                     confirm, selectN, numnodes, nodes, seq, success=True):
         """
         Alter a reservation and make sure it is on the correct nodes
         """
 
+        w = 1
+        if not success:
+            w = 3
         self.alter_a_reservation(rid, start, end, select=selectN,
-                                 confirm=confirm, sequence=seq)
+                                 confirm=confirm, sequence=seq, whichMessage=w)
 
         st = self.server.status(RESV)
         self.assertEquals(len(st[0]['resv_nodes'].split('+')), numnodes)
@@ -2253,16 +2267,9 @@ class TestPbsResvAlter(TestFunctional):
              'Resource_List.nodect': numnodes}
         self.server.expect(RESV, a, id=rid)
         resv_nodes = self.server.reservations[rid].get_vnodes()
-        # format is [N, [], N, [], N, []], we look at it in pairs
-        for i in range(0, len(nodes), 2):
-            if nodes[i]:
-                num = nodes[i]
-                for n in nodes[i + 1]:
-                    if n in resv_nodes:
-                        num -= 1
-                        if not num:
-                            break
-                self.assertFalse(num, 'Correct nodes not found after alter')
+        # nodes is a list of nodes we must keep
+        for n in nodes:
+            self.assertIn(n, resv_nodes, "Required node not in resv_nodes")
         return resv_nodes
 
     def test_alter_select_with_times(self):

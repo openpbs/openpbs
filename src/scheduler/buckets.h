@@ -56,7 +56,7 @@ void free_node_bucket(node_bucket *nb);
 void free_node_bucket_array(node_bucket **buckets);
 
 /* find index of node_bucket in an array */
-int find_node_bucket_ind(node_bucket **buckets, schd_resource *rl, queue_info *queue, int priority);
+int find_node_bucket_ind(node_bucket **buckets, schd_resource *rl, queue_info *qinfo, int priority);
 
 /* create node_buckets an array of nodes */
 node_bucket **create_node_buckets(status *policy, node_info **nodes, std::vector<queue_info *> &queues, unsigned int flags);
@@ -67,7 +67,7 @@ char *create_node_bucket_name(status *policy, node_bucket *nb);
 /* match job's request to buckets and allocate */
 int bucket_match(chunk_map **cmap, resource_resv *resresv, schd_error *err);
 /* convert chunk_map->node_bits into nspec array */
-nspec **bucket_to_nspecs(status *policy, chunk_map **cmap, resource_resv *resresv);
+std::vector<nspec *>bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv);
 
 /* can a job completely fit on a node before it is busy */
 int node_can_fit_job_time(int node_ind, resource_resv *resresv);
@@ -94,8 +94,8 @@ void log_chunk_map_array(resource_resv *resresv, chunk_map **cmap);
 
 
 /* Check to see if a job can run on nodes via the node_bucket codepath */
-nspec **check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, schd_error *err);
-nspec **map_buckets(status *policy, node_bucket **bkts, resource_resv *resresv, schd_error *err);
+std::vector<nspec *>check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, schd_error *err);
+std::vector<nspec *>map_buckets(status *policy, node_bucket **bkts, resource_resv *resresv, schd_error *err);
 
 /* map job to buckets that can satisfy */
 chunk_map **find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resresv, schd_error *err);

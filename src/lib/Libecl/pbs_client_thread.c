@@ -53,9 +53,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <pwd.h>
-#ifdef NAS /* localmod 005 */
-#include <unistd.h>
-#endif /* localmod 005 */
 #include "libpbs.h"
 #include "pbs_client_thread.h"
 

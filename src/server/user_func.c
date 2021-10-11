@@ -56,12 +56,6 @@
 #include <sys/param.h>
 #include <dirent.h>
 
-#ifdef NAS /* localmod 005 */
-#ifdef	linux
-#include <netdb.h>		/* for ruserok */
-#endif
-#endif /* localmod 005 */
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <ctype.h>

@@ -192,17 +192,12 @@ np_cache *
 find_alloc_np_cache(status *policy, std::vector<np_cache *> &pnpc_arr,
 	const std::vector<std::string> &resnames, node_info **ninfo_arr,
 	int (*sort_func)(const void *, const void *));
-/*
- *	add_np_cache - add an np_cache to an array
- *	returns 1 on success - 0 on failure
- */
-int add_np_cache(np_cache ***npc_arr, np_cache *npc);
 
 /*
  * do an inital check to see if a resresv can fit into a node partition
  * based on the meta data we keep
  */
-int resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resresv, int total, schd_error *err);
+int resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resresv, unsigned int flags, schd_error *err);
 
 /*
  *	create_specific_nodepart - create a node partition with specific

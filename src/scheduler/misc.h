@@ -122,7 +122,7 @@ char *string_array_to_str(char **strarr);
 /*
  *      calc_time_left - calculate the remaining time of a job
  */
-int calc_time_left(resource_resv *jinfo, int use_hard_duration);
+int calc_time_left(resource_resv *resresv, int use_hard_duration);
 
 /*
  *      cstrcmp - check string compare - compares two strings but doesn't bomb
@@ -247,7 +247,7 @@ free_schd_error_list(schd_error *err_list);
 schd_error *
 create_schd_error(enum sched_error_code error_code, enum schd_err_status status_code);
 schd_error *
-create_schd_error_complex(enum sched_error_code error_code, enum schd_err_status status_code, char *arg1, char *arg2, char *arg3, char *errbuf);
+create_schd_error_complex(enum sched_error_code error_code, enum schd_err_status status_code, char *arg1, char *arg2, char *arg3, char *specmsg);
 
 /* add schd_errors to linked list */
 void
@@ -275,7 +275,7 @@ void log_eventf(int eventtype, int objclass, int sev, const std::string& objname
 void log_event(int eventtype, int objclass, int sev, const std::string& objname, const char *text);
 
 /*
- * overloaded  break_comma_list function
+ * overloaded break_comma_list function
  */
-std::vector<std::string> break_comma_list(const std::string &list);
+std::vector<std::string> break_comma_list(const std::string &strlist);
 #endif	/* _MISC_H */

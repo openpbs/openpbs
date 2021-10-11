@@ -1293,16 +1293,6 @@ set_credential(job *pjob, char **shell, char ***argarray)
 				if (num >= 2) { /* num=# of !NULL argarray entries */
 					for (j=1; (*argarray)[j]; j++)
 						argv[i++] = (*argarray)[j];
-#ifdef NAS /* localmod 019 */
-					/*
-					 * Broken bash does not read .profile even with
-					 * "-" name prefix.
-					 */
-					if (strcmp(name, "bash") == 0) {
-						argv[i] = strdup("--login");
-						i++;
-					}
-#endif /* localmod 019 */
 				}
 			}
 			ret = becomeuser(pjob);
