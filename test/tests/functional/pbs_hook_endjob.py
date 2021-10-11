@@ -238,7 +238,7 @@ class TestHookJobObit(TestFunctional):
             ncpus=job_default_ncpus,
             job_time=job_time_success,
             job_rerunnable=True,
-            job_attrs={}):
+            job_attrs=None):
         if self.scheduling_enabled:
             # Disable scheduling so that jobs won't be immediately started
             # until we've verified that they have been queued
@@ -253,7 +253,7 @@ class TestHookJobObit(TestFunctional):
         self.job_rerunnable = job_rerunnable
         if not job_rerunnable:
             a[ATTR_r] = 'n'
-        a.update(job_attrs)
+        a.update(job_attrs or {})
         self.job = Job(user, attrs=a)
         self.job.set_sleep_time(job_time)
         self.job_id = self.server.submit(self.job)
@@ -406,7 +406,7 @@ class TestHookJobObit(TestFunctional):
             ncpus=resv_default_ncpus,
             resv_start_time=None,
             resv_end_time=None,
-            resv_attrs={}):
+            resv_attrs=None):
         start_time = resv_start_time or int(time.time()) + \
             self.resv_start_delay
         end_time = resv_end_time or start_time + self.resv_duration
@@ -415,7 +415,7 @@ class TestHookJobObit(TestFunctional):
         a['Resource_List.place'] = 'free'
         a['reserve_start'] = start_time
         a['reserve_end'] = end_time
-        a.update(resv_attrs)
+        a.update(resv_attrs or {})
         resv = Reservation(user, a)
         self.resv_id = self.server.submit(resv)
         self.resv_start_time = start_time
