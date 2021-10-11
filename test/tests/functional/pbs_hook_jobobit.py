@@ -42,21 +42,18 @@ import time
 from tests.functional import *
 
 
-def jobobit_hook(hook_func_name):
+def jobobit_hook():
     import pbs
     import sys
-
-    pbs.logmsg(pbs.LOG_DEBUG, "pbs.__file__:" + pbs.__file__)
 
     try:
         e = pbs.event()
         job = e.job
         pbs.logjobmsg(
-            job.id, 'jobobit hook started for test %s' % (hook_func_name,))
+            job.id, 'jobobit hook started for test %s' % (e.hook_name,))
         pbs.logjobmsg(job.id, 'jobobit hook, job starttime:%s' % (job.stime,))
         pbs.logjobmsg(
             job.id, 'jobobit hook, job obittime:%s' % (job.obittime,))
-        # pbs.logjobmsg(job.id, 'jobobit hook, job_dir=%s' % (dir(job),))
         pbs.logjobmsg(job.id, 'jobobit hook, job_state=%s' % (job.job_state,))
         pbs.logjobmsg(
             job.id, 'jobobit hook, job_substate=%s' % (job.substate,))
@@ -66,8 +63,6 @@ def jobobit_hook(hook_func_name):
             job.id, 'jobobit hook, job_state_desc=%s' % (state_desc,))
         pbs.logjobmsg(
             job.id, 'jobobit hook, job_substate_desc=%s' % (substate_desc,))
-        pbs.logjobmsg(
-            job.id, 'jobobit hook, job obittime:%d' % (job.obittime,))
         if hasattr(job, "resv") and job.resv:
             pbs.logjobmsg(
                 job.id, 'jobobit hook, resv:%s' % (job.resv.resvid,))
@@ -79,9 +74,8 @@ def jobobit_hook(hook_func_name):
                 'jobobit hook, resv_state:%s' % (job.resv.reserve_state,))
         else:
             pbs.logjobmsg(job.id, 'jobobit hook, resv:(None)')
-        # pbs.logjobmsg(pbs.REVERSE_JOB_STATE.get(job.state))
         pbs.logjobmsg(
-            job.id, 'jobobit hook finished for test %s' % (hook_func_name,))
+            job.id, 'jobobit hook finished for test %s' % (e.hook_name,))
     except Exception as err:
         ty, _, tb = sys.exc_info()
         pbs.logmsg(
@@ -150,7 +144,7 @@ class TestHookJobObit(TestFunctional):
         ret = self.server.create_hook(self.hook_name, a)
         self.assertTrue(ret, "Could not create hook %s" % self.hook_name)
 
-        hook_body = generate_hook_body_from_func(jobobit_hook, self.hook_name)
+        hook_body = generate_hook_body_from_func(jobobit_hook)
         ret = self.server.import_hook(self.hook_name, hook_body)
         self.assertTrue(ret, "Could not import hook %s" % self.hook_name)
 
