@@ -171,4 +171,3 @@ class TestGrunt(TestFunctional):
 
         job_res = {'resource12': 10}
         self.try_a_job(base_sel, job_res, que_res, svr_res)
-
