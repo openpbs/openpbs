@@ -40,6 +40,7 @@
 
 from tests.functional import *
 
+
 class TestGrunt(TestFunctional):
 
     """
@@ -86,11 +87,11 @@ class TestGrunt(TestFunctional):
             expected.append([r, job_res[r]])
         known = [x[0] for x in expected]
         for r in sorted(que_res.keys()):
-            if not r in known:
+            if r not in known:
                 expected.append([r, que_res[r]])
                 known.append(r)
         for r in sorted(svr_res.keys()):
-            if not r in known:
+            if r not in known:
                 expected.append([r, svr_res[r]])
                 known.append(r)
         e_list = ':'.join(base + ["%s=%s" % (p[0], p[1]) for p in expected])
@@ -108,7 +109,7 @@ class TestGrunt(TestFunctional):
         """
 
         # Remove any current server defaults
-        rlist = ['default_chunk.%s'%r for r in self.resources]
+        rlist = ['default_chunk.%s' % r for r in self.resources]
         a = ','.join(rlist)
         self.server.manager(MGR_CMD_UNSET, SERVER, a)
 
@@ -136,7 +137,7 @@ class TestGrunt(TestFunctional):
         defaults.
         """
         # Remove any current defaults
-        rlist = ['default_chunk.%s'%r for r in self.resources]
+        rlist = ['default_chunk.%s' % r for r in self.resources]
         a = ','.join(rlist)
         self.server.manager(MGR_CMD_UNSET, QUEUE, a, id=self.our_queue)
         self.server.manager(MGR_CMD_UNSET, SERVER, a)
@@ -156,13 +157,16 @@ class TestGrunt(TestFunctional):
 
         # Add a server chunk default
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'default_chunk.resource12': 3})
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'default_chunk.resource12': 3})
         svr_res = {'resource12': 3}
         self.try_a_job(base_sel, job_res, que_res, svr_res)
 
         # Add a queue chunk default
 
-        self.server.manager(MGR_CMD_SET, QUEUE, {'default_chunk.resource13': 4}, id=self.our_queue)
+        self.server.manager(MGR_CMD_SET, QUEUE,
+                            {'default_chunk.resource13': 4},
+                            id=self.our_queue)
         que_res = {'resource13': 4}
 
         self.try_a_job(base_sel, job_res, que_res, svr_res)
