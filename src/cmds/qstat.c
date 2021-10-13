@@ -1406,7 +1406,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 					if (strcmp(a->name, ATTR_ctime) == 0 ||
 						strcmp(a->name, ATTR_etime) == 0 ||
 						strcmp(a->name, ATTR_stime) == 0 ||
-						strcmp(a->name, ATTR_endtime) == 0 ||
+						strcmp(a->name, ATTR_obittime) == 0 ||
 						strcmp(a->name, ATTR_mtime) == 0 ||
 						strcmp(a->name, ATTR_qtime) == 0 ||
 						strcmp(a->name, ATTR_resv_start) == 0 ||
@@ -3117,7 +3117,7 @@ que_no_args:
 					break;
 				} else if (pbs_errno)
 					show_svr_inst_fail(conn, argv[0]);
-				
+
 				p_status = pbs_statque(conn, queue_name_out, NULL, NULL);
 				if (p_status == NULL) {
 					if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {
@@ -3167,7 +3167,7 @@ svr_no_args:
 					break;
 				} else if (pbs_errno)
 					show_svr_inst_fail(conn, argv[0]);
-				
+
 				p_status = pbs_statserver(conn, NULL, NULL);
 				if (p_status == NULL) {
 					if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {

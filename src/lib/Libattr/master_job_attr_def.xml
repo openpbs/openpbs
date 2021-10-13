@@ -923,8 +923,8 @@
       </member_verify_function>
    </attributes>
       <attributes>
-      <member_index>JOB_ATR_endtime</member_index>
-      <member_name>ATTR_endtime</member_name>
+      <member_index>JOB_ATR_obittime</member_index>
+      <member_name>ATTR_obittime</member_name>
       <member_at_decode>decode_l</member_at_decode>
       <member_at_encode>encode_l</member_at_encode>
       <member_at_set>set_l</member_at_set>

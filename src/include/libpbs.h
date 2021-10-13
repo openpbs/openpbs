@@ -263,7 +263,7 @@ struct batch_reply
 #define PBS_BATCH_ReserveResc		25
 #define PBS_BATCH_ReleaseResc		26
 #define PBS_BATCH_FailOver		27
-#define PBS_BATCH_EndJob		28
+#define PBS_BATCH_JobObit		28
 #define PBS_BATCH_StageIn		48
 /* Unused -- #define PBS_BATCH_AuthenResvPort 49 */
 #define PBS_BATCH_OrderJob		50
@@ -271,7 +271,7 @@ struct batch_reply
 #define PBS_BATCH_RegistDep		52
 #define PBS_BATCH_CopyFiles		54
 #define PBS_BATCH_DelFiles		55
-#define PBS_BATCH_JobObit		56
+/* Unused -- #define PBS_BATCH_JobObit 56 */
 #define PBS_BATCH_MvJobFile		57
 #define PBS_BATCH_StatusNode		58
 #define PBS_BATCH_Disconnect		59
