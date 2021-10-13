@@ -1850,29 +1850,11 @@ create_server_arrays(server_info *sinfo)
 	}
 	job_arr[i] = NULL;
 
-#ifdef NAS /* localmod 054 */
-	if (i != sinfo->sc.total) {
-		sprintf(log_buffer, "Expected %d jobs, but found %d", sinfo->sc.total, i);
-		log_err(-1, __func__, log_buffer);
-		sinfo->sc.total = i;
-	}
-#endif /* localmod 054 */
-
 	if (sinfo->resvs != NULL) {
 		for (j = 0; sinfo->resvs[j] != NULL; j++, i++) {
 			all_arr[i] = sinfo->resvs[j];
 			all_arr[i]->resresv_ind = i;
 		}
-#ifdef NAS /* localmod 054 */
-		if (j != sinfo->num_resvs) {
-			sprintf(log_buffer, "Expected %d resv, but found %d", sinfo->num_resvs, j);
-			log_err(-1, __func__, log_buffer);
-			if (j > sinfo->num_resvs) {
-				abort();
-			}
-			sinfo->num_resvs = j;
-		}
-#endif /* localmod 054 */
 	}
 	all_arr[i] = NULL;
 
@@ -2109,14 +2091,7 @@ server_info::server_info(const server_info &osinfo)
 	sc = osinfo.sc;
 
 	/* sets nsinfo -> jobs and nsinfo -> all_resresv */
-#ifdef NAS /* localmod 054 */
-	if (create_server_arrays(this) == 0) {
-		free_server_info();
-		throw sched_exception("Unable to duplicate server arrays", SCHD_ERROR);
-	}
-#else
 	copy_server_arrays(this, &osinfo);
-#endif /* localmod 054 */
 
 	equiv_classes = dup_resresv_set_array(osinfo.equiv_classes, this);
 

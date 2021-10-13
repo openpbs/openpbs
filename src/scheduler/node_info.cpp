@@ -2102,12 +2102,6 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	 */
 	flags &= ~RETURN_ALL_ERR;
 
-#ifdef NAS /* localmod 063 */
-	/* Should be at least one chunk */
-	if (spec->total_chunks < 1)
-		return false;
-#endif /* localmod 063 */
-
 	if (failerr == NULL) {
 		failerr = new_schd_error();
 		if (failerr == NULL) {
@@ -2798,9 +2792,6 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 
 	if (chk == NULL || pninfo_arr == NULL || resresv== NULL || pl == NULL)
 		return false;
-#ifdef NAS /* localmod 005 */
-	ns = NULL;			/* quiet compiler warnings */
-#endif /* localmod 005 */
 
 	if (failerr == NULL) {
 		failerr = new_schd_error();

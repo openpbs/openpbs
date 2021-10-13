@@ -1761,15 +1761,6 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 
 		exec = create_execvnode(njob->nspec_arr);
 		if (exec != NULL) {
-#ifdef NAS /* localmod 068 */
-			/* debug dpr - Log vnodes reserved for job */
-			time_t tm = time(NULL);
-			struct tm *ptm = localtime(&tm);
-			printf("%04d-%02d-%02d %02d:%02d:%02d %s %s %s\n",
-			       ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday,
-			       ptm->tm_hour, ptm->tm_min, ptm->tm_sec,
-			       "Backfill", njob->name.c_str(), exec);
-#endif /* localmod 068 */
 			free_nspecs(bjob->nspec_arr);
 			bjob->nspec_arr = parse_execvnode(exec, sinfo, NULL);
 			if (!bjob->nspec_arr.empty()) {

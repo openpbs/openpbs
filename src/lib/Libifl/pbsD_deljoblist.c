@@ -213,9 +213,11 @@ __pbs_deljoblist(int c, char **jobids, int numjids, const char *extend)
 	if (c < 0)
 		return NULL;
 
+
 	reply = PBSD_rdrpy(c);
 	if (reply == NULL && pbs_errno == PBSE_NONE)
 		pbs_errno = PBSE_PROTOCOL;
+
 	else if (reply->brp_choice != BATCH_REPLY_CHOICE_NULL &&
 		 reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
 		 reply->brp_choice != BATCH_REPLY_CHOICE_Delete)

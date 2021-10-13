@@ -108,18 +108,10 @@
 #define ENV_PBS_JOBID "PBS_JOBID"
 #define CMDLINE 3
 
-
-#ifndef NAS /* localmod 004 */
 #undef DEBUG
-#endif /* localmod 004 */
-
 #undef DBPRT
 #ifdef DEBUG
-#ifdef NAS /* localmod 004 */
-#define DBPRT(x)	fprintf x;
-#else
 #define DBPRT(x)	printf x;
-#endif /* localmod 004 */
 #else
 #define DBPRT(x)
 #endif
@@ -851,11 +843,7 @@ block_port(void)
 	}
 	port = ntohs(myaddr.sin_port);
 	(void)sprintf(portstring, "%u", (unsigned int)port);
-#ifdef NAS /* localmod 004 */
-	DBPRT((stderr, "block_port: %s\n", portstring))
-#else
 	DBPRT(("block_port: %s\n", portstring))
-#endif /* localmod 004 */
 
 	if (listen(comm_sock, 1) < 0) {
 		perror("qsub: listen on block socket");
@@ -929,11 +917,7 @@ retry:
 		perror("qsub: accept error");
 		exit_qsub(1);
 	}
-#ifdef NAS /* localmod 004 */
-	DBPRT((stderr, "got connection from %s:%d\n", inet_ntoa(from.sin_addr), (int)ntohs(from.sin_port)))
-#else
 	DBPRT(("got connection from %s:%d\n", inet_ntoa(from.sin_addr), (int)ntohs(from.sin_port)))
-#endif /* localmod 004 */
 
 	/*
 	 * if SIGINT or SIGBREAK interrupt is raised, then child thread win_blockint()

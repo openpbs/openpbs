@@ -335,7 +335,6 @@ req_runjob(struct batch_request *preq)
 		return;
 	}
 
-#ifndef NAS /* localmod 133 */
 	if ((psched->sc_cycle_started != -1) && was_job_alteredmoved(parent)) {
 		/* Reject run request for altered/moved jobs if job_run_wait is set to "execjob_hook" */
 		if (!is_sched_attr_set(psched, SCHED_ATR_job_run_wait) ||
@@ -345,7 +344,6 @@ req_runjob(struct batch_request *preq)
 			return;
 		}
 	}
-#endif /* localmod 133 */
 
 	if (jt == IS_ARRAY_NO) {
 		/* just a regular job, pass it on down the line and be done */

@@ -109,9 +109,7 @@
 #include	"pbs_internal.h"
 #include	"pbs_idx.h"
 #ifdef HWLOC
-#ifndef NAS /* localmod 113 */
 #include	"hwloc.h"
-#endif /* localmod 113 */
 #endif
 #include	"hook.h"
 #include	"mom_hook_func.h"
@@ -339,6 +337,7 @@ pbs_list_head	svr_resvsub_hooks;
 pbs_list_head	svr_modifyresv_hooks;
 pbs_list_head	svr_movejob_hooks;
 pbs_list_head	svr_runjob_hooks;
+pbs_list_head	svr_endjob_hooks;
 pbs_list_head	svr_management_hooks;
 pbs_list_head	svr_modifyvnode_hooks;
 pbs_list_head	svr_periodic_hooks;
@@ -7887,6 +7886,7 @@ main(int argc, char *argv[])
 	CLEAR_HEAD(svr_modifyresv_hooks);
 	CLEAR_HEAD(svr_movejob_hooks);
 	CLEAR_HEAD(svr_runjob_hooks);
+	CLEAR_HEAD(svr_endjob_hooks);
 	CLEAR_HEAD(svr_management_hooks);
 	CLEAR_HEAD(svr_modifyvnode_hooks);
 	CLEAR_HEAD(svr_periodic_hooks);
@@ -9554,7 +9554,6 @@ check_busy(double mla)
 void
 mom_topology(void)
 {
-#ifndef NAS /* localmod 113 */
 	extern char mom_short_name[];
 	extern callfunc_t vn_callback;
 	int ret = -1;
@@ -9750,5 +9749,4 @@ bad:
 #else
 	;
 #endif
-#endif /* localmod 113 */
 }

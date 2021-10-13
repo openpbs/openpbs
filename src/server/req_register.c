@@ -247,11 +247,6 @@ req_register(struct batch_request *preq)
 	/*  make sure request is from a server */
 
 	if (!preq->rq_fromsvr) {
-#ifdef NAS /* localmod 109 */
-		sprintf(log_buffer, "Dependency request not from server");
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-			preq->rq_ind.rq_register.rq_parent, log_buffer);
-#endif /* localmod 109 */
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
@@ -412,11 +407,6 @@ req_register(struct batch_request *preq)
 
 
 				default:
-#ifdef NAS /* localmod 109 */
-					sprintf(log_buffer, "Unknown dep. op: %d", preq->rq_ind.rq_register.rq_op);
-					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-						preq->rq_ind.rq_register.rq_parent, log_buffer);
-#endif /* localmod 109 */
 					rc = PBSE_IVALREQ;
 					break;
 			}
@@ -457,16 +447,7 @@ req_register(struct batch_request *preq)
 							}
 							break;
 						}
-#ifdef NAS /* localmod 109 */
-						sprintf(log_buffer, "Dep.rls. job not found: %d/%s", type, preq->rq_ind.rq_register.rq_child);
-					} else {
-						sprintf(log_buffer, "Dep.rls. type not found: %d", type);
-#endif /* localmod 109 */
 					}
-#ifdef NAS /* localmod 109 */
-					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-						preq->rq_ind.rq_register.rq_parent, log_buffer);
-#endif /* localmod 109 */
 					rc = PBSE_IVALREQ;
 					break;
 				case JOB_DEPEND_TYPE_RUNONE:
@@ -1183,24 +1164,14 @@ struct depend *find_depend(int type, attribute *pattr)
 {
 	struct depend *pdep = NULL;
 
-#ifdef NAS /* localmod 109 */
-	sprintf(log_buffer, "find_depend: t=%d, p.f=%#x, p.t=%#x", type, (int)pattr->at_flags, (int)pattr->at_type);
-#endif /* localmod 109 */
 	if (is_attr_set(pattr)) {
 		pdep = (struct depend *)GET_NEXT(pattr->at_val.at_list);
 		while (pdep) {
-#ifdef NAS /* localmod 109 */
-			sprintf(log_buffer+strlen(log_buffer), " %#p t=%d", (void *)pdep, (int)pdep->dp_type);
-#endif /* localmod 109 */
 			if (pdep->dp_type == type)
 				break;
 			pdep = (struct depend *)GET_NEXT(pdep->dp_link);
 		}
 	}
-#ifdef NAS /* localmod 109 */
-	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-		  "ibid", log_buffer);
-#endif /* localmod 109 */
 	return (pdep);
 }
 
