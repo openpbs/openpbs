@@ -5884,8 +5884,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				goto event_set_exit;
 			}
 		}
-	} else if (hook_event == HOOK_EVENT_ENDJOB) {
-		struct rq_endjob	*rqj = req_params->rq_end;
+	} else if (hook_event == HOOK_EVENT_JOBOBIT) {
+		struct rq_jobobit	*rqj = req_params->rq_obit;
 		/* initialize params to None */
 		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_JOB,
 			Py_None);
