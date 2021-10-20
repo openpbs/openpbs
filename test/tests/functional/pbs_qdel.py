@@ -129,3 +129,38 @@ class TestQdel(TestFunctional):
             arrjob = jobid[-2:] + '[1]' + server
             msg = arrjob + ";Job Run at request of Scheduler"
             self.scheduler.log_match(msg, existence=False, max_attempts=3)
+
+    def test_qdel_hstry_jobs_rerun(self):
+        """
+        Test rerunning a history job that was prematurely terminated due
+        to a a downed mom.
+        """
+        a = {'job_history_enable': 'True', 'job_history_duration': '5',
+             'job_requeue_timeout': '5', 'node_fail_requeue': '5',
+             'scheduler_iteration': '5'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        j = Job()
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        self.mom.stop()
+
+        # Force job to be prematurely terminated
+        try:
+            self.server.deljob(jid)
+        except PbsDeljobError as e:
+            err_msg = "could not connect to MOM"
+            self.assertTrue(err_msg in e.msg[0],
+                            "Did not get the expected message")
+            self.assertTrue(e.rc != 0, "Exit code shows success")
+        else:
+            raise self.failureException("qdel job did not return error")
+
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+        self.mom.start()
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+
+        # Upon rerun, finished status should be '92' (Finished)
+        a = {'job_state': 'F', 'substate': '92'}
+        self.server.expect(JOB, a, extend='x',
+                           offset=1, id=jid, interval=1)
