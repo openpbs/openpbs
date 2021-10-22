@@ -833,6 +833,7 @@ pbs_submit_resv(int c, struct attropl *attrib, const char *extend) {
  *	Passes modify reservation request to PBSD_modify_resv( )
  *
  * @param[in]   c - socket on which connected
+ * @param[in]	resv_id - reservation id
  * @param[in]   attrib - the list of attributes for batch request
  * @param[in]   extend - extension of batch request
  *
