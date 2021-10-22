@@ -100,8 +100,16 @@ class TestGrunt(TestFunctional):
         # Ignore any pieces from base
         a_set -= set((':'.join(base)).split(':'))
         # Determine where expected and actual differ
-        oops = e_set.symmetric_difference(a_set)
-        self.assertEquals(oops, set())
+        missing = e_set.difference(a_set)
+        extra = a_set.difference(e_set)
+        if missing:
+            msg = "Actual schedselect missing %s for select=%s" % \
+                   (', '.join(sorted(missing)), sel_arg)
+            self.fail(msg)
+        if extra:
+            msg = "Actual schedselect includes extra %s for select=%s" % \
+                   (', '.join(sorted(extra)), sel_arg)
+            self.fail(msg)
         return jid
 
     @tags('server')

@@ -500,9 +500,11 @@ parse_chunk_make_room_r(int inuse, int extra, int *pnkve, struct key_value_pair 
 	/* check if extra will fit in current allocation */
 	if (inuse + extra <= *pnkve)
 		return 0;
-	/* Need to grow the key/value array.
+	/*
+	 * Need to grow the key/value array.
 	 * Keep the size a multiple of KVP_SIZE just to match parse_chunk_r's
-	 * method. */
+	 * method.
+	 */
 	new_len = ((inuse + extra + KVP_SIZE - 1) / KVP_SIZE ) * KVP_SIZE;
 	ttpkv = realloc(*ppkve, new_len * sizeof(struct key_value_pair));
 	if (ttpkv == NULL)
