@@ -67,7 +67,7 @@ class TestGrunt(TestFunctional):
 
         :param base: the prefix of the job select statement before the
             resources under test
-        :type base: str
+        :type base: list of str
         :param job_res: resources requested by job
         :type job_res: dict with keys of resource names, values of values
         :param que_res: resource defaults for queue
@@ -77,26 +77,31 @@ class TestGrunt(TestFunctional):
         :returns: job id
         """
         attrs = {ATTR_queue: self.our_queue}
-        job_part = ['%s=%s' % (r, job_res[r]) for r in sorted(job_res.keys())]
+
+        job_part = ['%s=%s' % r for r in job_res.items()]
         sel_arg = ':'.join(base + job_part)
         attrs[ATTR_l] = 'select=' + sel_arg
         j = Job(TEST_USER, attrs)
         jid = self.server.submit(j)
-        expected = []
-        for r in sorted(job_res.keys()):
-            expected.append([r, job_res[r]])
-        known = [x[0] for x in expected]
-        for r in sorted(que_res.keys()):
-            if r not in known:
-                expected.append([r, que_res[r]])
-                known.append(r)
-        for r in sorted(svr_res.keys()):
-            if r not in known:
-                expected.append([r, svr_res[r]])
-                known.append(r)
-        e_list = ':'.join(base + ["%s=%s" % (p[0], p[1]) for p in expected])
-        a = {ATTR_SchedSelect: e_list}
-        self.server.expect(JOB, a, id=jid)
+
+        # Merge server, queue, and job requested resources into
+        # expected resource list.  Last one wins.
+        expected = svr_res.copy()
+        expected.update(que_res)
+        expected.update(job_res)
+        e_set = set(["%s=%s" % r for r in expected.items()])
+
+        # See which resources ended up in job's schedselect
+        a = [ATTR_SchedSelect]
+        job_stat = self.server.status(JOB, a, id=jid)
+        ssel = job_stat[0][ATTR_SchedSelect]
+        # Generate actual resource list
+        a_set = set(ssel.split(':'))
+        # Ignore any pieces from base
+        a_set -= set((':'.join(base)).split(':'))
+        # Determine where expected and actual differ
+        oops = e_set.symmetric_difference(a_set)
+        self.assertEquals(oops, set())
         return jid
 
     @tags('server')
@@ -114,17 +119,12 @@ class TestGrunt(TestFunctional):
         self.server.manager(MGR_CMD_UNSET, SERVER, a)
 
         # Set our queue to have default values for all the resources.
-        # self.server.manager(MGR_CMD_SET, QUEUE, a, id=self.our_queue)
-        a = {}
-        for r in self.resources:
-            a['default_chunk.%s' % r] = 1
+        a = {'default_chunk.%s' % r: 1 for r in self.resources}
         self.server.manager(MGR_CMD_SET, QUEUE, a, id=self.our_queue)
 
         base_sel = ['1:ncpus=1']
         job_res = {}
-        que_res = {}
-        for r in self.resources:
-            que_res[r] = 1
+        que_res = {r: 1 for r in self.resources}
         svr_res = {}
         # Submit job to that queue and check schedselect value
         self.try_a_job(base_sel, job_res, que_res, svr_res)
