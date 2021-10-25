@@ -129,7 +129,7 @@ __free_attropl(struct attropl *oplist)
  *
  */
 int
-__pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
+__pbs_alterjob(int c, const char *jobid, struct attrl *attrib, const char *extend)
 {
 	struct attropl *attrib_opl = NULL;
 	int rc = 0;
@@ -139,13 +139,7 @@ __pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 
 	attrib_opl = attrl_to_attropl(attrib);
 
-	rc = PBSD_manager(c,
-		PBS_BATCH_ModifyJob,
-		MGR_CMD_SET,
-		MGR_OBJ_JOB,
-		jobid,
-		attrib_opl,
-		extend);
+	rc = PBSD_manager(c, PBS_BATCH_ModifyJob, MGR_CMD_SET, MGR_OBJ_JOB, jobid, attrib_opl, extend);
 
 	/* free up the attropl we just created */
 	__free_attropl(attrib_opl);
@@ -168,7 +162,7 @@ __pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
  *
  */
 int
-__pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend)
+__pbs_asyalterjob(int c, const char *jobid, struct attrl *attrib, const char *extend)
 {
 	struct attropl *attrib_opl = NULL;
 	int i;

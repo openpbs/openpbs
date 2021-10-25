@@ -602,12 +602,6 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 			advresv->resv->partition = strdup(attrp->value);
 		} else if (!strcmp(attrp->name, ATTR_SchedSelect_orig)) {
 			advresv->resv->select_orig = parse_selspec(attrp->value);
-		} else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
-			advresv->svr_inst_id = string_dup(attrp->value);
-			if (advresv->svr_inst_id == NULL) {
-				delete advresv;
-				return NULL;
-			}
 		}
 		attrp = attrp->next;
 	}

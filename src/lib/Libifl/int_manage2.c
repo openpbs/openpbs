@@ -75,7 +75,7 @@
  *
  */
 int
-PBSD_mgr_put(int c, int function, int command, int objtype, char *objname, struct attropl *aoplp, char *extend, int prot, char **msgid)
+PBSD_mgr_put(int c, int function, int command, int objtype, const char *objname, struct attropl *aoplp, const char *extend, int prot, char **msgid)
 {
 	int rc;
 

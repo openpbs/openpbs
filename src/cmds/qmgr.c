@@ -105,6 +105,7 @@
 #include "pbs_entlim.h"
 #include "resource.h"
 #include "pbs_ecl.h"
+#include "libutil.h"
 
 /* Global Variables */
 #define QMGR_TIMEOUT 900 /* qmgr connection timeout set to 15 min */
@@ -128,8 +129,8 @@ static char hook_tempfile_errmsg[HOOK_MSG_SIZE] = {'\0'};
  */
 int zopt = FALSE;		/* -z option */
 
-struct server *servers = NULL;  /* Linked list of server structures */
-int nservers = 0;               /* Number of servers */
+static struct server *servers = NULL;  /* Linked list of server structures */
+static int nservers = 0;               /* Number of servers */
 
 /* active objects */
 struct objname *active_servers;
@@ -1195,14 +1196,11 @@ make_connection(char *name)
 	int connection;
 	struct server *svr = NULL;
 
-	if ((connection = cnt2server(name)) > 0 && pbs_errno == PBSE_NONE) {
+	if ((connection = cnt2server(name)) > 0) {
 		svr = new_server();
 		Mstring(svr->s_name, strlen(name) + 1);
 		strcpy(svr->s_name, name);
 		svr->s_connect = connection;
-	} else if (is_same_host(name, pbs_default())) {
-		if (!zopt)
-			show_svr_inst_fail(connection, "qmgr");
 	} else
 		PSTDERR1("qmgr: cannot connect to server %s\n", name)
 
@@ -1361,7 +1359,7 @@ check_list(char *list, int type)
  * @return  Void
  *
  */
-void
+static void
 disconnect_from_server(struct server *svr)
 {
 	pbs_disconnect(svr->s_connect);

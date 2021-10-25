@@ -74,7 +74,6 @@
 
 /* Global Data Items: */
 
-extern char	*msg_unkjobid;
 extern char	*msg_badstate;
 extern char	*msg_manager;
 extern char	*msg_movejob;
@@ -90,38 +89,32 @@ extern int	 pbs_errno;
 void
 req_movejob(struct batch_request *req)
 {
-	int      jt;            /* job type */
-	job	*jobp;
-	char	hook_msg[HOOK_MSG_SIZE];
-	int	move_type = 0;
+	int jt; /* job type */
+	job *jobp;
+	char hook_msg[HOOK_MSG_SIZE];
 
-	if (req && req->rq_type == PBS_BATCH_MoveJob && req->rq_ind.rq_move.run_exec_vnode)
-		move_type = MOVE_TYPE_Move_Run;
 
-	if (move_type != MOVE_TYPE_Move_Run) {
-		switch (process_hooks(req, hook_msg, sizeof(hook_msg),
-				pbs_python_set_interrupt)) {
-			case 0:	/* explicit reject */
-				reply_text(req, PBSE_HOOKERROR, hook_msg);
-				return;
-			case 1:   /* explicit accept */
-				if (recreate_request(req) == -1) { /* error */
-					/* we have to reject the request, as 'req' */
-					/* may have been partly modified           */
-					strcpy(hook_msg,
-						"movejob event: rejected request");
-					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
-						LOG_ERR, "", hook_msg);
-					reply_text(req, PBSE_HOOKERROR, hook_msg);
-					return;
-				}
-				break;
-			case 2:	/* no hook script executed - go ahead and accept event*/
-				break;
-			default:
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-					LOG_INFO, "", "movejob event: accept req by default");
+	switch (process_hooks(req, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt)) {
+	case 0: /* explicit reject */
+		reply_text(req, PBSE_HOOKERROR, hook_msg);
+		return;
+	case 1:					   /* explicit accept */
+		if (recreate_request(req) == -1) { /* error */
+			/* we have to reject the request, as 'req' */
+			/* may have been partly modified */
+			strcpy(hook_msg,
+			       "movejob event: rejected request");
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+				  LOG_ERR, "", hook_msg);
+			reply_text(req, PBSE_HOOKERROR, hook_msg);
+			return;
 		}
+		break;
+	case 2: /* no hook script executed - go ahead and accept event*/
+		break;
+	default:
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+			  LOG_INFO, "", "movejob event: accept req by default");
 	}
 
 	jobp = chk_job_request(req->rq_ind.rq_move.rq_jid, req, &jt, NULL);
@@ -135,8 +128,8 @@ req_movejob(struct batch_request *req)
 	}
 
 	if (!check_job_state(jobp, JOB_STATE_LTR_QUEUED) &&
-			!check_job_state(jobp, JOB_STATE_LTR_HELD) &&
-			!check_job_state(jobp, JOB_STATE_LTR_WAITING)) {
+	    !check_job_state(jobp, JOB_STATE_LTR_HELD) &&
+	    !check_job_state(jobp, JOB_STATE_LTR_WAITING)) {
 #ifndef NDEBUG
 		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			   jobp->ji_qs.ji_jobid, "(%s) %s, state=%c",
@@ -150,7 +143,7 @@ req_movejob(struct batch_request *req)
 		/* cannot move Subjob and can only move array job if */
 		/* no subjobs are running			     */
 		if ((jt != IS_ARRAY_ArrayJob) ||
-			(jobp->ji_ajinfo->tkm_subjsct[JOB_STATE_RUNNING] != 0)) {
+		    (jobp->ji_ajinfo->tkm_subjsct[JOB_STATE_RUNNING] != 0)) {
 			req_reject(PBSE_IVALREQ, 0, req);
 			return;
 		}
@@ -162,43 +155,39 @@ req_movejob(struct batch_request *req)
 	 */
 
 	switch (svr_movejob(jobp, req->rq_ind.rq_move.rq_destin, req)) {
-		case 0:			/* success */
-			(void)strcpy(log_buffer, msg_movejob);
-			(void)sprintf(log_buffer+strlen(log_buffer),
-				msg_manager, req->rq_ind.rq_move.rq_destin,
-				req->rq_user, req->rq_host);
-			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-				jobp->ji_qs.ji_jobid, log_buffer);
-			reply_ack(req);
-			break;
-		case -1:
-		case -2:
-		case 1:			/* fail */
-			if (jobp) {
-				char newstate;
-				int newsub;
-				/* force re-eval of job state out of Transit */
-				svr_evaljobstate(jobp, &newstate, &newsub, 1);
-				svr_setjobstate(jobp, newstate, newsub);
-			}
-			if (jobp && jobp->ji_clterrmsg)
-				reply_text(req, pbs_errno, jobp->ji_clterrmsg);
-			else
-				req_reject(pbs_errno, 0, req);
-			break;
-		case 2:			/* deferred, will be handled by 	   */
-			/* post_movejob() when the child completes */
-			break;
+	case 0: /* success */
+		(void) strcpy(log_buffer, msg_movejob);
+		(void) sprintf(log_buffer + strlen(log_buffer),
+			       msg_manager, req->rq_ind.rq_move.rq_destin,
+			       req->rq_user, req->rq_host);
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+			  jobp->ji_qs.ji_jobid, log_buffer);
+		reply_ack(req);
+		break;
+	case -1:
+	case -2:
+	case 1: /* fail */
+		if (jobp)
+			svr_evalsetjobstate(jobp);
+
+		if (jobp && jobp->ji_clterrmsg)
+			reply_text(req, pbs_errno, jobp->ji_clterrmsg);
+		else
+			req_reject(pbs_errno, 0, req);
+		break;
+	case 2: /* deferred, will be handled by 	   */
+		/* post_movejob() when the child completes */
+		break;
 	}
 	return;
 }
+
 /**
  * @brief
  * 		req_orderjob - reorder the jobs in a queue
  *
  * @param[in,out]	req	-	the batch request
  */
-
 void
 req_orderjob(struct batch_request *req)
 {

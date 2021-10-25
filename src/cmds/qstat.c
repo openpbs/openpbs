@@ -805,31 +805,7 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 		pstat = bs_isort(pstat, cmp_est_time);
 
 	if (prtheader) {
-		svr_conn_t **svr_conns = get_conn_svr_instances(conn);
-
-		if (svr_conns) {
-			int num_active_svrs = 0;
-			int i = 0;
-			int j = 0;
-
-			for (i = 0; svr_conns[i]; i++) {
-				if (svr_conns[i]->state == SVR_CONN_STATE_UP)
-					num_active_svrs++;
-			}
-
-			if (num_active_svrs)
-				printf("\n");
-			for (i = 0; svr_conns[i]; i++) {
-				if (svr_conns[i]->state == SVR_CONN_STATE_UP) {
-					printf("%s", pbs_conf.psi[i].name);
-					if (j == num_active_svrs - 1)
-						printf(": ");
-					else
-						printf(", ");
-					j++;
-				}
-			}
-		}
+		printf("\n%s: ", prtheader->name);
 
 		pc = get_attr(prtheader->attribs, ATTR_comment, NULL);
 		if (pc)
@@ -2930,8 +2906,7 @@ job_no_args:
 #endif /* localmod 071 */
 					any_failed = conn;
 					break;
-				} else if (pbs_errno)
-					show_svr_inst_fail(conn, "qstat");
+				}
 
 				if (strcmp(pbs_server, server_old) != 0) {
 					/* changing to a different server */
@@ -3005,7 +2980,7 @@ job_no_args:
 #else
 						(void)tcl_stat("job", NULL, f_opt);
 #endif /* localmod 071 */
-						if (pbs_errno != PBSE_NONE && pbs_errno != PBSE_HISTJOBID && pbs_errno != PBSE_NOSERVER) {
+						if (pbs_errno != PBSE_NONE && pbs_errno != PBSE_HISTJOBID) {
 							if (pbs_errno == PBSE_ATTRRO && alt_opt & ALT_DISPLAY_T)
 								fprintf(stderr, "qstat: -T option is unavailable.\n");
 							else
@@ -3115,12 +3090,11 @@ que_no_args:
 #endif /* localmod 071 */
 					any_failed = conn;
 					break;
-				} else if (pbs_errno)
-					show_svr_inst_fail(conn, argv[0]);
-
+				}
+				
 				p_status = pbs_statque(conn, queue_name_out, NULL, NULL);
 				if (p_status == NULL) {
-					if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {
+					if (pbs_errno) {
 						errmsg = pbs_geterrmsg(conn);
 						if (errmsg != NULL) {
 							fprintf(stderr, "qstat: %s ", errmsg);
@@ -3165,12 +3139,11 @@ svr_no_args:
 #endif /* localmod 071 */
 					any_failed = conn;
 					break;
-				} else if (pbs_errno)
-					show_svr_inst_fail(conn, argv[0]);
-
+				}
+				
 				p_status = pbs_statserver(conn, NULL, NULL);
 				if (p_status == NULL) {
-					if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {
+					if (pbs_errno) {
 						errmsg = pbs_geterrmsg(conn);
 						if (errmsg != NULL) {
 							fprintf(stderr, "qstat: %s ", errmsg);

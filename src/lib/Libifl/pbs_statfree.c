@@ -62,25 +62,40 @@
 void
 __pbs_statfree(struct batch_status *bsp)
 {
-	struct attrl        *atnxt;
-	struct batch_status *bsnxt;
+	struct batch_status *bsnxt = NULL;
 
-	while (bsp != NULL) {
-		if (bsp->name != NULL)(void)free(bsp->name);
-		if (bsp->text != NULL)(void)free(bsp->text);
-		while (bsp->attribs != NULL) {
-			if (bsp->attribs->name != NULL)
-				(void)free(bsp->attribs->name);
-			if (bsp->attribs->resource != NULL)
-				(void) free(bsp->attribs->resource);
-			if (bsp->attribs->value != NULL)
-				(void)free(bsp->attribs->value);
-			atnxt = bsp->attribs->next;
-			(void)free(bsp->attribs);
-			bsp->attribs = atnxt;
-		}
+	for (;bsp != NULL; bsp = bsnxt) {
 		bsnxt = bsp->next;
-		(void)free(bsp);
-		bsp = bsnxt;
+		pbs_statfree_single(bsp);
 	}
 }
+
+/**
+ * @brief	There are times when we want to free just one batch_status from a list
+ * 			of them and the original pbs_statfree() doesn't serve that purpose. So,
+ * 			this function was created to delete just one 'link' in a chain of batch_statuses
+ *
+ * 	@param[in/out]	bsp - pointer to the batch_status which is being free'd
+ */
+void
+pbs_statfree_single(struct batch_status *bsp)
+{
+	struct attrl *atnxt;
+	if (bsp != NULL) {
+		free(bsp->name);
+		free(bsp->text);
+		while (bsp->attribs != NULL) {
+			if (bsp->attribs->name != NULL)
+				free(bsp->attribs->name);
+			if (bsp->attribs->resource != NULL)
+				free(bsp->attribs->resource);
+			if (bsp->attribs->value != NULL)
+				free(bsp->attribs->value);
+			atnxt = bsp->attribs->next;
+			free(bsp->attribs);
+			bsp->attribs = atnxt;
+		}
+		free(bsp);
+	}
+}
+

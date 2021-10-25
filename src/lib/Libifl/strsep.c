@@ -72,6 +72,8 @@
  * @file	strsep.c
  */
 
+#include <pbs_config.h>
+
 #include <string.h>
 #include <stdio.h>
 #include "libpbs.h" /* for aif dll export */

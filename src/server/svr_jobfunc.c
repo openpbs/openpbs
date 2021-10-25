@@ -612,6 +612,24 @@ svr_setjobstate(job *pjob, char newstate, int newsubstate)
 }
 
 /**
+ * @brief	Helper function thats re-evaluates job state and sub state.
+ *
+ * @param	jobp - pointer to the job
+ *
+ * @return	void
+ */
+void
+svr_evalsetjobstate(job *jobp)
+{
+	char newstate;
+	int newsub;
+
+	/* force re-eval of job state out of Transit */
+	svr_evaljobstate(jobp, &newstate, &newsub, 1);
+	svr_setjobstate(jobp, newstate, newsub);
+}
+
+/**
  * @brief
  * 		svr_evaljobstate - evaluate and return the job state and substate
  *		according to the the values of the hold, execution time, and

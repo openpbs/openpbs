@@ -47,6 +47,8 @@
  *
  */
 
+#include <pbs_config.h>
+
 #include <time.h>
 #include "pbs_nodes.h"
 #include "pbs_license.h"

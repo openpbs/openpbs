@@ -101,7 +101,7 @@ encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs)
  */
 
 int
-encode_DIS_CopyHookFile(int sock, int seq, char *buf, int len, char *filename)
+encode_DIS_CopyHookFile(int sock, int seq, const char *buf, int len, const char *filename)
 {
 	int rc;
 
@@ -260,7 +260,7 @@ encode_DIS_CopyFiles_Cred(int sock, struct batch_request *preq)
  */
 
 int
-encode_DIS_DelHookFile(int sock, char *filename)
+encode_DIS_DelHookFile(int sock, const char *filename)
 {
 	int rc;
 
@@ -328,7 +328,7 @@ encode_DIS_Cred(int sock, char *jobid, char *credid, int type, char *data, size_
  */
 
 int
-encode_DIS_JobCred(int sock, int type, char *cred, int len)
+encode_DIS_JobCred(int sock, int type, const char *cred, int len)
 {
 	int rc;
 
@@ -356,7 +356,7 @@ encode_DIS_JobCred(int sock, int type, char *cred, int len)
  */
 
 int
-encode_DIS_JobFile(int sock, int seq, char *buf, int len, char *jobid, int which)
+encode_DIS_JobFile(int sock, int seq, const char *buf, int len, const char *jobid, int which)
 {
 	int rc;
 
@@ -393,7 +393,7 @@ encode_DIS_JobFile(int sock, int seq, char *buf, int len, char *jobid, int which
  */
 
 int
-encode_DIS_JobId(int sock, char *jobid)
+encode_DIS_JobId(int sock, const char *jobid)
 {
 	return (diswst(sock, jobid));
 }
@@ -419,7 +419,7 @@ encode_DIS_JobId(int sock, char *jobid)
  */
 
 int
-encode_DIS_Manage(int sock, int command, int objtype, char *objname, struct attropl *aoplp)
+encode_DIS_Manage(int sock, int command, int objtype, const char *objname, struct attropl *aoplp)
 {
 	int rc;
 
@@ -441,7 +441,7 @@ encode_DIS_Manage(int sock, int command, int objtype, char *objname, struct attr
  * @return - error code while writing data to the socket.
  */
 int
-encode_DIS_ModifyResv(int sock, char *resv_id, struct attropl *aoplp)
+encode_DIS_ModifyResv(int sock, const char *resv_id, struct attropl *aoplp)
 {
 	int rc = 0;
 
@@ -471,7 +471,7 @@ encode_DIS_ModifyResv(int sock, char *resv_id, struct attropl *aoplp)
  */
 
 int
-encode_DIS_MoveJob(int sock, char *jobid, char *destin)
+encode_DIS_MoveJob(int sock, const char *jobid, const char *destin)
 {
 	int rc;
 
@@ -498,7 +498,7 @@ encode_DIS_MoveJob(int sock, char *jobid, char *destin)
  */
 
 int
-encode_DIS_MessageJob(int sock, char *jobid, int fileopt, char *msg)
+encode_DIS_MessageJob(int sock, const char *jobid, int fileopt, const char *msg)
 {
 	int rc;
 
@@ -528,7 +528,7 @@ encode_DIS_MessageJob(int sock, char *jobid, int fileopt, char *msg)
  *
  */
 int
-encode_DIS_PySpawn(int sock, char *jobid, char **argv, char **envp)
+encode_DIS_PySpawn(int sock, const char *jobid, char **argv, char **envp)
 {
 	int rc, i;
 	char *cp;
@@ -557,7 +557,7 @@ encode_DIS_PySpawn(int sock, char *jobid, char **argv, char **envp)
 }
 
 int
-encode_DIS_RelnodesJob(int sock, char *jobid, char *node_list)
+encode_DIS_RelnodesJob(int sock, const char *jobid, const char *node_list)
 {
 	int rc;
 
@@ -587,7 +587,7 @@ encode_DIS_RelnodesJob(int sock, char *jobid, char *node_list)
  */
 
 int
-encode_DIS_QueueJob(int sock, char *jobid, char *destin, struct attropl *aoplp)
+encode_DIS_QueueJob(int sock, char *jobid, const char *destin, struct attropl *aoplp)
 {
 	int rc;
 
@@ -662,7 +662,7 @@ encode_DIS_Register(int sock, struct batch_request *preq)
  */
 
 int
-encode_DIS_ReqExtend(int sock, char *extend)
+encode_DIS_ReqExtend(int sock, const char *extend)
 {
 	int rc;
 
@@ -692,7 +692,7 @@ encode_DIS_ReqExtend(int sock, char *extend)
  */
 
 int
-encode_DIS_ReqHdr(int sock, int reqt, char *user)
+encode_DIS_ReqHdr(int sock, int reqt, const char *user)
 {
 	int rc;
 
@@ -722,7 +722,7 @@ encode_DIS_ReqHdr(int sock, int reqt, char *user)
  */
 
 int
-encode_DIS_Run(int sock, char *id, char *where, unsigned long arg)
+encode_DIS_Run(int sock, const char *id, const char *where, unsigned long arg)
 {
 	int rc;
 
@@ -768,7 +768,7 @@ encode_DIS_ShutDown(int sock, int manner)
  */
 
 int
-encode_DIS_SignalJob(int sock, char *jobid, char *signal)
+encode_DIS_SignalJob(int sock, const char *jobid, const char *signal)
 {
 	int rc;
 
@@ -794,7 +794,7 @@ encode_DIS_SignalJob(int sock, char *jobid, char *signal)
  */
 
 int
-encode_DIS_Status(int sock, char *objid, struct attrl *pattrl)
+encode_DIS_Status(int sock, const char *objid, struct attrl *pattrl)
 {
 	int rc;
 
@@ -824,7 +824,7 @@ encode_DIS_Status(int sock, char *objid, struct attrl *pattrl)
  */
 
 int
-encode_DIS_SubmitResv(int sock, char *resv_id, struct attropl *aoplp)
+encode_DIS_SubmitResv(int sock, const char *resv_id, struct attropl *aoplp)
 {
 	int rc;
 
@@ -895,7 +895,7 @@ encode_DIS_TrackJob(int sock, struct batch_request *preq)
  */
 
 int
-encode_DIS_UserCred(int sock, char *user, int type, char *cred, int len)
+encode_DIS_UserCred(int sock, const char *user, int type, const char *cred, int len)
 {
 	int rc;
 

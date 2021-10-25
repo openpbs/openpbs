@@ -64,31 +64,29 @@
  */
 
 struct batch_status *
-__pbs_statserver(int c, struct attrl *attrib, char *extend)
+__pbs_statserver(int c, struct attrl *attrib, const char *extend)
 {
-	return PBSD_status_aggregate(c, PBS_BATCH_StatusSvr, "", attrib, extend, MGR_OBJ_SERVER, NULL);
-}
+	struct batch_status *ret = NULL;
+	int rc;
 
-/**
- * @brief
- *	 Asks all server whether it is ready for sched cycle
- *
- * @param[in] c - socket descriptor
- * @param[in] extend - extend field
- * @param[in] prot - PROT_TCP or PROT_TPP
- * @param[in] msgid - msg id
- *
- * @return	int
- * @retval	0		success
- * @retval	!0(pbse error)	error
- *
- */
-int
-PBSD_server_ready(int c)
-{
-	if (!msvr_mode())
-		return 0;
-		
-	PBSD_status_aggregate(c, PBS_BATCH_ServerReady, NULL, NULL, NULL, MGR_OBJ_SERVER, NULL);
-	return pbs_errno;
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return NULL;
+
+	/* first verify the attributes, if verification is enabled */
+	rc = pbs_verify_attributes(c, PBS_BATCH_StatusSvr, MGR_OBJ_SERVER,
+			MGR_CMD_NONE, (struct attropl* ) attrib);
+	if (rc)
+		return NULL;
+
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return NULL;
+
+	ret = PBSD_status(c, PBS_BATCH_StatusSvr, "", attrib, extend);
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return NULL;
+
+	return ret;
 }

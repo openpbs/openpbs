@@ -796,69 +796,6 @@ req_stat_svr(struct batch_request *preq)
 
 /**
  * @brief
- * 		service the Server Ready request
- * Replies back only if the server is in a consistent state.
- * Otherwise, it will leave a work task with the request in it
- * which will be converted to immediate when all acks are received.
- * 
- * Scheduler can proceed only when all the servers answers to this which
- * means the multi-svr cluster is in a consistent state.
- *
- * @param[in]	ptask	-	work task which contains the request
- * 
- * @return void
- */
-void
-req_stat_svr_ready(struct work_task *ptask)
-{
-	struct batch_request *preq;
-	struct batch_reply *preply;
-	conn_t *conn;
-	server_t *psvr;
-
-	/* allocate a reply structure and a status sub-structure */
-
-	if (!ptask || !ptask->wt_parm1)
-		return;
-
-	preq = ptask->wt_parm1;
-
-	if ((conn = get_conn(preq->rq_conn)) == NULL) {
-		req_reject(PBSE_SYSTEM, 0, preq);
-		return;
-	}
-
-	if (conn->cn_origin == CONN_SCHED_PRIMARY) {
-
-		poke_peersvr();
-
-		/* If pending acks are not down to 0, scheduler will be blocked */
-		if ((psvr = pending_ack_svr())) {
-
-			if (set_task(WORK_Deferred_Reply, preq->rq_conn, req_stat_svr_ready, (void *) preq) == NULL) {
-				log_err(errno, __func__, "could not set_task");
-				return;
-			}
-
-			update_msvr_stat(1, NUM_SCHED_MISS);
-			log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				  "Server is not ready to serve scheduler stat request due to "
-				  "pending replies from peer server %s, Deferring reply.",
-				  psvr->mi_host);
-			return;
-		}
-	}
-
-	preply = &preq->rq_reply;
-	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
-	CLEAR_HEAD(preply->brp_un.brp_status);
-	preply->brp_count = 0;
-
-	reply_send(preq);
-}
-
-/**
- * @brief
  * 		status_sched - Build the status reply for single scheduler
  *
  * @param[in]	psched	-	ptr to sched receiving status query

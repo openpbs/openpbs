@@ -759,7 +759,6 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_depend,
 			ATTR_A,
 			ATTR_max_run_subjobs,
-			ATTR_server_inst_id,
 			NULL};
 
 		for (int i = 0; jobattrs[i] != NULL; i++) {
@@ -1003,13 +1002,6 @@ query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *
 				resresv->qrank = qrank;
 			else
 				resresv->qrank = -1;
-		}
-		else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
-			resresv->svr_inst_id = string_dup(attrp->value);
-			if (resresv->svr_inst_id == NULL) {
-				delete resresv;
-				return NULL;
-			}
 		}
 		else if (!strcmp(attrp->name, ATTR_etime)) { /* eligible time */
 			count = strtol(attrp->value, &endp, 10);

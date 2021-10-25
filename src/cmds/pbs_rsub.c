@@ -792,13 +792,6 @@ main(int argc, char *argv[], char *envp[])
 		exit(pbs_errno);
 	}
 
-	if (pbs_errno != PBSE_NONE) {
-		if (pbs_errno == PBSE_NOSERVER || pbs_errno == ECONNREFUSED)
-			show_svr_inst_fail(connect, "pbs_rsub");
-		return pbs_errno;
-    	}    
-
-
 	if (qmoveflg == TRUE) {
 		qmoveflg = FALSE;
 		interactive = get_attr(attrib, ATTR_inter, NULL);

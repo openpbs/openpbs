@@ -67,6 +67,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
+#include <pbs_config.h>
+
 #include "avltree.h"
 #include <limits.h>
 #include <pthread.h>

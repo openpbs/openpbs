@@ -65,9 +65,11 @@
  *
  */
 struct batch_status *
-__pbs_stathook(int c, char *id, struct attrl *attrib, char *extend)
+__pbs_stathook(int c, const char *id, struct attrl *attrib, const char *extend)
 {
-	int		    hook_obj;
+	struct batch_status *ret = NULL;
+	int rc;
+	int hook_obj;
 
 	if (extend != NULL) {
 		if (strcmp(extend, PBS_HOOK) == 0) {
@@ -75,11 +77,30 @@ __pbs_stathook(int c, char *id, struct attrl *attrib, char *extend)
 		} else if (strcmp(extend, SITE_HOOK) == 0) {
 			hook_obj = MGR_OBJ_SITE_HOOK;
 		} else {
-			return NULL;	/* bad extend value */
+			return NULL; /* bad extend value */
 		}
 	} else {
 		hook_obj = MGR_OBJ_SITE_HOOK;
 	}
 
-	return PBSD_status_aggregate(c, PBS_BATCH_StatusHook, id, attrib, extend, hook_obj, NULL);
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return NULL;
+
+	/* first verify the attributes, if verification is enabled */
+	rc = pbs_verify_attributes(c, PBS_BATCH_StatusHook, hook_obj, MGR_CMD_NONE,
+			(struct attropl* ) attrib);
+	if (rc)
+		return NULL;
+
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return NULL;
+
+	ret = PBSD_status(c, PBS_BATCH_StatusHook, id, attrib, extend);
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return NULL;
+
+	return ret;
 }

@@ -731,7 +731,6 @@ class node_info
 	int bucket_ind;			/* index in server's bucket array */
 	int node_ind;			/* node's index into sinfo->unordered_nodes */
 	node_partition **np_arr;	/* array of node partitions node is in */
-	char *svr_inst_id;
 
 	explicit node_info(const std::string& nname);
 	virtual ~node_info();
@@ -813,7 +812,6 @@ class resource_resv
 	job_info *job;			/* pointer to job specific structure */
 	resv_info *resv;		/* pointer to reservation specific structure */
 
-	char *svr_inst_id;		/* Server instance id of the job/reservation */
 	char *aoename;			   /* store name of aoe if requested */
 	char *eoename;			   /* store name of eoe if requested */
 	char **node_set_str;		   /* user specified node string */

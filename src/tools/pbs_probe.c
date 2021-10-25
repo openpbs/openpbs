@@ -78,6 +78,7 @@
  * 	fix_perm_owner()
  *
  */
+#include <pbs_config.h>
 
 #include <Python.h>
 #include <sys/types.h>

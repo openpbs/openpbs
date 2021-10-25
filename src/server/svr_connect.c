@@ -139,12 +139,8 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 
 	if (pmom && (port == pmom->mi_port)) {
 		pdmninfo = pmom->mi_dmn_info;
-		if (is_peersvr(pmom)) {
-			if (connect_to_peersvr(pmom) < 0) {
-				pbs_errno = PBSE_NORELYMOM;
-				return (PBS_NET_RC_FATAL);
-			}
-		} else if (pdmninfo->dmn_state & INUSE_DOWN) {
+		/* connect to peer server associated with this mom */
+		if (pdmninfo->dmn_state & INUSE_DOWN) {
 			if (pdmninfo->dmn_state & INUSE_NEEDS_HELLOSVR) {
 				if (open_conn_stream(pmom) < 0) {
 					pbs_errno = PBSE_NORELYMOM;

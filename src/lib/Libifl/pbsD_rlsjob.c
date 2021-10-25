@@ -67,7 +67,7 @@
  */
 
 int
-__pbs_rlsjob(int c, char *jobid, char *holdtype, char *extend)
+__pbs_rlsjob(int c, const char *jobid, const char *holdtype, const char *extend)
 {
 	struct attropl aopl;
 
@@ -80,9 +80,8 @@ __pbs_rlsjob(int c, char *jobid, char *holdtype, char *extend)
 	if ((holdtype == NULL) || (*holdtype == '\0'))
 		aopl.value = "u";
 	else
-		aopl.value = holdtype;
+		aopl.value = (char *) holdtype;
 	aopl.op = SET;
 	aopl.next = NULL;
-	return PBSD_manager(c, PBS_BATCH_ReleaseJob, MGR_CMD_SET,
-		MGR_OBJ_JOB, jobid, &aopl, extend);
+	return PBSD_manager(c, PBS_BATCH_ReleaseJob, MGR_CMD_SET, MGR_OBJ_JOB, jobid, &aopl, extend);
 }

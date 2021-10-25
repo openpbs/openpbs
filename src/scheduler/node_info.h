@@ -447,7 +447,7 @@ int is_exclhost(place *pl, enum vnode_sharing sharing);
  *	alloc_rest_nodepart - allocate the rest of a node partition to a
  *			      nspec array
  *
- *	  IN/OUT: nsa - node solution to be filled out -- allocated by the
+ *	  IN,OUT: nsa - node solution to be filled out -- allocated by the
  *		        caller with enough space for the entire solution
  *	  IN: ninfo_arr - node array to allocate
  *

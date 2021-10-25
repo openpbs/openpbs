@@ -365,53 +365,22 @@ extern pbs_list_head task_list_immed;
 
 /**
  * @brief
- * 		post_movejob - clean up action for child started in net_move/send_job
- *		   to "move" a job to another server
- * @par
- * 		If move was successfull, delete server's copy of thejob structure,
- * 		and reply to request.
- * @par
- * 		If route didn't work, reject the request.
+ * 		check_move_status - check if the move was successful or not
+ * @param[in]	jobp	-	pointer to job being moved
+ * @param[in]	prot	-	request protocol
+ * @param[in]	wstat	-	child status
+ * @param[in]	rq_move	-	pointer to move job structure
+ * @param[in]	rq_user	-	requesting user
+ * @param[in]	rq_host	-	requesting host
  *
- * @param[in]	pwt	-	work task structure
- *
- * @return	none.
+ * @return	move status
+ * @retval  0 	success
+ * @retval  !0 	failure
  */
-static void
-post_movejob(struct work_task *pwt)
+int
+check_move_status(job *jobp, int prot, int wstat, struct rq_move *rq_move, char *rq_user, char *rq_host)
 {
-	struct batch_request *req;
-	char newstate;
-	int newsub;
-	int r;
-	job *jobp;
-	int prot = pwt->wt_aux2;
-	int wstat = pwt->wt_aux;
-	struct work_task *ptask;
-	int move_type = -1;
-	int force_ack = 0;
-	int replied = 0;
-	struct rq_move *rq_move; 
-
-	req = (struct batch_request *) pwt->wt_parm1;
-	pbs_errno = PBSE_NONE;
-	if (req->rq_type != PBS_BATCH_MoveJob) {
-		sprintf(log_buffer, "bad request type %d", req->rq_type);
-		log_err(-1, __func__, log_buffer);
-		return;
-	}
-
-	rq_move = &req->rq_ind.rq_move;
-	jobp = find_job(rq_move->rq_jid);
-
-	if (req && req->rq_type == PBS_BATCH_MoveJob && rq_move->run_exec_vnode) {
-		move_type = MOVE_TYPE_Move_Run;
-
-		if (!jobp || req->rq_ind.rq_move.orig_rq_type == PBS_BATCH_AsyrunJob) {
-			force_ack = 1;
-			req_peer_svr_ack(rq_move->peersvr_stream);
-		}
-	}
+	int r = 0;
 
 	if (prot == PROT_TCP) {
 		if (WIFEXITED(wstat)) {
@@ -436,11 +405,6 @@ post_movejob(struct work_task *pwt)
 		}
 	}
 
-	if (move_type != MOVE_TYPE_Move_Run) {
-		if ((jobp == NULL) || (jobp != (job *) pwt->wt_parm2))
-			log_errf(-1, __func__, "job %s not found", rq_move->rq_jid);
-	}
-
 	switch (r) {
 	case SEND_JOB_OK:
 		if (jobp && jobp->ji_qs.ji_svrflags & JOB_SVFLG_StagedIn)
@@ -449,7 +413,65 @@ post_movejob(struct work_task *pwt)
 		sprintf(log_buffer + strlen(log_buffer),
 			msg_manager,
 			rq_move->rq_destin,
-			req->rq_user, req->rq_host);
+			rq_user, rq_host);
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_NOTICE,
+			  rq_move->rq_jid, log_buffer);
+		break;
+	case PBSE_SYSTEM:
+		sprintf(log_buffer, msg_badexit, wstat);
+		strcat(log_buffer, __func__);
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_NOTICE,
+			  rq_move->rq_jid, log_buffer);
+		break;
+	case PBSE_ROUTEREJ:
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE,
+			  rq_move->rq_jid, msg_routebad);
+	}
+
+	return r;
+}
+
+/**
+ * @brief
+ * 		post_movejob - clean up action for child started in net_move/send_job
+ *		   to "move" a job to another server
+ * @par
+ * 		If move was successfull, delete server's copy of thejob structure,
+ * 		and reply to request.
+ * @par
+ * 		If route didn't work, reject the request.
+ *
+ * @param[in]	pwt	-	work task structure
+ *
+ * @return	none.
+ */
+static void
+post_movejob(struct work_task *pwt)
+{
+	struct batch_request *req;
+	int r;
+	job *jobp;
+	int prot = pwt->wt_aux2;
+	int wstat = pwt->wt_aux;
+	struct rq_move *rq_move; 
+
+	req = (struct batch_request *) pwt->wt_parm1;
+	pbs_errno = PBSE_NONE;
+	if (req->rq_type != PBS_BATCH_MoveJob) {
+		sprintf(log_buffer, "bad request type %d", req->rq_type);
+		log_err(-1, __func__, log_buffer);
+		return;
+	}
+
+	rq_move = &req->rq_ind.rq_move;
+	jobp = find_job(rq_move->rq_jid);
+
+	if ((jobp == NULL) || (jobp != (job *) pwt->wt_parm2))
+		log_errf(-1, __func__, "job %s not found", rq_move->rq_jid);
+
+	r = check_move_status(jobp, prot, wstat, rq_move, req->rq_user, req->rq_host);
+
+	if (r == SEND_JOB_OK) {
 		/*
 		* If server is configured to keep job history info and
 		* the job is created here, then keep the job struture
@@ -457,45 +479,16 @@ post_movejob(struct work_task *pwt)
 		* for sub-jobs as sub jobs can't be moved.
 		*/
 		if (jobp) {
-			if ((move_type == MOVE_TYPE_Move_Run) || !svr_chk_history_conf()) {
-				job_purge(jobp);
-			} else if (svr_chk_history_conf()) {
+			if (svr_chk_history_conf())
 				svr_setjob_histinfo(jobp, T_MOV_JOB);
-			}
+			else
+				job_purge(jobp);
 		}
-
-		if (move_type != MOVE_TYPE_Move_Run || force_ack) {
-			reply_ack(req);
-			replied = 1;
-		}
-		break;
-
-	case PBSE_SYSTEM:
-		sprintf(log_buffer, msg_badexit, stat);
-		strcat(log_buffer, __func__);
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_NOTICE,
-			  rq_move->rq_jid, log_buffer);
-	/* Fall into the default case */
-
-	default:
-		if (jobp) {
-			/* force re-eval of job state out of Transit */
-			svr_evaljobstate(jobp, &newstate, &newsub, 1);
-			svr_setjobstate(jobp, newstate, newsub);
-		}
-		if (move_type == MOVE_TYPE_Move_Run)
-			r = wstat;
+		reply_ack(req);
+	} else {
+		if (jobp)
+			svr_evalsetjobstate(jobp);
 		req_reject(r, 0, req);
-		replied = 1;
-	}
-
-	/* If already replied, delete any pending tasks associated with this request */
-	ptask = rq_move->ptask_runjob;
-	if (replied && ptask && ptask != pwt) {
-		free(ptask->wt_event2);
-		delete_link(&ptask->wt_linkobj2);
-		delete_task(ptask);
-		rq_move->ptask_runjob = NULL;
 	}
 
 	return;
@@ -536,14 +529,11 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 	char *msgid = NULL;
 	char *dup_msgid = NULL;
 	struct work_task *ptask = NULL;
-	struct work_task *ptask_runjob = NULL;
 	int save_resc_access_perm;
 	char *extend = NULL;
 	void (*post_func)(struct work_task *) = post_sendmom;
 	char *extend_commit = NULL;
-	struct rq_move *rq_move = NULL;
 		
-
 	/* saving resc_access_perm global variable as backup */
 	save_resc_access_perm = resc_access_perm;
 	pbs_errno = PBSE_NONE;
@@ -564,26 +554,11 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 
 	CLEAR_HEAD(attrl);
 
-	if (move_type == MOVE_TYPE_Move_Run) {
-		post_func = post_movejob;
-		((svrinfo_t *)(pmom->mi_data))->ps_pending_replies++;
-		rq_move = &request->rq_ind.rq_move;
-		rq_move->peersvr_stream = stream;
+	resc_access_perm = ATR_DFLAG_MOM;
+	encode_type = ATR_ENCODE_MOM;
 
-		resc_access_perm = ATR_DFLAG_USWR | ATR_DFLAG_OPWR |
-				   ATR_DFLAG_MGWR | ATR_DFLAG_SvRD;
-		encode_type = ATR_ENCODE_SVR;
-
-		pbs_asprintf(&extend_commit, "%s=%d,%s=%s", EXTEND_OPT_NEXT_MSG_TYPE, rq_move->orig_rq_type,
-			     EXTEND_OPT_NEXT_MSG_PARAM, rq_move->run_exec_vnode);
-	} else {
-		resc_access_perm = ATR_DFLAG_MOM;
-		encode_type = ATR_ENCODE_MOM;
-	}
 
 	for (i = 0; i < (int) JOB_ATR_LAST; i++) {
-		if (i == JOB_ATR_server_inst_id)
-			continue;
 		if ((job_attr_def + i)->at_flags & resc_access_perm) {
 			(void)(job_attr_def + i)->at_encode(get_jattr(jobp, i), &attrl,
 				(job_attr_def + i)->at_name, NULL, encode_type, NULL);
@@ -597,7 +572,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 
 	strcpy(job_id, jobp->ji_qs.ji_jobid);
 
-	if ((move_type != MOVE_TYPE_Move_Run) && ((jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) == 0) && (credlen <= 0) && ((jobp->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN) == 0))
+	if (((jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) == 0) && (credlen <= 0) && ((jobp->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN) == 0))
 		extend = EXTEND_OPT_IMPLICIT_COMMIT;
 
 	pqjatr = &((svrattrl *) GET_NEXT(attrl))->al_atopl;
@@ -668,24 +643,11 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 		goto send_err;
 
 done:
-	if (move_type == MOVE_TYPE_Move_Run && rq_move->orig_rq_type != PBS_BATCH_AsyrunJob) {
-		/* adding one more request handler as the server will receive one more response for run job */
-		if ((ptask_runjob = add_mom_deferred_list(stream, pmom, post_func, strdup(dup_msgid), request, jobp)) == NULL) {
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", "add_mom_deferred_list returned NULL: "
-											   "request handler creation failed for move_run request");
-			pbs_errno = PBSE_SYSTEM;
-			goto send_err;
-		}
-		rq_move->ptask_runjob = ptask_runjob;
-	}
 	free(dup_msgid); /* free this as it is not part of any work task */
 	resc_access_perm = save_resc_access_perm; /* reset back to it's old value */
 	return 2;
 
 send_err:
-	if (move_type == MOVE_TYPE_Move_Run && pmom)
-		((svrinfo_t *)(pmom->mi_data))->ps_pending_replies--;
-
 	free(dup_msgid);
 
 	if (jobp->ji_script) {
@@ -697,11 +659,6 @@ send_err:
 		if (ptask->wt_event2)
 			free(ptask->wt_event2);
 		delete_task(ptask);
-	}
-	if (ptask_runjob) {
-		if (ptask_runjob->wt_event2)
-			free(ptask_runjob->wt_event2);
-		delete_task(ptask_runjob);
 	}
 
 	sprintf(log_buffer, "send of job to %s failed error = %d", destin, pbs_errno);
@@ -769,10 +726,10 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		}
 	}
 
-	if ((move_type == MOVE_TYPE_Exec && small_job_files(jobp)) || move_type == MOVE_TYPE_Move_Run)
+	if (move_type == MOVE_TYPE_Exec && small_job_files(jobp))
 		return send_job_exec(jobp, hostaddr, port, move_type, preq);
 
-	(void)snprintf(log_buffer, sizeof(log_buffer), "big job files, sending via subprocess");
+	snprintf(log_buffer, sizeof(log_buffer), "big job files, sending via subprocess");
 	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
 
 	script_name[0] = '\0';
@@ -929,8 +886,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 
 			pqjatr = &((svrattrl *)GET_NEXT(attrl))->al_atopl;
 			if (PBSD_queuejob(con, jobp->ji_qs.ji_jobid, destin, pqjatr, NULL, PROT_TCP, NULL, NULL) == 0) {
-				if (pbs_errno == PBSE_JOBEXIST &&
-					(move_type == MOVE_TYPE_Exec || move_type == MOVE_TYPE_Move_Run)) {
+				if (pbs_errno == PBSE_JOBEXIST && move_type == MOVE_TYPE_Exec) {
 					/* already running, mark it so */
 					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, "Mom reports job already running");
 					exit(SEND_JOB_OK);
@@ -1075,11 +1031,7 @@ net_move(job *jobp, struct batch_request *req)
 	hostname = parse_servername(toserver, &port);
 	hostaddr = get_hostaddr(hostname);
 
-	if (req && req->rq_type == PBS_BATCH_MoveJob && req->rq_ind.rq_move.run_exec_vnode) {
-		move_type = MOVE_TYPE_Move_Run;
-		post_func = post_movejob;
-		data      = req;
-	} else if (req) {
+	if (req) {
 		/* note, in this case, req is the orginal Move Request */
 		move_type = MOVE_TYPE_Move;
 		post_func = post_movejob;

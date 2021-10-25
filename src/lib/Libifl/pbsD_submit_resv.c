@@ -65,35 +65,14 @@
  * @retval ERROR NULL
  */
 char *
-__pbs_submit_resv(int c, struct attropl *attrib, char *extend)
+__pbs_submit_resv(int c, struct attropl *attrib, const char *extend)
 {
 	struct attropl *pal;
 	int rc;
 	char *ret;
-	char job_id_resv[PBS_MAXJOBNAME + 1];
-	int msvr = multi_svr_op(c);
 
-	job_id_resv[0] = '\0';
-	for (pal = attrib; pal; pal = pal->next) {
+	for (pal = attrib; pal; pal = pal->next)
 		pal->op = SET;		/* force operator to SET */
-		if (msvr) {
-			/* check if it is job-specific ASAP/Now reservation. In both the cases we have a job id */
-			if (strcmp(pal->name, ATTR_convert) == 0 || strcmp(pal->name, ATTR_resv_job) == 0)
-				strcpy(job_id_resv, pal->value);
-		}
-	}
-
-	if (msvr) {
-		if (job_id_resv[0] != '\0') /* Job specific reservation */
-			c = get_job_svr_inst_id(c, job_id_resv);
-		else { 
-			/* Advanced or standing reservation */
-			svr_conn_t **svr_conns = get_conn_svr_instances(c);
-			c = random_srv_conn(c, svr_conns);
-		}
-
-	}
-
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)

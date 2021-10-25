@@ -1658,7 +1658,6 @@ job_obit(ruu *pruu, int stream)
 				} else if (exitstatus == JOB_EXEC_JOINJOB) {
 					log_event(PBSEVENT_ERROR | PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 						  pjob->ji_qs.ji_jobid, "Mom rejected job due to join job error");
-					send_nodestat_req(CACHE_MISS);
 					exitstatus = JOB_EXEC_RETRY;
 				}
 RetryJob:
