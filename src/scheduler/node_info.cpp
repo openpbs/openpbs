@@ -3783,11 +3783,7 @@ parse_selspec(const std::string& sspec)
 	tmpptr = NULL;
 	while (tok != NULL && !invalid) {
 		tmpptr = string_dup(tok);
-#ifdef NAS /* localmod 082 */
-		auto ret = parse_chunk_r(tok, 0, &num_chunks, &num_kv, &nkvelements, &kv, NULL);
-#else
 		auto ret = parse_chunk_r(tok, &num_chunks, &num_kv, &nkvelements, &kv, NULL);
-#endif /* localmod 082 */
 
 		if (!ret) {
 			for (i = 0; i < num_kv && !invalid; i++) {

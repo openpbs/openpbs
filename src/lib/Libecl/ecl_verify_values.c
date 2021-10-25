@@ -1748,11 +1748,7 @@ verify_value_select(int batch_request, int parent_object, int cmd,
 		return (rc);
 
 	while (chunk) {
-#ifdef NAS
-		if (parse_chunk(chunk, 0, &nchk, &nelem, &pkvp, NULL) == 0)
-#else
 		if (parse_chunk(chunk, &nchk, &nelem, &pkvp, NULL) == 0)
-#endif
 		{
 			for (j = 0; j < nelem; ++j) {
 				resc_attr.name = pattr->name;

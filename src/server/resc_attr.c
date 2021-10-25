@@ -853,11 +853,7 @@ int apply_select_inchunk_rules(resource *presc, attribute *pattr, void *pobj, in
 	if (rc != 0)
 		return (rc);
 	while (chunk) {
-#ifdef NAS
-		if (parse_chunk(chunk, 0, &nchk, &nelem, &pkvp, NULL) == 0)
-#else
 		if (parse_chunk(chunk, &nchk, &nelem, &pkvp, NULL) == 0)
-#endif
 		{
 			for (j = 0; j < nelem; ++j) {
 			    	tmp_resc.rs_defin = find_resc_def(svr_resc_def, pkvp[j].kv_keyw);

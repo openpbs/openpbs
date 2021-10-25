@@ -1117,13 +1117,8 @@ return_missing_resources(char *chunk, char *res_list)
 		log_err(errno, __func__, "strdup failed on chunk");
 		return (NULL);
 	}
-#ifdef NAS /* localmod 082 */
-	rc = parse_chunk_r(chunk_dup, 0, &snc, &snelma,
-		&snelmt, &skv, NULL);
-#else
 	rc = parse_chunk_r(chunk_dup, &snc, &snelma,
 		&snelmt, &skv, NULL);
-#endif /* localmod 082 */
 	if (rc != 0) {
 		snprintf(log_buffer,  sizeof(log_buffer), "bad parse of %s", chunk_dup);
 		log_err(-1, __func__, log_buffer);
@@ -1342,11 +1337,7 @@ expand_select_spec(char *select_str)
 	for (psubspec = parse_plus_spec_r(selbuf, &last3, &hasprn3); psubspec != NULL;
 		psubspec = parse_plus_spec_r(last3, &last3, &hasprn3)) {
 		int rc = 0;
-#ifdef NAS /* localmod 082 */
-		rc = parse_chunk_r(psubspec, 0, &snc, &snelma, &snelmt, &skv, NULL);
-#else
 		rc = parse_chunk_r(psubspec, &snc, &snelma, &snelmt, &skv, NULL);
-#endif /* localmod 082 */
 		/* snc = number of chunks */
 		if (rc != 0) {
 			free(selbuf);
@@ -4238,11 +4229,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 	h = 0;	/* tracks # of plus entries in select */
 	l = 0;	/* tracks # of chunks in new_exec_vnode */
 	while (psubspec) {
-#ifdef NAS /* localmod 082 */
-		rc = parse_chunk_r(psubspec, 0, &snc, &snelma, &snelmt, &skv, NULL);
-#else
 		rc = parse_chunk_r(psubspec, &snc, &snelma, &snelmt, &skv, NULL);
-#endif /* localmod 082 */
 		/* snc = number of chunks */
 		if (rc != 0)
 			goto release_nodes_exit;
@@ -4651,20 +4638,12 @@ do_schedselect(char *select_val, void *server, void *destin, char **presc_in_err
 	if (rc != 0)
 		return rc;
 	while (chunk) {
-#ifdef NAS /* localmod 082 */
-		int k;
-#endif
 		if (firstchunk)
 			firstchunk = 0;
 		else
 			strcat(outbuf, "+");
 
-#ifdef NAS /* localmod 082 */
-		k = (pserver ? pserver->sv_nseldft : 0)  + (pque ? pque->qu_nseldft : 0);
-		if (parse_chunk(chunk, k, &nchk, &nelem, &pkvp, &nchunk_internally_set) == 0)
-#else
 		if (parse_chunk(chunk, &nchk, &nelem, &pkvp, &nchunk_internally_set) == 0)
-#endif /* localmod 082 */
 		{
 			int j;
 
@@ -4707,6 +4686,9 @@ do_schedselect(char *select_val, void *server, void *destin, char **presc_in_err
 			if (pque) {
 				qndft = pque->qu_nseldft;
 				qdkvp = pque->qu_seldft;
+				rc = parse_chunk_make_room(nelem, qndft, &pkvp);
+				if (rc)
+					return rc;
 				for (i=0; i<qndft; ++i) {
 					for (j=0; j<nelem; ++j) {
 						if (strcasecmp(qdkvp[i].kv_keyw, pkvp[j].kv_keyw) == 0)
@@ -4734,6 +4716,9 @@ do_schedselect(char *select_val, void *server, void *destin, char **presc_in_err
 			if (pserver != NULL) {
 				sndft = pserver->sv_nseldft;
 				sdkvp = pserver->sv_seldft;
+				rc = parse_chunk_make_room(nelem, sndft, &pkvp);
+				if (rc)
+					return rc;
 			} else {
 				sndft = 0;
 				sdkvp = NULL;

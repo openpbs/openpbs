@@ -209,11 +209,7 @@ validate_perm_res_in_select(char *val, int val_exist)
 
 	while (chunk) {
 
-#ifdef NAS /* localmod 082 */
-		if (parse_chunk(chunk, 0, &nchk, &nelem, &pkvp, NULL) == 0) {
-#else
 		if (parse_chunk(chunk, &nchk, &nelem, &pkvp, NULL) == 0) {
-#endif /* localmod 082 */
 
 			/* first check for any invalid resources in the select */
 			for (j=0; j<nelem; ++j) {
