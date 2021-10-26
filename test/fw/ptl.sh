@@ -40,6 +40,18 @@
 
 # This file will set path variables in case of ptl installation
 
+setpythonpath(){
+	check_dir=$1
+	path=$2
+	if [ -z ${PYTHONPATH} ]; then
+		[ -d ${check_dir} ] && export PYTHONPATH="${path}"
+	else
+		[ -d ${check_dir} ] && export PYTHONPATH="${PYTHONPATH}:${path}"
+	fi
+	unset check_dir
+	unset path
+}
+
 if [ -f /etc/debian_version ]; then
     __ptlpkgname=$(dpkg -W -f='${binary:Package}\n' 2>/dev/null | grep -E '*-ptl$')
     if [ "x${__ptlpkgname}" != "x" ]; then
@@ -70,9 +82,9 @@ else
 			PTL_PREFIX=$( dirname ${__PBS_EXEC} )/ptl
 			python_dir=$( /bin/ls -1 ${PTL_PREFIX}/lib )/site-packages
 			[ -d "${PTL_PREFIX}/bin" ] && export PATH="${PATH}:${PTL_PREFIX}/bin"
-			[ -d "${PTL_PREFIX}/lib/${python_dir}" ] && export PYTHONPATH="${PYTHONPATH}:${PTL_PREFIX}/lib/${python_dir}"
-			[ -d "${__PBS_EXEC}/lib/python/altair" ] && export PYTHONPATH="${PYTHONPATH}:${__PBS_EXEC}/lib/python/altair"
-			[ -d "${__PBS_EXEC}/lib64/python/altair" ] && export PYTHONPATH="${PYTHONPATH}:${__PBS_EXEC}/lib64/python/altair"
+			setpythonpath "${PTL_PREFIX}/lib/${python_dir}" "${PTL_PREFIX}/lib/${python_dir}"
+			setpythonpath "${__PBS_EXEC}/lib/python/altair" "${__PBS_EXEC}/lib/python/altair"
+			setpythonpath "${__PBS_EXEC}/lib64/python/altair" "${__PBS_EXEC}/lib64/python/altair"
 		fi
 		unset __PBS_EXEC
 		unset PTL_PREFIX
