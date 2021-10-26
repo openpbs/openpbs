@@ -68,8 +68,7 @@ pbs_mom_LDADD = \
 	@libz_lib@ \
 	-lssl \
 	-lcrypto \
-	@KRB5_LIBS@ \
-	@libundolr_lib@
+	@KRB5_LIBS@
 
 pbs_mom_SOURCES = \
 	$(top_builddir)/src/lib/Libattr/job_attr_def.c \

@@ -99,7 +99,6 @@
 #include "hook.h"
 #include "hook_func.h"
 #include "pbs_share.h"
-#include "pbs_undolr.h"
 
 #ifndef SIGKILL
 /* there is some weid stuff in gcc include files signal.h & sys/params.h */

@@ -75,7 +75,6 @@
 #include "tpp.h"
 #include "server_limits.h"
 #include "pbs_version.h"
-#include "pbs_undolr.h"
 #include "auth.h"
 
 char daemonname[PBS_MAXHOSTNAME+8];
@@ -569,14 +568,10 @@ main(int argc, char **argv)
 		log_err(errno, __func__, "sigaction for USR2");
 		return (2);
 	}
-#ifdef PBS_UNDOLR_ENABLED
-	act.sa_handler = catch_sigusr1;
-#endif
 	if (sigaction(SIGUSR1, &act, &oact) != 0) {
 		log_err(errno, __func__, "sigaction for USR1");
 		return (2);
 	}
-
 	if (load_auths(AUTH_SERVER)) {
 		log_err(-1, __func__, "Failed to load auth lib");
 		return 2;
@@ -620,11 +615,6 @@ main(int argc, char **argv)
 						pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 			}
 		}
-#ifdef PBS_UNDOLR_ENABLED
-		if (sigusr1_flag)
-			undolr();
-#endif
-
 		sleep(3);
 	}
 

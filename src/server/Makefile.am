@@ -69,8 +69,7 @@ pbs_server_bin_LDADD = \
 	@PYTHON_LIBS@ \
 	-lssl \
 	-lcrypto \
-	@KRB5_LIBS@ \
-	@libundolr_lib@
+	@KRB5_LIBS@
 
 pbs_server_bin_SOURCES = \
 	accounting.c \
@@ -155,7 +154,6 @@ pbs_comm_LDADD = \
 	-lpthread \
 	@libz_lib@ \
 	@socket_lib@ \
-	@KRB5_LIBS@ \
-	@libundolr_lib@
+	@KRB5_LIBS@
 
 pbs_comm_SOURCES = pbs_comm.c
