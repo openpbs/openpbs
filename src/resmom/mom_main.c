@@ -7849,6 +7849,7 @@ main(int argc, char *argv[])
 	 **	that is exec'ed will not have SIG_IGN set for anything.
 	 */
 	sigaction(SIGPIPE, &act, NULL);
+	sigaction(SIGUSR1, &act, NULL);
 #ifdef	SIGINFO
 	sigaction(SIGINFO, &act, NULL);
 #endif
