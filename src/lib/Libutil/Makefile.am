@@ -44,8 +44,7 @@ noinst_LIBRARIES = libutil.a
 libutil_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	@libical_inc@ \
-	@KRB5_CFLAGS@ \
-	@libundolr_inc@
+	@KRB5_CFLAGS@
 
 libutil_a_SOURCES = \
 	get_hostname.c \
@@ -63,7 +62,3 @@ libutil_a_SOURCES = \
 	pbs_idx.c \
 	range.c  \
 	thread_utils.c
-
-if UNDOLR_ENABLED
-libutil_a_SOURCES += undolr.c
-endif

@@ -61,8 +61,7 @@ common_libs = \
 	@PYTHON_LIBS@ \
 	@libz_lib@ \
 	@libical_lib@ \
-	@KRB5_LIBS@ \
-	@libundolr_lib@
+	@KRB5_LIBS@
 
 libpbs_sched_a_CPPFLAGS = ${common_cflags}
 

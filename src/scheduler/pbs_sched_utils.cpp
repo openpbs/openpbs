@@ -87,7 +87,6 @@
 #include "pbs_error.h"
 #include "pbs_ifl.h"
 #include "pbs_share.h"
-#include "pbs_undolr.h"
 #include "pbs_version.h"
 #include "portability.h"
 #include "rm.h"
@@ -1003,11 +1002,6 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 	act.sa_handler = restart; /* do a restart on SIGHUP */
 	sigaction(SIGHUP, &act, NULL);
 
-#ifdef PBS_UNDOLR_ENABLED
-	act.sa_handler = catch_sigusr1;
-	sigaction(SIGUSR1, &act, NULL);
-#endif
-
 #ifdef NAS				       /* localmod 030 */
 	act.sa_handler = soft_cycle_interrupt; /* do a cycle interrupt on */
 					       /* SIGUSR1, subject to     */
@@ -1170,10 +1164,6 @@ schedule_wrapper(sched_cmd *cmd, int opt_no_restart)
 {
 	time_t now;
 
-#ifdef PBS_UNDOLR_ENABLED
-	if (sigusr1_flag)
-		undolr();
-#endif
 	if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)
 		log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
 

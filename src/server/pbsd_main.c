@@ -104,7 +104,6 @@
 #include "pbs_sched.h"
 #include "pbs_share.h"
 #include <pbs_python.h>  /* for python interpreter */
-#include "pbs_undolr.h"
 #include "auth.h"
 
 #include "pbs_v1_module_common.i"
@@ -1423,11 +1422,6 @@ main(int argc, char **argv)
 
 		if (reap_child_flag)	/* check again incase signal arrived */
 			reap_child();	/* before they were blocked          */
-
-#ifdef PBS_UNDOLR_ENABLED
-		if (sigusr1_flag)
-			undolr();
-#endif
 
 		if ((state = get_sattr_long(SVR_ATR_State)) == SV_STATE_SHUTSIG)
 			(void)svr_shutdown(SHUT_SIG);	/* caught sig */
