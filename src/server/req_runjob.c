@@ -1136,6 +1136,7 @@ complete_running(job *jobp)
 	if (jobp->ji_qs.ji_stime != 0)
 		return;		/* already called for this incarnation */
 
+	jobp->ji_terminated = 0;	/* reset terminated flag */
 	/**
 	 *	For a subjob, insure the parent array's state is set to 'B'
 	 *	and deal with any dependency on the parent.

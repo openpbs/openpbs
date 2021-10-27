@@ -983,3 +983,31 @@ e.accept()
         self.assertNotEqual(rv['rc'], 0, 'qsub must fail')
         msg = "qsub: multiple max_run_subjobs values found"
         self.assertEqual(rv['err'][0], msg)
+
+    def test_qdel_job_array_downed_mom(self):
+        """
+        Test to check if qdel of a job array returns
+        an error when mom is downed.
+        """
+
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-3', 'Resource_List.select': 'ncpus=1'})
+
+        j_id = self.server.submit(j)
+
+        # 1. check job array has begun
+        self.server.expect(JOB, {'job_state': 'B'}, j_id)
+
+        self.mom.stop()
+
+        try:
+            self.server.deljob(j_id)
+        except PbsDeljobError as e:
+            err_msg = "could not connect to MOM"
+            self.assertTrue(err_msg in e.msg[0],
+                            "Did not get the expected message")
+            self.assertTrue(e.rc != 0, "Exit code shows success")
+        else:
+            raise self.failureException("qdel job array did not return error")
