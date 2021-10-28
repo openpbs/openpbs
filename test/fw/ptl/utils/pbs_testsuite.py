@@ -229,10 +229,8 @@ def testparams(**kwargs):
 
 
 def generate_hook_body_from_func(hook_func, *args):
-    return inspect.getsource(hook_func) + textwrap.dedent(
-        """
-        %s%s
-        """ % (hook_func.__name__, str(args)))
+    return textwrap.dedent(inspect.getsource(hook_func)) + \
+        "%s%s" % (hook_func.__name__, str(args))
 
 
 class PBSServiceInstanceWrapper(dict):
