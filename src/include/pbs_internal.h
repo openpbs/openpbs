@@ -194,12 +194,6 @@ extern "C" {
 /* Default value of preempt_sort */
 #define PBS_PREEMPT_SORT_DEFAULT	"min_time_since_start"
 
-/* Structure to store each server instance details */
-typedef struct pbs_server_instance {
-	char name[PBS_MAXSERVERNAME + 1];
-	unsigned int port;
-} psi_t;
-
 struct pbs_config
 {
 	unsigned loaded:1;			/* has the conf file been loaded? */
@@ -224,9 +218,6 @@ struct pbs_config
 	char *pbs_home_path;			/* path to the pbs home dir */
 	char *pbs_exec_path;			/* path to the pbs exec dir */
 	char *pbs_server_name;		/* name of PBS Server, usually hostname of host on which PBS server is executing */
-	unsigned int pbs_num_servers;	/* currently configured number of instances */
-	psi_t *psi;						/* array of pbs server instances loaded from comma separated host:port[,host:port] */
-	char *psi_str;			/* psi in string format */
 	char *cp_path;			/* path to local copy function */
 	char *scp_path;			/* path to ssh */
 	char *rcp_path;			/* path to pbs_rsh */
@@ -253,7 +244,6 @@ struct pbs_config
 	long  pbs_comm_log_events;      /* log_events for pbs_comm process, default 0 */
 	unsigned int pbs_comm_threads;	/* number of threads for router, default 4 */
 	char *pbs_mom_node_name;	/* mom short name used for natural node, default NULL */
-	char *pbs_lr_save_path;		/* path to store undo live recordings */
 	unsigned int pbs_log_highres_timestamp; /* high resolution logging */
 	unsigned int pbs_sched_threads;	/* number of threads for scheduler */
 	char *pbs_daemon_service_user; /* user the scheduler runs as */
@@ -298,7 +288,6 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_EXEC		"PBS_EXEC"		 /* path to pbs exec */
 #define PBS_CONF_DEFAULT_NAME	"PBS_DEFAULT"	  /* old name for PBS_SERVER */
 #define PBS_CONF_SERVER_NAME	"PBS_SERVER"	   /* name of the pbs server */
-#define PBS_CONF_SERVER_INSTANCES	"PBS_SERVER_INSTANCES" /* comma separated list (host:port) of server instances */
 #define PBS_CONF_INSTALL_MODE    "PBS_INSTALL_MODE" /* PBS installation mode */
 #define PBS_CONF_RCP		"PBS_RCP"
 #define PBS_CONF_CP		"PBS_CP"
@@ -319,7 +308,6 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_SUPPORTED_AUTH_METHODS	"PBS_SUPPORTED_AUTH_METHODS"
 #define PBS_CONF_SCHEDULER_MODIFY_EVENT	"PBS_SCHEDULER_MODIFY_EVENT"
 #define PBS_CONF_MOM_NODE_NAME	"PBS_MOM_NODE_NAME"
-#define PBS_CONF_LR_SAVE_PATH	"PBS_LR_SAVE_PATH"
 #define PBS_CONF_LOG_HIGHRES_TIMESTAMP	"PBS_LOG_HIGHRES_TIMESTAMP"
 #define PBS_CONF_SCHED_THREADS	"PBS_SCHED_THREADS"
 #define PBS_CONF_DAEMON_SERVICE_USER "PBS_DAEMON_SERVICE_USER"
@@ -470,7 +458,7 @@ DECLDIR int      PBSD_ucred(int, char *, int, char *, int);
 
 #else
 
-extern int pbs_connect_noblk(char *, int);
+extern int pbs_connect_noblk(const char *);
 
 extern int pbs_connection_set_nodelay(int);
 
@@ -488,10 +476,6 @@ extern char *pbs_submit_with_cred(int, struct attropl *, char *,
 extern int pbs_query_max_connections(void);
 
 extern char *pbs_get_tmpdir(void);
-
-extern char *pbs_get_conf_var(char *);
-
-extern char *get_psi_str();
 
 extern FILE *pbs_popen(const char *, const char *);
 
@@ -546,7 +530,7 @@ extern int     set_attr(struct attrl **, const char *, const char *);
 extern char*    pbs_get_dataservice_usr(char *, int);
 #endif
 extern char*	get_attr(struct attrl *, const char *, const char *);
-extern int      set_resources(struct attrl **, char *, int, char **);
+extern int      set_resources(struct attrl **, const char *, int, char **);
 extern int      cnt2server(char *server);
 extern int      cnt2server_extend(char *server, char *);
 extern int      get_server(char *, char *, char *);
@@ -559,8 +543,54 @@ extern struct batch_status *bs_isort(struct batch_status *bs,
 	int (*cmp_func)(struct batch_status*, struct batch_status *));
 extern struct batch_status *bs_find(struct batch_status *, const char *);
 extern void init_bstat(struct batch_status *);
-extern int frame_psi(psi_t *, char *);
 
+/* IFL function pointers */
+extern int (*pfn_pbs_asyrunjob)(int, const char *, const char *, const char *);
+extern int (*pfn_pbs_asyrunjob_ack)(int, const char *, const char *, const char *);
+extern int (*pfn_pbs_alterjob)(int, const char *, struct attrl *, const char *);
+extern int (*pfn_pbs_asyalterjob)(int, const char *, struct attrl *, const char *);
+extern int (*pfn_pbs_confirmresv)(int, const char *, const char *, unsigned long, const char *);
+extern int (*pfn_pbs_connect)(const char *);
+extern int (*pfn_pbs_connect_extend)(const char *, const char *);
+extern char *(*pfn_pbs_default)(void);
+extern int (*pfn_pbs_deljob)(int, const char *, const char *);
+extern struct batch_deljob_status *(*pfn_pbs_deljoblist)(int, char **, int, const char *);
+extern int (*pfn_pbs_disconnect)(int);
+extern char *(*pfn_pbs_geterrmsg)(int);
+extern int (*pfn_pbs_holdjob)(int, const char *, const char *, const char *);
+extern int (*pfn_pbs_loadconf)(int);
+extern char *(*pfn_pbs_locjob)(int, const char *, const char *);
+extern int (*pfn_pbs_manager)(int, int, int, const char *, struct attropl *, const char *);
+extern int (*pfn_pbs_movejob)(int, const char *, const char *, const char *);
+extern int (*pfn_pbs_msgjob)(int, const char *, int, const char *, const char *);
+extern int (*pfn_pbs_orderjob)(int, const char *, const char *, const char *);
+extern int (*pfn_pbs_rerunjob)(int, const char *, const char *);
+extern int (*pfn_pbs_rlsjob)(int, const char *, const char *, const char *);
+extern int (*pfn_pbs_runjob)(int, const char *, const char *, const char *);
+extern char **(*pfn_pbs_selectjob)(int, struct attropl *, const char *);
+extern int (*pfn_pbs_sigjob)(int, const char *, const char *, const char *);
+extern void (*pfn_pbs_statfree)(struct batch_status *);
+extern void (*pfn_pbs_delstatfree)(struct batch_deljob_status *);
+extern struct batch_status *(*pfn_pbs_statrsc)(int, const char *, struct attrl *, const char *);
+extern struct batch_status *(*pfn_pbs_statjob)(int, const char *, struct attrl *, const char *);
+extern struct batch_status *(*pfn_pbs_selstat)(int, struct attropl *, struct attrl *, const char *);
+extern struct batch_status *(*pfn_pbs_statque)(int, const char *, struct attrl *, const char *);
+extern struct batch_status *(*pfn_pbs_statserver)(int, struct attrl *, const char *);
+extern struct batch_status *(*pfn_pbs_statsched)(int, struct attrl *, const char *);
+extern struct batch_status *(*pfn_pbs_stathost)(int, const char *, struct attrl *, const char *);
+extern struct batch_status *(*pfn_pbs_statnode)(int, const char *, struct attrl *, const char *);
+extern struct batch_status *(*pfn_pbs_statvnode)(int, const char *, struct attrl *, const char *);
+extern struct batch_status *(*pfn_pbs_statresv)(int, const char *, struct attrl *, const char *);
+extern struct batch_status *(*pfn_pbs_stathook)(int, const char *, struct attrl *, const char *);
+extern struct ecl_attribute_errors * (*pfn_pbs_get_attributes_in_error)(int);
+extern char *(*pfn_pbs_submit)(int, struct attropl *, const char *, const char *, const char *);
+extern char *(*pfn_pbs_submit_resv)(int, struct attropl *, const char *);
+extern int (*pfn_pbs_delresv)(int, const char *, const char *);
+extern char *(*pfn_pbs_modify_resv)(int, const char *, struct attropl *, const char *);
+extern int (*pfn_pbs_relnodesjob)(int, const char *, const char *, const char *);
+extern int (*pfn_pbs_terminate)(int, int, const char *);
+extern preempt_job_info *(*pfn_pbs_preempt_jobs)(int, char**);
+extern int (*pfn_pbs_register_sched)(const char *, int, int);
 
 #endif /* _USRDLL */
 

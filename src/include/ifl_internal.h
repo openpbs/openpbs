@@ -48,92 +48,102 @@ extern "C" {
 #include "pbs_ifl.h"
 #include "pbs_internal.h"
 
+/* Used for non blocking connect */
+#define NOBLK_FLAG "NOBLK"
+#define NOBLK_TOUT	2
+
 /* IFL functions */
-int __pbs_asyrunjob(int, char *, char *, char *);
+int __pbs_asyrunjob(int, const char *, const char *, const char *);
 
-int __pbs_asyrunjob_ack(int c, char *jobid, char *location, char *extend);
+int __pbs_asyrunjob_ack(int c, const char *jobid, const char *location, const char *extend);
 
-int __pbs_alterjob(int, char *, struct attrl *, char *);
+int __pbs_alterjob(int, const char *, struct attrl *, const char *);
 
-int __pbs_asyalterjob(int, char *, struct attrl *, char *);
+int __pbs_asyalterjob(int, const char *, struct attrl *, const char *);
 
-int __pbs_confirmresv(int, char *, char *, unsigned long, char *);
+int __pbs_confirmresv(int, const char *, const char *, unsigned long, const char *);
 
-int __pbs_connect(char *);
+int __pbs_connect(const char *);
 
-int __pbs_connect_extend(char *, char *);
+int __pbs_connect_extend(const char *, const char *);
 
 char *__pbs_default(void);
 
-int __pbs_deljob(int, char *, char *);
+int __pbs_deljob(int, const char *, const char *);
 
-struct batch_deljob_status *__pbs_deljoblist(int, char **, int, char *);
+struct batch_deljob_status *__pbs_deljoblist(int, char **, int, const char *);
 
 int __pbs_disconnect(int);
 
 char *__pbs_geterrmsg(int);
 
-int __pbs_holdjob(int, char *, char *, char *);
+int __pbs_holdjob(int, const char *, const char *, const char *);
 
 int __pbs_loadconf(int);
 
-char *__pbs_locjob(int, char *, char *);
+char *__pbs_locjob(int, const char *, const char *);
 
-int __pbs_manager(int, int, int, char *, struct attropl *, char *);
+int __pbs_manager(int, int, int, const char *, struct attropl *, const char *);
 
-int __pbs_movejob(int, char *, char *, char *);
+int __pbs_movejob(int, const char *, const char *, const char *);
 
-int __pbs_msgjob(int, char *, int, char *, char *);
+int __pbs_msgjob(int, const char *, int, const char *, const char *);
 
-int __pbs_orderjob(int, char *, char *, char *);
+int __pbs_orderjob(int, const char *, const char *, const char *);
 
-int __pbs_rerunjob(int, char *, char *);
+int __pbs_rerunjob(int, const char *, const char *);
 
-int __pbs_rlsjob(int, char *, char *, char *);
+int __pbs_rlsjob(int, const char *, const char *, const char *);
 
-int __pbs_runjob(int, char *, char *, char *);
+int __pbs_runjob(int, const char *, const char *, const char *);
 
-char **__pbs_selectjob(int, struct attropl *, char *);
+char **__pbs_selectjob(int, struct attropl *, const char *);
 
-int __pbs_sigjob(int, char *, char *, char *);
+int __pbs_sigjob(int, const char *, const char *, const char *);
 
 void __pbs_statfree(struct batch_status *);
 
 void __pbs_delstatfree(struct batch_deljob_status *);
 
-struct batch_status *__pbs_statrsc(int, char *, struct attrl *, char *);
+struct batch_status *__pbs_statrsc(int, const char *, struct attrl *, const char *);
 
-struct batch_status *__pbs_statjob(int, char *, struct attrl *, char *);
+struct batch_status *__pbs_statjob(int, const char *, struct attrl *, const char *);
 
-struct batch_status *__pbs_selstat(int, struct attropl *, struct attrl *, char *);
+struct batch_status *__pbs_selstat(int, struct attropl *, struct attrl *, const char *);
 
-struct batch_status *__pbs_statque(int, char *, struct attrl *, char *);
+struct batch_status *__pbs_statque(int, const char *, struct attrl *, const char *);
 
-struct batch_status *__pbs_statserver(int, struct attrl *, char *);
+struct batch_status *__pbs_statserver(int, struct attrl *, const char *);
 
-struct batch_status *__pbs_statsched(int, struct attrl *, char *);
+struct batch_status *__pbs_statsched(int, struct attrl *, const char *);
 
-struct batch_status *__pbs_stathost(int, char *, struct attrl *, char *);
+struct batch_status *__pbs_stathost(int, const char *, struct attrl *, const char *);
 
-struct batch_status *__pbs_statnode(int, char *, struct attrl *, char *);
+struct batch_status *__pbs_statnode(int, const char *, struct attrl *, const char *);
 
-struct batch_status *__pbs_statvnode(int, char *, struct attrl *, char *);
+struct batch_status *__pbs_statvnode(int, const char *, struct attrl *, const char *);
 
-struct batch_status *__pbs_statresv(int, char *, struct attrl *, char *);
+struct batch_status *__pbs_statresv(int, const char *, struct attrl *, const char *);
 
-struct batch_status *__pbs_stathook(int, char *, struct attrl *, char *);
+struct batch_status *__pbs_stathook(int, const char *, struct attrl *, const char *);
 
 struct ecl_attribute_errors * __pbs_get_attributes_in_error(int);
 
-char *__pbs_submit(int, struct attropl *, char *, char *, char *);
+char *__pbs_submit(int, struct attropl *, const char *, const char *, const char *);
 
-char *__pbs_submit_resv(int, struct attropl *, char *);
+char *__pbs_submit_resv(int, struct attropl *, const char *);
 
-int __pbs_delresv(int, char *, char *);
+char *__pbs_modify_resv(int c, const char *resv_id, struct attropl *attrib, const char *extend);
 
-int __pbs_terminate(int, int, char *);
+int __pbs_delresv(int, const char *, const char *);
+
+int __pbs_relnodesjob(int c, const char *jobid, const char *node_list, const char *extend);
+
+int __pbs_terminate(int, int, const char *);
 
 preempt_job_info *__pbs_preempt_jobs(int, char **);
+
+int __pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id);
 
 #ifdef	__cplusplus
 }

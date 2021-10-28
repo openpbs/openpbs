@@ -121,7 +121,6 @@ extern "C" {
 /* End of standing reservation specific */
 
 /* additional job and general attribute names */
-#define ATTR_server_inst_id "server_instance_id"
 #define ATTR_ctime	"ctime"
 #define ATTR_estimated  "estimated"
 #define ATTR_exechost	"exec_host"
@@ -699,141 +698,96 @@ extern char *__pbs_server_location(void);
 #define pbs_server (__pbs_server_location ())
 #endif
 
-extern int pbs_asyrunjob(int, char *, char *, char *);
+extern int pbs_asyrunjob(int, const char *, const char *, const char *);
 
-extern int pbs_asyrunjob_ack(int, char *, char *, char *);
+extern int pbs_asyrunjob_ack(int, const char *, const char *, const char *);
 
-extern int pbs_alterjob(int, char *, struct attrl *, char *);
+extern int pbs_alterjob(int, const char *, struct attrl *, const char *);
 
-extern int pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend);
+extern int pbs_asyalterjob(int c, const char *jobid, struct attrl *attrib, const char *extend);
 
-extern int pbs_confirmresv(int, char *, char *, unsigned long, char *);
+extern int pbs_confirmresv(int, const char *, const char *, unsigned long, const char *);
 
-extern int pbs_connect(char *);
+extern int pbs_connect(const char *);
 
-extern int pbs_connect_extend(char *, char *);
+extern int pbs_connect_extend(const char *, const char *);
 
 extern int pbs_disconnect(int);
 
-extern int pbs_manager(int, int, int, char *, struct attropl *, char *);
+extern int pbs_manager(int, int, int, const char *, struct attropl *, const char *);
 
 extern char *pbs_default(void);
 
-extern int pbs_deljob(int, char *, char *);
+extern int pbs_deljob(int, const char *, const char *);
 
-extern struct batch_deljob_status *pbs_deljoblist(int, char **, int, char *);
+extern struct batch_deljob_status *pbs_deljoblist(int, char **, int, const char *);
 
 extern char *pbs_geterrmsg(int);
 
-extern int pbs_holdjob(int, char *, char *, char *);
+extern int pbs_holdjob(int, const char *, const char *, const char *);
 
 extern int pbs_loadconf(int);
 
-extern char *pbs_locjob(int, char *, char *);
+extern char *pbs_locjob(int, const char *, const char *);
 
-extern int pbs_movejob(int, char *, char *, char *);
+extern int pbs_movejob(int, const char *, const char *, const char *);
 
-extern int pbs_msgjob(int, char *, int, char *, char *);
+extern int pbs_msgjob(int, const char *, int, const char *, const char *);
 
-extern int pbs_relnodesjob(int, char *,  char *, char *);
+extern int pbs_relnodesjob(int, const char *, const char *, const char *);
 
-extern int pbs_orderjob(int, char *, char *, char *);
+extern int pbs_orderjob(int, const char *, const char *, const char *);
 
-extern int pbs_rerunjob(int, char *, char *);
+extern int pbs_rerunjob(int, const char *, const char *);
 
-extern int pbs_rlsjob(int, char *, char *, char *);
+extern int pbs_rlsjob(int, const char *, const char *, const char *);
 
-extern int pbs_runjob(int, char *, char *, char *);
+extern int pbs_runjob(int, const char *, const char *, const char *);
 
-extern char **pbs_selectjob(int, struct attropl *, char *);
+extern char **pbs_selectjob(int, struct attropl *, const char *);
 
-extern int pbs_sigjob(int, char *, char *, char *);
+extern int pbs_sigjob(int, const char *, const char *, const char *);
 
 extern void pbs_statfree(struct batch_status *);
 
 extern void pbs_delstatfree(struct batch_deljob_status *);
 
-extern struct batch_status *pbs_statrsc(int, char *, struct attrl *, char *);
+extern struct batch_status *pbs_statrsc(int, const char *, struct attrl *, const char *);
 
-extern struct batch_status *pbs_statjob(int, char *, struct attrl *, char *);
+extern struct batch_status *pbs_statjob(int, const char *, struct attrl *, const char *);
 
-extern struct batch_status *pbs_selstat(int, struct attropl *, struct attrl *, char *);
+extern struct batch_status *pbs_selstat(int, struct attropl *, struct attrl *, const char *);
 
-extern struct batch_status *pbs_statque(int, char *, struct attrl *, char *);
+extern struct batch_status *pbs_statque(int, const char *, struct attrl *, const char *);
 
-extern struct batch_status *pbs_statserver(int, struct attrl *, char *);
+extern struct batch_status *pbs_statserver(int, struct attrl *, const char *);
 
-extern struct batch_status *pbs_statsched(int, struct attrl *, char *);
+extern struct batch_status *pbs_statsched(int, struct attrl *, const char *);
 
-extern struct batch_status *pbs_stathost(int, char *, struct attrl *, char *);
+extern struct batch_status *pbs_stathost(int, const char *, struct attrl *, const char *);
 
-extern struct batch_status *pbs_statnode(int, char *, struct attrl *, char *);
+extern struct batch_status *pbs_statnode(int, const char *, struct attrl *, const char *);
 
-extern struct batch_status *pbs_statvnode(int, char *, struct attrl *, char *);
+extern struct batch_status *pbs_statvnode(int, const char *, struct attrl *, const char *);
 
-extern struct batch_status *pbs_statresv(int, char *, struct attrl *, char *);
+extern struct batch_status *pbs_statresv(int, const char *, struct attrl *, const char *);
 
-extern struct batch_status *pbs_stathook(int, char *, struct attrl *, char *);
+extern struct batch_status *pbs_stathook(int, const char *, struct attrl *, const char *);
 
 extern struct ecl_attribute_errors * pbs_get_attributes_in_error(int);
 
-extern char *pbs_submit(int, struct attropl *, char *, char *, char *);
+extern char *pbs_submit(int, struct attropl *, const char *, const char *, const char *);
 
-extern char *pbs_submit_resv(int, struct attropl *, char *);
+extern char *pbs_submit_resv(int, struct attropl *, const char *);
 
-extern int pbs_delresv(int, char *, char *);
+extern int pbs_delresv(int, const char *, const char *);
 
-extern int pbs_terminate(int, int, char *);
+extern int pbs_terminate(int, int, const char *);
 
-extern char *pbs_modify_resv(int, char*, struct attropl *, char *);
+extern char *pbs_modify_resv(int, const char*, struct attropl *, const char *);
 
 extern preempt_job_info *pbs_preempt_jobs(int, char **);
 #endif /* _USRDLL */
-
-/* IFL function pointers */
-extern int (*pfn_pbs_asyrunjob)(int, char *, char *, char *);
-extern int (*pfn_pbs_asyrunjob_ack)(int, char *, char *, char *);
-extern int (*pfn_pbs_alterjob)(int, char *, struct attrl *, char *);
-extern int (*pfn_pbs_asyalterjob)(int, char *, struct attrl *, char *);
-extern int (*pfn_pbs_confirmresv)(int, char *, char *, unsigned long, char *);
-extern int (*pfn_pbs_connect)(char *);
-extern int (*pfn_pbs_connect_extend)(char *, char *);
-extern char *(*pfn_pbs_default)(void);
-extern int (*pfn_pbs_deljob)(int, char *, char *);
-extern struct batch_deljob_status *(*pfn_pbs_deljoblist)(int, char **, int, char *);
-extern int (*pfn_pbs_disconnect)(int);
-extern char *(*pfn_pbs_geterrmsg)(int);
-extern int (*pfn_pbs_holdjob)(int, char *, char *, char *);
-extern int (*pfn_pbs_loadconf)(int);
-extern char *(*pfn_pbs_locjob)(int, char *, char *);
-extern int (*pfn_pbs_manager)(int, int, int, char *, struct attropl *, char *);
-extern int (*pfn_pbs_movejob)(int, char *, char *, char *);
-extern int (*pfn_pbs_msgjob)(int, char *, int, char *, char *);
-extern int (*pfn_pbs_orderjob)(int, char *, char *, char *);
-extern int (*pfn_pbs_rerunjob)(int, char *, char *);
-extern int (*pfn_pbs_rlsjob)(int, char *, char *, char *);
-extern int (*pfn_pbs_runjob)(int, char *, char *, char *);
-extern char **(*pfn_pbs_selectjob)(int, struct attropl *, char *);
-extern int (*pfn_pbs_sigjob)(int, char *, char *, char *);
-extern void (*pfn_pbs_statfree)(struct batch_status *);
-extern void (*pfn_pbs_delstatfree)(struct batch_deljob_status *);
-extern struct batch_status *(*pfn_pbs_statrsc)(int, char *, struct attrl *, char *);
-extern struct batch_status *(*pfn_pbs_statjob)(int, char *, struct attrl *, char *);
-extern struct batch_status *(*pfn_pbs_selstat)(int, struct attropl *, struct attrl *, char *);
-extern struct batch_status *(*pfn_pbs_statque)(int, char *, struct attrl *, char *);
-extern struct batch_status *(*pfn_pbs_statserver)(int, struct attrl *, char *);
-extern struct batch_status *(*pfn_pbs_statsched)(int, struct attrl *, char *);
-extern struct batch_status *(*pfn_pbs_stathost)(int, char *, struct attrl *, char *);
-extern struct batch_status *(*pfn_pbs_statnode)(int, char *, struct attrl *, char *);
-extern struct batch_status *(*pfn_pbs_statvnode)(int, char *, struct attrl *, char *);
-extern struct batch_status *(*pfn_pbs_statresv)(int, char *, struct attrl *, char *);
-extern struct batch_status *(*pfn_pbs_stathook)(int, char *, struct attrl *, char *);
-extern struct ecl_attribute_errors * (*pfn_pbs_get_attributes_in_error)(int);
-extern char *(*pfn_pbs_submit)(int, struct attropl *, char *, char *, char *);
-extern char *(*pfn_pbs_submit_resv)(int, struct attropl *, char *);
-extern int (*pfn_pbs_delresv)(int, char *, char *);
-extern int (*pfn_pbs_terminate)(int, int, char *);
-extern preempt_job_info *(*pfn_pbs_preempt_jobs)(int, char**);
 
 #ifdef	__cplusplus
 }

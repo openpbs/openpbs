@@ -1090,8 +1090,7 @@ main(int argc, char *argv[])
 				argv[0], def_server, pbs_errno);
 		CS_close_app();
 		exit(1);
-	} else if (!quiet && pbs_errno)
-		show_svr_inst_fail(con, argv[0]);
+	}
 	
 
 	/* if do_vnodes is set, get status of all virtual nodes (vnodes) */

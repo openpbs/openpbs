@@ -86,6 +86,7 @@
 #include "cmds.h"
 #include "pbs_license.h"
 #include "pbs_idx.h"
+#include "libutil.h"
 #if !defined(H_ERRNO_DECLARED)
 extern int h_errno;
 #endif
@@ -93,26 +94,22 @@ extern int h_errno;
 
 /* Global Data */
 
-extern char *pbs_server_name;
-extern int	 svr_quehasnodes;
-extern int	 svr_totnodes;
+extern int svr_quehasnodes;
+extern int svr_totnodes;
 extern pbs_list_head svr_queues;
-extern unsigned int pbs_mom_port;
-extern unsigned int pbs_rm_port;
 extern mominfo_time_t  mominfo_time;
-extern char	*resc_in_err;
+extern char *resc_in_err;
 extern void *node_idx;
-extern time_t	 time_now;
-extern int write_single_node_mom_attr(struct pbsnode *np);
+extern time_t time_now;
 
-extern struct python_interpreter_data  svr_interp_data;
-extern int node_delete_db(struct pbsnode *pnode);
+extern int node_delete_db(struct pbsnode *);
 extern pbsnode *recov_node_cb(pbs_db_obj_info_t *, int *);
 extern int check_sign(pbsnode *, attribute *);
 extern void license_one_node(pbsnode *);
 extern int process_topology_info(void **, char *);
-extern void release_lic_for_cray(struct pbsnode *pnode);
+extern void release_lic_for_cray(struct pbsnode *);
 static void remove_node_topology(char *);
+
 
 /**
  * @brief
@@ -139,9 +136,9 @@ find_nodebyname(char *nodename)
 		return NULL;
 	if (pbs_idx_find(node_idx, (void **)&nodename, (void **)&node, NULL) != PBS_IDX_RET_OK)
 		return NULL;
+
 	return node;
 }
-
 
 /**
  * @brief
@@ -296,8 +293,6 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	attribute    *pat2;
 	resource_def *prd;
 	resource     *presc;
-	char         *svr_inst_id;
-	static char ndgroupid[PBS_MAXHOSTNAME + 3] = {0};
 
 	pnode->nd_name    = pname;
 	pnode->nd_ntype   = ntype;
@@ -317,7 +312,6 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	if (pnode->nd_moms == NULL)
 		return (PBSE_SYSTEM);
 	pnode->nd_nummslots = 1;
-	CLEAR_LINK(pnode->nd_link);
 
 	/* first, clear the attributes */
 
@@ -326,13 +320,6 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 
 	/* then, setup certain attributes */
 	set_nattr_l_slim(pnode, ND_ATR_state, pnode->nd_state, SET);
-
-	if ((svr_inst_id = gen_svr_inst_id()) == NULL) {
-		log_err(errno, __func__, "unable to get server_instance_id");
-		return (PBSE_SYSTEM);
-	}
-	set_nattr_str_slim(pnode, ND_ATR_server_inst_id, svr_inst_id, NULL);
-	(get_nattr(pnode, ND_ATR_server_inst_id))->at_flags |= ATR_VFLAG_DEFLT;
 
 	set_nattr_short_slim(pnode, ND_ATR_ntype, pnode->nd_ntype, SET);
 
@@ -359,19 +346,6 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 
 	prd  = &svr_resc_def[RESC_NCPUS];
 	(void)add_resource_entry(pat1, prd);
-
-    if (msvr_mode()) {
-        resource *svr_nd_grp = NULL;
-
-        /* Set the value of msvr_node_group to "server_id" where
-         * server_id is the id of the server for the node */
-        prd = &svr_resc_def[RESC_MSVR_ND_GROUP];
-        if ((svr_nd_grp = add_resource_entry(pat1, prd)) != NULL) {
-            if (ndgroupid[0] == '\0')
-                snprintf(ndgroupid, sizeof(ndgroupid), "%d", get_server_index());
-            decode_arst(&svr_nd_grp->rs_value, NULL, NULL, ndgroupid);
-        }
-    }
 
 	/* add to resources_assigned any resource with ATR_DFLAG_FNASSN */
 	/* or  ATR_DFLAG_ANASSN set in the resource definition          */

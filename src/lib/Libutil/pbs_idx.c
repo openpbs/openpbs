@@ -37,6 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
+#include <pbs_config.h>
+
 #include "pbs_idx.h"
 #include "avltree.h"
 #include <stddef.h>

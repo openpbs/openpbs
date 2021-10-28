@@ -43,6 +43,7 @@
  * pbs_attach - attach a session to a job.
  *
  */
+#include <pbs_config.h>
 
 #include "cmds.h"
 #include "pbs_version.h"

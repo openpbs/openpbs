@@ -783,9 +783,6 @@ dispatch_request(int sfds, struct batch_request *request)
 
 	conn_t *conn = NULL;
 	int prot = request->prot;
-#ifndef PBS_MOM
-	struct work_task ptask;
-#endif
 
 	if (prot == PROT_TCP) {
 		if (sfds != PBS_LOCAL_CONNECTION) {
@@ -1037,14 +1034,6 @@ dispatch_request(int sfds, struct batch_request *request)
 			req_stat_svr(request);
 			break;
 
-		case PBS_BATCH_ServerReady:
-			/* setting the request to ptask as req_stat_svr_ready
-			* only accepts work-task.
-			*/
-			ptask.wt_parm1 = request;
-			req_stat_svr_ready(&ptask);
-			break;
-
 		case PBS_BATCH_StatusSched:
 			req_stat_sched(request);
 			break;
@@ -1214,17 +1203,6 @@ process_IS_CMD(int stream)
 	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG, "",
 		   msg_request, request->rq_type, request->rq_user,
 		   request->rq_host, stream);
-
-#ifndef PBS_MOM
-	if (get_peersvr(addr)) {
-		/* request came from another server */
-		request->rq_perm = ATR_DFLAG_USRD | ATR_DFLAG_USWR |
-				   ATR_DFLAG_OPRD | ATR_DFLAG_OPWR |
-				   ATR_DFLAG_MGRD | ATR_DFLAG_MGWR |
-				   ATR_DFLAG_SvWR;
-
-	}
-#endif
 
 	dispatch_request(stream, request);
 }
@@ -1705,9 +1683,6 @@ free_br(struct batch_request *preq)
 		case PBS_BATCH_PreemptJobs:
 			free(preq->rq_ind.rq_preempt.ppj_list);
 			free(preq->rq_reply.brp_un.brp_preempt_jobs.ppj_list);
-			break;
-		case PBS_BATCH_MoveJob:
-			free(preq->rq_ind.rq_move.run_exec_vnode);
 			break;
 #endif /* PBS_MOM */
 	}

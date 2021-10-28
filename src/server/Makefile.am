@@ -69,8 +69,7 @@ pbs_server_bin_LDADD = \
 	@PYTHON_LIBS@ \
 	-lssl \
 	-lcrypto \
-	@KRB5_LIBS@ \
-	@libundolr_lib@
+	@KRB5_LIBS@
 
 pbs_server_bin_SOURCES = \
 	accounting.c \
@@ -89,9 +88,7 @@ pbs_server_bin_SOURCES = \
 	licensing_func.c \
 	mom_info.c \
 	daemon_info.c \
-	multi_svr.c \
 	nattr_get_set.c \
-	svr_comm.c \
 	node_func.c \
 	node_manager.c \
 	node_recov_db.c \
@@ -157,7 +154,6 @@ pbs_comm_LDADD = \
 	-lpthread \
 	@libz_lib@ \
 	@socket_lib@ \
-	@KRB5_LIBS@ \
-	@libundolr_lib@
+	@KRB5_LIBS@
 
 pbs_comm_SOURCES = pbs_comm.c

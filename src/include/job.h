@@ -797,8 +797,6 @@ task_find	(job		*pjob,
  * 0x100000 bit set. Refer SPM229744
  */
 #define JOB_SVFLG_AdmSuspd 0x200000 /* Job is suspended for maintenance */
-#define JOB_SVFLG_RescUpdt_Rqd 0x400000 /* Broadcast of rsc usage is required */
-#define JOB_SVFLG_AlienJob 0x800000 /* job is owned by another server in a msvr setup */
 
 #define MAIL_NONE  (int)'n'
 #define MAIL_ABORT (int)'a'
@@ -1132,6 +1130,8 @@ extern void get_jobowner(char *, char *);
 extern struct batch_request *cpy_stage(struct batch_request *, job *, enum job_atr, int);
 extern struct batch_request *cpy_stdfile(struct batch_request *, job *, enum job_atr);
 extern int has_stage(job *);
+
+void svr_evalsetjobstate(job *jobp);
 
 #ifdef	__cplusplus
 }

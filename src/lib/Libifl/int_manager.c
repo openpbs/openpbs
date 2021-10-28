@@ -52,58 +52,7 @@
 #include "pbs_ecl.h"
 #include "cmds.h"
 
-/**
- * @brief
- *	-send manager request and read reply.
- *
- * @param[in] c - communication handle
- * @param[in] rq_type - req type
- * @param[in] command - command
- * @param[in] objtype - object type
- * @param[in] objname - object name
- * @param[in] aoplp - attribute list
- * @param[in] extend - extend string for req
- *
- * @return	int
- * @retval	0	success
- * @retval	!0	error
- *
- */
-static int
-PBSD_manager_inner(int c, int rq_type, int command, int objtype, char *objname, struct attropl *aoplp, char *extend)
-{
-	int rc = 0;
-	struct batch_reply *reply;
 
-	/* initialize the thread context data, if not initialized */
-	if (pbs_client_thread_init_thread_context() != 0)
-		return pbs_errno;
-	/*
-	* lock pthread mutex here for this connection
-	* blocking call, waits for mutex release
-	*/
-	if (pbs_client_thread_lock_connection(c) != 0)
-		return pbs_errno;
-
-	/* send the manage request */
-	rc = PBSD_mgr_put(c, rq_type, command, objtype, objname, aoplp, extend, PROT_TCP, NULL);
-	if (rc) {
-		(void)pbs_client_thread_unlock_connection(c);
-		return rc;
-	}
-
-	/* read reply from stream into presentation element */
-	reply = PBSD_rdrpy(c);
-	PBSD_FreeReply(reply);
-
-	rc = get_conn_errno(c);
-
-	/* unlock the thread lock and update the thread context data */
-	if (pbs_client_thread_unlock_connection(c) != 0)
-		return pbs_errno;
-
-	return rc;
-}
 
 /**
  * @brief
@@ -123,14 +72,14 @@ PBSD_manager_inner(int c, int rq_type, int command, int objtype, char *objname, 
  *
  */
 int
-PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct attropl *aoplp, char *extend)
+PBSD_manager(int c, int rq_type, int command, int objtype, const char *objname, struct attropl *aoplp, const char *extend)
 {
-	int i;
-	int rc = 0;
-	svr_conn_t **svr_conns = get_conn_svr_instances(c);
-	int start = 0;
-	int ct;
-	int nsvr = get_num_servers();
+	struct batch_reply *reply;
+	int rc;
+
+	/* initialize the thread context data, if not initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return pbs_errno;
 
 	/* verify the object name if creating a new one */
 	if (command == MGR_CMD_CREATE)
@@ -138,45 +87,30 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 			return pbs_errno;
 
 	/* now verify the attributes, if verification is enabled */
-	if ((pbs_verify_attributes(random_srv_conn(c, svr_conns), rq_type, objtype, command, aoplp)) != 0)
+	if ((pbs_verify_attributes(c, rq_type, objtype, command, aoplp)) != 0)
 		return pbs_errno;
 
-	if (svr_conns) {
-		/* For a single server cluster, instance fd and cluster fd are the same */
-		if (svr_conns[0]->sd == c)
-			return PBSD_manager_inner(c, rq_type, command, objtype, objname, aoplp, extend);
+	/* lock pthread mutex here for this connection */
+	/* blocking call, waits for mutex release */
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return pbs_errno;
 
-		if ((start = get_obj_location_hint(objname, objtype)) == -1)
-		    start = 0;
-
-		for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
-
-			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
-				continue;
-
-			rc = PBSD_manager_inner(svr_conns[i]->sd,
-						rq_type,
-						command,
-						objtype,
-						objname,
-						aoplp,
-						extend);
-
-			/* break the loop for sharded objects */
-			if (objtype == MGR_OBJ_JOB || objtype == MGR_OBJ_RESV || objtype == MGR_OBJ_NODE) {
-				if (rc == PBSE_NONE || (pbs_errno != PBSE_UNKJOBID && pbs_errno != PBSE_UNKRESVID && pbs_errno != PBSE_UNKNODE))
-					break;
-			}
-		}
-
+	/* send the manage request */
+	rc = PBSD_mgr_put(c, rq_type, command, objtype, objname, aoplp, extend, PROT_TCP, NULL);
+	if (rc) {
+		pbs_client_thread_unlock_connection(c);
 		return rc;
 	}
 
-	/* Not a cluster fd. Treat it as an instance fd */
-	return PBSD_manager_inner(c, rq_type,
-				  command,
-				  objtype,
-				  objname,
-				  aoplp,
-				  extend);
+	/* read reply from stream into presentation element */
+	reply = PBSD_rdrpy(c);
+	PBSD_FreeReply(reply);
+
+	rc = get_conn_errno(c);
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return pbs_errno;
+
+	return rc;
 }

@@ -54,8 +54,8 @@
 
 static auth_def_t *loaded_auths = NULL;
 
-static int _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_t ebufsz);
-static int _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, pbs_auth_config_t *config, char *ebuf, size_t ebufsz);
+static int _invoke_pbs_iff(int psock, const char *server_name, int server_port, char *ebuf, size_t ebufsz);
+static int _handle_client_handshake(int fd, const char *hostname, char *method, int for_encrypt, pbs_auth_config_t *config, char *ebuf, size_t ebufsz);
 static char * _get_load_lib_error(int reset);
 static void * _load_lib(char *loc);
 static void * _load_symbol(char *libloc, void *libhandle, char *name, int required);
@@ -333,7 +333,7 @@ is_valid_encrypt_method(char *method)
  * @retval	-1 on error
  */
 int
-tcp_send_auth_req(int sock, unsigned int port, char *user, char *auth_method, char *encrypt_method)
+tcp_send_auth_req(int sock, unsigned int port, const char *user, const char *auth_method, const char *encrypt_method)
 {
 	struct batch_reply *reply;
 	int rc;
@@ -414,7 +414,7 @@ tcp_send_auth_req(int sock, unsigned int port, char *user, char *auth_method, ch
  * @retval -1 on failure.
  */
 static int
-_invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_t ebufsz)
+_invoke_pbs_iff(int psock, const char *server_name, int server_port, char *ebuf, size_t ebufsz)
 {
 	char cmd[2][PBS_MAXSERVERNAME + 80];
 	int k;
@@ -535,7 +535,7 @@ _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_
 }
 
 static int
-_handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, pbs_auth_config_t *config, char *ebuf, size_t ebufsz)
+_handle_client_handshake(int fd, const char *hostname, char *method, int for_encrypt, pbs_auth_config_t *config, char *ebuf, size_t ebufsz)
 {
 	void *data_in = NULL;
 	size_t len_in = 0;
@@ -558,7 +558,7 @@ _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, 
 	transport_chan_set_authdef(fd, authdef, for_encrypt);
 	authdef->set_config((const pbs_auth_config_t *)config);
 	if ((authctx = transport_chan_get_authctx(fd, for_encrypt)) == NULL) {
-		if (authdef->create_ctx(&authctx, AUTH_CLIENT, AUTH_USER_CONN, (const char *)hostname)) {
+		if (authdef->create_ctx(&authctx, AUTH_CLIENT, AUTH_USER_CONN, hostname)) {
 			snprintf(ebuf, ebufsz, "Failed to create auth context");
 			pbs_errno = PBSE_SYSTEM;
 			return -1;
@@ -729,7 +729,7 @@ make_auth_config(char *auth_method, char *encrypt_method, char *exec_path, char 
  *
  */
 int
-engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
+engage_client_auth(int fd, const char *hostname, int port, char *ebuf, size_t ebufsz)
 {
 	int rc;
 	static pbs_auth_config_t *config = NULL;
@@ -787,7 +787,6 @@ engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
  * 	engage_server_auth - this function handles incoming authenication related data
  *
  * @param[in] fd - socket descriptor
- * @param[in] hostname - server hostname
  * @param[in] clienthost - hostname associate with fd
  * @param[in] for_encrypt - whether to handle incoming data for encrypt/decrypt auth or for authentication
  * @param[out] ebuf - error buffer
@@ -799,7 +798,7 @@ engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
  *
  */
 int
-engage_server_auth(int fd, char *hostname, char *clienthost, int for_encrypt, char *ebuf, size_t ebufsz)
+engage_server_auth(int fd, char *clienthost, int for_encrypt, char *ebuf, size_t ebufsz)
 {
 	void *authctx;
 	auth_def_t *authdef;

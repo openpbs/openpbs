@@ -285,7 +285,6 @@ query_nodes(int pbs_sd, server_info *sinfo)
 			ATTR_NODE_last_state_change_time,
 			ATTR_NODE_last_used_time,
 			ATTR_NODE_resvs,
-			ATTR_server_inst_id,
 			NULL};
 
 		for (int i = 0; nodeattrs[i] != NULL; i++) {
@@ -454,14 +453,6 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		if (!strcmp(attrp->name, ATTR_NODE_state))
 			set_node_info_state(ninfo, attrp->value);
 
-		else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
-			ninfo->svr_inst_id = string_dup(attrp->value);
-			if (ninfo->svr_inst_id == NULL) {
-				delete ninfo;
-				return NULL;
-			}
-		}
-
 		/* Host name */
 		else if (!strcmp(attrp->name, ATTR_NODE_Mom)) {
 			if (ninfo->mom)
@@ -622,7 +613,6 @@ query_node_info(struct batch_status *node, server_info *sinfo)
  */
 node_info::node_info(const std::string& nname): name(nname)
 {
-	svr_inst_id = NULL;
 	is_down = 0;
 	is_free = 0;
 	is_offline = 0;
@@ -843,7 +833,6 @@ node_info::~node_info()
 	free_te_list(node_events);
 	free(partition);
 	free(np_arr);
-	free(svr_inst_id);
 }
 
 /**
@@ -1398,7 +1387,6 @@ dup_node_info(node_info *onode, server_info *nsinfo, unsigned int flags)
 	nnode->mom = string_dup(onode->mom);
 	nnode->queue_name = onode->queue_name;
 
-	nnode->svr_inst_id = string_dup(onode->svr_inst_id);
 	nnode->is_down = onode->is_down;
 	nnode->is_free = onode->is_free;
 	nnode->is_offline = onode->is_offline;
@@ -3795,11 +3783,7 @@ parse_selspec(const std::string& sspec)
 	tmpptr = NULL;
 	while (tok != NULL && !invalid) {
 		tmpptr = string_dup(tok);
-#ifdef NAS /* localmod 082 */
-		auto ret = parse_chunk_r(tok, 0, &num_chunks, &num_kv, &nkvelements, &kv, NULL);
-#else
 		auto ret = parse_chunk_r(tok, &num_chunks, &num_kv, &nkvelements, &kv, NULL);
-#endif /* localmod 082 */
 
 		if (!ret) {
 			for (i = 0; i < num_kv && !invalid; i++) {

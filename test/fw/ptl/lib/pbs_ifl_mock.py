@@ -299,7 +299,6 @@ ATTR_NODE_Host = 'Host'
 ATTR_NODE_Mom = 'Mom'
 ATTR_NODE_Port = 'Port'
 ATTR_NODE_state = 'state'
-ATTR_NODE_svr_inst_id = "server_instance_id"
 ATTR_NODE_ntype = 'ntype'
 ATTR_NODE_jobs = 'jobs'
 ATTR_NODE_resvs = 'resv'

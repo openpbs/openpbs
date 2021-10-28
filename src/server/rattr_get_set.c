@@ -37,6 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
+#include <pbs_config.h>
+
 #include "attribute.h"
 #include "job.h"
 #include "reservation.h"

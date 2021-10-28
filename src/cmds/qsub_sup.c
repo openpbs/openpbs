@@ -64,12 +64,14 @@
 #include <syslog.h>
 #include <openssl/sha.h>
 #include "pbs_ifl.h"
+#include "ifl_internal.h"
 #include "cmds.h"
 #include "libpbs.h"
 #include "net_connect.h"
 #include "dis.h"
 #include "port_forwarding.h"
 #include "credential.h"
+#include "libutil.h"
 
 #if defined(HAVE_SYS_IOCTL_H)
 #include <sys/ioctl.h>
@@ -1423,14 +1425,13 @@ get_comm_filename(char *fname)
 {
 	char *env_svr = getenv(PBS_CONF_SERVER_NAME);
 	char *env_port = getenv(PBS_CONF_BATCH_SERVICE_PORT);
-	char *psi_var = pbs_get_conf_var(PBS_CONF_SERVER_INSTANCES);
 	int count = 0;
 	char buf[LARGE_BUF_LEN];
 	int len;
 	unsigned char hash[SHA_DIGEST_LENGTH];
 	int i;
 
-	count = snprintf(fname, MAXPIPENAME, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s_%s",
+	count = snprintf(fname, MAXPIPENAME, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s",
 		tmpdir,
 		((server_out == NULL || server_out[0] == 0) ?
 		"default" : server_out),
@@ -1438,20 +1439,17 @@ get_comm_filename(char *fname)
 		cred_name,
 		get_conf_path(),
 		env_svr ? env_svr : "",
-		env_port ? env_port : "",
-		psi_var ? psi_var : ""
-		);
+		env_port ? env_port : "");
 
 	if (count >= MAXPIPENAME) {
 		count = snprintf(fname, MAXPIPENAME, "%s/pbs_", TMP_DIR);
-		len = snprintf(buf, MAXPIPENAME, "%.16s_%lu_%.8s_%.32s_%.16s_%.5s_%s",
+		len = snprintf(buf, MAXPIPENAME, "%.16s_%lu_%.8s_%.32s_%.16s_%.5s",
 			 ((server_out == NULL || server_out[0] == 0) ? "default" : server_out),
 			 (unsigned long int) getuid(),
 			 cred_name,
 			 get_conf_path(),
 			 (env_svr == NULL) ? "" : env_svr,
-			 (env_port == NULL) ? "" : env_port,
-			 psi_var ? psi_var : "");
+			 (env_port == NULL) ? "" : env_port);
 
 		if (len + count < MAXPIPENAME) {
 			pbs_strncpy(fname + count, buf, MAXPIPENAME - count);
@@ -1465,8 +1463,6 @@ get_comm_filename(char *fname)
 			pbs_strncpy(fname + count, buf, MAXPIPENAME - count);
 		}
 	}
-
-	free(psi_var);
 }
 
 /**
@@ -1530,8 +1526,6 @@ daemon_stuff(void)
 	char *err_op = "";
 	char log_buf[LOG_BUF_SIZE];
 	int cred_timeout = 0;
-	svr_conn_t **svr_conns = get_conn_svr_instances(sd_svr);
-	int i;
 
 	/* set umask so socket file created is only accessible by same user */
 	umask(cmask);
@@ -1558,8 +1552,7 @@ daemon_stuff(void)
 	}
 
 	FD_SET(bindfd, &readset);
-	for (i = 0; svr_conns[i]; i++)
-		FD_SET(svr_conns[i]->sd, &readset);
+	FD_SET(sd_svr, &readset);
 	maxfd = (bindfd > sd_svr) ? bindfd : sd_svr;
 	while (1) {
 
@@ -1593,11 +1586,9 @@ daemon_stuff(void)
 		}
 
 		/* Shut the qsub daemon if the server had closed the connection */
-		for (i = 0; svr_conns[i]; i++) {
-			if (FD_ISSET(svr_conns[i]->sd, &workset)) {
-				if (recv(svr_conns[i]->sd, &rc, 1, MSG_PEEK) < 1)
-					goto out;
-			}
+		if (FD_ISSET(sd_svr, &workset)) {
+			if (recv(sd_svr, &rc, 1, MSG_OOB) < 1)
+				goto out;
 		}
 
 		/* accept the connection */

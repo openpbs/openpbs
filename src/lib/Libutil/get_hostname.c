@@ -49,6 +49,8 @@
 #include "portability.h"
 #include <netdb.h>
 #include <string.h>
+#include <errno.h>
+#include <arpa/inet.h>
 #include "pbs_ifl.h"
 #include "pbs_internal.h"
 
@@ -143,4 +145,30 @@ get_fullhostname(char *shortname, char *namebuf, int bufsize)
 
 	*(namebuf + bufsize) = '\0';	/* insure null terminated */
 	return (0);
+}
+
+/**
+ * @brief
+ *	Get hostname corresponding to the addr passed
+ *
+ *  @param[in]	addr	- addr contains ip and port
+ * @param[in]	port	- port of peer server service
+ *
+ * @return	host name
+ * @retval	NULL	- Failure
+ * @retval	!NULL	- Success
+ */
+char *
+get_hostname_from_addr(struct in_addr addr)
+{
+	struct hostent *hp;
+
+	hp = gethostbyaddr((void *) &addr, sizeof(struct in_addr), AF_INET);
+	if (hp == NULL) {
+		log_errf(-1, __func__, "%s: errno=%d, h_errno=%d",
+			 inet_ntoa(addr), errno, h_errno);
+		return NULL;
+	}
+
+	return hp->h_name;
 }

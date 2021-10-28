@@ -46,7 +46,10 @@ extern "C" {
 
 #include <time.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <netinet/in.h>
+
+#include "pbs_ifl.h"
 
 /* misc_utils specific */
 
@@ -344,9 +347,9 @@ char *perf_stat_stop(char *instance);
 extern char *netaddr(struct sockaddr_in *);
 extern unsigned long crc_file(char *fname);
 extern int get_fullhostname(char *, char *, int);
+extern char *get_hostname_from_addr(struct in_addr addr);
 extern char *parse_servername(char *, unsigned int *);
 extern int rand_num(void);
-extern int msvr_mode(void);
 
 /* thread utils */
 extern int init_mutex_attr_recursive(void *attr);

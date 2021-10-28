@@ -732,48 +732,30 @@ scheduling_cycle(int sd, const sched_cmd *cmd)
 static int
 get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 {
-	int i;
 	sched_cmd cmd;
-	svr_conn_t **svr_conns = get_conn_svr_instances(clust_secondary_sock);
-	if (svr_conns == NULL) {
-		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
-			  "Unable to fetch secondary connections");
+	int rc;
+
+	rc = get_sched_cmd_noblk(clust_secondary_sock, &cmd);
+	if (rc == -2) {
+		*is_conn_lost = 1;
 		return 0;
 	}
+	if (rc != 1)
+		return 0;
 
-	for (i = 0; svr_conns[i]; i++) {
-		int rc;
-
-		if (svr_conns[i]->sd < 0)
-			continue;
-
-		rc = get_sched_cmd_noblk(svr_conns[i]->sd, &cmd);
-		if (rc == -2) {
-			*is_conn_lost = 1;
-			return 0;
-		}
-		if (rc != 1)
-			continue;
-
-		if (cmd.cmd == SCH_SCHEDULE_RESTART_CYCLE) {
-			*high_prior_cmd = cmd;
-			if (i == get_num_servers() - 1) {
-				/* We need to return only after checking all servers. This way even if multiple
-				 * servers send SCH_SCHEDULE_RESTART_CYCLE we only have to consider one such request
-				 */
-				return 1;
-			}
-		} else {
-			if (cmd.cmd == SCH_SCHEDULE_AJOB)
-				qrun_list[qrun_list_size++] = cmd;
-			else {
-				/* Index of the array is the command recevied. Put the value as 1 which indicates that
-				 * the command is received. If we receive same commands from multiple servers they
-				 * are overwritten which is what we want i.e. it allows us to eliminate duplicate commands.
-				 */
-				if (cmd.cmd >= SCH_SCHEDULE_NULL && cmd.cmd < SCH_CMD_HIGH)
-					sched_cmds[cmd.cmd] = 1;
-			}
+	if (cmd.cmd == SCH_SCHEDULE_RESTART_CYCLE) {
+		*high_prior_cmd = cmd;
+		return 1;
+	} else {
+		if (cmd.cmd == SCH_SCHEDULE_AJOB)
+			qrun_list[qrun_list_size++] = cmd;
+		else {
+			/* Index of the array is the command recevied. Put the value as 1 which indicates that
+			 * the command is received. If we receive same commands from multiple servers they
+			 * are overwritten which is what we want i.e. it allows us to eliminate duplicate commands.
+			 */
+			if (cmd.cmd >= SCH_SCHEDULE_NULL && cmd.cmd < SCH_CMD_HIGH)
+				sched_cmds[cmd.cmd] = 1;
 		}
 	}
 
@@ -1304,11 +1286,11 @@ run_job(status *policy, int pbs_sd, resource_resv *rr, std::vector<nspec *>& ns_
 				if (strlen(timebuf) > 0)
 					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rr->name,
 						   "Job will run for duration=%s", timebuf);
-				pbsrc = send_run_job(pbs_sd, rr->server->has_runjob_hook, rr->name, execvnode, rr->svr_inst_id);
+				pbsrc = send_run_job(pbs_sd, rr->server->has_runjob_hook, rr->name, execvnode);
 			} else
 				pbsrc = 1;
 		} else
-			pbsrc = send_run_job(pbs_sd, rr->server->has_runjob_hook, rr->name, execvnode, rr->svr_inst_id);
+			pbsrc = send_run_job(pbs_sd, rr->server->has_runjob_hook, rr->name, execvnode);
 	}
 
 #ifdef NAS_CLUSTER /* localmod 125 */
@@ -1328,7 +1310,7 @@ run_job(status *policy, int pbs_sd, resource_resv *rr, std::vector<nspec *>& ns_
 			char buf[MAX_LOG_SIZE];
 
 			set_schd_error_codes(err, NOT_RUN, RUN_FAILURE);
-			errbuf = pbs_geterrmsg(get_svr_inst_fd(pbs_sd, rr->svr_inst_id));
+			errbuf = pbs_geterrmsg(pbs_sd);
 			if (errbuf == NULL)
 				errbuf = "";
 			set_schd_error_arg(err, ARG1, errbuf);

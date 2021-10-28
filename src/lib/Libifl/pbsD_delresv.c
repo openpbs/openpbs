@@ -66,17 +66,12 @@
  *
  */
 int
-__pbs_delresv(int c, char *resv_id, char *extend)
+__pbs_delresv(int c, const char *resv_id, const char *extend)
 {
 	struct attropl *aoplp = NULL;
 
 	if ((resv_id == NULL) || (*resv_id == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
-	return PBSD_manager(c, PBS_BATCH_DeleteResv,
-		MGR_CMD_DELETE,
-		MGR_OBJ_JOB,
-		resv_id,
-		aoplp,
-		extend);
+	return PBSD_manager(c, PBS_BATCH_DeleteResv, MGR_CMD_DELETE, MGR_OBJ_JOB, resv_id, aoplp, extend);
 }

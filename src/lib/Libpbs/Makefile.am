@@ -174,6 +174,7 @@ libpbs_la_SOURCES = \
 	../Libifl/int_modify_resv.c \
 	../Libifl/list_link.c \
 	../Libifl/ifl_util.c \
+	../Libifl/ifl_pointers.c \
 	../Libifl/PBS_attr.c \
 	../Libifl/pbs_get_attribute_errors.c \
 	../Libifl/pbs_geterrmg.c \
@@ -217,7 +218,6 @@ libpbs_la_SOURCES = \
 	../Libifl/pbsD_modify_resv.c \
 	../Libifl/pbsD_Preempt_Jobs.c \
 	../Libifl/ifl_impl.c \
-	../Libifl/ifl_pointers.c \
 	../Libifl/rm.c \
 	../Libifl/strsep.c \
 	../Libifl/tcp_dis.c \

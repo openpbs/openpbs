@@ -133,7 +133,6 @@
 #ifndef	PRIO_MIN
 #define		PRIO_MIN	-20
 #endif
-#include	"pbs_undolr.h"
 
 /* Reducing tpp_request process for a minimum of 3 times to interleave other connections */
 #define MAX_TPP_LOOPS 3
@@ -7850,13 +7849,10 @@ main(int argc, char *argv[])
 	 **	that is exec'ed will not have SIG_IGN set for anything.
 	 */
 	sigaction(SIGPIPE, &act, NULL);
+	sigaction(SIGUSR1, &act, NULL);
 #ifdef	SIGINFO
 	sigaction(SIGINFO, &act, NULL);
 #endif
-#ifdef PBS_UNDOLR_ENABLED
-	act.sa_handler = catch_sigusr1;
-#endif
-	sigaction(SIGUSR1, &act, NULL);
 #endif /* ! WIN32 end -------------------------------------------------------*/
 
 	/* initialize variables */

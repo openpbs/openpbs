@@ -50,11 +50,6 @@
 #include "grunt.h"
 #include "pbs_error.h"
 
-#ifdef NAS /* localmod 082 */
-#ifndef	MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#endif
-#endif /* localmod 082 */
 
 /**
  * @brief
@@ -325,9 +320,6 @@ parse_node_resc(char *str, char **nodep, int *nl, struct key_value_pair **kv)
  *	Chunk is of the form: [#][:word=value[:word=value...]]
  *
  * @param str    = string to parse (will be munged) (input)
- #ifdef NAS localmod 082
- * @param[in] extra	= number of extra entries to reserve in pkv (input)
- #endif localmod 082
  * @param[in] nchk   = number of chunks, "#" (output)
  * @param[in] pnelem = of active data elements in key_value_pair
  *                     array (output)
@@ -354,13 +346,8 @@ parse_node_resc(char *str, char **nodep, int *nl, struct key_value_pair **kv)
  *
  */
 
-#ifdef NAS /* localmod 082 */
-int
-parse_chunk_r(char *str, int extra, int *nchk, int *pnelem, int *nkve, struct key_value_pair **pkv, int *dflt)
-#else
 int
 parse_chunk_r(char *str, int *nchk, int *pnelem, int *nkve, struct key_value_pair **pkv, int *dflt)
-#endif /* localmod 082 */
 {
 	int   i;
 	int   nchunk=1; 		/* default number of chucks */
@@ -377,19 +364,10 @@ parse_chunk_r(char *str, int *nchk, int *pnelem, int *nkve, struct key_value_pai
 
 	if (*nkve== 0) {
 		/* malloc room for array of key_value_pair structure */
-#ifdef NAS /* localmod 082 */
-		i = MAX(extra, KVP_SIZE);
-		*pkv = (struct key_value_pair *)malloc(i * sizeof(struct key_value_pair));
-#else
 		*pkv = (struct key_value_pair *)malloc(KVP_SIZE * sizeof(struct key_value_pair));
-#endif /* localmod 082 */
 		if (*pkv == NULL)
 			return PBSE_SYSTEM;
-#ifdef NAS /* localmod 082 */
-		*nkve = i;
-#else
 		*nkve = KVP_SIZE;
-#endif /* localmod 082 */
 	}
 	for (i=0; i<*nkve; ++i) {
 		(*pkv)[i].kv_keyw  = NULL;
@@ -428,11 +406,7 @@ parse_chunk_r(char *str, int *nchk, int *pnelem, int *nkve, struct key_value_pai
 
 	i = parse_resc_equal_string(pc, &word, &value, &last);
 	while (i == 1) {
-#ifdef NAS /* localmod 082 */
-		while (nelem + extra >= *nkve) {
-#else
 		if (nelem >= *nkve) {
-#endif /* localmod 082 */
 			/* make more space in k_v table */
 			struct key_value_pair *ttpkv;
 			ttpkv = realloc(*pkv, (*nkve+KVP_SIZE)*sizeof(struct key_value_pair));
@@ -472,9 +446,6 @@ parse_chunk_r(char *str, int *nchk, int *pnelem, int *nkve, struct key_value_pai
  *	Chunk is of the form: [#][:word=value[:word=value...]]
  *
  * @param[in]  str  = string to parse
- #ifdef NAS localmod 082
- * @param[in]	extra = number of extra slots to allocate in rtn
- #endif localmod 082
  * @param[in]	nchk = number of chunks, "#"
  * @param[in]	nrtn = number of active (used) word=value pairs in the
  *		       key_value_pair array
@@ -487,31 +458,92 @@ parse_chunk_r(char *str, int *nchk, int *pnelem, int *nkve, struct key_value_pai
  *
  */
 
-#ifdef NAS /* localmod 082 */
-int
-parse_chunk(char *str, int extra, int *nchk, int *nrtn, struct key_value_pair **rtn, int *setbydflt)
-#else
+static int   nkvelements = 0;
+static struct key_value_pair *tpkv = NULL;
 int
 parse_chunk(char *str, int *nchk, int *nrtn, struct key_value_pair **rtn, int *setbydflt)
-#endif /* localmod 082 */
 {
 	int   i;
 	int   nelm = 0;
 
-	static int   nkvelements = 0;
-	static struct key_value_pair *tpkv = NULL;
-
 	if (str == NULL)
 		return (PBSE_INTERNAL);
 
-#ifdef NAS /* localmod 082 */
-	i = parse_chunk_r(str, extra, nchk, &nelm, &nkvelements, &tpkv, setbydflt);
-#else
 	i = parse_chunk_r(str, nchk, &nelm, &nkvelements, &tpkv, setbydflt);
-#endif /* localmod 082 */
 	*nrtn = nelm;
 	*rtn  = tpkv;
 	return i;
+}
+
+/**
+ * @brief
+ * 	parse_chunk_make_room_r - (thread safe) make room in key/value array
+ *
+ * @par
+ * @param[in]	inuse = number of entries current in use
+ * @param[in]	extra = number of additional entries needed
+ * @param[in/out] pnkve = pointer to current size of k_v array
+ * @param[in/out] ppkve = pointer to address of base of k_v array
+ *
+ * @return 	int
+ * @retval 	0 	if ok
+ * @retval 	!0 	on error
+ *
+ */
+int
+parse_chunk_make_room_r(int inuse, int extra, int *pnkve, struct key_value_pair **ppkve)
+{
+	int new_len;
+	struct key_value_pair *ttpkv;
+	int i;
+
+	/* check if extra will fit in current allocation */
+	if (inuse + extra <= *pnkve)
+		return 0;
+	/*
+	 * Need to grow the key/value array.
+	 * Keep the size a multiple of KVP_SIZE just to match parse_chunk_r's
+	 * method.
+	 */
+	new_len = ((inuse + extra + KVP_SIZE - 1) / KVP_SIZE ) * KVP_SIZE;
+	ttpkv = realloc(*ppkve, new_len * sizeof(struct key_value_pair));
+	if (ttpkv == NULL)
+		return PBSE_SYSTEM;
+	/* NULL out any new entries */
+	for (i = inuse; i < new_len; i++) {
+		ttpkv[i].kv_keyw = NULL;
+		ttpkv[i].kv_val = NULL;
+	}
+	*ppkve = ttpkv;
+	*pnkve = new_len;
+	return 0;
+}
+
+/**
+ * @brief
+ * 	parse_chunk_make_room - (not thread safe) make room in default key/value
+ * 	array
+ *
+ * @par
+ * @param[in]	inuse = number of entries current in use
+ * @param[in]	extra = number of additional entries needed
+ * @param[in/out] rtn = pointer to address to hold possibly moved k_v array
+ *
+ * @return 	int
+ * @retval 	0 	if ok
+ * @retval 	!0 	on error
+ *
+ */
+int
+parse_chunk_make_room(int inuse, int extra, struct key_value_pair **rtn)
+{
+	int rc;
+	/* Make sure we are using the default k_v array */
+	if (*rtn != tpkv)
+		return PBSE_SYSTEM;
+	rc = parse_chunk_make_room_r(inuse, extra, &nkvelements, &tpkv);
+	*rtn = tpkv;
+	return rc;
 }
 
 /**

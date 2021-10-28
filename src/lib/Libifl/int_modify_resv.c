@@ -62,7 +62,7 @@
  */
 
 char *
-PBSD_modify_resv(int connect, char *resv_id, struct attropl *attrib, char *extend)
+PBSD_modify_resv(int connect, const char *resv_id, struct attropl *attrib, const char *extend)
 {
 	struct batch_reply	*reply = NULL;
 	int			rc = -1;

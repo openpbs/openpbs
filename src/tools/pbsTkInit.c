@@ -49,9 +49,8 @@
  * 	pbsTcl_Init()
  * 	main()
  */
-
-#include	"pbs_version.h"
 #include	"pbs_config.h"
+#include	"pbs_version.h"
 
 #include	"tcl.h"
 #include	"tk.h"

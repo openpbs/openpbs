@@ -98,7 +98,6 @@
 #include "hook.h"
 #include "hook_func.h"
 #include "pbs_share.h"
-#include "pbs_undolr.h"
 #include "liblicense.h"
 
 #ifndef SIGKILL
@@ -463,16 +462,12 @@ pbsd_init(int type)
 		log_err(errno, __func__, "sigaction for PIPE");
 		return (2);
 	}
-	if (sigaction(SIGUSR2, &act, &oact) != 0) {
-		log_err(errno, __func__, "sigaction for USR2");
-		return (2);
-	}
-
-#ifdef PBS_UNDOLR_ENABLED
-	act.sa_handler = catch_sigusr1;
-#endif
 	if (sigaction(SIGUSR1, &act, &oact) != 0) {
 		log_err(errno, __func__, "sigaction for USR1");
+		return (2);
+	}
+	if (sigaction(SIGUSR2, &act, &oact) != 0) {
+		log_err(errno, __func__, "sigaction for USR2");
 		return (2);
 	}
 
@@ -670,9 +665,6 @@ pbsd_init(int type)
 		}
 		return (-1);
 	}
-
-	/* Initialize server instsances before loading jobs/resv */
-	init_msi();
 
 	/* Open and read in node list if one exists */
 	if ((rc = setup_nodes()) == -1) {

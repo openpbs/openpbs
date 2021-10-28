@@ -52,68 +52,6 @@
 
 /**
  * @brief
- *	-send order job batch request (for single instance connection)
- *
- * @param[in] c - connection handler
- * @param[in] job1 - job identifier
- * @param[in] job2 - job identifier
- * @param[in] extend - string to encode req
- *
- * @return      int
- * @retval      0       success
- * @retval      !0      error
- *
- */
-static int
-__pbs_orderjob_inner(int c, char *job1, char *job2, char *extend)
-{
-	struct batch_reply *reply;
-	int rc;
-
-	/* lock pthread mutex here for this connection */
-	/* blocking call, waits for mutex release */
-	if (pbs_client_thread_lock_connection(c) != 0)
-		return pbs_errno;
-
-	/* setup DIS support routines for following DIS calls */
-
-	DIS_tcp_funcs();
-
-	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_OrderJob, pbs_current_user)) ||
-		(rc = encode_DIS_MoveJob(c, job1, job2)) ||
-		(rc = encode_DIS_ReqExtend(c, extend))) {
-		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
-			pbs_errno = PBSE_SYSTEM;
-		} else {
-			pbs_errno = PBSE_PROTOCOL;
-		}
-		(void)pbs_client_thread_unlock_connection(c);
-		return pbs_errno;
-	}
-	if (dis_flush(c)) {
-		pbs_errno = PBSE_PROTOCOL;
-		(void)pbs_client_thread_unlock_connection(c);
-		return pbs_errno;
-	}
-
-	/* read reply */
-
-	reply = PBSD_rdrpy(c);
-
-	PBSD_FreeReply(reply);
-
-	rc = get_conn_errno(c);
-
-	/* unlock the thread lock and update the thread context data */
-	if (pbs_client_thread_unlock_connection(c) != 0)
-		return pbs_errno;
-
-	return rc;
-}
-
-
-/**
- * @brief
  *	-send order job batch request
  *
  * @param[in] c - connection handler
@@ -127,14 +65,10 @@ __pbs_orderjob_inner(int c, char *job1, char *job2, char *extend)
  *
  */
 int
-__pbs_orderjob(int c, char *job1, char *job2, char *extend)
+__pbs_orderjob(int c, const char *job1, const char *job2, const char *extend)
 {
-	int i;
-	int rc = 0;
-	svr_conn_t **svr_conns = get_conn_svr_instances(c);
-	int nsvr = get_num_servers();
-	int start = 0;
-	int ct;
+	struct batch_reply *reply;
+	int rc;
 
 	if ((job1 == NULL) || (*job1 == '\0') ||
 		(job2 == NULL) || (*job2 == '\0'))
@@ -144,29 +78,40 @@ __pbs_orderjob(int c, char *job1, char *job2, char *extend)
 	if (pbs_client_thread_init_thread_context() != 0)
 		return pbs_errno;
 
-	if (svr_conns) {
-		/* For a single server cluster, instance fd and cluster fd are the same */
-		if (svr_conns[0]->sd == c)
-			return __pbs_orderjob_inner(c, job1, job2, extend);
+	/* lock pthread mutex here for this connection */
+	/* blocking call, waits for mutex release */
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return pbs_errno;
 
-		if ((start = get_obj_location_hint(job1, MGR_OBJ_JOB)) == -1)
-		    start = 0;
+	/* setup DIS support routines for following DIS calls */
+	DIS_tcp_funcs();
 
-		for (i = start, ct = 0; ct < nsvr; i = (i + 1) % nsvr, ct++) {
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_OrderJob, pbs_current_user)) ||
+		(rc = encode_DIS_MoveJob(c, job1, job2)) ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0)
+			pbs_errno = PBSE_SYSTEM;
+		else
+			pbs_errno = PBSE_PROTOCOL;
 
-			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
-				continue;
-
-			rc = __pbs_orderjob_inner(svr_conns[i]->sd, job1, job2, extend);
-
-			/* break the loop for sharded objects */
-			if (rc == PBSE_NONE || pbs_errno != PBSE_UNKJOBID)
-				break;
-		}
-
-		return rc;
+		pbs_client_thread_unlock_connection(c);
+		return pbs_errno;
 	}
 
-	/* Not a cluster fd. Treat it as an instance fd */
-	return __pbs_orderjob_inner(c, job1, job2, extend);
+	if (dis_flush(c)) {
+		pbs_errno = PBSE_PROTOCOL;
+		pbs_client_thread_unlock_connection(c);
+		return pbs_errno;
+	}
+
+	/* read reply */
+	reply = PBSD_rdrpy(c);
+	PBSD_FreeReply(reply);
+	rc = get_conn_errno(c);
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return pbs_errno;
+
+	return rc;
 }

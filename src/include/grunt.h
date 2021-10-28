@@ -53,13 +53,10 @@ typedef struct key_value_pair {
 #define OMPTHREADS "ompthreads"
 
 extern struct resc_sum *svr_resc_sum;
-#ifdef NAS /* localmod 082 */
-extern int parse_chunk(char *str, int extra, int *nchk, int *nl, struct key_value_pair **kv, int *dflt);
-extern int parse_chunk_r(char *str, int extra, int *nchk, int *pnelem, int *nkve, struct key_value_pair **pkv, int *dflt);
-#else
 extern int parse_chunk(char *str, int *nchk, int *nl, struct key_value_pair **kv, int *dflt);
 extern int parse_chunk_r(char *str, int *nchk, int *pnelem, int *nkve, struct key_value_pair **pkv, int *dflt);
-#endif /* localmod 082 */
+extern int parse_chunk_make_room(int inuse, int extra, struct key_value_pair **rtn);
+extern int parse_chunk_make_room_r(int inuse, int extra, int *pnkve, struct key_value_pair **ppkve);
 extern int parse_node_resc(char *str, char **nodep, int *nl, struct key_value_pair **kv);
 extern int parse_node_resc_r(char *str, char **nodep, int *pnelem, int *nlkv, struct key_value_pair **kv);
 extern char *parse_plus_spec(char *selstr, int *rc);

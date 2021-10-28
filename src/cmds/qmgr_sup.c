@@ -61,7 +61,6 @@ extern char contin[];
 extern char *cur_prompt ;
 extern const char hist_init_err[];
 extern const char histfile_access_err[];
-extern int qmgr_hist_enabled; /* history is enabled by default */
 extern char qmgr_hist_file[MAXPATHLEN + 1];  /* history file for this user */
 
 

@@ -306,11 +306,6 @@ reply_send(struct batch_request *request)
 	sfds = request->rq_conn;
 	rq_type = request->rq_type;
 
-#ifndef PBS_MOM
-	if (request->rq_type == PBS_BATCH_MoveJob)
-		rq_type = request->rq_ind.rq_move.orig_rq_type;
-#endif
-
 	if (rq_type == PBS_BATCH_ModifyJob_Async || rq_type == PBS_BATCH_AsyrunJob) {
 		free_br(request);
 		return 0;
@@ -320,9 +315,14 @@ reply_send(struct batch_request *request)
 
 	/* if this is a child request, just move the error to the parent */
 	if (request->rq_parentbr) {
-		if ((request->rq_parentbr->rq_reply.brp_choice == BATCH_REPLY_CHOICE_NULL) && (request->rq_parentbr->rq_reply.brp_code == 0)) {
+		if (((request->rq_parentbr->rq_reply.brp_choice == BATCH_REPLY_CHOICE_NULL) || (request->rq_parentbr->rq_reply.brp_choice == BATCH_REPLY_CHOICE_Delete)) && (request->rq_parentbr->rq_reply.brp_code == 0)) {
 			request->rq_parentbr->rq_reply.brp_code = request->rq_reply.brp_code;
 			request->rq_parentbr->rq_reply.brp_auxcode = request->rq_reply.brp_auxcode;
+			if (request->rq_type == PBS_BATCH_DeleteJobList) {
+				request->rq_parentbr->rq_reply.brp_count = request->rq_reply.brp_count;
+				pbs_delstatfree(request->rq_parentbr->rq_reply.brp_un.brp_deletejoblist.brp_delstatc);
+				request->rq_parentbr->rq_reply.brp_un.brp_deletejoblist.brp_delstatc = request->rq_reply.brp_un.brp_deletejoblist.brp_delstatc;
+			}
 			if (request->rq_reply.brp_choice == BATCH_REPLY_CHOICE_Text) {
 				request->rq_parentbr->rq_reply.brp_choice =
 					request->rq_reply.brp_choice;
@@ -394,11 +394,6 @@ reply_ack(struct batch_request *preq)
 		return;
 
 	rq_type = preq->rq_type;
-#ifndef PBS_MOM
-	if (preq->rq_type == PBS_BATCH_MoveJob)
-		rq_type = preq->rq_ind.rq_move.orig_rq_type;
-#endif
-
 	if (rq_type == PBS_BATCH_ModifyJob_Async || rq_type == PBS_BATCH_AsyrunJob) {
 		free_br(preq);
 		return;
@@ -505,11 +500,6 @@ req_reject(int code, int aux, struct batch_request *preq)
 		return;
 
 	rq_type = preq->rq_type;
-#ifndef PBS_MOM
-	if (preq->rq_type == PBS_BATCH_MoveJob)
-		rq_type = preq->rq_ind.rq_move.orig_rq_type;
-#endif
-
 	if (rq_type == PBS_BATCH_ModifyJob_Async || rq_type == PBS_BATCH_AsyrunJob) {
 		free_br(preq);
 		return;

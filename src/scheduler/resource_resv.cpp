@@ -151,7 +151,6 @@ resource_resv::resource_resv(const std::string& rname): name(rname)
 	duration = UNSPECIFIED;
 	hard_duration = UNSPECIFIED;
 	min_duration = UNSPECIFIED;
-	svr_inst_id = NULL;
 	resreq = NULL;
 	server = NULL;
 	ninfo_arr = NULL;
@@ -318,7 +317,6 @@ resource_resv::~resource_resv()
 	free(eoename);
 	free_string_array(node_set_str);
 	free(node_set);
-	free(svr_inst_id);
 	/* Avoid dangling pointers inside the calendar */
 	if (run_event != NULL)
 		delete_event(server, run_event);
@@ -543,7 +541,6 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 
 	nresresv->server = nsinfo;
 
-	nresresv->svr_inst_id = string_dup(oresresv->svr_inst_id);
 	nresresv->user = oresresv->user;
 	nresresv->group = oresresv->group;
 	nresresv->project = oresresv->project;

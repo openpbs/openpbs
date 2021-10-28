@@ -112,7 +112,7 @@ main_sched_loop_bare(int sd, server_info *sinfo)
 			snprintf(execvnode, sizeof(execvnode), "(%s:ncpus=1)", node->name.c_str());
 
 			/* Send the run request */
-			send_run_job(sd, 0, jobs[ij]->name, execvnode, jobs[ij]->svr_inst_id);
+			send_run_job(sd, 0, jobs[ij]->name, execvnode);
 
 			break;
 		}

@@ -193,7 +193,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 						if (pq.remote_server.empty()) {
 							peer_sd = pbs_sd;
 						}
-						else if ((peer_sd = pbs_connect_noblk(const_cast<char *>(pq.remote_server.c_str()), 2)) < 0) {
+						else if ((peer_sd = pbs_connect_noblk(const_cast<char *>(pq.remote_server.c_str()))) < 0) {
 							/* Message was PBSEVENT_SCHED - moved to PBSEVENT_DEBUG2 for
 							 * failover reasons (see bz3002)
 							 */

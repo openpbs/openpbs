@@ -1536,7 +1536,6 @@ check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv
 	return ns_arr;
 }
 
-
 /**
  *	@brief
  *		check to see if there is sufficient nodes available to run a job/resv
@@ -1567,7 +1566,6 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 	int error = 0;
 	node_partition **nodepart = NULL;
 	node_info **ninfo_arr = NULL;
-	node_partition *msvr_pset[3];
 
 	if (!sc_attrs.do_not_span_psets)
 		flags |= SPAN_PSETS;
@@ -1626,26 +1624,6 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 			/* if there are nodes assigned to the queue, then check those */
 			if (qinfo->has_nodes)
 				ninfo_arr = qinfo->nodes;
-		}
-
-		/* Handle server local scheduling for multi-server setup */
-		if (pbs_conf.pbs_num_servers > 1 && resresv->svr_inst_id != NULL) {
-			if (sinfo->svr_to_psets.find(resresv->svr_inst_id) != sinfo->svr_to_psets.end()) {
-				msvr_pset[0] = sinfo->svr_to_psets[resresv->svr_inst_id];
-
-				/* Restrict job arrays and reservations to owner server */
-				if (resresv->is_resv || (resresv->job != NULL && resresv->job->is_array))
-					msvr_pset[1] = NULL;
-				else { /* If owner's nodes don't work, use all */
-					msvr_pset[1] = sinfo->allpart;
-					msvr_pset[2] = NULL;
-				}
-				nodepart = msvr_pset;
-			} else if (resresv->is_resv || (resresv->job != NULL && resresv->job->is_array)) {
-				/* No nodes associated with owner server, so reject the job array/reservation */
-				set_schd_error_codes(err, NOT_RUN, NO_NODE_RESOURCES);
-				return {};
-			}
 		}
 	}
 

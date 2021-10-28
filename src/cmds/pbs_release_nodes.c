@@ -46,6 +46,8 @@
  *
  */
 
+#include <pbs_config.h>
+
 #include <errno.h>
 #include "cmds.h"
 #include "pbs_ifl.h"
@@ -169,8 +171,7 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 				"pbs_release_nodes: cannot connect to server %s (errno=%d)\n",
 							pbs_server, pbs_errno);
 			break;
-		} else if (pbs_errno)
-			show_svr_inst_fail(connect, argv[0]);
+		}
 		
 
 		stat = pbs_relnodesjob(connect, job_id_out, node_list, keep_opt);

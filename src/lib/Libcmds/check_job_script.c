@@ -43,6 +43,8 @@
  * @brief
  * 	These were moved from qsub so that AIF could access them.
  */
+#include <pbs_config.h>
+
 #include <ctype.h>
 #include <string.h>
 

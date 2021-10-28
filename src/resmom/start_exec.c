@@ -5535,11 +5535,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 
 	while (psubspec) {
 		DBPRT(("\tsubspec: %s\n", psubspec))
-#ifdef NAS /* localmod 082 */
-		rc = parse_chunk_r(psubspec, 0, &snc, &snelma, &snelmt, &skv, NULL);
-#else
 		rc = parse_chunk_r(psubspec, &snc, &snelma, &snelmt, &skv, NULL);
-#endif /* localmod 082 */
 		/* snc is the number (repeat factor) of chunks */
 		if (rc != 0)
 			return (rc);
@@ -5651,11 +5647,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 		DBPRT(("\tsubspec: %s\n", psubspec))
 		nthreads = -1;
 		numprocs = -1;
-#ifdef NAS /* localmod 082 */
-		rc = parse_chunk_r(psubspec, 0, &snc, &snelma, &snelmt, &skv, NULL);
-#else
 		rc = parse_chunk_r(psubspec, &snc, &snelma, &snelmt, &skv, NULL);
-#endif /* localmod 082 */
 		/* snc = number of chunks */
 		if (rc != 0) {
 			return (rc);

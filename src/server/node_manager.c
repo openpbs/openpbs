@@ -346,15 +346,6 @@ reply_hellosvr(int stream, int need_inv)
 	if ((ret = diswsi(stream, need_inv)) != DIS_SUCCESS)
 		return ret;
 
-	/* write no of servers first as we do not write clusteraddr in case of msvr_mode. */
-	if ((ret = diswsi(stream, get_num_servers())) != DIS_SUCCESS)
-		return ret;
-
-	if (msvr_mode()) {
-		/* In multi-server mode, server will not send clusteraddr */
-		return dis_flush(stream);
-	}
-
 	if ((ret = send_ip_addrs_to_mom(stream, 1)) != DIS_SUCCESS)
 		return ret;
 
@@ -2428,7 +2419,6 @@ discard_job(job *pjob, char *txt, int noack)
 	struct pbsnode *pnode;
 	int	 rc;
 	int	 rver;
-	int	broadcast = 0;
 
 	/* We're about to discard the job, reply to a preemption.
 	 * This serves as a catch all just incase the code doesn't reply on its own.
@@ -2482,7 +2472,6 @@ discard_job(job *pjob, char *txt, int noack)
 		pnode = find_nodebyname(pn);
 		/* had better be the "natural" vnode with only the one parent */
 		if (pnode != NULL) {
-
 			for (i = 0; i < nmom; ++i) {
 				if ((pdsc + i)->jdcd_mom == pnode->nd_moms[0])
 					break;		/* already have this Mom */
@@ -2497,19 +2486,12 @@ discard_job(job *pjob, char *txt, int noack)
 				}
 				nmom++;
 			}
-		} else
-			broadcast = 1;
+		}
 		pn = parse_plus_spec(NULL, &rc);
 	}
 
 	/* Get run version of this job */
 	rver = get_jattr_long(pjob, JOB_ATR_run_version);
-
-	/* ask each peer server to handle discard job for its share of moms running the job */
-	if (broadcast && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_AlienJob))
-		ps_send_discard(pjob->ji_qs.ji_jobid,
-				get_jattr_str(pjob, JOB_ATR_exec_vnode),
-				get_jattr_str(pjob, JOB_ATR_exec_host), rver);
 
 	/* unless "noack", attach discard array to the job */
 	if (noack == 0)
@@ -2948,11 +2930,8 @@ stream_eof(int stream, int ret, char *msg)
 		log_errf(-1, __func__, "%s down", mp->mi_host);
 		if (msg == NULL)
 			msg = "communication closed";
-		/* Do not invoke momptr_down() for a peer server */
-		if (is_peersvr(mp))
-			mp->mi_dmn_info->dmn_state |= INUSE_NEEDS_HELLOSVR;
-		else
-			momptr_down(mp, msg);
+
+		momptr_down(mp, msg);
 
 		/* Down node and all subnodes */
 		mp->mi_dmn_info->dmn_stream = -1;
@@ -6227,9 +6206,6 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 	struct jobinfo *jp;
 	int rc = 0;
 
-	if (pnode->nd_svrflags & NODE_ALIEN)
-		return 0;
-
 	if ((svr_init == FALSE) && (pnode->nd_state & INUSE_JOBEXCL)) {
 		/* allocate node only if it is not occupied by other jobs */
 		for (snp = pnode->nd_psn; snp; snp = snp->next) {
@@ -6548,14 +6524,8 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			return PBSE_BADNODESPEC;
 
 		if (!strlen(execvnod)) {
-			/* 
-			* We return from the function here with an error
-			* The job will be reattempted in the next few cycles once
-			* we get the reply from all peer servers and the alien nodes are cached.
-			*/
 			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 				   pjob->ji_qs.ji_jobid, "Unknown node received");
-			send_nodestat_req(CACHE_MISS);
 			return PBSE_UNKNODE;
 		}
 
@@ -6619,19 +6589,15 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 	     chunk; chunk = parse_plus_spec_r(last, &last, &hasprn)) {
 
 		if (parse_node_resc(chunk, &vname, &nelem, &pkvp) == 0) {
-			if ((pnode = find_nodebyname(vname)) == NULL &&
-			    (pnode = find_alien_node(vname)) == NULL) {
+			if ((pnode = find_nodebyname(vname)) == NULL) {
 				if (objtype == JOB_OBJECT) {
-					if (svr_init && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_RescUpdt_Rqd))
-						continue;
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-						   pjob->ji_qs.ji_jobid, "Unknown node %s received", vname);
+						pjob->ji_qs.ji_jobid, "Unknown node %s received", vname);
 				} else if (objtype == RESC_RESV_OBJECT)
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_INFO,
-						   presv->ri_qs.ri_resvID, "Unknown node %s received", vname);
+						presv->ri_qs.ri_resvID, "Unknown node %s received", vname);
 				free(execvncopy);
 				rc = PBSE_UNKNODE;
-				send_nodestat_req(CACHE_MISS);
 				goto end;
 			}
 
@@ -6699,12 +6665,6 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 						if (parentmom == NULL)
 							parentmom = parentmom_first;
 
-					} else {
-						/* alien node */
-						(phowl + ndindex)->hw_natvn = (phowl + ndindex)->hw_pnd;
-						(phowl + ndindex)->hw_mom = NULL;
-						(phowl + ndindex)->hw_mom_host = get_nattr_arst((phowl + ndindex)->hw_pnd, ND_ATR_Mom)->as_string[0];
-						(phowl + ndindex)->hw_mom_port = get_nattr_long((phowl + ndindex)->hw_pnd, ND_ATR_Port);
 					}
 				} else if (objtype == JOB_OBJECT) {
 					/*
@@ -6723,7 +6683,6 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 							   pjob->ji_qs.ji_jobid, "Unknown node %s received", peh);
 						free(phowl);
 						free(execvncopy);
-						send_nodestat_req(CACHE_MISS);
 						return (PBSE_UNKNODE);
 					}
 					if ((phowl + ndindex)->hw_pnd->nd_moms)
@@ -7223,14 +7182,13 @@ check_for_negative_resource(resource_def *prdef, resource *presc, char *noden)
  * @param[in]	prdef	- resource structure which stores resource name
  * @param[in]	val	- resource value
  * @param[in]	hop	- always called with 0, this values checks for the level of indirectness.
- * @param[out]	mtfd	- multicast fd to fill in peer svr streams in case of resc update
  *
  * @return	int
  * @retval	0	- success
  * @retval	!=0	- failure code
  */
 static int
-adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, char *val, int hop, int *mtfd, job *pjob)
+adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, char *val, int hop)
 {
 	pbsnode		*pnode;
 	resource	*presc;
@@ -7259,17 +7217,8 @@ adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, 
 	/* find the node */
 
 	pnode = find_nodebyname(noden);
-	if (pnode == NULL) {
-		if (pjob) {
-			pnode = find_alien_node(noden);
-			if (pnode) {
-				mcast_add(get_peersvr_from_svrid(get_nattr_str(pnode, ND_ATR_server_inst_id)), mtfd, TRUE);
-			} else
-				return PBSE_UNKOBJ;
-		}
-
+	if (pnode == NULL)
 		return PBSE_UNKNODE;
-	}
 
 	/* find the resources_assigned resource for the node */
 
@@ -7285,7 +7234,7 @@ adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, 
 		/* indirect reference to another vnode, recurse w/ that node */
 
 		noden = presc->rs_value.at_val.at_str + 1;
-		return (adj_resc_on_node(noden, aflag, op, prdef, val, ++hop, mtfd, pjob));
+		return (adj_resc_on_node(noden, aflag, op, prdef, val, ++hop));
 	}
 
 	/* decode the resource value and +/- it to the attribute */
@@ -7326,22 +7275,19 @@ adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, 
 void
 update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 {
-	int	  asgn = ATR_DFLAG_ANASSN | ATR_DFLAG_FNASSN;
-	char     *chunk;
-	int       j;
-	int       nelem;
-	char	 *noden;
-	int	  rc;
-	resource_def	*prdef = NULL;
+	int asgn = ATR_DFLAG_ANASSN | ATR_DFLAG_FNASSN;
+	char *chunk;
+	int j;
+	int nelem;
+	char *noden;
+	int rc;
+	resource_def *prdef = NULL;
 	struct key_value_pair *pkvp;
-	attribute	*queru = NULL;
-	attribute	*sysru = NULL;
-	resource	*pr = NULL;
-	attribute	tmpattr;
-	int		nchunk = 0;
-	psvr_ru_t	*psvr_ru;
-	int		mtfd = -1;
-	bool		broadcast = FALSE;
+	attribute *queru = NULL;
+	attribute *sysru = NULL;
+	resource *pr = NULL;
+	attribute tmpattr;
+	int nchunk = 0;
 
 	/* Parse the exec_vnode string */
 
@@ -7382,20 +7328,15 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 					continue;
 				}
 
-				if ((rc = adj_resc_on_node(noden, asgn, op, prdef, pkvp[j].kv_val, 0, &mtfd, pjob)) != 0) {
-					if (rc != PBSE_UNKNODE && rc != PBSE_UNKOBJ)
-						return;
-					if (pjob) {
-						pjob->ji_qs.ji_svrflags |= JOB_SVFLG_RescUpdt_Rqd;
-						if (rc == PBSE_UNKOBJ)
-							broadcast = TRUE;
-					}
-				}
+				rc = adj_resc_on_node(noden, asgn, op, prdef, pkvp[j].kv_val, 0);
+				if (rc && rc != PBSE_UNKNODE)
+					return;
+
 				/* update system attribute of resources assigned */
 
 				if (sysru || queru) {
 					if ((rc = prdef->rs_decode(&tmpattr, ATTR_rescassn, pkvp[j].kv_keyw,
-											pkvp[j].kv_val)) != 0)
+								   pkvp[j].kv_val)) != 0)
 						return;
 				}
 
@@ -7437,12 +7378,6 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 		chunk = parse_plus_spec(NULL, &rc);
 		if (rc != 0)
 			return;
-	}
-
-	if (pjob && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_RescUpdt_Rqd)) {
-		psvr_ru = init_psvr_ru(pjob, op, pexech->at_val.at_str, broadcast);
-		mcast_resc_usage(psvr_ru, mtfd);
-		free(psvr_ru);
 	}
 
 	if (sysru || queru) {

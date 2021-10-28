@@ -280,68 +280,6 @@ call_to_process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len
 
 /**
  * @brief
- * 	need_to_run_elsewhere - Check whether this request needs to run in another server.
- *
- * @param[in] preq - pointer to batch request structure
- *
- * @return string
- * @retval char * - request needs to run in another server.
- * 		The value indicates destination
- * @retval NULL - self can proceed with the request
- */
-char *
-need_to_run_elsewhere(struct batch_request *preq)
-{
-	char *vname;
-	pbs_node *pnode;
-	char *svr_id = NULL;
-
-	vname = get_first_vnode(preq->rq_ind.rq_run.rq_destin);
-	pnode = find_nodebyname(vname);
-
-	if (!pnode) {
-		if ((pnode = find_alien_node(vname)))
-			svr_id = get_nattr_str(pnode, ND_ATR_server_inst_id);
-		else
-			send_nodestat_req(CACHE_MISS);
-	}
-
-	free(vname);
-	return svr_id;
-}
-
-/**
- * @brief
- * 	move_and_runjob - Move and run job in the server specified in request
- *
- * @param[in,out] preq - pointer to batch request structure
- * @param[in] pjob - job to be moved and run
- * @param[in] dest_svr - destination server
- *
- * @return void
- */
-void
-move_and_runjob(struct batch_request *preq, job *pjob, char *dest_svr)
-{
-	char *dest;
-
-	dest = preq->rq_ind.rq_run.rq_destin;
-	preq->rq_ind.rq_run.rq_destin = NULL;
-	preq->rq_ind.rq_move.orig_rq_type = preq->rq_type;
-	preq->rq_type = PBS_BATCH_MoveJob;
-	strcpy(preq->rq_ind.rq_move.rq_jid, pjob->ji_qs.ji_jobid);
-	sprintf(preq->rq_ind.rq_move.rq_destin, "%s@%s", pjob->ji_qs.ji_queue, dest_svr);
-	preq->rq_ind.rq_move.run_exec_vnode = dest;
-
-	/*
-	* runjob will happen as part of movejob request. Information to run the job will be encoded
-	* within send_job_exec so that dest server can figure out it is a move+run.
-	*/
-	req_movejob(preq);
-}
-
-/**
- * @brief
  * 	req_runjob - service the Run Job and Asyc Run Job Requests
  *
  * @par
@@ -372,7 +310,6 @@ req_runjob(struct batch_request *preq)
 	struct deferred_request *pdefr;
 	char hook_msg[HOOK_MSG_SIZE];
 	pbs_sched *psched;
-	char *dest = NULL;
 	char sjst;
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
@@ -384,14 +321,6 @@ req_runjob(struct batch_request *preq)
 	parent = chk_job_request(jid, preq, &jt, NULL);
 	if (parent == NULL)
 		return; /* note, req_reject already called */
-
-	if ((dest = need_to_run_elsewhere(preq))) {
-		update_msvr_stat(1, NUM_MOVE_RUN);
-		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-			   jid, "Moving job to server %s in order to run", dest);
-		move_and_runjob(preq, parent, dest);
-		return;
-	}
 
 	/* the job must be in an execution queue */
 	if (parent->ji_qhdr->qu_qs.qu_type != QTYPE_Execution) {
@@ -1207,6 +1136,7 @@ complete_running(job *jobp)
 	if (jobp->ji_qs.ji_stime != 0)
 		return;		/* already called for this incarnation */
 
+	jobp->ji_terminated = 0;	/* reset terminated flag */
 	/**
 	 *	For a subjob, insure the parent array's state is set to 'B'
 	 *	and deal with any dependency on the parent.
@@ -1480,8 +1410,6 @@ post_sendmom(struct work_task *pwt)
 		case PBSE_HOOK_REJECT_DELETEJOB:
 			r = SEND_JOB_HOOK_REJECT_DELETEJOB;
 			break;
-		case PBSE_SISCOMM:
-			send_nodestat_req(CACHE_MISS);
 		default:
 			r = SEND_JOB_FATAL;
 			break;

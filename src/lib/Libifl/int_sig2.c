@@ -70,7 +70,7 @@
  * @retval      pbs_error(!0)   error
  */
 int
-PBSD_sig_put(int c, char *jobid, char *signal, char *extend, int prot, char **msgid)
+PBSD_sig_put(int c, const char *jobid, const char *signal, const char *extend, int prot, char **msgid)
 {
 	int rc = 0;
 

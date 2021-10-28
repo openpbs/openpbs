@@ -48,12 +48,13 @@
  * 	main()
  *
  */
+#include <pbs_config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
-#include <pbs_config.h>
 
 /**
  * @Brief

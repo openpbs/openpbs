@@ -68,7 +68,7 @@
  *
  */
 int
-pbs_asyrunjob(int c, char *jobid, char *location, char *extend) {
+pbs_asyrunjob(int c, const char *jobid, const char *location, const char *extend) {
 	return (*pfn_pbs_asyrunjob)(c, jobid, location, extend);
 }
 
@@ -86,7 +86,7 @@ pbs_asyrunjob(int c, char *jobid, char *location, char *extend) {
  * @retval      !0      error
  *
  */
-int pbs_asyrunjob_ack(int c, char *jobid, char *location, char *extend)
+int pbs_asyrunjob_ack(int c, const char *jobid, const char *location, const char *extend)
 {
 	return (*pfn_pbs_asyrunjob_ack)(c, jobid, location, extend);
 }
@@ -107,7 +107,7 @@ int pbs_asyrunjob_ack(int c, char *jobid, char *location, char *extend)
  *
  */
 int
-pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend) {
+pbs_alterjob(int c, const char *jobid, struct attrl *attrib, const char *extend) {
 	return (*pfn_pbs_alterjob)(c, jobid, attrib, extend);
 }
 
@@ -127,7 +127,7 @@ pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend) {
  *
  */
 int
-pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend) {
+pbs_asyalterjob(int c, const char *jobid, struct attrl *attrib, const char *extend) {
 	return (*pfn_pbs_asyalterjob)(c, jobid, attrib, extend);
 }
 
@@ -147,8 +147,7 @@ pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend) {
  *
  */
 int
-pbs_confirmresv(int c, char *rid, char *location, unsigned long start,
-	char *extend)
+pbs_confirmresv(int c, const char *rid, const char *location, unsigned long start, const char *extend)
 {
 	return (*pfn_pbs_confirmresv)(c, rid, location, start, extend);
 }
@@ -163,7 +162,7 @@ pbs_confirmresv(int c, char *rid, char *location, unsigned long start,
  * @retval int	- return value of pbs_connect_extend().
  */
 int
-pbs_connect(char *server) {
+pbs_connect(const char *server) {
 	return (*pfn_pbs_connect)(server);
 }
 
@@ -180,7 +179,7 @@ pbs_connect(char *server) {
  * @retval -1	error encountered setting up the connection.
  */
 int
-pbs_connect_extend(char *server, char *extend_data) {
+pbs_connect_extend(const char *server, const char *extend_data) {
 	return (*pfn_pbs_connect_extend)(server, extend_data);
 }
 
@@ -213,7 +212,7 @@ pbs_default() {
  *
  */
 int
-pbs_deljob(int c, char *jobid, char *extend) {
+pbs_deljob(int c, const char *jobid, const char *extend) {
 	return (*pfn_pbs_deljob)(c, jobid, extend);
 }
 
@@ -232,7 +231,7 @@ pbs_deljob(int c, char *jobid, char *extend) {
  *
  */
 struct batch_deljob_status *
-pbs_deljoblist(int c, char **jobid, int numofjobs, char *extend)
+pbs_deljoblist(int c, char **jobid, int numofjobs, const char *extend)
 {
 	return (*pfn_pbs_deljoblist)(c, jobid, numofjobs, extend);
 }
@@ -288,7 +287,7 @@ pbs_geterrmsg(int connect) {
  *
  */
 int
-pbs_holdjob(int c, char *jobid, char *holdtype, char *extend) {
+pbs_holdjob(int c, const char *jobid, const char *holdtype, const char *extend) {
 	return (*pfn_pbs_holdjob)(c, jobid, holdtype, extend);
 }
 
@@ -339,7 +338,7 @@ pbs_loadconf(int reload)
 *
 */
 char *
-pbs_locjob(int c, char *jobid, char *extend) {
+pbs_locjob(int c, const char *jobid, const char *extend) {
 	return (*pfn_pbs_locjob)(c, jobid, extend);
 }
 
@@ -361,8 +360,8 @@ pbs_locjob(int c, char *jobid, char *extend) {
  *
  */
 int
-pbs_manager(int c, int command, int objtype, char *objname,
-		struct attropl *attrib, char *extend) {
+pbs_manager(int c, int command, int objtype, const char *objname,
+		struct attropl *attrib, const char *extend) {
 	return (*pfn_pbs_manager)(c, command, objtype, objname,
 		attrib, extend);
 }
@@ -382,7 +381,7 @@ pbs_manager(int c, int command, int objtype, char *objname,
  *
  */
 int
-pbs_movejob(int c, char *jobid, char *destin, char *extend) {
+pbs_movejob(int c, const char *jobid, const char *destin, const char *extend) {
 	return (*pfn_pbs_movejob)(c, jobid, destin, extend);
 }
 
@@ -402,7 +401,7 @@ pbs_movejob(int c, char *jobid, char *destin, char *extend) {
  *
  */
 int
-pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend) {
+pbs_msgjob(int c, const char *jobid, int fileopt, const char *msg, const char *extend) {
 	return (*pfn_pbs_msgjob)(c, jobid, fileopt, msg, extend);
 }
 
@@ -421,7 +420,7 @@ pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend) {
  *
  */
 int
-pbs_orderjob(int c, char *job1, char *job2, char *extend) {
+pbs_orderjob(int c, const char *job1, const char *job2, const char *extend) {
 	return (*pfn_pbs_orderjob)(c, job1, job2, extend);
 }
 
@@ -439,7 +438,7 @@ pbs_orderjob(int c, char *job1, char *job2, char *extend) {
  *
  */
 int
-pbs_rerunjob(int c, char *jobid, char *extend) {
+pbs_rerunjob(int c, const char *jobid, const char *extend) {
 	return (*pfn_pbs_rerunjob)(c, jobid, extend);
 }
 
@@ -459,7 +458,7 @@ pbs_rerunjob(int c, char *jobid, char *extend) {
  *
  */
 int
-pbs_rlsjob(int c, char *jobid, char *holdtype, char *extend) {
+pbs_rlsjob(int c, const char *jobid, const char *holdtype, const char *extend) {
 	return (*pfn_pbs_rlsjob)(c, jobid, holdtype, extend);
 }
 
@@ -495,7 +494,7 @@ pbs_preempt_jobs(int c, char **preempt_jobs_list) {
  *
  */
 int
-pbs_runjob(int c, char *jobid, char *location, char *extend) {
+pbs_runjob(int c, const char *jobid, const char *location, const char *extend) {
 	return (*pfn_pbs_runjob)(c, jobid, location, extend);
 }
 
@@ -514,7 +513,7 @@ pbs_runjob(int c, char *jobid, char *location, char *extend) {
  *
  */
 char **
-pbs_selectjob(int c, struct attropl *attrib, char *extend) {
+pbs_selectjob(int c, struct attropl *attrib, const char *extend) {
 	return (*pfn_pbs_selectjob)(c, attrib, extend);
 }
 
@@ -533,7 +532,7 @@ pbs_selectjob(int c, struct attropl *attrib, char *extend) {
  *
  */
 int
-pbs_sigjob(int c, char *jobid, char *signal, char *extend) {
+pbs_sigjob(int c, const char *jobid, const char *signal, const char *extend) {
 	return (*pfn_pbs_sigjob)(c, jobid, signal, extend);
 }
 
@@ -581,7 +580,7 @@ pbs_delstatfree(struct batch_deljob_status *bdsp) {
  *
  */
 struct batch_status *
-pbs_statrsc(int c, char *id, struct attrl *attrib, char *extend) {
+pbs_statrsc(int c, const char *id, struct attrl *attrib, const char *extend) {
 	return (*pfn_pbs_statrsc)(c, id, attrib, extend);
 }
 
@@ -600,7 +599,7 @@ pbs_statrsc(int c, char *id, struct attrl *attrib, char *extend) {
  *
  */
 struct batch_status *
-pbs_statjob(int c, char *id, struct attrl *attrib, char *extend) {
+pbs_statjob(int c, const char *id, struct attrl *attrib, const char *extend) {
 	return (*pfn_pbs_statjob)(c, id, attrib, extend);
 }
 
@@ -619,7 +618,7 @@ pbs_statjob(int c, char *id, struct attrl *attrib, char *extend) {
  *
  */
 struct batch_status *
-pbs_selstat(int c, struct attropl *attrib, struct attrl   *rattrib, char *extend) {
+pbs_selstat(int c, struct attropl *attrib, struct attrl   *rattrib, const char *extend) {
 	return (*pfn_pbs_selstat)(c, attrib, rattrib, extend);
 }
 
@@ -638,7 +637,7 @@ pbs_selstat(int c, struct attropl *attrib, struct attrl   *rattrib, char *extend
  *
  */
 struct batch_status *
-pbs_statque(int c, char *id, struct attrl *attrib, char *extend) {
+pbs_statque(int c, const char *id, struct attrl *attrib, const char *extend) {
 	return (*pfn_pbs_statque)(c, id, attrib, extend);
 }
 
@@ -656,7 +655,7 @@ pbs_statque(int c, char *id, struct attrl *attrib, char *extend) {
  *
  */
 struct batch_status *
-pbs_statserver(int c, struct attrl *attrib, char *extend) {
+pbs_statserver(int c, struct attrl *attrib, const char *extend) {
 	return (*pfn_pbs_statserver)(c, attrib, extend);
 }
 
@@ -674,7 +673,7 @@ pbs_statserver(int c, struct attrl *attrib, char *extend) {
  *
  */
 struct batch_status *
-pbs_statsched(int c, struct attrl *attrib, char *extend) {
+pbs_statsched(int c, struct attrl *attrib, const char *extend) {
 	return (*pfn_pbs_statsched)(c, attrib, extend);
 }
 
@@ -693,7 +692,7 @@ pbs_statsched(int c, struct attrl *attrib, char *extend) {
  *
  */
 struct batch_status *
-pbs_stathost(int con, char *hid, struct attrl *attrib, char *extend) {
+pbs_stathost(int con, const char *hid, struct attrl *attrib, const char *extend) {
 	return (*pfn_pbs_stathost)(con, hid, attrib, extend);
 }
 
@@ -713,7 +712,7 @@ pbs_stathost(int con, char *hid, struct attrl *attrib, char *extend) {
  *
  */
 struct batch_status *
-pbs_statnode(int c, char *id, struct attrl *attrib, char *extend) {
+pbs_statnode(int c, const char *id, struct attrl *attrib, const char *extend) {
 	return (*pfn_pbs_statnode)(c, id, attrib, extend);
 }
 
@@ -732,7 +731,7 @@ pbs_statnode(int c, char *id, struct attrl *attrib, char *extend) {
  *
  */
 struct batch_status *
-pbs_statvnode(int c, char *id, struct attrl *attrib, char *extend) {
+pbs_statvnode(int c, const char *id, struct attrl *attrib, const char *extend) {
 	return (*pfn_pbs_statvnode)(c, id, attrib, extend);
 }
 
@@ -752,7 +751,7 @@ pbs_statvnode(int c, char *id, struct attrl *attrib, char *extend) {
  *
  */
 struct batch_status *
-pbs_statresv(int c, char *id, struct attrl *attrib, char *extend) {
+pbs_statresv(int c, const char *id, struct attrl *attrib, const char *extend) {
 	return (*pfn_pbs_statresv)(c, id, attrib, extend);
 }
 
@@ -772,7 +771,7 @@ pbs_statresv(int c, char *id, struct attrl *attrib, char *extend) {
  *
  */
 struct batch_status *
-pbs_stathook(int c, char *id, struct attrl *attrib, char *extend) {
+pbs_stathook(int c, const char *id, struct attrl *attrib, const char *extend) {
 	return (*pfn_pbs_stathook)(c, id, attrib, extend);
 }
 
@@ -808,7 +807,7 @@ pbs_get_attributes_in_error(int connect) {
  *
  */
 char *
-pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, char *extend) {
+pbs_submit(int c, struct attropl  *attrib, const char *script, const char *destination, const char *extend) {
 	return (*pfn_pbs_submit)(c, attrib, script, destination, extend);
 }
 
@@ -825,8 +824,26 @@ pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, char
  * @retval ERROR NULL
  */
 char *
-pbs_submit_resv(int c, struct attropl *attrib, char *extend) {
+pbs_submit_resv(int c, struct attropl *attrib, const char *extend) {
 	return (*pfn_pbs_submit_resv)(c, attrib, extend);
+}
+
+/**
+ * @brief
+ *	Passes modify reservation request to PBSD_modify_resv( )
+ *
+ * @param[in]   c - socket on which connected
+ * @param[in]	resv_id - reservation id
+ * @param[in]   attrib - the list of attributes for batch request
+ * @param[in]   extend - extension of batch request
+ *
+ * @return char*
+ * @retval SUCCESS returns the response from the server.
+ * @retval ERROR NULL
+ */
+char *
+pbs_modify_resv(int c, const char *resv_id, struct attropl *attrib, const char *extend) {
+	return (*pfn_pbs_modify_resv)(c, resv_id, attrib, extend);
 }
 
 /**
@@ -843,8 +860,29 @@ pbs_submit_resv(int c, struct attropl *attrib, char *extend) {
  *
  */
 int
-pbs_delresv(int c, char *resv_id, char *extend) {
+pbs_delresv(int c, const char *resv_id, const char *extend) {
 	return (*pfn_pbs_delresv)(c, resv_id, extend);
+}
+
+/**
+ * @brief
+ * 	 	Release a set of sister nodes or vnodes,
+ * 	or all sister nodes or vnodes assigned to the specified PBS
+ * 	batch job.
+ *
+ * @param[in] c 	communication handle
+ * @param[in] jobid  job identifier
+ * @param[in] node_list 	list of hosts or vnodes to be released
+ * @param[in] extend 	additional params, currently passes -k arguments
+ *
+ * @return	int
+ * @retval	0	Success
+ * @retval	!0	error
+ *
+ */
+int
+pbs_relnodesjob(int c, const char *jobid, const char *node_list, const char *extend) {
+	return (*pfn_pbs_relnodesjob)(c, jobid, node_list, extend);
 }
 
 /**
@@ -861,6 +899,23 @@ pbs_delresv(int c, char *resv_id, char *extend) {
  *
  */
 int
-pbs_terminate(int c, int manner, char *extend) {
+pbs_terminate(int c, int manner, const char *extend) {
 	return (*pfn_pbs_terminate)(c, manner, extend);
+}
+
+/**
+ * @brief Registers the Scheduler with all the Servers configured
+ *
+ * param[in]	sched_id - sched identifier which is known to server
+ * param[in]	primary_conn_id - primary connection handle which represents all servers returned by pbs_connect
+ * param[in]	secondary_conn_id - secondary connection handle which represents all servers returned by pbs_connect
+ *
+ * @return int
+ * @retval !0  - couldn't register with a connected server
+ * @return 0  - success
+ */
+int
+pbs_register_sched(const char *sched_id, int primary_conn_sd, int secondary_conn_sd)
+{
+	return (*pfn_pbs_register_sched)(sched_id, primary_conn_sd, secondary_conn_sd);
 }

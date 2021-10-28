@@ -37,6 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
+#include	<pbs_config.h>
+
 #include	<sys/stat.h>
 #include	<signal.h>
 #include	<sys/utsname.h>
@@ -49,7 +51,6 @@
 #include	"job.h"
 #include	"mom_func.h"
 #include	"placementsets.h"
-#include	"pbs_undolr.h"
 #include	"tpp.h"
 
 extern int do_debug_report;
@@ -122,10 +123,6 @@ stop_me(int sig)
 void
 finish_loop(time_t waittime)
 {
-#ifdef PBS_UNDOLR_ENABLED
-	if (sigusr1_flag)
-		undolr();
-#endif
 	if (do_debug_report)
 		debug_report();
 	if (termin_child) {

@@ -144,11 +144,14 @@
 #include "parse.h"
 #include "hook.h"
 #include "libpbs.h"
+#include "libutil.h"
 #ifdef NAS
 #include "site_code.h"
 #endif
 
+
 extern char **environ;
+
 
 /**
  *	@brief
@@ -184,8 +187,6 @@ query_server(status *pol, int pbs_sd)
 
 	if (pol == NULL)
 		return NULL;
-
-	PBSD_server_ready(pbs_sd);
 
 	if (allres.empty())
 		if (update_resource_defs(pbs_sd) == false)
@@ -434,23 +435,6 @@ query_server(status *pol, int pbs_sd)
 	 * we don't want to account for resources consumed by ghost jobs
 	 */
 	create_placement_sets(policy, sinfo);
-	if (!sinfo->node_group_enable && !sinfo->node_group_key.empty() &&
-	    (sinfo->node_group_key[0] == "msvr_node_group")) {
-		auto np = create_node_partitions(policy, sinfo->unassoc_nodes,
-					    sinfo->node_group_key, NP_NONE, &sinfo->num_parts);
-
-		/* For each job, we'll need the placement set of nodes which belong to its server
-		 * So, we need to associate psets with their respective server ids
-		 */
-		if (np != NULL) {
-			int i;
-
-			for (i = 0; i < sinfo->num_parts; i++) {
-				sinfo->svr_to_psets[np[i]->ninfo_arr[0]->svr_inst_id] = np[i];
-			}
-		}
-		free(np);
-	}
 
 	sinfo->buckets = create_node_buckets(policy, sinfo->nodes, sinfo->queues, UPDATE_BUCKET_IND);
 
@@ -632,15 +616,6 @@ query_server_info(status *pol, struct batch_status *server)
 	site_set_share_head(sinfo);
 #endif /* localmod 034 */
 
-	if (sinfo->node_group_key.empty() && get_num_servers() > 1) {
-		/* Set node_group_key to msvr_node_group for server local placement */
-		sinfo->node_group_key = break_comma_list(std::string("msvr_node_group"));
-
-		/* This will ensure that create_placement_sets doesn't create placement sets,
-		 * we'll create directly by calling create_node_partitions
-		 */
-		sinfo->node_group_enable = 0;
-	}
 	return sinfo;
 }
 

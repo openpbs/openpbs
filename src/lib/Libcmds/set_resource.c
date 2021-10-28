@@ -71,15 +71,15 @@ static int allowresc = 1;
  */
 
 int
-set_resources(struct attrl **attrib, char *resources, int add, char **erptr)
+set_resources(struct attrl **attrib, const char *resources, int add, char **erptr)
 {
-	char *r, *eq, *v, *e;
+	char *eq, *v, *e;
+	char *r = (char *) resources;
 	char *str;
 	struct attrl *attr, *ap, *priorap;
 	int i, found, len;
 	int haveresc = 0;
 
-	r = resources;
 	while (*r != '\0') {
 
 		/* Skip any leading whitespace */

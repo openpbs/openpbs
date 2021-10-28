@@ -99,9 +99,6 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_home_path */
 	NULL,					/* pbs_exec_path */
 	NULL,					/* pbs_server_name */
-	0,					/* single pbs server instance by default */
-	NULL,					/* pbs_server_instances */
-	NULL,					/* pbs_server_instances str */
 	NULL,					/* cp_path */
 	NULL,					/* scp_path */
 	NULL,					/* rcp_path */
@@ -128,7 +125,6 @@ struct pbs_config pbs_conf = {
 	0,					/* default comm logevent mask */
 	4,					/* default number of threads */
 	NULL,					/* mom short name override */
-	NULL,					/* pbs_lr_save_path */
 	0,					/* high resolution timestamp logging */
 	0,					/* number of scheduler threads */
 	NULL,					/* default scheduler user */
@@ -258,106 +254,6 @@ parse_config_line(FILE *fp, char **key, char **val)
 }
 
 /**
- * @brief frame the psi_t struct from svr instance id passed
- * 
- * @param[in,out] psi - server instance id
- * @param[in] svr_id - server instance id
- * @return int 
- * @retval 0 - success
- * @retval !0 - failure
- */
-int
-frame_psi(psi_t *psi, char *svr_id)
-{
-	char *svrname;
-
-	if (!psi || !svr_id)
-		return -1;
-
-	svrname = parse_servername(svr_id, &psi->port);
-	if (svrname == NULL)
-		return -1;
-
-	pbs_strncpy(psi->name, svrname, sizeof(psi->name));
-
-	if (*psi->name == '\0') {
-		if (gethostname(psi->name, PBS_MAXHOSTNAME) == 0)
-			get_fullhostname(psi->name, psi->name, PBS_MAXHOSTNAME);
-	}
-
-	if (psi->port == 0)
-		psi->port = PBS_BATCH_SERVICE_PORT;
-
-	return 0;
-}
-
-/**
- * @brief
- * parse_psi - parses the PBS_SERVER_INSTANCES
- *    
- * @param[in] conf_value  configuration value set in pbs.conf
- * 
- * @return int
- * @retval -1, For error
- * @retval 0, For success
- */
-
-int
-parse_psi(char *conf_value)
-{
-	char **list = NULL;
-	int i;
-	char *local_conf = NULL;
-
-	free(pbs_conf.psi);
-	free(pbs_conf.psi_str);
-
-	if (conf_value == NULL || conf_value[0] == '\0') {
-		char *dfltsvr = pbs_default();
-		if (dfltsvr == NULL)
-			return -1;
-		pbs_asprintf(&local_conf, "%s:%d", pbs_default(), pbs_conf.batch_service_port);
-		if (local_conf == NULL)
-			return -1;
-	} else
-		local_conf = conf_value;
-
-	list = break_comma_list(local_conf);
-	if (list == NULL)
-		goto err;
-
-	for (i = 0; list[i] != NULL; i++)
-		;
-
-	if (!(pbs_conf.psi = calloc(i, sizeof(psi_t)))) {
-		fprintf(stderr, "Out of memory while parsing configuration %s", local_conf);
-		goto err;
-	}
-
-	for (i = 0; list[i] != NULL; i++) {
-		if (frame_psi(&pbs_conf.psi[i], list[i]) != 0) {
-			fprintf(stderr, "Error parsing PBS_SERVER_INSTANCES %s \n", list[i]);
-			goto err;
-		}
-	}
-	free_string_array(list);
-	pbs_conf.pbs_num_servers = i;
-	if (conf_value && conf_value[0] != '\0')
-		pbs_conf.psi_str = strdup(conf_value);
-	else
-		pbs_conf.psi_str = local_conf;
-
-	return 0;
-
-err:
-	free_string_array(list);
-	if (conf_value == NULL || conf_value[0] == '\0')
-		free(local_conf);
-	return -1;
-}
-
-
-/**
  * @brief
  *	pbs_loadconf - Populate the pbs_conf structure
  *
@@ -379,8 +275,6 @@ err:
  *	synchronized against the reload of those variables.
  *
  * @param[in] reload	Whether to attempt a reload
- * 						Note: The following parameters will not be reloaded:
- * 						- PBS_SERVER_INSTANCES
  *
  * @return int
  * @retval 1 Success
@@ -402,7 +296,6 @@ __pbs_loadconf(int reload)
 	char **servalias;		/* service alias list */
 	unsigned int *pui;		/* for use with identify_service_entry */
 #endif
-	char *psi_value = NULL;
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -597,10 +490,6 @@ __pbs_loadconf(int reload)
 				free(pbs_conf.pbs_server_name);
 				pbs_conf.pbs_server_name = strdup(conf_value);
 			}
-			else if (!strcmp(conf_name, PBS_CONF_SERVER_INSTANCES)) {
-				if ((psi_value = strdup(conf_value)) == NULL)
-					goto err;
-			}
 			else if (!strcmp(conf_name, PBS_CONF_RCP)) {
 				free(pbs_conf.rcp_path);
 				pbs_conf.rcp_path = shorten_and_cleanup_path(conf_value);
@@ -662,11 +551,6 @@ __pbs_loadconf(int reload)
 			else if (!strcmp(conf_name, PBS_CONF_MOM_NODE_NAME)) {
 				free(pbs_conf.pbs_mom_node_name);
 				pbs_conf.pbs_mom_node_name = strdup(conf_value);
-			} else if (!strcmp(conf_name, PBS_CONF_LR_SAVE_PATH)) {
-				free(pbs_conf.pbs_lr_save_path);
-				if ((pbs_conf.pbs_lr_save_path = strdup(conf_value)) == NULL) {
-					goto err;
-				}
 			}
 			else if (!strcmp(conf_name, PBS_CONF_LOG_HIGHRES_TIMESTAMP)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
@@ -794,11 +678,6 @@ __pbs_loadconf(int reload)
 		if ((pbs_conf.pbs_server_name = strdup(gvalue)) == NULL) {
 			goto err;
 		}
-	}
-	if ((gvalue = getenv(PBS_CONF_SERVER_INSTANCES)) != NULL) {
-		free(psi_value);
-		if ((psi_value = strdup(gvalue)) == NULL)
-			goto err;
 	}
 	if ((gvalue = getenv(PBS_CONF_RCP)) != NULL) {
 		free(pbs_conf.rcp_path);
@@ -1136,14 +1015,6 @@ __pbs_loadconf(int reload)
 
 	pbs_conf.loaded = 1;
 
-	if (!reload) {
-		if (parse_psi(psi_value) == -1) {
-			fprintf(stderr, "Couldn't parse PBS_SERVER_INSTANCES\n");
-			free(psi_value);
-			goto err;
-		}
-	}
-
 	if (pbs_client_thread_unlock_conf() != 0)
 		return 0;
 
@@ -1202,102 +1073,14 @@ err:
 		free(pbs_conf.pbs_core_limit);
 		pbs_conf.pbs_core_limit = NULL;
 	}
-	if (pbs_conf.pbs_lr_save_path) {
-		free(pbs_conf.pbs_lr_save_path);
-		pbs_conf.pbs_lr_save_path = NULL;
-	}
 	if (pbs_conf.supported_auth_methods) {
 		free_string_array(pbs_conf.supported_auth_methods);
 		pbs_conf.supported_auth_methods = NULL;
 	}
-	
-	if (psi_value != NULL)
-		free(psi_value);
 
 	pbs_conf.load_failed = 1;
 	(void)pbs_client_thread_unlock_conf();
 	return 0;
-}
-
-/**
- * @brief
- *	returns psi in string format
- *
- * @return char *
- * @retval !NULL pointer psi string
- * @retval NULL failure
- */
-char *
-get_psi_str()
-{
-	return pbs_conf.psi_str;
-}
-
-/**
- * @brief
- *	Get conf paramter without calling pbs_loadconf
- *	Used when only clients do not call pbs_loadconf
- *	due to performance reasons.
- *
- * @param[in] conf_var_name - conf variable
- *
- * @note
- * Although the function has a generic structure,
- * make sure that the variable is compared within function.
- * - return string has to be freed by the caller
- *
- * @return char *
- * @retval !NULL pointer to the tmpdir string
- * @retval NULL failure
- */
-char *
-pbs_get_conf_var(char *conf_var_name)
-{
-	char *conf_val_out = NULL;
-	FILE *fp = NULL;
-	char *conf_file = NULL;
-	char *conf_name = NULL;
-	char *conf_value = NULL;
-	char *p = NULL;
-
-	/* If pbs_conf already been populated use that value. */
-	if (pbs_conf.loaded != 0) {
-		if (!strcmp(conf_var_name, PBS_CONF_SERVER_INSTANCES))
-			conf_val_out = get_psi_str();
-	}
-
-	if (conf_val_out)
-		return conf_val_out;
-
-	/* Next, try the environment. */
-	if ((p = getenv(conf_var_name)) != NULL) {
-		conf_val_out = strdup(p);
-	}
-
-	if (conf_val_out)
-		return conf_val_out;
-
-	/* Now try pbs.conf */
-	conf_file = pbs_get_conf_file();
-	if ((fp = fopen(conf_file, "r")) != NULL) {
-		while (parse_config_line(fp, &conf_name, &conf_value) != NULL) {
-			if ((conf_name == NULL) || (*conf_name == '\0'))
-				continue;
-			if ((conf_value == NULL) || (*conf_value == '\0'))
-				continue;
-			if (!strcmp(conf_name, conf_var_name)) {
-				conf_val_out = strdup(conf_value);
-			}
-		}
-		fclose(fp);
-	}
-	free(conf_file);
-	
-	if (conf_val_out)
-		return conf_val_out;
-
-	/* Finally, resort to the default. */
-	return NULL;
 }
 
 /**
@@ -1391,18 +1174,4 @@ pbs_get_tmpdir(void)
 		tmpdir[strlen(tmpdir)-1] = '\0';
 #endif
 	return tmpdir;
-}
-
-/**
- * @brief	Get number of servers configured in PBS complex
- *
- * @param	void
- *
- * @return	int
- * @retval	number of configured servers
- */
-int
-get_num_servers(void)
-{
-	return pbs_conf.pbs_num_servers;
 }

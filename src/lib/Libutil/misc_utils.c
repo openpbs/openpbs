@@ -2535,18 +2535,6 @@ rand_num(void)
 
 /**
  * @brief
- * 	Return multiserver mode
- *
- * @return int
- */
-int
-msvr_mode(void)
-{
-	return (get_num_servers() > 1);
-}
-
-/**
- * @brief
  * 	get subjob index from given jobid
  *
  * @param[in] jid - jobid

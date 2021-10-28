@@ -142,7 +142,6 @@ typedef unsigned long pbs_net_t;	/* for holding host addresses */
 #define MOVE_TYPE_Exec  3	/* Execution (move to MOM) */
 #define MOVE_TYPE_MgrMv	4	/* Mover by privileged user, a manager */
 #define MOVE_TYPE_Order 5	/* qorder command by user */
-#define MOVE_TYPE_Move_Run  6	/* Move and run request */
 
 #define SEND_JOB_OK	0	/* send_job sent successfully	  */
 #define SEND_JOB_FATAL	1	/* send_job permenent fatal error */

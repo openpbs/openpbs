@@ -449,20 +449,8 @@ stop_pbs() {
 				if [ -r "${PBS_HOME}/server_priv/qmgr_shutdown" ]; then
 					echo "pbs_server evaluating ${PBS_HOME}/server_priv/qmgr_shutdown"
 					${PBS_EXEC}/bin/qmgr <"${PBS_HOME}/server_priv/qmgr_shutdown"
-				fi
-				# Check if PBS_SERVER_INSTANCES is set for multi-server
-				if [ ! -z "${PBS_SERVER_INSTANCES}" ]; then
-					# We don't want qterm to try to contact other servers
-					# So, set PBS_SERVER_INSTANCES to the current server's hostname and port
-					if [ -z "${PBS_BATCH_SERVICE_PORT}" ]; then
-						PBS_BATCH_SERVICE_PORT=15001
-					fi
-					msvr_host=${PBS_SERVER_HOST_NAME}
-					if [ -z $msvr_host ]; then
-						msvr_host="$(hostname -s)"
-					fi
-				fi
-				PBS_SERVER_INSTANCES="${msvr_host}:${PBS_BATCH_SERVICE_PORT}" ${PBS_EXEC}/bin/qterm -t quick
+				fi	
+				${PBS_EXEC}/bin/qterm -t quick
 				echo "PBS server - was pid: ${pbs_server_pid}"
 			elif [ ${is_secondary} -eq 1 ]; then
 				echo "This is secondary server, killing process."

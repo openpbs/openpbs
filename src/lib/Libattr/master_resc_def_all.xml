@@ -951,20 +951,6 @@
       <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
       <member_at_struct>NULL</member_at_struct>
    </attributes>
-   <attributes>
-      <member_index>RESC_MSVR_ND_GROUP</member_index>
-      <member_name>"msvr_node_group"</member_name>
-      <member_at_decode>decode_arst</member_at_decode>
-      <member_at_encode>encode_arst</member_at_encode>
-      <member_at_set>set_arst</member_at_set>
-      <member_at_comp>comp_arst</member_at_comp>
-      <member_at_free>free_arst</member_at_free>
-      <member_at_action>NULL_FUNC_RESC</member_at_action>
-      <member_at_flags>ATR_DFLAG_SvRD | ATR_DFLAG_SvWR</member_at_flags>
-      <member_at_type>ATR_TYPE_ARST</member_at_type>
-      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-      <member_at_struct>NULL</member_at_struct>
-   </attributes>
    <attributes flag="SVR">
       <member_name>"|unknown|"</member_name>
       <member_at_decode>decode_unkn</member_at_decode>
