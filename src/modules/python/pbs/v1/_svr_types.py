@@ -89,7 +89,7 @@ def get_server_data_fp():
     if data_file is None:
         return None
     try:
-        return open(data_file, "a+");
+        return open(data_file, "a+")
     except:
         _pbs_v1.logmsg(_pbs_v1.LOG_WARNING,
                        "warning: error opening debug data file %s" % data_file)
@@ -402,11 +402,11 @@ class _job():
 
 _job.id = PbsAttributeDescriptor(_job, 'id', "", (str,))
 _job.failed_mom_list = PbsAttributeDescriptor(
-    _job, 'failed_mom_list', {}, (list,))
+    _job, 'failed_mom_list', [], (list,))
 _job.succeeded_mom_list = PbsAttributeDescriptor(
-    _job, 'succeeded_mom_list', {}, (list,))
+    _job, 'succeeded_mom_list', [], (list,))
 _job._connect_server = PbsAttributeDescriptor(
-    _job, '_connect_server', {}, (str,))
+    _job, '_connect_server', "", (str,))
 #: C(job)
 
 #:------------------------------------------------------------------------
@@ -574,7 +574,6 @@ class _queue():
     """
 
     attributes = PbsReadOnlyDescriptor('attributes', {})
-    #name = PbsAttributeDescriptor(queue, 'name', "", (str,))
 
     def __init__(self, name, connect_server=None):
         """__init__"""
