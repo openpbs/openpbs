@@ -1578,7 +1578,7 @@ class pbs_resource():
         """
         if not self._has_value:
             # return the cached value
-            return _pbs_v1.resource_str_value(self)
+            return str(_pbs_v1.resource_str_value(self))
 
         rv = []
 
