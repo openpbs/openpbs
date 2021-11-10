@@ -78,6 +78,8 @@ except:
 # Set global pbs_conf parameter.
 pbs_conf = _pbs_v1.get_pbs_conf()
 
+import weakref
+
 
 #
 # get_server_data_fp: returns the file object representing the
@@ -286,7 +288,7 @@ class _job():
     """
 
     attributes = PbsReadOnlyDescriptor('attributes', {})
-    _attributes_hook_set = {}
+    _attributes_hook_set = weakref.WeakKeyDictionary()
 
     def __new__(cls, value, connect_server=None):
         return object.__new__(cls)
@@ -418,7 +420,7 @@ class _vnode():
     """
 
     attributes = PbsReadOnlyDescriptor('attributes', {})
-    _attributes_hook_set = {}
+    _attributes_hook_set = weakref.WeakKeyDictionary()
 
     def __new__(cls, value, connect_server=None):
         return object.__new__(cls)
@@ -501,7 +503,7 @@ class _resv():
     """
 
     attributes = PbsReadOnlyDescriptor('attributes', {})
-    _attributes_hook_set = {}
+    _attributes_hook_set = weakref.WeakKeyDictionary()
     attributes_readonly = PbsReadOnlyDescriptor('attributes_readonly',
                                                 [])
 
@@ -1424,7 +1426,7 @@ class _server_attribute:
     This represents a external form of attributes..
     """
     attributes = PbsReadOnlyDescriptor('attributes', {})
-    _attributes_hook_set = {}
+    _attributes_hook_set = weakref.WeakKeyDictionary()
     def __init__(self, name, resource, value, op, flags):
         self.name = name
         self.resource = resource
@@ -1482,7 +1484,7 @@ class _management:
     This represents a management operation.
     """
     attributes = PbsReadOnlyDescriptor('attributes', {})
-    _attributes_hook_set = {}
+    _attributes_hook_set = weakref.WeakKeyDictionary()
 
     def __init__(self, cmd, objtype, objname, request_time, reply_code,
         reply_auxcode, reply_choice, reply_text,

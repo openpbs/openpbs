@@ -99,6 +99,7 @@ __all__ = ['_generic_attr',
 import _pbs_v1
 import sys
 import math
+import weakref
 _size = _pbs_v1.svr_types._size
 _LOG = _pbs_v1.logmsg
 _IS_SETTABLE = _pbs_v1.is_attrib_val_settable
@@ -151,7 +152,7 @@ class PbsAttributeDescriptor():
         __attributes = getattr(cls, _ATTRIBUTES_KEY_NAME)
         __attributes[name] = None
         #: now we need to maintain a unique value for each object
-        self.__per_instance = {}
+        self.__per_instance = weakref.WeakKeyDictionary()
 
     #: m(__init__)
 
@@ -291,8 +292,8 @@ class PbsReadOnlyDescriptor():
         else:
             return str(self._value)
         #
-    #: m(__set__)
-    __repr__ = __set__
+    #: m(__str__)
+    __repr__ = __str__
 
 #: End Class PbsReadOnlyDescriptor
 
@@ -1547,8 +1548,8 @@ class pbs_resource():
 
     __resources = PbsReadOnlyDescriptor('__resources', {})
     attributes = __resources
-    _attributes_hook_set = {}
-    _attributes_unknown = {}
+    _attributes_hook_set = weakref.WeakKeyDictionary()
+    _attributes_unknown = weakref.WeakKeyDictionary()
 
     def __init__(self, name, is_entity=0):
         """__init__"""
