@@ -320,6 +320,7 @@ extern "C" {
 #define ATTR_python_restart_max_hooks "python_restart_max_hooks"
 #define ATTR_python_restart_max_objects "python_restart_max_objects"
 #define ATTR_python_restart_min_interval "python_restart_min_interval"
+#define ATTR_python_restart_enable "python_restart_enable"
 #define ATTR_power_provisioning "power_provisioning"
 #define ATTR_sync_mom_hookfiles_timeout "sync_mom_hookfiles_timeout"
 #define ATTR_max_job_sequence_id "max_job_sequence_id"

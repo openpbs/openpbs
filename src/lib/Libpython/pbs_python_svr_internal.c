@@ -296,6 +296,8 @@ static int      hook_scheduler_restart_cycle = FALSE; 	/* flag to tell local */
 #define PBS_PYTHON_RESTART_MAX_OBJECTS 1000
 /* Minimum interval between interpreter restarts */
 #define PBS_PYTHON_RESTART_MIN_INTERVAL 30
+/* Enable interpreter restarts */
+#define PBS_PYTHON_RESTART_ENABLE 1
 /* count of Python objects created */
 static long	object_counter = 0;
 
@@ -5119,6 +5121,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 
 	static long hook_counter = 0; /* for tracking interpreter restart */
 	static long min_restart_interval = 0; /* prevents frequent restarts */
+	static long enable_restart = 0; /* enable Pyton interpreter restarts */
 	static int init_iters = 0;  /* 1 to initialize the PBS iterarators list */
 	static int init_vnode_set = 0;  /* 1 to initialize the vnode set opers */
 
@@ -5252,14 +5255,27 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, log_buffer);
 	}
 
+	lval = enable_restart;
+	if (is_sattr_set(SVR_ATR_PythonRestartEnable))
+		enable_restart = get_sattr_long(SVR_ATR_PythonRestartEnable);
+	else
+		enable_restart = PBS_PYTHON_RESTART_ENABLE;
+	if (lval != enable_restart) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"python_disable_restart is now %ld", enable_restart);
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, log_buffer);
+	}
+
 	hook_counter++;
 	restart_python = 0;
-	if (hook_counter >= max_hooks)
-		restart_python = 1;
-	if (object_counter >= max_objects)
-		restart_python = 1;
-	if ((time(NULL) - previous_restart) < min_restart_interval)
-		restart_python = 0;
+	if (enable_restart) {
+		if (hook_counter >= max_hooks)
+			restart_python = 1;
+		if (object_counter >= max_objects)
+			restart_python = 1;
+		if ((time(NULL) - previous_restart) < min_restart_interval)
+			restart_python = 0;
+	}
 	if (restart_python) {
 		char *line;
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__,

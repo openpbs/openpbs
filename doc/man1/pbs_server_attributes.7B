@@ -1351,8 +1351,9 @@ Default:
 
 .IP python_restart_max_hooks 8
 The maximum number of hooks to be serviced before the Python
-interpreter is restarted.  If this number is exceeded, and the time
-limit set in 
+interpreter is restarted.  If this number is exceeded,
+.I python_restart_enable
+is true, and the time limit set in
 .I python_restart_min_interval 
 has elapsed, the Python interpreter is restarted.
 .br
@@ -1369,8 +1370,9 @@ Default:
 
 .IP python_restart_max_objects 8
 The maximum number of objects to be created before the Python
-interpreter is restarted.  If this number is exceeded, and the time
-limit set in 
+interpreter is restarted.  If this number is exceeded,
+.I python_restart_enable
+is true, and the time limit set in
 .I python_restart_min_interval 
 has elapsed, the Python interpreter is restarted.
 .br
@@ -1387,13 +1389,15 @@ Default:
 
 .IP python_restart_min_interval 8
 The minimum time interval before the Python interpreter is restarted.
-If this interval has elapsed, and either the maximum number of hooks
+If this interval has elapsed,
+.I python_restart_enable
+is true, and either the maximum number of hooks
 to be serviced (set in 
-.I python_restart_max_hooks
-) has been exceeded or
+.IR python_restart_max_hooks )
+has been exceeded or
 the maximum number of objects to be created (set in
-.I python_restart_max_objects
-) has been exceeded, the Python interpreter is restarted.
+.IR python_restart_max_objects )
+has been exceeded, the Python interpreter is restarted.
 .br
 Readable by all; settable by Manager.
 .br
@@ -1410,6 +1414,24 @@ Python type:
 .br
 Default: 
 .I 30
+
+.IP python_restart_enable 8
+Enables restarting of the Python interpreter at a frequency defined by
+.IR python_restart_max_hooks ,
+.IR python_restart_max_objects ,
+and
+.IR python_restart_min_interval .
+.br
+Readable by all; settable by Manager.
+.br
+Format:
+.I Boolean
+.br
+Python type:
+.I bool
+.br
+Default:
+.I True
 
 .IP query_other_jobs 8
 Controls whether unprivileged users are allowed to select or query the

@@ -1516,6 +1516,23 @@
       </member_verify_function>
    </attributes>
    <attributes>
+      <member_index>SVR_ATR_PythonRestartEnable</member_index>
+      <member_name>ATTR_python_restart_enable</member_name>
+      <member_at_decode>decode_b</member_at_decode>
+      <member_at_encode>encode_b</member_at_encode>
+      <member_at_set>set_b</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>MGR_ONLY_SET</member_at_flags>
+      <member_at_type>ATR_TYPE_BOOL</member_at_type>
+      <member_at_parent>PARENT_TYPE_SERVER</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_bool</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
       #include "site_svr_attr_def.h"
       <member_index>SVR_ATR_queued_jobs_threshold</member_index>
       <member_name>ATTR_queued_jobs_threshold</member_name>
