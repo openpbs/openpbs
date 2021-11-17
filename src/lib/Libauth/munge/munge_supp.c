@@ -51,23 +51,23 @@
 
 static pthread_once_t munge_init_once = PTHREAD_ONCE_INIT;
 
-static void *munge_dlhandle = NULL; /* MUNGE dynamic loader handle */
-static int (*munge_encode)(char **, void *, const void *, int) = NULL; /* MUNGE munge_encode() function pointer */
+static void *munge_dlhandle = NULL;							       /* MUNGE dynamic loader handle */
+static int (*munge_encode)(char **, void *, const void *, int) = NULL;			       /* MUNGE munge_encode() function pointer */
 static int (*munge_decode)(const char *cred, void *, void **, int *, uid_t *, gid_t *) = NULL; /* MUNGE munge_decode() function pointer */
-static char * (*munge_strerror) (int) = NULL; /* MUNGE munge_stderror() function pointer */
+static char *(*munge_strerror)(int) = NULL;						       /* MUNGE munge_stderror() function pointer */
 static void (*logger)(int type, int objclass, int severity, const char *objname, const char *text);
 
-#define __MUNGE_LOGGER(e, c, s, m) \
-	do { \
-		if (logger == NULL) { \
-			if (s != LOG_DEBUG) \
+#define __MUNGE_LOGGER(e, c, s, m)                                        \
+	do {                                                              \
+		if (logger == NULL) {                                     \
+			if (s != LOG_DEBUG)                               \
 				fprintf(stderr, "%s: %s\n", __func__, m); \
-		} else { \
-			logger(e, c, s, __func__, m); \
-		} \
-	} while(0)
-#define MUNGE_LOG_ERR(m) __MUNGE_LOGGER(PBSEVENT_ERROR|PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, m)
-#define MUNGE_LOG_DBG(m) __MUNGE_LOGGER(PBSEVENT_DEBUG|PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, m)
+		} else {                                                  \
+			logger(e, c, s, __func__, m);                     \
+		}                                                         \
+	} while (0)
+#define MUNGE_LOG_ERR(m) __MUNGE_LOGGER(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, m)
+#define MUNGE_LOG_DBG(m) __MUNGE_LOGGER(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, m)
 
 static void init_munge(void);
 static char *munge_get_auth_data(char *, size_t);
@@ -154,7 +154,7 @@ munge_get_auth_data(char *ebuf, size_t ebufsz)
 	uid_t myrealuid;
 	struct passwd *pwent;
 	struct group *grp;
-	char payload[PBS_MAXUSER + PBS_MAXGRPN + 1] = { '\0' };
+	char payload[PBS_MAXUSER + PBS_MAXGRPN + 1] = {'\0'};
 	int munge_err = 0;
 
 	/*
@@ -204,7 +204,6 @@ err:
 	free(cred);
 	return NULL;
 }
-
 
 /**
  * @brief
@@ -269,7 +268,7 @@ munge_validate_auth_data(void *auth_data, char *ebuf, size_t ebufsz)
 		goto err;
 	}
 
-	p = strtok((char *)recv_payload, ":");
+	p = strtok((char *) recv_payload, ":");
 
 	if (p && (strncmp(pwent->pw_name, p, PBS_MAXUSER) == 0)) /* inline with current pbs_iff we compare with username only */
 		rc = 0;
@@ -396,7 +395,7 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 	}
 
 	if (len_in > 0) {
-		char *data = (char *)data_in;
+		char *data = (char *) data_in;
 		/* enforce null char at given length of data */
 		data[len_in - 1] = '\0';
 		rc = munge_validate_auth_data(data, ebuf, sizeof(ebuf) - 1);
@@ -409,9 +408,9 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 				*len_out = strlen(ebuf);
 		}
 	} else {
-		*data_out = (void *)munge_get_auth_data(ebuf, sizeof(ebuf) - 1);
+		*data_out = (void *) munge_get_auth_data(ebuf, sizeof(ebuf) - 1);
 		if (*data_out) {
-			*len_out = strlen((char *)*data_out) + 1; /* +1 to include null char also in data_out */
+			*len_out = strlen((char *) *data_out) + 1; /* +1 to include null char also in data_out */
 			*is_handshake_done = 1;
 			return 0;
 		} else if (ebuf[0] != '\0') {
@@ -425,4 +424,3 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 }
 
 /********* END OF EXPORTED FUNCS *********/
-

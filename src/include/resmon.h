@@ -37,11 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
-struct	rm_attribute {
-	char	*a_qualifier;
-	char	*a_value;
+struct rm_attribute {
+	char *a_qualifier;
+	char *a_value;
 };
 
 /*
@@ -49,24 +47,24 @@ struct	rm_attribute {
  ** for searching and a value or function call to provide an "answer"
  ** for the name in question.
  */
-typedef	char	*(*confunc)(struct rm_attribute *);
-struct	config {
-	char	*c_name;
-	union	{
-		confunc	c_func;
-		char	*c_value;
+typedef char *(*confunc)(struct rm_attribute *);
+struct config {
+	char *c_name;
+	union {
+		confunc c_func;
+		char *c_value;
 	} c_u;
 };
 
-#define RM_NPARM	20	/* max number of parameters for child */
+#define RM_NPARM 20 /* max number of parameters for child */
 
-#define	RM_CMD_CLOSE	1
-#define	RM_CMD_REQUEST	2
-#define RM_CMD_CONFIG	3
-#define RM_CMD_SHUTDOWN	4
+#define RM_CMD_CLOSE 1
+#define RM_CMD_REQUEST 2
+#define RM_CMD_CONFIG 3
+#define RM_CMD_SHUTDOWN 4
 
-#define RM_RSP_OK	100
-#define RM_RSP_ERROR	999
+#define RM_RSP_OK 100
+#define RM_RSP_ERROR 999
 
 #define UPDATE_MOM_STATE 1
 
@@ -74,10 +72,10 @@ struct	config {
  ** Macros for fast min/max.
  */
 #ifndef MIN
-#define MIN(a, b) (((a)<(b))?(a):(b))
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 #ifndef MAX
-#define MAX(a, b) (((a)>(b))?(a):(b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
 extern char *arch(struct rm_attribute *);

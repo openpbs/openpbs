@@ -37,9 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_TRACEJOB_H
-#define	_TRACEJOB_H
-#ifdef	__cplusplus
+#ifndef _TRACEJOB_H
+#define _TRACEJOB_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -72,8 +72,7 @@ extern "C" {
 #define SECONDS_IN_DAY 86400
 
 /* indicies into the mid_path array */
-enum index
-{
+enum index {
 	IND_ACCT = 0,
 	IND_SERVER = 1,
 	IND_MOM = 2,
@@ -81,8 +80,7 @@ enum index
 };
 
 /* fields of a log entry */
-enum field
-{
+enum field {
 	FLD_DATE = 0,
 	FLD_EVENT = 1,
 	FLD_OBJ = 2,
@@ -92,20 +90,19 @@ enum field
 };
 
 /* A PBS log entry */
-struct log_entry
-{
-	char *date;		/* date of log entry */
-	time_t date_time;	/* number of seconds from the epoch to date */
-	long highres;	  	/* high resolution portion of the log entry (number smaller than seconds) */
-	char *event;		/* event type */
-	char *obj;		/* what entity is writing the log */
-	char *type;		/* type of object Job/Svr/etc */
-	char *name;		/* name of object */
-	char *msg;		/* log message */
-	char log_file;		/* What log file */
-	int lineno;		/* what line in the file.  used to stabilize the sort */
-	unsigned no_print:1;	/* whether or not to print the message */
-	/* A=accounting S=server M=Mom L=Scheduler */
+struct log_entry {
+	char *date;	       /* date of log entry */
+	time_t date_time;      /* number of seconds from the epoch to date */
+	long highres;	       /* high resolution portion of the log entry (number smaller than seconds) */
+	char *event;	       /* event type */
+	char *obj;	       /* what entity is writing the log */
+	char *type;	       /* type of object Job/Svr/etc */
+	char *name;	       /* name of object */
+	char *msg;	       /* log message */
+	char log_file;	       /* What log file */
+	int lineno;	       /* what line in the file.  used to stabilize the sort */
+	unsigned no_print : 1; /* whether or not to print the message */
+			       /* A=accounting S=server M=Mom L=Scheduler */
 };
 
 /* prototypes */
@@ -126,11 +123,10 @@ int sort_by_message(const void *v1, const void *v2);
 /* Macros */
 #define NO_HIGH_RES_TIMESTAMP -1
 
-
 /* used by getopt(3) */
 extern char *optarg;
 extern int optind;
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _TRACEJOB_H */
+#endif /* _TRACEJOB_H */

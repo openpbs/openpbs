@@ -37,12 +37,11 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_USER_H
-#define	_USER_H
-#ifdef	__cplusplus
+#ifndef _USER_H
+#define _USER_H
+#ifdef __cplusplus
 extern "C" {
 #endif
-
 
 /*
  * user.h - structure definations for user concept
@@ -55,12 +54,12 @@ extern "C" {
  *
  */
 
-#define USER_PASSWORD_SUFFIX ".CR"	/* per user/per server password */
+#define USER_PASSWORD_SUFFIX ".CR" /* per user/per server password */
 
-extern int   user_write_password(char *user, char *cred, size_t len);
-extern int   user_read_password(char *user, char **cred, size_t *len);
+extern int user_write_password(char *user, char *cred, size_t len);
+extern int user_read_password(char *user, char **cred, size_t *len);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _USER_H */
+#endif /* _USER_H */

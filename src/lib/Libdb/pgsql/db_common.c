@@ -81,76 +81,66 @@ extern int pbs_decrypt_pwd(char *, int, size_t, char **, const unsigned char *, 
 extern unsigned char pbs_aes_key[][16];
 extern unsigned char pbs_aes_iv[][16];
 
-
 /**
  * An array of structures(of function pointers) for each of the database object
  */
 pg_db_fn_t db_fn_arr[PBS_DB_NUM_TYPES] = {
-	{	/* PBS_DB_SVR */
-		pbs_db_save_svr,
-		NULL,
-		pbs_db_load_svr,
-		NULL,
-		NULL,
-		pbs_db_del_attr_svr
-	},
-	{	/* PBS_DB_SCHED */
-		pbs_db_save_sched,
-		pbs_db_delete_sched,
-		pbs_db_load_sched,
-		pbs_db_find_sched,
-		pbs_db_next_sched,
-		pbs_db_del_attr_sched
-	},
-	{	/* PBS_DB_QUE */
-		pbs_db_save_que,
-		pbs_db_delete_que,
-		pbs_db_load_que,
-		pbs_db_find_que,
-		pbs_db_next_que,
-		pbs_db_del_attr_que
-	},
-	{	/* PBS_DB_NODE */
-		pbs_db_save_node,
-		pbs_db_delete_node,
-		pbs_db_load_node,
-		pbs_db_find_node,
-		pbs_db_next_node,
-		pbs_db_del_attr_node
-	},
-	{	/* PBS_DB_MOMINFO_TIME */
-		pbs_db_save_mominfo_tm,
-		NULL,
-		pbs_db_load_mominfo_tm,
-		NULL,
-		NULL,
-		NULL
-	},
-	{	/* PBS_DB_JOB */
-		pbs_db_save_job,
-		pbs_db_delete_job,
-		pbs_db_load_job,
-		pbs_db_find_job,
-		pbs_db_next_job,
-		pbs_db_del_attr_job
-	},
-	{	/* PBS_DB_JOBSCR */
-		pbs_db_save_jobscr,
-		NULL,
-		pbs_db_load_jobscr,
-		NULL,
-		NULL,
-		NULL
-	},
-	{	/* PBS_DB_RESV */
-		pbs_db_save_resv,
-		pbs_db_delete_resv,
-		pbs_db_load_resv,
-		pbs_db_find_resv,
-		pbs_db_next_resv,
-		pbs_db_del_attr_resv
-	}
-};
+	{/* PBS_DB_SVR */
+	 pbs_db_save_svr,
+	 NULL,
+	 pbs_db_load_svr,
+	 NULL,
+	 NULL,
+	 pbs_db_del_attr_svr},
+	{/* PBS_DB_SCHED */
+	 pbs_db_save_sched,
+	 pbs_db_delete_sched,
+	 pbs_db_load_sched,
+	 pbs_db_find_sched,
+	 pbs_db_next_sched,
+	 pbs_db_del_attr_sched},
+	{/* PBS_DB_QUE */
+	 pbs_db_save_que,
+	 pbs_db_delete_que,
+	 pbs_db_load_que,
+	 pbs_db_find_que,
+	 pbs_db_next_que,
+	 pbs_db_del_attr_que},
+	{/* PBS_DB_NODE */
+	 pbs_db_save_node,
+	 pbs_db_delete_node,
+	 pbs_db_load_node,
+	 pbs_db_find_node,
+	 pbs_db_next_node,
+	 pbs_db_del_attr_node},
+	{/* PBS_DB_MOMINFO_TIME */
+	 pbs_db_save_mominfo_tm,
+	 NULL,
+	 pbs_db_load_mominfo_tm,
+	 NULL,
+	 NULL,
+	 NULL},
+	{/* PBS_DB_JOB */
+	 pbs_db_save_job,
+	 pbs_db_delete_job,
+	 pbs_db_load_job,
+	 pbs_db_find_job,
+	 pbs_db_next_job,
+	 pbs_db_del_attr_job},
+	{/* PBS_DB_JOBSCR */
+	 pbs_db_save_jobscr,
+	 NULL,
+	 pbs_db_load_jobscr,
+	 NULL,
+	 NULL,
+	 NULL},
+	{/* PBS_DB_RESV */
+	 pbs_db_save_resv,
+	 pbs_db_delete_resv,
+	 pbs_db_load_resv,
+	 pbs_db_find_resv,
+	 pbs_db_next_resv,
+	 pbs_db_del_attr_resv}};
 
 /**
  * @brief
@@ -267,7 +257,7 @@ pbs_db_search(void *conn, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts, 
 static int
 db_cursor_next(void *conn, void *st, pbs_db_obj_info_t *obj)
 {
-	db_query_state_t *state = (db_query_state_t *)st;
+	db_query_state_t *state = (db_query_state_t *) st;
 	int ret;
 
 	if (state->row < state->count) {
@@ -369,7 +359,7 @@ db_execute_str(void *conn, char *sql)
 	char *rows_affected = NULL;
 	int status;
 
-	res = PQexec((PGconn *)conn, sql);
+	res = PQexec((PGconn *) conn, sql);
 	status = PQresultStatus(res);
 	if (status != PGRES_COMMAND_OK && status != PGRES_TUPLES_OK) {
 		char *sql_error = PQresultErrorField(res, PG_DIAG_SQLSTATE);
@@ -431,7 +421,7 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 			free(errmsg_cache);
 			errmsg_cache = NULL;
 		}
-		errmsg = (char *)malloc(PBS_MAX_DB_CONN_INIT_ERR + 1);
+		errmsg = (char *) malloc(PBS_MAX_DB_CONN_INIT_ERR + 1);
 		if (errmsg == NULL) {
 			errmsg_cache = strdup("Out of memory\n");
 			return -1;
@@ -476,7 +466,7 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 			/* if pbs_ds_monitor is already running */
 			if ((fd = open(errfile, 0)) != -1) {
 				if (fstat(fd, &stbuf) != -1) {
-					errmsg = (char *)malloc(stbuf.st_size + 1);
+					errmsg = (char *) malloc(stbuf.st_size + 1);
 					if (errmsg == NULL) {
 						close(fd);
 						unlink(errfile);
@@ -553,7 +543,7 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 			/* read the contents of logfile */
 			if ((fd = open(log_file, 0)) != -1) {
 				if (fstat(fd, &stbuf) != -1) {
-					errmsg = (char *)malloc(stbuf.st_size + 1);
+					errmsg = (char *) malloc(stbuf.st_size + 1);
 					if (errmsg == NULL) {
 						close(fd);
 						unlink(log_file);
@@ -580,7 +570,7 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 			/* read the contents of errfile and load to errmsg */
 			if ((fd = open(errfile, 0)) != -1) {
 				if (fstat(fd, &stbuf) != -1) {
-					errmsg = (char *)malloc(stbuf.st_size + 1);
+					errmsg = (char *) malloc(stbuf.st_size + 1);
 					if (errmsg == NULL) {
 						close(fd);
 						unlink(errfile);
@@ -766,7 +756,7 @@ is_conn_error(void *conn, int *failcode)
 				*failcode = PBS_DB_CONNFAILED; /* default failure code */
 		} else
 			*failcode = PBS_DB_CONNFAILED; /* default failure code */
-		return 1;	/* true - connection error */
+		return 1;			       /* true - connection error */
 	}
 	return 0; /* no connection error */
 }
@@ -817,7 +807,7 @@ pbs_db_connect(void **db_conn, char *host, int port, int timeout)
 	}
 
 	/* Make a connection to the database */
-	*db_conn = (PGconn *)PQconnectdb(conn_info);
+	*db_conn = (PGconn *) PQconnectdb(conn_info);
 
 	/*
 	 * For security remove the connection info from the memory.
@@ -903,7 +893,8 @@ pbs_db_save_obj(void *conn, pbs_db_obj_info_t *obj, int savetype)
  * @retval     -1  - Failure
  *
  */
-int pbs_db_delete_attr_obj(void *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *db_attr_list)
+int
+pbs_db_delete_attr_obj(void *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *db_attr_list)
 {
 	return (db_fn_arr[obj->pbs_db_obj_type].pbs_db_del_attr_obj(conn, obj_id, db_attr_list));
 }
@@ -933,7 +924,7 @@ db_set_error(void *conn, char **conn_db_err, char *fnc, char *msg, char *diag_ms
 		*conn_db_err = NULL;
 	}
 
-	str = PQerrorMessage((PGconn *)conn);
+	str = PQerrorMessage((PGconn *) conn);
 	if (!str)
 		return;
 
@@ -970,7 +961,7 @@ int
 db_prepare_stmt(void *conn, char *stmt, char *sql, int num_vars)
 {
 	PGresult *res;
-	res = PQprepare((PGconn *)conn, stmt, sql, num_vars, NULL);
+	res = PQprepare((PGconn *) conn, stmt, sql, num_vars, NULL);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 		char *sql_error = PQresultErrorField(res, PG_DIAG_SQLSTATE);
 		db_set_error(conn, &errmsg_cache, "Prepare of statement", stmt, sql_error);
@@ -1002,10 +993,10 @@ db_cmd(void *conn, char *stmt, int num_vars)
 	PGresult *res;
 	char *rows_affected = NULL;
 
-	res = PQexecPrepared((PGconn *)conn, stmt, num_vars,
-				conn_data->paramValues,
-				conn_data->paramLengths,
-				conn_data->paramFormats, 0);
+	res = PQexecPrepared((PGconn *) conn, stmt, num_vars,
+			     conn_data->paramValues,
+			     conn_data->paramLengths,
+			     conn_data->paramFormats, 0);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 		char *sql_error = PQresultErrorField(res, PG_DIAG_SQLSTATE);
 		db_set_error(conn, &errmsg_cache, "Execution of Prepared statement", stmt, sql_error);
@@ -1046,9 +1037,9 @@ int
 db_query(void *conn, char *stmt, int num_vars, PGresult **res)
 {
 	int conn_result_format = 1;
-	*res = PQexecPrepared((PGconn *)conn, stmt, num_vars,
-			conn_data->paramValues, conn_data->paramLengths,
-			conn_data->paramFormats, conn_result_format);
+	*res = PQexecPrepared((PGconn *) conn, stmt, num_vars,
+			      conn_data->paramValues, conn_data->paramLengths,
+			      conn_data->paramFormats, conn_result_format);
 
 	if (PQresultStatus(*res) != PGRES_TUPLES_OK) {
 		char *sql_error = PQresultErrorField(*res, PG_DIAG_SQLSTATE);
@@ -1215,12 +1206,12 @@ get_db_connect_string(char *host, int timeout, int *err_code, char *errmsg, int 
 	escape_passwd(pquoted, p, pquoted_len);
 
 	svr_conn_info = malloc(MAX(sizeof(template1), sizeof(template2)) +
-		((host) ? IPV4_STR_LEN : 0) + /* length of IPv4 only if host is not NULL */
-		5 + /* possible length of port */
-		strlen(PBS_DATA_SERVICE_STORE_NAME) +
-		strlen(usr) + /* NULL checked earlier */
-		strlen(p) + /* NULL checked earlier */
-		10); /* max 9 char timeout + null char */
+			       ((host) ? IPV4_STR_LEN : 0) + /* length of IPv4 only if host is not NULL */
+			       5 +			     /* possible length of port */
+			       strlen(PBS_DATA_SERVICE_STORE_NAME) +
+			       strlen(usr) + /* NULL checked earlier */
+			       strlen(p) +   /* NULL checked earlier */
+			       10);	     /* max 9 char timeout + null char */
 	if (svr_conn_info == NULL) {
 		free(pquoted);
 		free(p);
@@ -1238,7 +1229,7 @@ get_db_connect_string(char *host, int timeout, int *err_code, char *errmsg, int 
 			pquoted,
 			timeout);
 	} else {
-		if ((hostaddr = get_hostaddr(host)) == (pbs_net_t)0) {
+		if ((hostaddr = get_hostaddr(host)) == (pbs_net_t) 0) {
 			free(pquoted);
 			free(svr_conn_info);
 			free(p);
@@ -1270,7 +1261,7 @@ get_db_connect_string(char *host, int timeout, int *err_code, char *errmsg, int 
 			pquoted,
 			timeout);
 	}
-	memset(p, 0, strlen(p));			 /* clear password from memory */
+	memset(p, 0, strlen(p));	     /* clear password from memory */
 	memset(pquoted, 0, strlen(pquoted)); /* clear password from memory */
 	free(pquoted);
 	free(p);
@@ -1309,7 +1300,7 @@ db_escape_str(void *conn, char *str)
 	if (val_escaped == NULL)
 		return NULL;
 
-	PQescapeStringConn((PGconn *)conn, val_escaped, str, val_len, &error);
+	PQescapeStringConn((PGconn *) conn, val_escaped, str, val_len, &error);
 	if (error != 0) {
 		free(val_escaped);
 		return NULL;
@@ -1335,39 +1326,39 @@ pbs_db_get_errmsg(int err_code, char **err_msg)
 	}
 
 	switch (err_code) {
-	case PBS_DB_STILL_STARTING:
-		*err_msg = strdup("PBS dataservice is still starting up");
-		break;
+		case PBS_DB_STILL_STARTING:
+			*err_msg = strdup("PBS dataservice is still starting up");
+			break;
 
-	case PBS_DB_AUTH_FAILED:
-		*err_msg = strdup("PBS dataservice authentication failed");
-		break;
+		case PBS_DB_AUTH_FAILED:
+			*err_msg = strdup("PBS dataservice authentication failed");
+			break;
 
-	case PBS_DB_NOMEM:
-		*err_msg = strdup("PBS out of memory in connect");
-		break;
+		case PBS_DB_NOMEM:
+			*err_msg = strdup("PBS out of memory in connect");
+			break;
 
-	case PBS_DB_CONNREFUSED:
-		*err_msg = strdup("PBS dataservice not running");
-		break;
+		case PBS_DB_CONNREFUSED:
+			*err_msg = strdup("PBS dataservice not running");
+			break;
 
-	case PBS_DB_CONNFAILED:
-		*err_msg = strdup("Failed to connect to PBS dataservice");
-		break;
+		case PBS_DB_CONNFAILED:
+			*err_msg = strdup("Failed to connect to PBS dataservice");
+			break;
 
-	case PBS_DB_OOM_ERR:
-		*err_msg = strdup("Failed to protect PBS from Linux OOM killer. No access to OOM score file.");
-		break;
+		case PBS_DB_OOM_ERR:
+			*err_msg = strdup("Failed to protect PBS from Linux OOM killer. No access to OOM score file.");
+			break;
 
-	case PBS_DB_ERR:
-		*err_msg = NULL;
-		if (errmsg_cache)
-			*err_msg = strdup(errmsg_cache);
-		break;
+		case PBS_DB_ERR:
+			*err_msg = NULL;
+			if (errmsg_cache)
+				*err_msg = strdup(errmsg_cache);
+			break;
 
-	default:
-		*err_msg = strdup("PBS dataservice error");
-		break;
+		default:
+			*err_msg = strdup("PBS dataservice error");
+			break;
 	}
 }
 
@@ -1389,5 +1380,5 @@ db_ntohll(unsigned long long x)
 	 * htonl and ntohl always work on 32 bits, even on a 64 bit platform,
 	 * so there is no clash.
 	 */
-	return (unsigned long long)(((unsigned long long)ntohl((x)&0xffffffff)) << 32) | ntohl(((unsigned long long)(x)) >> 32);
+	return (unsigned long long) (((unsigned long long) ntohl((x) &0xffffffff)) << 32) | ntohl(((unsigned long long) (x)) >> 32);
 }

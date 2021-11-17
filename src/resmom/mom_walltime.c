@@ -91,9 +91,9 @@ start_walltime(job *pjob)
 void
 update_walltime(job *pjob)
 {
-	attribute       *resources_used;
-	resource_def    *walltime_def;
-	resource        *used_walltime;
+	attribute *resources_used;
+	resource_def *walltime_def;
+	resource *used_walltime;
 
 	resources_used = get_jattr(pjob, JOB_ATR_resc_used);
 	assert(resources_used != NULL);
@@ -115,7 +115,7 @@ update_walltime(job *pjob)
 
 	if (0 != pjob->ji_walltime_stamp) {
 		/* walltime counting is not stopped so update it */
-		set_attr_l(&used_walltime->rs_value, (long)((time_now - pjob->ji_walltime_stamp) * wallfactor), INCR);
+		set_attr_l(&used_walltime->rs_value, (long) ((time_now - pjob->ji_walltime_stamp) * wallfactor), INCR);
 		pjob->ji_walltime_stamp = time_now;
 	}
 }
@@ -188,6 +188,6 @@ recover_walltime(job *pjob)
 		used_walltime = add_resource_entry(resources_used, walltime_def);
 		mark_attr_set(&used_walltime->rs_value);
 		used_walltime->rs_value.at_type = ATR_TYPE_LONG;
-		used_walltime->rs_value.at_val.at_long = (long)((double)(time_now - pjob->ji_qs.ji_stime) * wallfactor);
+		used_walltime->rs_value.at_val.at_long = (long) ((double) (time_now - pjob->ji_qs.ji_stime) * wallfactor);
 	}
 }

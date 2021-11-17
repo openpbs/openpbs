@@ -49,7 +49,6 @@
 #include "pbs_ifl.h"
 #include "pbs_internal.h"
 
-
 /**
  * @brief
  * 	-pbs_quote_parse - parse quoted value string acording to BZ 6088 rules
@@ -79,28 +78,28 @@
 int
 pbs_quote_parse(char *in, char **out, char **endptr, int allow_white)
 {
-	char	*d;			/* destination ptr (into "work") */
-	size_t	 len;
-	int	 nthchar;
-	char	 quotechar = '\0';	/* character used for quoting */
-	int	 quoting = 0;		/* true if performing quoting */
-	char	*s;			/* working ptr into "in" */
-	char	*work;			/* destination buffer for parsed out */
+	char *d; /* destination ptr (into "work") */
+	size_t len;
+	int nthchar;
+	char quotechar = '\0'; /* character used for quoting */
+	int quoting = 0;       /* true if performing quoting */
+	char *s;	       /* working ptr into "in" */
+	char *work;	       /* destination buffer for parsed out */
 
-	*out    = NULL;
+	*out = NULL;
 	*endptr = NULL;
 
 	if (in == NULL)
 		return -1;
 	len = strlen(in) + 1;
-	work = calloc((size_t)1, len);	/* calloc used to zero area */
+	work = calloc((size_t) 1, len); /* calloc used to zero area */
 	if (work == NULL)
 		return -1;
 
-	d    = work;
+	d = work;
 
 	s = in;
-	while (isspace((int)*s))	/* skip leading white space */
+	while (isspace((int) *s)) /* skip leading white space */
 		++s;
 
 	nthchar = 0;
@@ -108,26 +107,26 @@ pbs_quote_parse(char *in, char **out, char **endptr, int allow_white)
 
 		++nthchar;
 
-		if (! isprint((int)*s) && ! isspace((int)*s)) {
+		if (!isprint((int) *s) && !isspace((int) *s)) {
 			*endptr = s;
 			free(work);
-			return 2;	/* illegal character */
+			return 2; /* illegal character */
 
 		} else if (quoting) {
 
 			if (*s == quotechar) {
-				quoting = 0;	/* end of quoting */
-				/* allow quotes inside the quoted string */
+				quoting = 0; /* end of quoting */
+					     /* allow quotes inside the quoted string */
 			} else if (*s == '&') {
 				*endptr = s;
 				free(work);
-				return 2;	/* illegal character */
+				return 2; /* illegal character */
 			} else {
 				*d++ = *s;
 			}
 
 		} else if (((*s == '"') || (*s == '\'')) &&
-			((allow_white == 0) || (nthchar == 1))) {
+			   ((allow_white == 0) || (nthchar == 1))) {
 
 			/* start quoting */
 			if ((quotechar != '\0') && (quotechar != *s)) {
@@ -136,18 +135,18 @@ pbs_quote_parse(char *in, char **out, char **endptr, int allow_white)
 				*d++ = *s;
 			} else {
 				quotechar = *s;
-				quoting   = 1;
+				quoting = 1;
 			}
 
 		} else if ((*s == ',') ||
-			(isspace((int)*s) && (allow_white == 0))) {
+			   (isspace((int) *s) && (allow_white == 0))) {
 
 			/* hit a special (parsing) character */
 			*endptr = s;
 			*out = work;
 			return 0;
 
-		} else {		/* normal un-quoted */
+		} else { /* normal un-quoted */
 
 			/* check for special illegal character */
 			if (*s == '&') {
@@ -165,11 +164,10 @@ pbs_quote_parse(char *in, char **out, char **endptr, int allow_white)
 
 	if (quoting) {
 		free(work);
-		return 4;	/* invalid quoting, end of string */
+		return 4; /* invalid quoting, end of string */
 	}
 
-
-	*out    = work;
+	*out = work;
 	return 0;
 }
 
@@ -184,8 +182,7 @@ pbs_quote_parse(char *in, char **out, char **endptr, int allow_white)
 const char pbs_parse_err_msges[][PBS_PARSE_ERR_MSG_LEN_MAX + 1] = {
 	"illegal character",
 	"improper quoting syntax",
-	"no closing quote"
-};
+	"no closing quote"};
 
 /**
  * @brief
@@ -206,10 +203,10 @@ pbs_parse_err_msg(int err)
 {
 	int i;
 	i = sizeof(pbs_parse_err_msges) / sizeof(pbs_parse_err_msges[0]);
-	if ((err <= 1) || ((err-1) > i))
+	if ((err <= 1) || ((err - 1) > i))
 		return ("error");
 	else
-		return (pbs_parse_err_msges[err-2]);
+		return (pbs_parse_err_msges[err - 2]);
 }
 
 /**
@@ -232,13 +229,13 @@ pbs_parse_err_msg(int err)
 void
 pbs_prt_parse_err(char *txt, char *str, int offset, int err)
 {
-	int      i;
-	const char	*emsg;
+	int i;
+	const char *emsg;
 
 	emsg = pbs_parse_err_msg(err);
 	fprintf(stderr, "%s %s:\n%s\n", txt, emsg, str);
 	for (i = 0; i < offset; ++i)
-		putc((int)' ', stderr);
-	putc((int)'^', stderr);
-	putc((int)'\n', stderr);
+		putc((int) ' ', stderr);
+	putc((int) '^', stderr);
+	putc((int) '\n', stderr);
 }

@@ -204,7 +204,6 @@ set_sattr_c_slim(int attr_idx, char val, enum batch_op op)
 	return 0;
 }
 
-
 /**
  * @brief	Check if a server attribute is set
  *

@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_DEDTIME_H
-#define	_DEDTIME_H
+#ifndef _DEDTIME_H
+#define _DEDTIME_H
 
 #include <time.h>
 
@@ -55,7 +55,7 @@ int parse_ded_file(const char *filename);
  *      cmp_ded_time - compare function for qsort for the ded time array
  *
  */
-bool cmp_ded_time(const timegap& t1, const timegap& t2);
+bool cmp_ded_time(const timegap &t1, const timegap &t2);
 
 /*
  *      is_ded_time - checks if it is currently dedicated time
@@ -73,4 +73,4 @@ bool is_ded_time(time_t t);
  */
 struct timegap find_next_dedtime(time_t t);
 
-#endif	/* _DEDTIME_H */
+#endif /* _DEDTIME_H */

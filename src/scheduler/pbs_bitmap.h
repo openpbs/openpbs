@@ -37,15 +37,13 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #ifndef _PBS_BITMASK_H
 #define _PBS_BITMASK_H
 
-
 struct pbs_bitmap {
-	unsigned long *bits;	/* bit storage */
-	unsigned long num_longs;		/* number of longs in the bits array */
-	unsigned long num_bits;		/* number of bits that are in use (both 1's and 0's */
+	unsigned long *bits;	 /* bit storage */
+	unsigned long num_longs; /* number of longs in the bits array */
+	unsigned long num_bits;	 /* number of bits that are in use (both 1's and 0's */
 };
 
 typedef struct pbs_bitmap pbs_bitmap;
@@ -77,4 +75,4 @@ int pbs_bitmap_assign(pbs_bitmap *L, pbs_bitmap *R);
 /* pbs_bitmap's version of L == R */
 int pbs_bitmap_is_equal(pbs_bitmap *L, pbs_bitmap *R);
 
-#endif	/* _PBS_BITMASK_H */
+#endif /* _PBS_BITMASK_H */

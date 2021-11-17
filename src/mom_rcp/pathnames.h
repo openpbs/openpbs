@@ -73,14 +73,14 @@
 
 #ifdef WIN32
 
-#define	_PATH_CP	"copy"
-#define _PATH_BSHELL	"cmd"
-#define _PATH_RSH	"\\winnt\\system32\\rsh.exe"
+#define _PATH_CP "copy"
+#define _PATH_BSHELL "cmd"
+#define _PATH_RSH "\\winnt\\system32\\rsh.exe"
 
 #else
 
-#define	_PATH_CP	"/bin/cp"
-#define _PATH_BSHELL	"/bin/sh"
-#define _PATH_RSH	"rsh"
+#define _PATH_CP "/bin/cp"
+#define _PATH_BSHELL "/bin/sh"
+#define _PATH_RSH "rsh"
 
 #endif

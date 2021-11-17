@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /*
  * This file is provided as a convenience to anyone wishing to utilize
  * the Batch and Application Scheduler Interface Layer (BASIL) for the
@@ -57,10 +56,8 @@
  * copies that Cray may provide.
  */
 
-
 #ifndef _BASIL_H
 #define _BASIL_H
-
 
 #ifndef __GNUC__
 #define __attribute__(x) /* nothing */
@@ -71,12 +68,12 @@
 #define BASIL_STRING_LONG (64)
 #define BASIL_ERROR_BUFFER_SIZE (256)
 
-#define BASIL_STRSET_SHORT(dst, src) 	snprintf(dst, BASIL_STRING_SHORT, "%s", src)
-#define BASIL_BZERO_SHORT(p)		memset(p, 0, BASIL_STRING_SHORT)
-#define BASIL_STRSET_MEDIUM(dst, src)	snprintf(dst, BASIL_STRING_MEDIUM, "%s", src)
-#define BASIL_BZERO_MEDIUM(p) 		memset(p, 0, BASIL_STRING_MEDIUM)
-#define BASIL_STRSET_LONG(dst, src)	snprintf(dst, BASIL_STRING_LONG, "%s", src)
-#define BASIL_BZERO_LONG(p)		memset(p, 0, BASIL_STRING_LONG)
+#define BASIL_STRSET_SHORT(dst, src) snprintf(dst, BASIL_STRING_SHORT, "%s", src)
+#define BASIL_BZERO_SHORT(p) memset(p, 0, BASIL_STRING_SHORT)
+#define BASIL_STRSET_MEDIUM(dst, src) snprintf(dst, BASIL_STRING_MEDIUM, "%s", src)
+#define BASIL_BZERO_MEDIUM(p) memset(p, 0, BASIL_STRING_MEDIUM)
+#define BASIL_STRSET_LONG(dst, src) snprintf(dst, BASIL_STRING_LONG, "%s", src)
+#define BASIL_BZERO_LONG(p) memset(p, 0, BASIL_STRING_LONG)
 
 /*
  *	Macro Name		Text			May Appear Within
@@ -85,250 +82,249 @@
 
 /* XML element names */
 
-#define BASIL_ELM_MESSAGE	"Message"		/* All elements */
-#define BASIL_ELM_REQUEST	"BasilRequest"		/* Top level */
-#define BASIL_ELM_RESVPARAMARRAY "ReserveParamArray"	/* BASIL_ELM_REQUEST */
-#define BASIL_ELM_RESERVEPARAM	"ReserveParam"		/* BASIL_ELM_RESVPARAMARRAY */
-#define BASIL_ELM_NODEPARMARRAY "NodeParamArray"	/* BASIL_ELM_RESERVEPARAM */
-#define BASIL_ELM_NODEPARAM	"NodeParam"		/* BASIL_ELM_NODEPARMARRAY */
-#define BASIL_ELM_MEMPARAMARRAY "MemoryParamArray"	/* BASIL_ELM_RESERVEPARAM */
-#define BASIL_ELM_MEMPARAM	"MemoryParam"		/* BASIL_ELM_MEMPARAMARRAY */
-#define BASIL_ELM_LABELPARAMARRAY "LabelParamArray"	/* BASIL_ELM_RESERVEPARAM */
-#define BASIL_ELM_LABELPARAM	"LabelParam"		/* BASIL_ELM_LABELPARAMARRAY */
+#define BASIL_ELM_MESSAGE "Message"		     /* All elements */
+#define BASIL_ELM_REQUEST "BasilRequest"	     /* Top level */
+#define BASIL_ELM_RESVPARAMARRAY "ReserveParamArray" /* BASIL_ELM_REQUEST */
+#define BASIL_ELM_RESERVEPARAM "ReserveParam"	     /* BASIL_ELM_RESVPARAMARRAY */
+#define BASIL_ELM_NODEPARMARRAY "NodeParamArray"     /* BASIL_ELM_RESERVEPARAM */
+#define BASIL_ELM_NODEPARAM "NodeParam"		     /* BASIL_ELM_NODEPARMARRAY */
+#define BASIL_ELM_MEMPARAMARRAY "MemoryParamArray"   /* BASIL_ELM_RESERVEPARAM */
+#define BASIL_ELM_MEMPARAM "MemoryParam"	     /* BASIL_ELM_MEMPARAMARRAY */
+#define BASIL_ELM_LABELPARAMARRAY "LabelParamArray"  /* BASIL_ELM_RESERVEPARAM */
+#define BASIL_ELM_LABELPARAM "LabelParam"	     /* BASIL_ELM_LABELPARAMARRAY */
 
-#define BASIL_ELM_RESPONSE	"BasilResponse"		/* Top level */
-#define BASIL_ELM_RESPONSEDATA	"ResponseData"		/* BASIL_ELM_RESPONSE */
-#define BASIL_ELM_RESERVED	"Reserved"		/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ELM_CONFIRMED	"Confirmed"		/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ELM_RELEASED	"Released"		/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ELM_ENGINE	"Engine"		/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ELM_INVENTORY	"Inventory"		/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ELM_NETWORK	"Network"		/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ELM_TOPOLOGY	"Topology"		/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ELM_FILTARRAY	"FilterArray"		/* BASIL_ELM_TOPOLOGY */
-#define BASIL_ELM_FILTER	"Filter"		/* BASIL_ELM_FILTARRAY */
-#define BASIL_ELM_NODEARRAY	"NodeArray"		/* BASIL_ELM_INVENTORY */
-#define BASIL_ELM_NODE		"Node"			/* BASIL_ELM_NODEARRAY */
-#define BASIL_ELM_ACCELPARAMARRAY "AccelParamArray"	/* BASIL_ELM_RESERVEPARAM */
-#define BASIL_ELM_ACCELPARAM	"AccelParam"		/* BASIL_ELM_ACCELPARAMARRAY */
-#define BASIL_ELM_ACCELERATORARRAY "AcceleratorArray"	/* BASIL_ELM_NODE */
-#define BASIL_ELM_ACCELERATOR	"Accelerator"		/* BASIL_ELM_ACCELERATORARRAY */
-							/* BASIL_ELM_ACCELSUM */
+#define BASIL_ELM_RESPONSE "BasilResponse"		   /* Top level */
+#define BASIL_ELM_RESPONSEDATA "ResponseData"		   /* BASIL_ELM_RESPONSE */
+#define BASIL_ELM_RESERVED "Reserved"			   /* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ELM_CONFIRMED "Confirmed"			   /* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ELM_RELEASED "Released"			   /* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ELM_ENGINE "Engine"			   /* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ELM_INVENTORY "Inventory"			   /* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ELM_NETWORK "Network"			   /* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ELM_TOPOLOGY "Topology"			   /* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ELM_FILTARRAY "FilterArray"		   /* BASIL_ELM_TOPOLOGY */
+#define BASIL_ELM_FILTER "Filter"			   /* BASIL_ELM_FILTARRAY */
+#define BASIL_ELM_NODEARRAY "NodeArray"			   /* BASIL_ELM_INVENTORY */
+#define BASIL_ELM_NODE "Node"				   /* BASIL_ELM_NODEARRAY */
+#define BASIL_ELM_ACCELPARAMARRAY "AccelParamArray"	   /* BASIL_ELM_RESERVEPARAM */
+#define BASIL_ELM_ACCELPARAM "AccelParam"		   /* BASIL_ELM_ACCELPARAMARRAY */
+#define BASIL_ELM_ACCELERATORARRAY "AcceleratorArray"	   /* BASIL_ELM_NODE */
+#define BASIL_ELM_ACCELERATOR "Accelerator"		   /* BASIL_ELM_ACCELERATORARRAY */
+							   /* BASIL_ELM_ACCELSUM */
 #define BASIL_ELM_ACCELERATORALLOC "AcceleratorAllocation" /* BASIL_ELM_ACCELERATOR */
-#define BASIL_ELM_SOCKETARRAY	"SocketArray"		/* BASIL_ELM_NODE */
-#define BASIL_ELM_SOCKET	"Socket"		/* BASIL_ELM_SOCKETARRAY */
-#define BASIL_ELM_SEGMENTARRAY	"SegmentArray"		/* BASIL_ELM_SOCKET */
-#define BASIL_ELM_SEGMENT	"Segment"		/* BASIL_ELM_SEGMENTARRAY */
-#define BASIL_ELM_CUARRAY	"ComputeUnitArray"	/* BASIL_ELM_SEGMENT */
-#define BASIL_ELM_COMPUTEUNIT	"ComputeUnit"		/* BASIL_ELM_CUARRAY */
-#define BASIL_ELM_PROCESSORARRAY "ProcessorArray"	/* BASIL_ELM_SEGMENT */
-							/* BASIL_ELM_COMPUTEUNIT */
-#define BASIL_ELM_PROCESSOR	"Processor"		/* BASIL_ELM_PROCESSORARRAY */
-#define BASIL_ELM_PROCESSORALLOC "ProcessorAllocation"	/* BASIL_ELM_PROCESSOR */
-#define BASIL_ELM_MEMORYARRAY	"MemoryArray"		/* BASIL_ELM_SEGMENT */
-#define BASIL_ELM_MEMORY	"Memory"		/* BASIL_ELM_MEMORYARRAY */
-#define BASIL_ELM_MEMORYALLOC	"MemoryAllocation"	/* BASIL_ELM_MEMORY */
-#define BASIL_ELM_LABELARRAY	"LabelArray"		/* BASIL_ELM_SEGMENT */
-#define BASIL_ELM_LABEL		"Label"			/* BASIL_ELM_LABELARRAY */
-#define BASIL_ELM_RSVNARRAY	"ReservationArray"	/* BASIL_ELM_INVENTORY */
-							/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ELM_RESERVATION	"Reservation"		/* BASIL_ELM_RSVNARRAY */
-#define BASIL_ELM_APPARRAY	"ApplicationArray"	/* BASIL_ELM_RESERVATION */
-							/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ELM_APPLICATION	"Application"		/* BASIL_ELM_APPARRAY */
-#define BASIL_ELM_CMDARRAY	"CommandArray"		/* BASIL_ELM_APPLICATION */
-#define BASIL_ELM_COMMAND	"Command"		/* BASIL_ELM_CMDARRAY */
-#define BASIL_ELM_RSVD_NODEARRAY "ReservedNodeArray"	/* BASIL_ELM_RESERVED */
-#define BASIL_ELM_RSVD_NODE	"ReservedNode"		/* BASIL_ELM_RSVD_NODEARRAY */
-#define BASIL_ELM_RSVD_SGMTARRAY "ReservedSegmentArray" /* BASIL_ELM_RSVD_NODE */
-#define BASIL_ELM_RSVD_SGMT	"ReservedSegment"	/* BASIL_ELM_RSVD_SGMTARRAY */
-#define BASIL_ELM_RSVD_PROCARRAY "ReservedProcessorArray"/* BASIL_ELM_RSVD_SGMT */
-#define BASIL_ELM_RSVD_PROCESSOR "ReservedProcessor"	/* BASIL_ELM_RSVD_PROCARRAY */
-#define BASIL_ELM_RSVD_MEMARRAY "ReservedMemoryArray"	/* BASIL_ELM_RSVD_SGMT */
-#define BASIL_ELM_RSVD_MEMORY	"ReservedMemory"	/* BASIL_ELM_RSVD_MEMARRAY */
-#define BASIL_ELM_SUMMARY	"Summary"		/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ELM_NODESUM	"NodeSummary"		/* BASIL_ELM_SUMMARY */
-#define BASIL_ELM_ACCELSUM	"AccelSummary"		/* BASIL_ELM_SUMMARY */
-#define BASIL_ELM_UP		"Up"			/* BASIL_ELM_NODESUM */
-							/* BASIL_ELM_ACCELSUM */
-#define BASIL_ELM_DOWN		"Down"			/* BASIL_ELM_NODESUM */
-							/* BASIL_ELM_ACCELSUM */
+#define BASIL_ELM_SOCKETARRAY "SocketArray"		   /* BASIL_ELM_NODE */
+#define BASIL_ELM_SOCKET "Socket"			   /* BASIL_ELM_SOCKETARRAY */
+#define BASIL_ELM_SEGMENTARRAY "SegmentArray"		   /* BASIL_ELM_SOCKET */
+#define BASIL_ELM_SEGMENT "Segment"			   /* BASIL_ELM_SEGMENTARRAY */
+#define BASIL_ELM_CUARRAY "ComputeUnitArray"		   /* BASIL_ELM_SEGMENT */
+#define BASIL_ELM_COMPUTEUNIT "ComputeUnit"		   /* BASIL_ELM_CUARRAY */
+#define BASIL_ELM_PROCESSORARRAY "ProcessorArray"	   /* BASIL_ELM_SEGMENT */
+							   /* BASIL_ELM_COMPUTEUNIT */
+#define BASIL_ELM_PROCESSOR "Processor"			   /* BASIL_ELM_PROCESSORARRAY */
+#define BASIL_ELM_PROCESSORALLOC "ProcessorAllocation"	   /* BASIL_ELM_PROCESSOR */
+#define BASIL_ELM_MEMORYARRAY "MemoryArray"		   /* BASIL_ELM_SEGMENT */
+#define BASIL_ELM_MEMORY "Memory"			   /* BASIL_ELM_MEMORYARRAY */
+#define BASIL_ELM_MEMORYALLOC "MemoryAllocation"	   /* BASIL_ELM_MEMORY */
+#define BASIL_ELM_LABELARRAY "LabelArray"		   /* BASIL_ELM_SEGMENT */
+#define BASIL_ELM_LABEL "Label"				   /* BASIL_ELM_LABELARRAY */
+#define BASIL_ELM_RSVNARRAY "ReservationArray"		   /* BASIL_ELM_INVENTORY */
+							   /* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ELM_RESERVATION "Reservation"		   /* BASIL_ELM_RSVNARRAY */
+#define BASIL_ELM_APPARRAY "ApplicationArray"		   /* BASIL_ELM_RESERVATION */
+							   /* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ELM_APPLICATION "Application"		   /* BASIL_ELM_APPARRAY */
+#define BASIL_ELM_CMDARRAY "CommandArray"		   /* BASIL_ELM_APPLICATION */
+#define BASIL_ELM_COMMAND "Command"			   /* BASIL_ELM_CMDARRAY */
+#define BASIL_ELM_RSVD_NODEARRAY "ReservedNodeArray"	   /* BASIL_ELM_RESERVED */
+#define BASIL_ELM_RSVD_NODE "ReservedNode"		   /* BASIL_ELM_RSVD_NODEARRAY */
+#define BASIL_ELM_RSVD_SGMTARRAY "ReservedSegmentArray"	   /* BASIL_ELM_RSVD_NODE */
+#define BASIL_ELM_RSVD_SGMT "ReservedSegment"		   /* BASIL_ELM_RSVD_SGMTARRAY */
+#define BASIL_ELM_RSVD_PROCARRAY "ReservedProcessorArray"  /* BASIL_ELM_RSVD_SGMT */
+#define BASIL_ELM_RSVD_PROCESSOR "ReservedProcessor"	   /* BASIL_ELM_RSVD_PROCARRAY */
+#define BASIL_ELM_RSVD_MEMARRAY "ReservedMemoryArray"	   /* BASIL_ELM_RSVD_SGMT */
+#define BASIL_ELM_RSVD_MEMORY "ReservedMemory"		   /* BASIL_ELM_RSVD_MEMARRAY */
+#define BASIL_ELM_SUMMARY "Summary"			   /* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ELM_NODESUM "NodeSummary"			   /* BASIL_ELM_SUMMARY */
+#define BASIL_ELM_ACCELSUM "AccelSummary"		   /* BASIL_ELM_SUMMARY */
+#define BASIL_ELM_UP "Up"				   /* BASIL_ELM_NODESUM */
+							   /* BASIL_ELM_ACCELSUM */
+#define BASIL_ELM_DOWN "Down"				   /* BASIL_ELM_NODESUM */
+							   /* BASIL_ELM_ACCELSUM */
 /* XML attribute names */
-#define BASIL_ATR_PROTOCOL	"protocol"		/* BASIL_ELM_REQUEST */
-							/* BASIL_ELM_RESPONSE */
-#define BASIL_ATR_METHOD	"method"		/* BASIL_ELM_REQUEST */
-							/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ATR_STATUS	"status"		/* BASIL_ELM_RESPONSEDATA */
-							/* BASIL_ELM_APPLICATION */
-							/* BASIL_ELM_RESERVATION */
-#define BASIL_ATR_ERROR_CLASS	"error_class"		/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ATR_ERROR_SOURCE	"error_source"		/* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ATR_SEVERITY	"severity"		/* BASIL_ELM_MSG */
-#define BASIL_ATR_TYPE		"type"			/* BASIL_ELM_REQUEST:query */
-							/* BASIL_ELM_MEMORY */
-							/* BASIL_ELM_LABEL */
-							/* BASIL_ELM_ACCELERATOR */
-#define BASIL_ATR_USER_NAME	"user_name"		/* BASIL_ELM_RESERVEARRAY */
-							/* BASIL_ELM_RESERVATION */
-#define BASIL_ATR_ACCOUNT_NAME	"account_name"		/* BASIL_ELM_RESERVEARRAY */
-							/* BASIL_ELM_RESERVATION */
-#define BASIL_ATR_BATCH_ID	"batch_id"		/* BASIL_ELM_RESERVEARRAY */
-							/* BASIL_ELM_RESERVATION */
-#define BASIL_ATR_PAGG_ID	"pagg_id"		/* BASIL_ELM_RESERVATION */
-							/* BASIL_ELM_REQUEST:confirm */
-							/* BASIL_ELM_REQUEST:cancel */
-#define BASIL_ATR_ADMIN_COOKIE	"admin_cookie"		/* synonymous with pagg_id */
-#define BASIL_ATR_ALLOC_COOKIE	"alloc_cookie"		/* deprecated as of 1.1 */
-#define BASIL_ATR_CHANGECOUNT	"changecount"		/* BASIL_ELM_NODEARRAY */
-#define BASIL_ATR_SCHEDCOUNT	"schedchangecount"	/* BASIL_ELM_SUMMARY */
-							/* BASIL_ELM_NODEARRAY */
-#define BASIL_ATR_CLAIMS	"claims"		/* BASIL_ELM_RELEASED */
-#define BASIL_ATR_RSVN_ID	"reservation_id"	/* BASIL_ELM_RESERVATION */
-							/* BASIL_ELM_REQUEST:confirm */
-							/* BASIL_ELM_REQUEST:release */
-#define BASIL_ATR_JOB_NAME	"job_name"		/* BASIL_ELM_REQUEST:confirm */
-#define BASIL_ATR_NODE_ID	"node_id"		/* BASIL_ELM_NODE */
-#define BASIL_ATR_ROUTER_ID	"router_id"		/* BASIL_ELM_NODE */
-#define BASIL_ATR_ARCH		"architecture"		/* BASIL_ELM_RESERVE */
-							/* BASIL_ELM_NODEARRAY */
-							/* BASIL_ELM_NODE */
-							/* BASIL_ELM_PROCESSOR */
-							/* BASIL_ELM_COMMAND */
-#define BASIL_ATR_ROLE		"role"			/* BASIL_ELM_NODE */
-							/* BASIL_ELM_NODES */
-#define BASIL_ATR_WIDTH		"width"			/* BASIL_ELM_RESERVEPARAM */
-							/* BASIL_ELM_COMMAND */
-#define BASIL_ATR_DEPTH		"depth"			/* BASIL_ELM_RESERVEPARAM */
-							/* BASIL_ELM_COMMAND */
-#define BASIL_ATR_RSVN_MODE	"reservation_mode"	/* BASIL_ELM_RESERVEPARAM */
-							/* BASIL_ELM_RESERVATION */
-#define BASIL_ATR_GPC_MODE	"gpc_mode"		/* BASIL_ELM_RESERVEPARAM */
-							/* BASIL_ELM_RESERVATION */
-#define BASIL_ATR_OSCPN		"oscpn"			/* BASIL_ELM_RESERVEPARAM */
-#define BASIL_ATR_NPPN		"nppn"			/* BASIL_ELM_RESERVEPARAM */
-							/* BASIL_ELM_COMMAND */
-#define BASIL_ATR_NPPS		"npps"			/* BASIL_ELM_RESERVEPARAM */
-#define BASIL_ATR_NSPN		"nspn"			/* BASIL_ELM_RESERVEPARAM */
-#define BASIL_ATR_NPPCU		"nppcu"			/* BASIL_ELM_RESERVEPARAM */
-#define BASIL_ATR_SEGMENTS	"segments"		/* BASIL_ELM_RESERVEPARAM */
-#define BASIL_ATR_SIZE_MB	"size_mb"		/* BASIL_ELM_MEMORY */
-#define BASIL_ATR_NAME		"name"			/* BASIL_ELM_LABEL */
-							/* BASIL_ELM_NODE */
-							/* BASIL_ELM_ENGINE */
-							/* BASIL_ELM_FILTER */
-#define BASIL_ATR_DISPOSITION	"disposition"		/* BASIL_ELM_LABEL */
-#define BASIL_ATR_STATE		"state"			/* BASIL_ELM_NODE */
-							/* BASIL_ELM_ACCELERATOR */
-							/* BASIL_ELM_NODES */
+#define BASIL_ATR_PROTOCOL "protocol"		/* BASIL_ELM_REQUEST */
+						/* BASIL_ELM_RESPONSE */
+#define BASIL_ATR_METHOD "method"		/* BASIL_ELM_REQUEST */
+						/* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ATR_STATUS "status"		/* BASIL_ELM_RESPONSEDATA */
+						/* BASIL_ELM_APPLICATION */
+						/* BASIL_ELM_RESERVATION */
+#define BASIL_ATR_ERROR_CLASS "error_class"	/* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ATR_ERROR_SOURCE "error_source"	/* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ATR_SEVERITY "severity"		/* BASIL_ELM_MSG */
+#define BASIL_ATR_TYPE "type"			/* BASIL_ELM_REQUEST:query */
+						/* BASIL_ELM_MEMORY */
+						/* BASIL_ELM_LABEL */
+						/* BASIL_ELM_ACCELERATOR */
+#define BASIL_ATR_USER_NAME "user_name"		/* BASIL_ELM_RESERVEARRAY */
+						/* BASIL_ELM_RESERVATION */
+#define BASIL_ATR_ACCOUNT_NAME "account_name"	/* BASIL_ELM_RESERVEARRAY */
+						/* BASIL_ELM_RESERVATION */
+#define BASIL_ATR_BATCH_ID "batch_id"		/* BASIL_ELM_RESERVEARRAY */
+						/* BASIL_ELM_RESERVATION */
+#define BASIL_ATR_PAGG_ID "pagg_id"		/* BASIL_ELM_RESERVATION */
+						/* BASIL_ELM_REQUEST:confirm */
+						/* BASIL_ELM_REQUEST:cancel */
+#define BASIL_ATR_ADMIN_COOKIE "admin_cookie"	/* synonymous with pagg_id */
+#define BASIL_ATR_ALLOC_COOKIE "alloc_cookie"	/* deprecated as of 1.1 */
+#define BASIL_ATR_CHANGECOUNT "changecount"	/* BASIL_ELM_NODEARRAY */
+#define BASIL_ATR_SCHEDCOUNT "schedchangecount" /* BASIL_ELM_SUMMARY */
+						/* BASIL_ELM_NODEARRAY */
+#define BASIL_ATR_CLAIMS "claims"		/* BASIL_ELM_RELEASED */
+#define BASIL_ATR_RSVN_ID "reservation_id"	/* BASIL_ELM_RESERVATION */
+						/* BASIL_ELM_REQUEST:confirm */
+						/* BASIL_ELM_REQUEST:release */
+#define BASIL_ATR_JOB_NAME "job_name"		/* BASIL_ELM_REQUEST:confirm */
+#define BASIL_ATR_NODE_ID "node_id"		/* BASIL_ELM_NODE */
+#define BASIL_ATR_ROUTER_ID "router_id"		/* BASIL_ELM_NODE */
+#define BASIL_ATR_ARCH "architecture"		/* BASIL_ELM_RESERVE */
+						/* BASIL_ELM_NODEARRAY */
+						/* BASIL_ELM_NODE */
+						/* BASIL_ELM_PROCESSOR */
+						/* BASIL_ELM_COMMAND */
+#define BASIL_ATR_ROLE "role"			/* BASIL_ELM_NODE */
+						/* BASIL_ELM_NODES */
+#define BASIL_ATR_WIDTH "width"			/* BASIL_ELM_RESERVEPARAM */
+						/* BASIL_ELM_COMMAND */
+#define BASIL_ATR_DEPTH "depth"			/* BASIL_ELM_RESERVEPARAM */
+						/* BASIL_ELM_COMMAND */
+#define BASIL_ATR_RSVN_MODE "reservation_mode"	/* BASIL_ELM_RESERVEPARAM */
+						/* BASIL_ELM_RESERVATION */
+#define BASIL_ATR_GPC_MODE "gpc_mode"		/* BASIL_ELM_RESERVEPARAM */
+						/* BASIL_ELM_RESERVATION */
+#define BASIL_ATR_OSCPN "oscpn"			/* BASIL_ELM_RESERVEPARAM */
+#define BASIL_ATR_NPPN "nppn"			/* BASIL_ELM_RESERVEPARAM */
+						/* BASIL_ELM_COMMAND */
+#define BASIL_ATR_NPPS "npps"			/* BASIL_ELM_RESERVEPARAM */
+#define BASIL_ATR_NSPN "nspn"			/* BASIL_ELM_RESERVEPARAM */
+#define BASIL_ATR_NPPCU "nppcu"			/* BASIL_ELM_RESERVEPARAM */
+#define BASIL_ATR_SEGMENTS "segments"		/* BASIL_ELM_RESERVEPARAM */
+#define BASIL_ATR_SIZE_MB "size_mb"		/* BASIL_ELM_MEMORY */
+#define BASIL_ATR_NAME "name"			/* BASIL_ELM_LABEL */
+						/* BASIL_ELM_NODE */
+						/* BASIL_ELM_ENGINE */
+						/* BASIL_ELM_FILTER */
+#define BASIL_ATR_DISPOSITION "disposition"	/* BASIL_ELM_LABEL */
+#define BASIL_ATR_STATE "state"			/* BASIL_ELM_NODE */
+						/* BASIL_ELM_ACCELERATOR */
+						/* BASIL_ELM_NODES */
 
-#define BASIL_ATR_ORDINAL	"ordinal"		/* BASIL_ELM_NODE */
-							/* BASIL_ELM_SOCKET */
-							/* BASIL_ELM_SEGMENT */
-							/* BASIL_ELM_PROCESSOR */
-							/* BASIL_ELM_ACCELERATOR */
-#define BASIL_ATR_CLOCK_MHZ	"clock_mhz"		/* BASIL_ELM_SOCKET */
-							/* BASIL_ELM_PROCESSOR */
-							/* BASIL_ELM_ACCELERATOR */
-#define BASIL_ATR_PAGE_SIZE_KB	"page_size_kb"		/* BASIL_ELM_MEMORY */
-							/* BASIL_ELM_NODES */
-#define BASIL_ATR_PAGE_COUNT	"page_count"		/* BASIL_ELM_MEMORY */
-							/* BASIL_ELM_MEMORYALLOC */
-							/* BASIL_ELM_NODES */
-#define BASIL_ATR_PAGES_RSVD	"pages_rsvd"		/* BASIL_ELM_MEMORY */
-#define BASIL_ATR_VERSION	"version"		/* BASIL_ELM_ENGINE */
-#define BASIL_ATR_SUPPORTED	"basil_support"		/* BASIL_ELM_ENGINE */
-#define BASIL_ATR_MPPHOST	"mpp_host"		/* BASIL_ELM_INVENTORY */
-#define BASIL_ATR_TIMESTAMP	"timestamp"		/* BASIL_ELM_INVENTORY */
-#define BASIL_ATR_APPLICATION_ID "application_id"	/* BASIL_ELM_APPLICATION */
-#define BASIL_ATR_USER_ID	"user_id"		/* BASIL_ELM_APPLICATION */
-#define BASIL_ATR_GROUP_ID	"group_id"		/* BASIL_ELM_APPLICATION */
-#define BASIL_ATR_TIME_STAMP	"time_stamp"		/* BASIL_ELM_APPLICATION */
-#define BASIL_ATR_MEMORY	"memory"		/* BASIL_ELM_COMMAND */
-#define BASIL_ATR_MEMORY_MB	"memory_mb"		/* BASIL_ELM_ACCELERATOR */
-#define BASIL_ATR_NODE_COUNT	"node_count"		/* BASIL_ELM_COMMAND */
-#define BASIL_ATR_COMMAND	"cmd"			/* BASIL_ELM_COMMAND */
-#define BASIL_ATR_SEGMENT_ID	"segment_id"		/* BASIL_ELM_RSVD_SGMT */
-#define BASIL_ATR_FAMILY	"family"		/* BASIL_ELM_ACCELERATOR */
-#define BASIL_ATR_ACTION	"action"		/* BASIL_ELM_APPLICATION */
-							/* BASIL_ELM_RESERVATION */
-#define BASIL_ATR_PGOVERNOR	"p-governor"		/* BASIL_ELM_RESERVEPARAM */
-#define BASIL_ATR_PSTATE	"p-state"		/* BASIL_ELM_RESERVEPARAM */
+#define BASIL_ATR_ORDINAL "ordinal"		  /* BASIL_ELM_NODE */
+						  /* BASIL_ELM_SOCKET */
+						  /* BASIL_ELM_SEGMENT */
+						  /* BASIL_ELM_PROCESSOR */
+						  /* BASIL_ELM_ACCELERATOR */
+#define BASIL_ATR_CLOCK_MHZ "clock_mhz"		  /* BASIL_ELM_SOCKET */
+						  /* BASIL_ELM_PROCESSOR */
+						  /* BASIL_ELM_ACCELERATOR */
+#define BASIL_ATR_PAGE_SIZE_KB "page_size_kb"	  /* BASIL_ELM_MEMORY */
+						  /* BASIL_ELM_NODES */
+#define BASIL_ATR_PAGE_COUNT "page_count"	  /* BASIL_ELM_MEMORY */
+						  /* BASIL_ELM_MEMORYALLOC */
+						  /* BASIL_ELM_NODES */
+#define BASIL_ATR_PAGES_RSVD "pages_rsvd"	  /* BASIL_ELM_MEMORY */
+#define BASIL_ATR_VERSION "version"		  /* BASIL_ELM_ENGINE */
+#define BASIL_ATR_SUPPORTED "basil_support"	  /* BASIL_ELM_ENGINE */
+#define BASIL_ATR_MPPHOST "mpp_host"		  /* BASIL_ELM_INVENTORY */
+#define BASIL_ATR_TIMESTAMP "timestamp"		  /* BASIL_ELM_INVENTORY */
+#define BASIL_ATR_APPLICATION_ID "application_id" /* BASIL_ELM_APPLICATION */
+#define BASIL_ATR_USER_ID "user_id"		  /* BASIL_ELM_APPLICATION */
+#define BASIL_ATR_GROUP_ID "group_id"		  /* BASIL_ELM_APPLICATION */
+#define BASIL_ATR_TIME_STAMP "time_stamp"	  /* BASIL_ELM_APPLICATION */
+#define BASIL_ATR_MEMORY "memory"		  /* BASIL_ELM_COMMAND */
+#define BASIL_ATR_MEMORY_MB "memory_mb"		  /* BASIL_ELM_ACCELERATOR */
+#define BASIL_ATR_NODE_COUNT "node_count"	  /* BASIL_ELM_COMMAND */
+#define BASIL_ATR_COMMAND "cmd"			  /* BASIL_ELM_COMMAND */
+#define BASIL_ATR_SEGMENT_ID "segment_id"	  /* BASIL_ELM_RSVD_SGMT */
+#define BASIL_ATR_FAMILY "family"		  /* BASIL_ELM_ACCELERATOR */
+#define BASIL_ATR_ACTION "action"		  /* BASIL_ELM_APPLICATION */
+						  /* BASIL_ELM_RESERVATION */
+#define BASIL_ATR_PGOVERNOR "p-governor"	  /* BASIL_ELM_RESERVEPARAM */
+#define BASIL_ATR_PSTATE "p-state"		  /* BASIL_ELM_RESERVEPARAM */
 
 /* XML attribute values */
 
-#define BASIL_VAL_VERSION_1_0	"1.0"			/* BASIL_ATR_PROTOCOL 1.0 */
-#define BASIL_VAL_VERSION_1_1	"1.1"			/* BASIL_ATR_PROTOCOL 1.1 */
-#define BASIL_VAL_VERSION_1_2   "1.2"			/* BASIL_ATR_PROTOCOL 1.2 */
-#define BASIL_VAL_VERSION_1_3   "1.3"			/* BASIL_ATR_PROTOCOL 1.3 */
-#define BASIL_VAL_VERSION_1_4   "1.4"			/* BASIL_ATR_PROTOCOL 1.4 */
+#define BASIL_VAL_VERSION_1_0 "1.0" /* BASIL_ATR_PROTOCOL 1.0 */
+#define BASIL_VAL_VERSION_1_1 "1.1" /* BASIL_ATR_PROTOCOL 1.1 */
+#define BASIL_VAL_VERSION_1_2 "1.2" /* BASIL_ATR_PROTOCOL 1.2 */
+#define BASIL_VAL_VERSION_1_3 "1.3" /* BASIL_ATR_PROTOCOL 1.3 */
+#define BASIL_VAL_VERSION_1_4 "1.4" /* BASIL_ATR_PROTOCOL 1.4 */
 
-
-#define BASIL_VAL_UNDEFINED	"UNDEFINED"	/* All attributes */
-#define BASIL_VAL_SUCCESS	"SUCCESS"	/* BASIL_ATR_STATUS */
-#define BASIL_VAL_FAILURE	"FAILURE"	/* BASIL_ATR_STATUS */
-#define BASIL_VAL_PERMANENT	"PERMANENT"	/* BASIL_ATR_ERROR_CLASS */
-#define BASIL_VAL_TRANSIENT	"TRANSIENT"	/* BASIL_ATR_ERROR_CLASS */
-#define BASIL_VAL_INTERNAL	"INTERNAL"	/* BASIL_ATR_ERROR_SOURCE */
-#define BASIL_VAL_SYSTEM	"SYSTEM"	/* BASIL_ATR_ERROR_SOURCE */
-						/* BASIL_ATR_QRY_TYPE */
-#define BASIL_VAL_PARSER	"PARSER"	/* BASIL_ATR_ERROR_SOURCE */
-#define BASIL_VAL_SYNTAX	"SYNTAX"	/* BASIL_ATR_ERROR_SOURCE */
-#define BASIL_VAL_BACKEND	"BACKEND"	/* BASIL_ATR_ERROR_SOURCE */
-#define BASIL_VAL_ERROR		"ERROR"		/* BASIL_ATR_SEVERITY */
-#define BASIL_VAL_WARNING	"WARNING"	/* BASIL_ATR_SEVERITY */
-#define BASIL_VAL_DEBUG		"DEBUG"		/* BASIL_ATR_SEVERITY */
-#define BASIL_VAL_RESERVE	"RESERVE"	/* BASIL_ATR_METHOD */
-#define BASIL_VAL_CONFIRM	"CONFIRM"	/* BASIL_ATR_METHOD */
-#define BASIL_VAL_RELEASE	"RELEASE"	/* BASIL_ATR_METHOD */
-#define BASIL_VAL_QUERY		"QUERY"		/* BASIL_ATR_METHOD */
-#define BASIL_VAL_SWITCH	"SWITCH"	/* BASIL_ATR_METHOD */
-#define BASIL_VAL_STATUS	"STATUS"	/* BASIL_ATR_QRY_TYPE */
-#define BASIL_VAL_SUMMARY	"SUMMARY"	/* BASIL_ATR_QRY_TYPE */
-#define BASIL_VAL_ENGINE	"ENGINE"	/* BASIL_ATR_QRY_TYPE */
-#define BASIL_VAL_INVENTORY	"INVENTORY"	/* BASIL_ATR_QRY_TYPE */
-#define BASIL_VAL_NETWORK	"NETWORK"	/* BASIL_ATR_QRY_TYPE */
-#define BASIL_VAL_TOPOLOGY	"TOPOLOGY"	/* BASIL_ATR_QRY_TYPE */
-#define BASIL_VAL_SHARED	"SHARED"	/* BASIL_ATR_MODE */
-#define BASIL_VAL_EXCLUSIVE	"EXCLUSIVE"	/* BASIL_ATR_MODE */
-#define BASIL_VAL_CATAMOUNT	"CATAMOUNT"	/* BASIL_ATR_OS */
-#define BASIL_VAL_LINUX		"LINUX"		/* BASIL_ATR_OS */
-#define BASIL_VAL_XT		"XT"		/* BASIL_ATR_ARCH:node */
-#define BASIL_VAL_X2		"X2"		/* BASIL_ATR_ARCH:node */
-#define BASIL_VAL_X86_64	"x86_64"	/* BASIL_ATR_ARCH:proc */
-#define BASIL_VAL_AARCH64	"aarch64"	/* BASIL_ATR_ARCH:proc */
-#define BASIL_VAL_CRAY_X2	"cray_x2"	/* BASIL_ATR_ARCH:proc */
-#define BASIL_VAL_OS		"OS"		/* BASIL_ATR_MEM_TYPE */
-#define BASIL_VAL_HUGEPAGE	"HUGEPAGE"	/* BASIL_ATR_MEM_TYPE */
-#define BASIL_VAL_VIRTUAL	"VIRTUAL"	/* BASIL_ATR_MEM_TYPE */
-#define BASIL_VAL_HARD		"HARD"		/* BASIL_ATR_LABEL_TYPE */
-#define BASIL_VAL_SOFT		"SOFT"		/* BASIL_ATR_LABEL_TYPE */
-#define BASIL_VAL_ATTRACT	"ATTRACT"	/* BASIL_ATR_LABEL_DSPN */
-#define BASIL_VAL_REPEL		"REPEL"		/* BASIL_ATR_LABEL_DSPN */
-#define BASIL_VAL_INTERACTIVE	"INTERACTIVE"	/* BASIL_ATR_ROLE */
-#define BASIL_VAL_BATCH		"BATCH"		/* BASIL_ATR_ROLE */
-#define BASIL_VAL_UP		"UP"		/* BASIL_ATR_STATE */
-#define BASIL_VAL_DOWN		"DOWN"		/* BASIL_ATR_STATE */
-#define BASIL_VAL_UNAVAILABLE	"UNAVAILABLE"	/* BASIL_ATR_STATE */
-#define BASIL_VAL_ROUTING	"ROUTING"	/* BASIL_ATR_STATE */
-#define BASIL_VAL_SUSPECT	"SUSPECT"	/* BASIL_ATR_STATE */
-#define BASIL_VAL_ADMIN		"ADMIN"		/* BASIL_ATR_STATE */
-#define BASIL_VAL_UNKNOWN	"UNKNOWN"	/* BASIL_ATR_STATE */
-						/* BASIL_ATR_ARCH:node */
-						/* BASIL_ATR_ARCH:proc */
-#define BASIL_VAL_NONE		"NONE"		/* BASIL_ATR_GPC */
-#define BASIL_VAL_PROCESSOR	"PROCESSOR"	/* BASIL_ATR_GPC */
-#define BASIL_VAL_LOCAL		"LOCAL"		/* BASIL_ATR_GPC */
-#define BASIL_VAL_GLOBAL	"GLOBAL"	/* BASIL_ATR_GPC */
-#define BASIL_VAL_GPU		"GPU"		/* BASIL_ATR_TYPE */
-#define BASIL_VAL_INVALID	"INVALID"	/* BASIL_ATR_STATUS */
-#define BASIL_VAL_RUN		"RUN"		/* BASIL_ATR_STATUS */
-#define BASIL_VAL_SUSPEND	"SUSPEND"	/* BASIL_ATR_STATUS */
-#define BASIL_VAL_SWITCH	"SWITCH"	/* BASIL_ATR_STATUS */
-#define BASIL_VAL_UNKNOWN	"UNKNOWN"	/* BASIL_ATR_STATUS */
-#define BASIL_VAL_EMPTY		"EMPTY"		/* BASIL_ATR_STATUS */
-#define BASIL_VAL_MIX		"MIX"		/* BASIL_ATR_STATUS */
-#define BASIL_VAL_IN		"IN"		/* BASIL_ATR_ACTION */
-#define BASIL_VAL_OUT		"OUT"		/* BASIL_ATR_ACTION */
+#define BASIL_VAL_UNDEFINED "UNDEFINED"	    /* All attributes */
+#define BASIL_VAL_SUCCESS "SUCCESS"	    /* BASIL_ATR_STATUS */
+#define BASIL_VAL_FAILURE "FAILURE"	    /* BASIL_ATR_STATUS */
+#define BASIL_VAL_PERMANENT "PERMANENT"	    /* BASIL_ATR_ERROR_CLASS */
+#define BASIL_VAL_TRANSIENT "TRANSIENT"	    /* BASIL_ATR_ERROR_CLASS */
+#define BASIL_VAL_INTERNAL "INTERNAL"	    /* BASIL_ATR_ERROR_SOURCE */
+#define BASIL_VAL_SYSTEM "SYSTEM"	    /* BASIL_ATR_ERROR_SOURCE */
+					    /* BASIL_ATR_QRY_TYPE */
+#define BASIL_VAL_PARSER "PARSER"	    /* BASIL_ATR_ERROR_SOURCE */
+#define BASIL_VAL_SYNTAX "SYNTAX"	    /* BASIL_ATR_ERROR_SOURCE */
+#define BASIL_VAL_BACKEND "BACKEND"	    /* BASIL_ATR_ERROR_SOURCE */
+#define BASIL_VAL_ERROR "ERROR"		    /* BASIL_ATR_SEVERITY */
+#define BASIL_VAL_WARNING "WARNING"	    /* BASIL_ATR_SEVERITY */
+#define BASIL_VAL_DEBUG "DEBUG"		    /* BASIL_ATR_SEVERITY */
+#define BASIL_VAL_RESERVE "RESERVE"	    /* BASIL_ATR_METHOD */
+#define BASIL_VAL_CONFIRM "CONFIRM"	    /* BASIL_ATR_METHOD */
+#define BASIL_VAL_RELEASE "RELEASE"	    /* BASIL_ATR_METHOD */
+#define BASIL_VAL_QUERY "QUERY"		    /* BASIL_ATR_METHOD */
+#define BASIL_VAL_SWITCH "SWITCH"	    /* BASIL_ATR_METHOD */
+#define BASIL_VAL_STATUS "STATUS"	    /* BASIL_ATR_QRY_TYPE */
+#define BASIL_VAL_SUMMARY "SUMMARY"	    /* BASIL_ATR_QRY_TYPE */
+#define BASIL_VAL_ENGINE "ENGINE"	    /* BASIL_ATR_QRY_TYPE */
+#define BASIL_VAL_INVENTORY "INVENTORY"	    /* BASIL_ATR_QRY_TYPE */
+#define BASIL_VAL_NETWORK "NETWORK"	    /* BASIL_ATR_QRY_TYPE */
+#define BASIL_VAL_TOPOLOGY "TOPOLOGY"	    /* BASIL_ATR_QRY_TYPE */
+#define BASIL_VAL_SHARED "SHARED"	    /* BASIL_ATR_MODE */
+#define BASIL_VAL_EXCLUSIVE "EXCLUSIVE"	    /* BASIL_ATR_MODE */
+#define BASIL_VAL_CATAMOUNT "CATAMOUNT"	    /* BASIL_ATR_OS */
+#define BASIL_VAL_LINUX "LINUX"		    /* BASIL_ATR_OS */
+#define BASIL_VAL_XT "XT"		    /* BASIL_ATR_ARCH:node */
+#define BASIL_VAL_X2 "X2"		    /* BASIL_ATR_ARCH:node */
+#define BASIL_VAL_X86_64 "x86_64"	    /* BASIL_ATR_ARCH:proc */
+#define BASIL_VAL_AARCH64 "aarch64"	    /* BASIL_ATR_ARCH:proc */
+#define BASIL_VAL_CRAY_X2 "cray_x2"	    /* BASIL_ATR_ARCH:proc */
+#define BASIL_VAL_OS "OS"		    /* BASIL_ATR_MEM_TYPE */
+#define BASIL_VAL_HUGEPAGE "HUGEPAGE"	    /* BASIL_ATR_MEM_TYPE */
+#define BASIL_VAL_VIRTUAL "VIRTUAL"	    /* BASIL_ATR_MEM_TYPE */
+#define BASIL_VAL_HARD "HARD"		    /* BASIL_ATR_LABEL_TYPE */
+#define BASIL_VAL_SOFT "SOFT"		    /* BASIL_ATR_LABEL_TYPE */
+#define BASIL_VAL_ATTRACT "ATTRACT"	    /* BASIL_ATR_LABEL_DSPN */
+#define BASIL_VAL_REPEL "REPEL"		    /* BASIL_ATR_LABEL_DSPN */
+#define BASIL_VAL_INTERACTIVE "INTERACTIVE" /* BASIL_ATR_ROLE */
+#define BASIL_VAL_BATCH "BATCH"		    /* BASIL_ATR_ROLE */
+#define BASIL_VAL_UP "UP"		    /* BASIL_ATR_STATE */
+#define BASIL_VAL_DOWN "DOWN"		    /* BASIL_ATR_STATE */
+#define BASIL_VAL_UNAVAILABLE "UNAVAILABLE" /* BASIL_ATR_STATE */
+#define BASIL_VAL_ROUTING "ROUTING"	    /* BASIL_ATR_STATE */
+#define BASIL_VAL_SUSPECT "SUSPECT"	    /* BASIL_ATR_STATE */
+#define BASIL_VAL_ADMIN "ADMIN"		    /* BASIL_ATR_STATE */
+#define BASIL_VAL_UNKNOWN "UNKNOWN"	    /* BASIL_ATR_STATE */
+					    /* BASIL_ATR_ARCH:node */
+					    /* BASIL_ATR_ARCH:proc */
+#define BASIL_VAL_NONE "NONE"		    /* BASIL_ATR_GPC */
+#define BASIL_VAL_PROCESSOR "PROCESSOR"	    /* BASIL_ATR_GPC */
+#define BASIL_VAL_LOCAL "LOCAL"		    /* BASIL_ATR_GPC */
+#define BASIL_VAL_GLOBAL "GLOBAL"	    /* BASIL_ATR_GPC */
+#define BASIL_VAL_GPU "GPU"		    /* BASIL_ATR_TYPE */
+#define BASIL_VAL_INVALID "INVALID"	    /* BASIL_ATR_STATUS */
+#define BASIL_VAL_RUN "RUN"		    /* BASIL_ATR_STATUS */
+#define BASIL_VAL_SUSPEND "SUSPEND"	    /* BASIL_ATR_STATUS */
+#define BASIL_VAL_SWITCH "SWITCH"	    /* BASIL_ATR_STATUS */
+#define BASIL_VAL_UNKNOWN "UNKNOWN"	    /* BASIL_ATR_STATUS */
+#define BASIL_VAL_EMPTY "EMPTY"		    /* BASIL_ATR_STATUS */
+#define BASIL_VAL_MIX "MIX"		    /* BASIL_ATR_STATUS */
+#define BASIL_VAL_IN "IN"		    /* BASIL_ATR_ACTION */
+#define BASIL_VAL_OUT "OUT"		    /* BASIL_ATR_ACTION */
 
 /*
  * The following SYSTEM Query (and BASIL 1.7) specific Macro definitions have
@@ -336,47 +332,47 @@
  * ('Role', 'State', 'Page_Size' & 'Page_Count' related Macros already exist.
  * These attributes are common across XML Elements such as Inventory & System.)
  */
-#define BASIL_ELM_SYSTEM        "System"        /* BASIL_ELM_RESPONSEDATA */
-#define BASIL_ELM_NODES         "Nodes"         /* BASIL_ELM_SYSTEM */
-#define BASIL_ATR_CPCU          "cpcu"          /* BASIL_ELM_SYSTEM */
-#define BASIL_ATR_SPEED         "speed"         /* BASIL_ELM_NODES */
-#define BASIL_ATR_NUMA_NODES    "numa_nodes"    /* BASIL_ELM_NODES */
-#define BASIL_ATR_DIES          "dies"          /* BASIL_ELM_NODES */
+#define BASIL_ELM_SYSTEM "System"		/* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ELM_NODES "Nodes"			/* BASIL_ELM_SYSTEM */
+#define BASIL_ATR_CPCU "cpcu"			/* BASIL_ELM_SYSTEM */
+#define BASIL_ATR_SPEED "speed"			/* BASIL_ELM_NODES */
+#define BASIL_ATR_NUMA_NODES "numa_nodes"	/* BASIL_ELM_NODES */
+#define BASIL_ATR_DIES "dies"			/* BASIL_ELM_NODES */
 #define BASIL_ATR_COMPUTE_UNITS "compute_units" /* BASIL_ELM_NODES */
-#define BASIL_ATR_CPUS_PER_CU   "cpus_per_cu"   /* BASIL_ELM_NODES */
-#define BASIL_ATR_ACCELS        "accels"        /* BASIL_ELM_NODES */
-#define BASIL_ATR_ACCEL_STATE   "accel_state"   /* BASIL_ELM_NODES */
-#define BASIL_ATR_NUMA_CFG      "numa_cfg"      /* BASIL_ELM_NODES */
-#define BASIL_ATR_HBMSIZE       "hbm_size_mb"   /* BASIL_ELM_NODES */
-#define BASIL_ATR_HBM_CFG       "hbm_cache_pct" /* BASIL_ELM_NODES */
-#define BASIL_VAL_VERSION_1_7   "1.7"           /* BASIL_ATR_PROTOCOL 1.7 */
-#define BASIL_VAL_VERSION       BASIL_VAL_VERSION_1_7
+#define BASIL_ATR_CPUS_PER_CU "cpus_per_cu"	/* BASIL_ELM_NODES */
+#define BASIL_ATR_ACCELS "accels"		/* BASIL_ELM_NODES */
+#define BASIL_ATR_ACCEL_STATE "accel_state"	/* BASIL_ELM_NODES */
+#define BASIL_ATR_NUMA_CFG "numa_cfg"		/* BASIL_ELM_NODES */
+#define BASIL_ATR_HBMSIZE "hbm_size_mb"		/* BASIL_ELM_NODES */
+#define BASIL_ATR_HBM_CFG "hbm_cache_pct"	/* BASIL_ELM_NODES */
+#define BASIL_VAL_VERSION_1_7 "1.7"		/* BASIL_ATR_PROTOCOL 1.7 */
+#define BASIL_VAL_VERSION BASIL_VAL_VERSION_1_7
 
 /*
  * The following Macro definitions have been created by Altair to support
  * SYSTEM Query processing.
  */
 #define BASIL_VAL_INTERACTIVE_SYS "interactive" /* BASIL_ATR_ROLE */
-#define BASIL_VAL_BATCH_SYS     "batch"		/* BASIL_ATR_ROLE */
-#define BASIL_VAL_UP_SYS        "up"          	/* BASIL_ATR_STATE */
-#define BASIL_VAL_DOWN_SYS      "down"        	/* BASIL_ATR_STATE */
+#define BASIL_VAL_BATCH_SYS "batch"		/* BASIL_ATR_ROLE */
+#define BASIL_VAL_UP_SYS "up"			/* BASIL_ATR_STATE */
+#define BASIL_VAL_DOWN_SYS "down"		/* BASIL_ATR_STATE */
 #define BASIL_VAL_UNAVAILABLE_SYS "unavailable" /* BASIL_ATR_STATE */
-#define BASIL_VAL_ROUTING_SYS   "routing"     	/* BASIL_ATR_STATE */
-#define BASIL_VAL_SUSPECT_SYS   "suspect"     	/* BASIL_ATR_STATE */
-#define BASIL_VAL_ADMIN_SYS     "admin"       	/* BASIL_ATR_STATE */
-#define BASIL_VAL_EMPTY_SYS	""              /* BASIL_ATR_NUMA_CFG */
-#define BASIL_VAL_A2A_SYS     	"a2a"           /* BASIL_ATR_NUMA_CFG */
-#define BASIL_VAL_SNC2_SYS    	"snc2"          /* BASIL_ATR_NUMA_CFG */
-#define BASIL_VAL_SNC4_SYS    	"snc4"          /* BASIL_ATR_NUMA_CFG */
-#define BASIL_VAL_HEMI_SYS    	"hemi"          /* BASIL_ATR_NUMA_CFG */
-#define BASIL_VAL_QUAD_SYS    	"quad"          /* BASIL_ATR_NUMA_CFG */
-#define BASIL_VAL_0_SYS       	"0"             /* BASIL_ATR_HBM_CFG */
-#define BASIL_VAL_25_SYS      	"25"            /* BASIL_ATR_HBM_CFG */
-#define BASIL_VAL_50_SYS      	"50"            /* BASIL_ATR_HBM_CFG */
-#define BASIL_VAL_100_SYS     	"100"           /* BASIL_ATR_HBM_CFG */
+#define BASIL_VAL_ROUTING_SYS "routing"		/* BASIL_ATR_STATE */
+#define BASIL_VAL_SUSPECT_SYS "suspect"		/* BASIL_ATR_STATE */
+#define BASIL_VAL_ADMIN_SYS "admin"		/* BASIL_ATR_STATE */
+#define BASIL_VAL_EMPTY_SYS ""			/* BASIL_ATR_NUMA_CFG */
+#define BASIL_VAL_A2A_SYS "a2a"			/* BASIL_ATR_NUMA_CFG */
+#define BASIL_VAL_SNC2_SYS "snc2"		/* BASIL_ATR_NUMA_CFG */
+#define BASIL_VAL_SNC4_SYS "snc4"		/* BASIL_ATR_NUMA_CFG */
+#define BASIL_VAL_HEMI_SYS "hemi"		/* BASIL_ATR_NUMA_CFG */
+#define BASIL_VAL_QUAD_SYS "quad"		/* BASIL_ATR_NUMA_CFG */
+#define BASIL_VAL_0_SYS "0"			/* BASIL_ATR_HBM_CFG */
+#define BASIL_VAL_25_SYS "25"			/* BASIL_ATR_HBM_CFG */
+#define BASIL_VAL_50_SYS "50"			/* BASIL_ATR_HBM_CFG */
+#define BASIL_VAL_100_SYS "100"			/* BASIL_ATR_HBM_CFG */
 
 /* if set, the specified env var is the href (i.e., url) of an xslt file */
-#define BASIL_XSLT_HREF_ENV	"BASIL_XSLT_HREF"
+#define BASIL_XSLT_HREF_ENV "BASIL_XSLT_HREF"
 
 /*
  * BASIL versions.
@@ -397,8 +393,7 @@ static const char *basil_supported_versions[] __attribute__((unused)) = {
 	BASIL_VAL_VERSION_1_2,
 	BASIL_VAL_VERSION_1_1,
 	BASIL_VAL_VERSION_1_0,
-	NULL
-};
+	NULL};
 
 /*
  * BASIL versions -- numerical
@@ -625,7 +620,7 @@ typedef struct basil_request_reserve {
 	char user_name[BASIL_STRING_MEDIUM];
 	char account_name[BASIL_STRING_MEDIUM];
 	char batch_id[BASIL_STRING_LONG];
-	long rsvn_id;	/* debug only */
+	long rsvn_id; /* debug only */
 	basil_reserve_param_t *params;
 } basil_request_reserve_t;
 
@@ -668,7 +663,7 @@ typedef struct basil_request_query_status {
  * (basil_request_query_system_t) from the Cray-supplied basil.h file.
  */
 typedef struct basil_request_query_system {
-    unsigned long long changecount;
+	unsigned long long changecount;
 } basil_request_query_system_t;
 
 typedef struct basil_topology_filter {
@@ -824,7 +819,7 @@ typedef struct basil_node {
 	basil_node_arch_t arch;
 	basil_node_state_t state;
 	basil_node_role_t role;
-	unsigned int numcpus;	/* numcores */
+	unsigned int numcpus; /* numcores */
 	long clock_mhz;
 	char name[BASIL_STRING_SHORT];
 	basil_node_socket_t *sockets;
@@ -877,29 +872,29 @@ typedef struct basil_response_query_status {
  * supplied basil.h file.
  */
 typedef struct basil_system_element {
-    char role[BASIL_STRING_SHORT];
-    char state[BASIL_STRING_SHORT];
-    char speed[BASIL_STRING_SHORT];
-    char numa_nodes[BASIL_STRING_SHORT];
-    char n_dies[BASIL_STRING_SHORT];
-    char compute_units[BASIL_STRING_SHORT];
-    char cpus_per_cu[BASIL_STRING_SHORT];
-    char pgszl2[BASIL_STRING_SHORT];
-    char avlmem[BASIL_STRING_SHORT];
-    char accel_name[BASIL_STRING_SHORT];
-    char accel_state[BASIL_STRING_SHORT];
-    char numa_cfg[BASIL_STRING_SHORT];
-    char hbmsize[BASIL_STRING_SHORT];
-    char hbm_cfg[BASIL_STRING_SHORT];
-    char *nidlist;
-    struct basil_system_element *next;
+	char role[BASIL_STRING_SHORT];
+	char state[BASIL_STRING_SHORT];
+	char speed[BASIL_STRING_SHORT];
+	char numa_nodes[BASIL_STRING_SHORT];
+	char n_dies[BASIL_STRING_SHORT];
+	char compute_units[BASIL_STRING_SHORT];
+	char cpus_per_cu[BASIL_STRING_SHORT];
+	char pgszl2[BASIL_STRING_SHORT];
+	char avlmem[BASIL_STRING_SHORT];
+	char accel_name[BASIL_STRING_SHORT];
+	char accel_state[BASIL_STRING_SHORT];
+	char numa_cfg[BASIL_STRING_SHORT];
+	char hbmsize[BASIL_STRING_SHORT];
+	char hbm_cfg[BASIL_STRING_SHORT];
+	char *nidlist;
+	struct basil_system_element *next;
 } basil_system_element_t;
 
 typedef struct basil_response_query_system {
-    long long timestamp;
-    char mpp_host[BASIL_STRING_LONG];
-    int cpcu_val;
-    basil_system_element_t *elements;
+	long long timestamp;
+	char mpp_host[BASIL_STRING_LONG];
+	int cpcu_val;
+	basil_system_element_t *elements;
 } basil_response_query_system_t;
 
 typedef struct basil_response_query_topology {
@@ -973,6 +968,6 @@ typedef struct basil_response {
  * Bit assignments for error_flags define in basil_response_t for
  * use in callback functions.
  */
-#define BASIL_ERR_TRANSIENT	0x00000001UL
+#define BASIL_ERR_TRANSIENT 0x00000001UL
 
 #endif /* _BASIL_H */

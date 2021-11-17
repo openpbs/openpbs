@@ -37,12 +37,12 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_FIFO_H
-#define	_FIFO_H
+#ifndef _FIFO_H
+#define _FIFO_H
 
 #include <string>
 
-#include  <limits.h>
+#include <limits.h>
 #include "data_types.h"
 #include "sched_cmds.h"
 
@@ -135,7 +135,7 @@ int find_non_normal_job_ind(resource_resv **jobs, int start_index);
  *
  *      sim_run_update_resresv - simulate the running of a job
  */
-bool sim_run_update_resresv(status *policy, resource_resv *resresv, std::vector<nspec *>& ns_arr, unsigned int flags);
+bool sim_run_update_resresv(status *policy, resource_resv *resresv, std::vector<nspec *> &ns_arr, unsigned int flags);
 bool sim_run_update_resresv(status *policy, resource_resv *resresv, unsigned int flags);
 
 /*
@@ -163,7 +163,7 @@ bool run_update_job(status *policy, int pbs_sd, server_info *sinfo, queue_info *
 
 bool
 run_update_job(status *policy, int pbs_sd, server_info *sinfo, queue_info *qinfo,
-		   resource_resv *rr, unsigned int flags, schd_error *err);
+	       resource_resv *rr, unsigned int flags, schd_error *err);
 
 /*
  *	update_job_can_not_run - do post job 'can't run' processing
@@ -209,8 +209,7 @@ int should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *
  *	return nothing
  *
  */
-void update_cycle_status(status& policy, time_t current_time);
-
+void update_cycle_status(status &policy, time_t current_time);
 
 /*
  *
@@ -242,8 +241,8 @@ int set_validate_sched_attrs(int);
 
 int validate_running_user(char *exename);
 
-int send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char *execvnode);
+int send_run_job(int virtual_sd, int has_runjob_hook, const std::string &jobid, char *execvnode);
 
 struct batch_status *send_statsched(int virtual_fd, struct attrl *attrib, char *extend);
 
-#endif	/* _FIFO_H */
+#endif /* _FIFO_H */

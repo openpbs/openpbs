@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_SERVER_INFO_H
-#define	_SERVER_INFO_H
+#ifndef _SERVER_INFO_H
+#define _SERVER_INFO_H
 
 #include <pbs_ifl.h>
 #include "state_count.h"
@@ -76,12 +76,12 @@ int query_server_dyn_res(server_info *sinfo);
 
 schd_resource *find_alloc_resource(schd_resource *resplist, resdef *def);
 schd_resource *find_alloc_resource_by_str(schd_resource *resplist, const char *name);
-schd_resource *find_alloc_resource_by_str(schd_resource *resplist, const std::string& name);
+schd_resource *find_alloc_resource_by_str(schd_resource *resplist, const std::string &name);
 
 /*  finds a resource in a resource list by string resource name */
 
 schd_resource *find_resource_by_str(schd_resource *reslist, const char *name);
-schd_resource *find_resource_by_str(schd_resource *reslist, const std::string& name);
+schd_resource *find_resource_by_str(schd_resource *reslist, const std::string &name);
 
 /*
  *	find resource by resource definition
@@ -118,7 +118,7 @@ void free_server(server_info *sinfo);
  */
 void
 update_server_on_run(status *policy, server_info *sinfo, queue_info *qinfo,
-	resource_resv *resresv, char *job_state);
+		     resource_resv *resresv, char *job_state);
 
 /*
  *
@@ -133,7 +133,6 @@ int create_server_arrays(server_info *sinfo);
  *	copy_server_arrays - copy server's jobs and all_resresv arrays
  */
 int copy_server_arrays(server_info *nsinfo, const server_info *osinfo);
-
 
 /*
  *      check_exit_job - function used by job_filter to filter out
@@ -183,7 +182,7 @@ schd_resource *dup_resource_list(schd_resource *res);
 
 /* dup a resource list selectively only duping specific resources */
 
-schd_resource *dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef*>& deflist, unsigned flags);
+schd_resource *dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef *> &deflist, unsigned flags);
 
 /*
  *	dup_ind_resource_list - dup a resource list - if a resource is indirect
@@ -207,7 +206,6 @@ int check_resv_job(resource_resv *job, void *unused);
  */
 void free_resource_list(schd_resource *reslist);
 
-
 /*
  *      free_resource - frees the memory used by a resource structure
  */
@@ -219,7 +217,7 @@ void free_resource(schd_resource *resp);
  */
 void
 update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
-	resource_resv *resresv, const char *job_state);
+		     resource_resv *resresv, const char *job_state);
 
 /*
  *      check_unassoc_node - finds nodes which are not associated with queues
@@ -240,7 +238,7 @@ void free_counts_list(counts_umap &ctslist);
 /*
  *	dup_counts_umap - duplicate counts_umap
  */
-counts_umap dup_counts_umap (const counts_umap &omap);
+counts_umap dup_counts_umap(const counts_umap &omap);
 
 /*
  *      find_counts - find a counts structure by name
@@ -378,19 +376,19 @@ char *read_formula(void);
  * create_total_counts -  Creates total counts list for server & queue
  */
 void
-create_total_counts(server_info *sinfo, queue_info * qinfo,
-	resource_resv *resresv, int mode);
+create_total_counts(server_info *sinfo, queue_info *qinfo,
+		    resource_resv *resresv, int mode);
 
 /*
  * Updates total counts list for server & queue on run and on
  * preemption.
  */
 void
-update_total_counts(server_info *si, queue_info* qi,
-	resource_resv *rr, int mode);
+update_total_counts(server_info *si, queue_info *qi,
+		    resource_resv *rr, int mode);
 void
-update_total_counts_on_end(server_info *si, queue_info* qi,
-	resource_resv *rr, int mode);
+update_total_counts_on_end(server_info *si, queue_info *qi,
+			   resource_resv *rr, int mode);
 
 /**
  * @brief - get a unique rank to uniquely identify an object
@@ -404,7 +402,7 @@ int get_sched_rank();
  *                      their priority so that we can round robin
  *                      across those.
  */
-int add_queue_to_list(queue_info **** qlhead, queue_info * qinfo);
+int add_queue_to_list(queue_info ****qlhead, queue_info *qinfo);
 
 /*
  * append_to_queue_list - function that will reallocate and append
@@ -423,7 +421,7 @@ struct queue_info ***find_queue_list_by_priority(queue_info ***list_head, int pr
 /*
  * free_queue_list - to free two dimensional queue_list array
  */
-void free_queue_list(queue_info *** queue_list);
+void free_queue_list(queue_info ***queue_list);
 
 void add_req_list_to_assn(schd_resource *, resource_req *);
 
@@ -438,4 +436,4 @@ status *dup_status(status *ost);
 
 struct batch_status *send_statserver(int virtual_fd, struct attrl *attrib, char *extend);
 
-#endif	/* _SERVER_INFO_H */
+#endif /* _SERVER_INFO_H */

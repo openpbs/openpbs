@@ -99,7 +99,7 @@ main(int argc, char *argv[])
 				break;
 
 			default:
-				fprintf(stderr, "Invalid Option: -%c\n",  c);
+				fprintf(stderr, "Invalid Option: -%c\n", c);
 		}
 
 	if (argc < optind) {
@@ -116,7 +116,6 @@ main(int argc, char *argv[])
 	rescspec_print_errors(1);
 
 	parse_tree = rescspec_parse(argv[optind]);
-
 
 	if (parse_tree != NULL) {
 		if (read_values) {
@@ -169,12 +168,13 @@ main(int argc, char *argv[])
  * @retval	NULL	: failed
  *
  */
-static struct attrl *read_attrs(FILE *fp)
+static struct attrl *
+read_attrs(FILE *fp)
 {
-	char buf[1024];		/* buf to read into */
-	struct attrl *head = NULL;	/* head of list */
-	struct attrl *cur = NULL;	/* current entry in list */
-	struct attrl *prev = NULL;	/* prev entry to add current one to */
+	char buf[1024];		   /* buf to read into */
+	struct attrl *head = NULL; /* head of list */
+	struct attrl *cur = NULL;  /* current entry in list */
+	struct attrl *prev = NULL; /* prev entry to add current one to */
 
 	if (fp == NULL)
 		return NULL;
@@ -184,7 +184,7 @@ static struct attrl *read_attrs(FILE *fp)
 			return NULL;
 
 		/* chop the \n */
-		buf[strlen(buf)-1] = '\0';
+		buf[strlen(buf) - 1] = '\0';
 
 		cur->name = ATTR_l;
 		cur->resource = strdup(strtok(buf, "= 	"));
@@ -193,8 +193,7 @@ static struct attrl *read_attrs(FILE *fp)
 		if (prev != NULL) {
 			prev->next = cur;
 			prev = cur;
-		}
-		else {
+		} else {
 			prev = cur;
 			head = cur;
 		}

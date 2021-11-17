@@ -55,7 +55,7 @@ attribute *
 get_jattr(const job *pjob, int attr_idx)
 {
 	if (pjob != NULL)
-		return _get_attr_by_idx((attribute *)pjob->ji_wattr, attr_idx);
+		return _get_attr_by_idx((attribute *) pjob->ji_wattr, attr_idx);
 	return NULL;
 }
 
@@ -416,7 +416,6 @@ set_jattr_ll_slim(job *pjob, int attr_idx, long long val, enum batch_op op)
 	return 0;
 }
 
-
 /**
  * @brief	"fast" job attribute setter for boolean values
  *
@@ -462,7 +461,6 @@ set_jattr_c_slim(job *pjob, int attr_idx, char val, enum batch_op op)
 
 	return 0;
 }
-
 
 /**
  * @brief	Check if a job attribute is set

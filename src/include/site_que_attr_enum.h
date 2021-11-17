@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /*
  * Place holder for site supplied additions to the queue's enumerated
  * list of attributes,  see queue.h.
@@ -50,7 +48,7 @@
  */
 #ifdef NAS
 /* localmod 046 */
-	Q_SITE_ATR_maxstarve,
-/* localmod 034 */
+Q_SITE_ATR_maxstarve,
+	/* localmod 034 */
 	Q_SITE_ATR_maxborrow,
 #endif

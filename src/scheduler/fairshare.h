@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_FAIRSHARE_H
-#define	_FAIRSHARE_H
+#ifndef _FAIRSHARE_H
+#define _FAIRSHARE_H
 
 #include "data_types.h"
 /*
@@ -50,15 +50,14 @@ void add_child(group_info *ginfo, group_info *parent);
  *      find_group_info - recursive function to find a ginfo in the
  resgroup tree
  */
-group_info *find_group_info(const std::string& name, group_info *root);
+group_info *find_group_info(const std::string &name, group_info *root);
 
 /*
  *      find_alloc_ginfo - trys to find a ginfo in the fair share tree.  If it
  *                        can not find the ginfo, then allocate a new one and
  *                        add it to the "unknown" group
  */
-group_info *find_alloc_ginfo(const std::string& name, group_info *root);
-
+group_info *find_alloc_ginfo(const std::string &name, group_info *root);
 
 /*
  *
@@ -153,7 +152,7 @@ std::vector<group_info *> create_group_path(group_info *ginfo);
  *      compare_path - compare two group_path's and see which is more
  *                     deserving to run
  */
-int compare_path(std::vector<group_info *>& gp1, std::vector<group_info *>& gp2);
+int compare_path(std::vector<group_info *> &gp1, std::vector<group_info *> &gp2);
 
 /*
  *      over_fs_usage - return true of a entity has used more then their
@@ -205,6 +204,4 @@ void reset_usage(group_info *node);
 /* Calculate the arbitrary usage of the tree */
 void calc_usage_factor(fairshare_head *tree);
 
-
-
-#endif	/* _FAIRSHARE_H */
+#endif /* _FAIRSHARE_H */

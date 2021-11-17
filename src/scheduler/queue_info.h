@@ -37,12 +37,10 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #ifndef _QUEUE_INFO_H
 #define _QUEUE_INFO_H
 #include <pbs_ifl.h>
 #include "data_types.h"
-
 
 /*
  *
@@ -88,18 +86,17 @@ std::vector<queue_info *> dup_queues(const std::vector<queue_info *> &oqueues, s
  *	return the found queue or NULL
  *
  */
-queue_info *find_queue_info(std::vector<queue_info *> &qinfo_arr, const std::string& name);
+queue_info *find_queue_info(std::vector<queue_info *> &qinfo_arr, const std::string &name);
 
 /*
  *	update_queue_on_end - update a queue when a job has finished running
  */
 void
 update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
-	const char *job_state);
+		    const char *job_state);
 
 int queue_in_partition(queue_info *qinfo, char *partition);
 
 struct batch_status *send_statqueue(int virtual_fd, char *id, struct attrl *attrib, char *extend);
-
 
 #endif /* _QUEUE_INFO_H */

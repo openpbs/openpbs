@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #include <pbs_config.h>
 
 #include <stdio.h>
@@ -86,7 +85,7 @@ mock_run_finish_exec(job *pjob)
 
 	sprintf(log_buffer, "Started mock run of job");
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
-		LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+		  LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 
 	mock_run_record_finish_exec(pjob);
 
@@ -108,7 +107,6 @@ mock_run_record_finish_exec(job *pjob)
 	next_sample_time = min_check_poll;
 
 	return;
-
 }
 
 /**
@@ -138,7 +136,6 @@ mock_run_end_job_task(struct work_task *ptask)
 	scan_for_exiting();
 }
 
-
 /**
  * @brief
  * 	Update the resources used.<attributes> of a job when in mock run mode
@@ -158,7 +155,7 @@ mock_run_mom_set_use(job *pjob)
 	attribute *at;
 	resource_def *rdefp;
 	long val_req = 0;
-	static resource_def	**rd = NULL;
+	static resource_def **rd = NULL;
 	static resource_def *vmemd = NULL;
 	int memval = 0;
 	unsigned int mem_atsv_shift = 10;
@@ -166,11 +163,11 @@ mock_run_mom_set_use(job *pjob)
 
 	assert(pjob != NULL);
 	at = get_jattr(pjob, JOB_ATR_resc_used);
-	at->at_flags |= (ATR_VFLAG_MODIFY|ATR_VFLAG_SET);
+	at->at_flags |= (ATR_VFLAG_MODIFY | ATR_VFLAG_SET);
 
 	if (rd == NULL) {
 		rd = malloc(5 * sizeof(resource_def *));
-		if (rd  == NULL) {
+		if (rd == NULL) {
 			log_err(errno, __func__, "Unable to allocate memory");
 			return PBSE_SYSTEM;
 		}
@@ -198,7 +195,7 @@ mock_run_mom_set_use(job *pjob)
 			 */
 			pres_req = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), rdefp);
 			if (pres_req != NULL &&
-				(val_req = pres_req->rs_value.at_val.at_long) != 0)
+			    (val_req = pres_req->rs_value.at_val.at_long) != 0)
 				pres->rs_value.at_val.at_long = val_req;
 			else
 				pres->rs_value.at_val.at_long = 0;
@@ -253,7 +250,7 @@ mock_run_job_purge(job *pjob)
 
 	if (pjob->ji_preq != NULL) {
 		log_joberr(PBSE_INTERNAL, __func__, "request outstanding",
-			pjob->ji_qs.ji_jobid);
+			   pjob->ji_qs.ji_jobid);
 		reply_text(pjob->ji_preq, PBSE_INTERNAL, "job deleted");
 		pjob->ji_preq = NULL;
 	}

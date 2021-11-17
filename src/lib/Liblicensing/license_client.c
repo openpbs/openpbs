@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 int
 lic_init(char *license_location)
 {
@@ -57,7 +56,8 @@ lic_get(int count)
 }
 
 char
-*lic_get_error()
+	*
+	lic_get_error()
 {
 	return "No Error";
 }
@@ -77,7 +77,7 @@ lic_close()
 char *
 lic_check_expiry()
 {
-	return (char *)0;
+	return (char *) 0;
 }
 
 int

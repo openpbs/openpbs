@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  *
  * @brief
@@ -52,9 +51,9 @@
  */
 
 #ifndef _DB_POSTGRES_H
-#define	_DB_POSTGRES_H
+#define _DB_POSTGRES_H
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -66,7 +65,6 @@ extern "C" {
 #include "list_link.h"
 #include "portability.h"
 #include "attribute.h"
-
 
 /*
  * Conversion macros for long long type
@@ -109,7 +107,6 @@ extern "C" {
 
 /* creattm is the table field that holds the creation time */
 #define STMT_FINDRESVS_ORDBY_CREATTM "findresvs_ordby_creattm"
-
 
 /* server & seq statement names */
 #define STMT_INSERT_SVR "insert_svr"
@@ -188,11 +185,10 @@ typedef struct postgres_conn_data pg_conn_data_t;
  * @brief
  * Postgres transaction management helper structure.
  */
-struct pg_conn_trx
-{
-	int conn_trx_nest;	   /* incr/decr with each begin/end trx */
+struct pg_conn_trx {
+	int conn_trx_nest;     /* incr/decr with each begin/end trx */
 	int conn_trx_rollback; /* rollback flag in case of nested trx */
-	int conn_trx_async;	   /* 1 - async, 0 - sync, one-shot reset */
+	int conn_trx_async;    /* 1 - async, 0 - sync, one-shot reset */
 };
 typedef struct pg_conn_trx pg_conn_trx_t;
 
@@ -230,16 +226,15 @@ typedef struct db_query_state db_query_state_t;
  *
  */
 struct postgres_db_fn {
-	int (*pbs_db_save_obj) (void *conn, pbs_db_obj_info_t *obj, int savetype);
-	int (*pbs_db_delete_obj) (void *conn, pbs_db_obj_info_t *obj);
-	int (*pbs_db_load_obj) (void *conn, pbs_db_obj_info_t *obj);
-	int (*pbs_db_find_obj) (void *conn, void *state, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
-	int (*pbs_db_next_obj) (void *conn, void *state, pbs_db_obj_info_t *obj);
+	int (*pbs_db_save_obj)(void *conn, pbs_db_obj_info_t *obj, int savetype);
+	int (*pbs_db_delete_obj)(void *conn, pbs_db_obj_info_t *obj);
+	int (*pbs_db_load_obj)(void *conn, pbs_db_obj_info_t *obj);
+	int (*pbs_db_find_obj)(void *conn, void *state, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
+	int (*pbs_db_next_obj)(void *conn, void *state, pbs_db_obj_info_t *obj);
 	int (*pbs_db_del_attr_obj)(void *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
 };
 
 typedef struct postgres_db_fn pg_db_fn_t;
-
 
 /*
  * The following are defined as macros as they are used very frequently
@@ -280,49 +275,49 @@ typedef struct postgres_db_fn pg_db_fn_t;
  * - temp_int	  - array to use to convert int to network byte order
  * - temp_long	  - array to use to convery BIGINT to network byte order
  */
-#define SET_PARAM_STR(conn_data, itm, i)  \
-		((pg_conn_data_t *) conn_data)->paramValues[i] = (itm); \
-		if (itm) \
-				((pg_conn_data_t *) conn_data)->paramLengths[i] = strlen(itm); \
-		else \
-				((pg_conn_data_t *) conn_data)->paramLengths[i] = 0; \
-		((pg_conn_data_t *) conn_data)->paramFormats[i] = 0;
+#define SET_PARAM_STR(conn_data, itm, i)                                       \
+	((pg_conn_data_t *) conn_data)->paramValues[i] = (itm);                \
+	if (itm)                                                               \
+		((pg_conn_data_t *) conn_data)->paramLengths[i] = strlen(itm); \
+	else                                                                   \
+		((pg_conn_data_t *) conn_data)->paramLengths[i] = 0;           \
+	((pg_conn_data_t *) conn_data)->paramFormats[i] = 0;
 
-#define SET_PARAM_STRSZ(conn_data, itm, size, i)  \
-		((pg_conn_data_t *) conn_data)->paramValues[i] = (itm); \
-		((pg_conn_data_t *) conn_data)->paramLengths[i] = (size); \
-		((pg_conn_data_t *) conn_data)->paramFormats[i] = 0;
+#define SET_PARAM_STRSZ(conn_data, itm, size, i)                  \
+	((pg_conn_data_t *) conn_data)->paramValues[i] = (itm);   \
+	((pg_conn_data_t *) conn_data)->paramLengths[i] = (size); \
+	((pg_conn_data_t *) conn_data)->paramFormats[i] = 0;
 
-#define SET_PARAM_INTEGER(conn_data, itm, i) \
-		((pg_conn_data_t *) conn_data)->temp_int[i] = (INTEGER) htonl(itm); \
-		((pg_conn_data_t *) conn_data)->paramValues[i] = \
-				(char *) &(((pg_conn_data_t *) conn_data)->temp_int[i]); \
-		((pg_conn_data_t *) conn_data)->paramLengths[i] = sizeof(int); \
-		((pg_conn_data_t *) conn_data)->paramFormats[i] = 1;
+#define SET_PARAM_INTEGER(conn_data, itm, i)                                \
+	((pg_conn_data_t *) conn_data)->temp_int[i] = (INTEGER) htonl(itm); \
+	((pg_conn_data_t *) conn_data)->paramValues[i] =                    \
+		(char *) &(((pg_conn_data_t *) conn_data)->temp_int[i]);    \
+	((pg_conn_data_t *) conn_data)->paramLengths[i] = sizeof(int);      \
+	((pg_conn_data_t *) conn_data)->paramFormats[i] = 1;
 
-#define SET_PARAM_BIGINT(conn_data, itm, i) \
-		((pg_conn_data_t *) conn_data)->temp_long[i] = (BIGINT) htonll(itm); \
-		((pg_conn_data_t *) conn_data)->paramValues[i] = \
-				(char *) &(((pg_conn_data_t *) conn_data)->temp_long[i]); \
-		((pg_conn_data_t *) conn_data)->paramLengths[i] = sizeof(BIGINT); \
-		((pg_conn_data_t *) conn_data)->paramFormats[i] = 1;
+#define SET_PARAM_BIGINT(conn_data, itm, i)                                  \
+	((pg_conn_data_t *) conn_data)->temp_long[i] = (BIGINT) htonll(itm); \
+	((pg_conn_data_t *) conn_data)->paramValues[i] =                     \
+		(char *) &(((pg_conn_data_t *) conn_data)->temp_long[i]);    \
+	((pg_conn_data_t *) conn_data)->paramLengths[i] = sizeof(BIGINT);    \
+	((pg_conn_data_t *) conn_data)->paramFormats[i] = 1;
 
-#define SET_PARAM_BIN(conn_data, itm, len , i)  \
-		((pg_conn_data_t *) conn_data)->paramValues[i] = (itm); \
-		((pg_conn_data_t *) conn_data)->paramLengths[i] = (len); \
-		((pg_conn_data_t *) conn_data)->paramFormats[i] = 1;
+#define SET_PARAM_BIN(conn_data, itm, len, i)                    \
+	((pg_conn_data_t *) conn_data)->paramValues[i] = (itm);  \
+	((pg_conn_data_t *) conn_data)->paramLengths[i] = (len); \
+	((pg_conn_data_t *) conn_data)->paramFormats[i] = 1;
 
-#define GET_PARAM_STR(res, row, itm, fnum)  \
-		strcpy((itm), PQgetvalue((res), (row), (fnum)));
+#define GET_PARAM_STR(res, row, itm, fnum) \
+	strcpy((itm), PQgetvalue((res), (row), (fnum)));
 
 #define GET_PARAM_INTEGER(res, row, itm, fnum) \
-		(itm) = ntohl(*((uint32_t *) PQgetvalue((res), (row), (fnum))));
+	(itm) = ntohl(*((uint32_t *) PQgetvalue((res), (row), (fnum))));
 
 #define GET_PARAM_BIGINT(res, row, itm, fnum) \
-		(itm) = ntohll(*((uint64_t *) PQgetvalue((res), (row), (fnum))));
+	(itm) = ntohll(*((uint64_t *) PQgetvalue((res), (row), (fnum))));
 
 #define GET_PARAM_BIN(res, row, itm, fnum) \
-		(itm) = PQgetvalue((res), (row), (fnum));
+	(itm) = PQgetvalue((res), (row), (fnum));
 
 #define FIND_JOBS_BY_QUE 1
 
@@ -412,9 +407,8 @@ int pbs_db_del_attr_node(void *conn, void *obj_id, pbs_db_attr_list_t *attr_list
  */
 int db_execute_str(void *conn, char *sql);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
 #endif /* _DB_POSTGRES_H */
-

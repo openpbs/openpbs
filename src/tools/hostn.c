@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    hostn.c
  *
@@ -99,8 +98,8 @@ main(int argc, char *argv[], char *env[])
 	struct hostent *host;
 	struct hostent *hosta;
 	struct in_addr *ina;
-	int		naddr;
-	int		vflag = 0;
+	int naddr;
+	int vflag = 0;
 	void prt_herrno();
 	extern int optind;
 
@@ -112,7 +111,8 @@ main(int argc, char *argv[], char *env[])
 
 	while ((i = getopt(argc, argv, "v-:")) != EOF) {
 		switch (i) {
-			case 'v':	vflag = 1;
+			case 'v':
+				vflag = 1;
 				break;
 			default:
 				usage(argv[0]);
@@ -120,7 +120,7 @@ main(int argc, char *argv[], char *env[])
 		}
 	}
 
-	if (optind != argc-1) {
+	if (optind != argc - 1) {
 		usage(argv[0]);
 		return 1;
 	}
@@ -149,9 +149,9 @@ main(int argc, char *argv[], char *env[])
 		printf("\n");
 		if (vflag) {
 			if (host->h_aliases && *host->h_aliases) {
-				for (i=0; host->h_aliases[i]; ++i)
+				for (i = 0; host->h_aliases[i]; ++i)
 					printf("aliases:           %s\n",
-						host->h_aliases[i]);
+					       host->h_aliases[i]);
 			} else {
 				printf("aliases:            -none-\n");
 			}
@@ -163,30 +163,29 @@ main(int argc, char *argv[], char *env[])
 		/* next call to gethostby*()				    */
 
 		naddr = 0;
-		for (i=0; host->h_addr_list[i]; ++i) {
+		for (i = 0; host->h_addr_list[i]; ++i) {
 			++naddr;
 		}
-		ina = (struct in_addr *)malloc(sizeof(struct in_addr) * naddr);
+		ina = (struct in_addr *) malloc(sizeof(struct in_addr) * naddr);
 		if (ina == NULL) {
 			fprintf(stderr, "%s: out of memory\n", argv[0]);
 			return 1;
 		}
 
-		for (i=0; i<naddr; ++i) {
-			(void)memcpy((char *)(ina+i), host->h_addr_list[i],
-				host->h_length);
+		for (i = 0; i < naddr; ++i) {
+			(void) memcpy((char *) (ina + i), host->h_addr_list[i],
+				      host->h_length);
 		}
 		if (vflag) {
-			for (i=0; i<naddr; ++i) {
-				printf("     address:      %15.15s  ", inet_ntoa(*(ina+i)));
-				printf(" (%u dec)  ", (int)(ina+i)->s_addr);
-
+			for (i = 0; i < naddr; ++i) {
+				printf("     address:      %15.15s  ", inet_ntoa(*(ina + i)));
+				printf(" (%u dec)  ", (int) (ina + i)->s_addr);
 
 #ifndef WIN32
 				h_errno = 0;
 #endif
-				hosta = gethostbyaddr((char *)(ina+i), host->h_length,
-					host->h_addrtype);
+				hosta = gethostbyaddr((char *) (ina + i), host->h_length,
+						      host->h_addrtype);
 				if (hosta) {
 					printf("name:  %s", host->h_name);
 				} else {

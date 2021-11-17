@@ -37,19 +37,19 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#include	<sys/types.h>
-#include	<sys/stat.h>
-#include	<fcntl.h>
-#include	<stdlib.h>
-#include	<unistd.h>
-#include	<assert.h>
-#include	"dis.h"
-#include	"placementsets.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <assert.h>
+#include "dis.h"
+#include "placementsets.h"
 
-static vnl_t	*vn_decode_DIS_V3(int, int *);
-static vnl_t	*vn_decode_DIS_V4(int, int *);
-static int	vn_encode_DIS_V4(int, vnl_t *);
-static vnl_t	*free_and_return(vnl_t *);	/* expedient error function */
+static vnl_t *vn_decode_DIS_V3(int, int *);
+static vnl_t *vn_decode_DIS_V4(int, int *);
+static int vn_encode_DIS_V4(int, vnl_t *);
+static vnl_t *free_and_return(vnl_t *); /* expedient error function */
 /**
  * @file	ps_dis.c
  */
@@ -108,7 +108,7 @@ static vnl_t	*free_and_return(vnl_t *);	/* expedient error function */
 vnl_t *
 vn_decode_DIS(int fd, int *rcp)
 {
-	unsigned int	vers;
+	unsigned int vers;
 
 	vers = disrui(fd, rcp);
 	if (*rcp != DIS_SUCCESS)
@@ -149,10 +149,10 @@ vn_decode_DIS(int fd, int *rcp)
 static vnl_t *
 vn_decode_DIS_V4(int fd, int *rcp)
 {
-	unsigned int	i, j;
-	unsigned int	size;
-	time_t		t;
-	vnl_t		*vnlp;
+	unsigned int i, j;
+	unsigned int size;
+	time_t t;
+	vnl_t *vnlp;
 
 	if ((vnlp = calloc(1, sizeof(vnl_t))) == NULL) {
 		*rcp = DIS_NOMALLOC;
@@ -175,14 +175,14 @@ vn_decode_DIS_V4(int fd, int *rcp)
 	}
 
 	if ((vnlp->vnl_list = calloc(vnlp->vnl_nelem,
-		sizeof(vnal_t))) == NULL) {
+				     sizeof(vnal_t))) == NULL) {
 		free(vnlp);
 		*rcp = DIS_NOMALLOC;
 		return NULL;
 	}
 
 	for (i = 0; i < vnlp->vnl_used; i++) {
-		vnal_t		*curreslist = VNL_NODENUM(vnlp, i);
+		vnal_t *curreslist = VNL_NODENUM(vnlp, i);
 
 		/*
 		 *	In case an error occurs and we need to free
@@ -202,11 +202,11 @@ vn_decode_DIS_V4(int fd, int *rcp)
 		else
 			curreslist->vnal_nelem = curreslist->vnal_used = size;
 		if ((curreslist->vnal_list = calloc(curreslist->vnal_nelem,
-			sizeof(vna_t))) == NULL)
+						    sizeof(vna_t))) == NULL)
 			return (free_and_return(vnlp));
 
 		for (j = 0; j < size; j++) {
-			vna_t	*curres = VNAL_NODENUM(curreslist, j);
+			vna_t *curres = VNAL_NODENUM(curreslist, j);
 
 			/*
 			 *	In case an error occurs and we need to free
@@ -258,10 +258,10 @@ vn_decode_DIS_V4(int fd, int *rcp)
 static vnl_t *
 vn_decode_DIS_V3(int fd, int *rcp)
 {
-	unsigned int	i, j;
-	unsigned int	size;
-	time_t		t;
-	vnl_t		*vnlp;
+	unsigned int i, j;
+	unsigned int size;
+	time_t t;
+	vnl_t *vnlp;
 
 	if ((vnlp = calloc(1, sizeof(vnl_t))) == NULL) {
 		*rcp = DIS_NOMALLOC;
@@ -272,26 +272,24 @@ vn_decode_DIS_V3(int fd, int *rcp)
 	if (*rcp != DIS_SUCCESS) {
 		free(vnlp);
 		return NULL;
-	}
-	else
+	} else
 		vnlp->vnl_modtime = t;
 	size = disrui(fd, rcp);
 	if (*rcp != DIS_SUCCESS) {
 		free(vnlp);
 		return NULL;
-	}
-	else
+	} else
 		vnlp->vnl_nelem = vnlp->vnl_used = size;
 
 	if ((vnlp->vnl_list = calloc(vnlp->vnl_nelem,
-		sizeof(vnal_t))) == NULL) {
+				     sizeof(vnal_t))) == NULL) {
 		free(vnlp);
 		*rcp = DIS_NOMALLOC;
 		return NULL;
 	}
 
 	for (i = 0; i < vnlp->vnl_used; i++) {
-		vnal_t		*curreslist = VNL_NODENUM(vnlp, i);
+		vnal_t *curreslist = VNL_NODENUM(vnlp, i);
 
 		/*
 		 *	In case an error occurs and we need to free
@@ -311,11 +309,11 @@ vn_decode_DIS_V3(int fd, int *rcp)
 		else
 			curreslist->vnal_nelem = curreslist->vnal_used = size;
 		if ((curreslist->vnal_list = calloc(curreslist->vnal_nelem,
-			sizeof(vna_t))) == NULL)
+						    sizeof(vna_t))) == NULL)
 			return (free_and_return(vnlp));
 
 		for (j = 0; j < size; j++) {
-			vna_t	*curres = VNAL_NODENUM(curreslist, j);
+			vna_t *curres = VNAL_NODENUM(curreslist, j);
 
 			/*
 			 *	In case an error occurs and we need to free
@@ -394,16 +392,16 @@ vn_encode_DIS(int fd, vnl_t *vnlp)
 static int
 vn_encode_DIS_V4(int fd, vnl_t *vnlp)
 {
-	int		rc;
-	unsigned int	i, j;
+	int rc;
+	unsigned int i, j;
 
 	if (((rc = diswui(fd, PS_DIS_V4)) != 0) ||
-		((rc = diswsl(fd, (long) vnlp->vnl_modtime)) != 0) ||
-		((rc = diswui(fd, vnlp->vnl_used)) != 0))
-			return (rc);
+	    ((rc = diswsl(fd, (long) vnlp->vnl_modtime)) != 0) ||
+	    ((rc = diswui(fd, vnlp->vnl_used)) != 0))
+		return (rc);
 
 	for (i = 0; i < vnlp->vnl_used; i++) {
-		vnal_t	*curreslist = VNL_NODENUM(vnlp, i);
+		vnal_t *curreslist = VNL_NODENUM(vnlp, i);
 
 		if ((rc = diswst(fd, curreslist->vnal_id)) != 0)
 			return (rc);
@@ -411,7 +409,7 @@ vn_encode_DIS_V4(int fd, vnl_t *vnlp)
 			return (rc);
 
 		for (j = 0; j < curreslist->vnal_used; j++) {
-			vna_t	*curres = VNAL_NODENUM(curreslist, j);
+			vna_t *curres = VNAL_NODENUM(curreslist, j);
 
 			if ((rc = diswst(fd, curres->vna_name)) != 0)
 				return (rc);
@@ -448,15 +446,15 @@ vn_encode_DIS_V4(int fd, vnl_t *vnlp)
 static vnl_t *
 free_and_return(vnl_t *vnlp)
 {
-	unsigned int	i, j;
+	unsigned int i, j;
 
 	/* N.B. <=, not < because we may have a partially-allocated ith one */
 	for (i = 0; i <= vnlp->vnl_cur; i++) {
-		vnal_t	*vnrlp = VNL_NODENUM(vnlp, i);
+		vnal_t *vnrlp = VNL_NODENUM(vnlp, i);
 
 		/* N.B. <=, not < (as above) for partially-allocated jth one */
 		for (j = 0; j <= vnrlp->vnal_cur; j++) {
-			vna_t	*vnrp = VNAL_NODENUM(vnrlp, j);
+			vna_t *vnrp = VNAL_NODENUM(vnrlp, j);
 			free(vnrp->vna_name);
 			free(vnrp->vna_val);
 		}

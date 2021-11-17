@@ -37,12 +37,11 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_LONG_H
-#define	_LONG_H
-#ifdef	__cplusplus
+#ifndef _LONG_H
+#define _LONG_H
+#ifdef __cplusplus
 extern "C" {
 #endif
-
 
 #include <limits.h>
 
@@ -61,43 +60,43 @@ extern "C" {
 /* On these systems, the compiler supports 64-bit integers as long longs but */
 /* there seems to be neither defined constant support nor library support. */
 
-typedef long long		Long;
-typedef unsigned long long	u_Long;
+typedef long long Long;
+typedef unsigned long long u_Long;
 
-#define lONG_MIN		(-0x7FFFFFFFFFFFFFFFLL-1)
-#define lONG_MAX		  0x7FFFFFFFFFFFFFFFLL
-#define UlONG_MAX		  0xFFFFFFFFFFFFFFFFULL
+#define lONG_MIN (-0x7FFFFFFFFFFFFFFFLL - 1)
+#define lONG_MAX 0x7FFFFFFFFFFFFFFFLL
+#define UlONG_MAX 0xFFFFFFFFFFFFFFFFULL
 
 Long strToL(const char *nptr, char **endptr, int base);
 u_Long strTouL(const char *nptr, char **endptr, int base);
-#define atoL(nptr)		strToL((nptr), NULL, 10)
+#define atoL(nptr) strToL((nptr), NULL, 10)
 
 /****************************************************************************/
-#elif defined(WIN32)	/* Windows */
+#elif defined(WIN32) /* Windows */
 
 /* long long and unsigned long long are 64 bit signed  and unsigned */
 /* integers on Windows platforms. */
 /* C compilers under Windows has built in functions for conversion */
 /* from string to 64 bit integers of signed and unsigned version. */
 
-typedef long long		Long;
-typedef unsigned long long	u_Long;
+typedef long long Long;
+typedef unsigned long long u_Long;
 
-#define lONG_MIN		LLONG_MIN
-#define lONG_MAX		LLONG_MAX
-#define UlONG_MAX		ULLONG_MAX
+#define lONG_MIN LLONG_MIN
+#define lONG_MAX LLONG_MAX
+#define UlONG_MAX ULLONG_MAX
 
-#define strToL(n, e, b)		_strtoi64(n, e, (b))
-#define strTouL(n, e, b)        _strtoui64(n, e, (b))
-#define aToL(nptr)		_atoi64((nptr))
-#define atoL(nptr)		aToL((nptr))
+#define strToL(n, e, b) _strtoi64(n, e, (b))
+#define strTouL(n, e, b) _strtoui64(n, e, (b))
+#define aToL(nptr) _atoi64((nptr))
+#define atoL(nptr) aToL((nptr))
 
 /****************************************************************************/
 
 #endif
 
 const char *uLTostr(u_Long value, int base);
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 #endif /* _LONG_H */

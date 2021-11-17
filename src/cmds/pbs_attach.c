@@ -57,18 +57,18 @@ extern void attach(int use_cmd, int newsid, int port, int doparent, pid_t pid, c
 int
 main(int argc, char *argv[])
 {
-	char		*jobid = NULL;
-	char		*host = NULL;
-	int		c;
-	int		newsid = 0;
-	int		port = 0;
-	int		err = 0;
-	int		use_cmd = FALSE;/* spawn the process using a new cmd shell */
-	extern char	*optarg;
-	extern int	optind;
-	pid_t		pid = 0;
-	char	*end;
-	int		doparent = 0;
+	char *jobid = NULL;
+	char *host = NULL;
+	int c;
+	int newsid = 0;
+	int port = 0;
+	int err = 0;
+	int use_cmd = FALSE; /* spawn the process using a new cmd shell */
+	extern char *optarg;
+	extern int optind;
+	pid_t pid = 0;
+	char *end;
+	int doparent = 0;
 
 	/*test for real deal or just version and exit*/
 
@@ -134,8 +134,7 @@ main(int argc, char *argv[])
 			fprintf(stderr, "cannot specify pid and command\n");
 			err = 1;
 		}
-	}
-	else if (optind == argc) {
+	} else if (optind == argc) {
 		fprintf(stderr, "must specify pid or command\n");
 		err = 1;
 	}

@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_PARSE_H
-#define	_PARSE_H
+#ifndef _PARSE_H
+#define _PARSE_H
 
 #include "data_types.h"
 #include "globals.h"
@@ -70,9 +70,9 @@ int preempt_cmp(const void *p1, const void *p2);
  *                          is created by taking the name in the prempt enum
  *                          and shifting a bit into that position.
  */
-int preempt_bit_field(char * plist);
+int preempt_bit_field(char *plist);
 
 /* Check if string is a valid special case sorting string */
-int is_speccase_sort(const std::string&, int sort_type);
+int is_speccase_sort(const std::string &, int sort_type);
 
-#endif	/* _PARSE_H */
+#endif /* _PARSE_H */
