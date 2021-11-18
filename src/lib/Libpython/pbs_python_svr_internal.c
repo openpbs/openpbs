@@ -5262,7 +5262,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		enable_restart = PBS_PYTHON_RESTART_ENABLE;
 	if (lval != enable_restart) {
 		snprintf(log_buffer, sizeof(log_buffer),
-			"python_disable_restart is now %ld", enable_restart);
+			"python_enable_restart is now %ld", enable_restart);
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, log_buffer);
 	}
 
