@@ -37,14 +37,13 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_RESOURCE_H
-#define	_RESOURCE_H
-#ifdef	__cplusplus
+#ifndef _RESOURCE_H
+#define _RESOURCE_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 #include "attribute.h"
 #include "list_link.h"
-
 
 /*
  * This header file contains the definitions for resources.
@@ -139,14 +138,14 @@ extern int restart_python_interpreter(const char *);
 extern long long to_kbsize(char *val);
 extern int alloc_svrleaf(char *resc_name, svr_entlim_leaf_t **pplf);
 extern int parse_resc_type(char *val, int *resc_type_p);
-extern int  parse_resc_flags(char *val, int *flag_ir_p, int *resc_flag_p);
+extern int parse_resc_flags(char *val, int *flag_ir_p, int *resc_flag_p);
 extern int verify_resc_name(char *name);
 extern int verify_resc_type_and_flags(int resc_type, int *pflag_ir, int *presc_flag, const char *rescname, char *buf, int buflen, int autocorrect);
 extern void update_resc_sum(void);
 
 /* Defines for entity limit tracking */
-#define PBS_ENTLIM_NOLIMIT  0	/* No entity limit has been set for this resc */
-#define PBS_ENTLIM_LIMITSET 1	/* this set in rs_entlim if limit exists */
+#define PBS_ENTLIM_NOLIMIT 0  /* No entity limit has been set for this resc */
+#define PBS_ENTLIM_LIMITSET 1 /* this set in rs_entlim if limit exists */
 
 /*
  * struct for providing mapping between resource type name or a
@@ -155,19 +154,19 @@ extern void update_resc_sum(void);
  */
 struct resc_type_map {
 	char *rtm_rname;
-	int   rtm_type;
-	int   (*rtm_decode)(attribute *prsc, char *name, char *rn, char *val);
-	int   (*rtm_encode)(const attribute *prsv, pbs_list_head *phead, char *atname,
-		char *rsname, int mode, svrattrl **rtnl);
-	int   (*rtm_set)(attribute *old, attribute *nattr, enum batch_op op);
-	int   (*rtm_comp)(attribute *prsc, attribute *with);
-	void  (*rtm_free)(attribute *prsc);
+	int rtm_type;
+	int (*rtm_decode)(attribute *prsc, char *name, char *rn, char *val);
+	int (*rtm_encode)(const attribute *prsv, pbs_list_head *phead, char *atname,
+			  char *rsname, int mode, svrattrl **rtnl);
+	int (*rtm_set)(attribute *old, attribute *nattr, enum batch_op op);
+	int (*rtm_comp)(attribute *prsc, attribute *with);
+	void (*rtm_free)(attribute *prsc);
 };
 extern struct resc_type_map *find_resc_type_map_by_typev(int);
 extern struct resc_type_map *find_resc_type_map_by_typest(char *);
 extern char *find_resc_flag_map(int);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _RESOURCE_H */
+#endif /* _RESOURCE_H */

@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_RESV_INFO_H
-#define	_RESV_INFO_H
+#ifndef _RESV_INFO_H
+#define _RESV_INFO_H
 
 #include <pbs_config.h>
 #include "data_types.h"
@@ -98,7 +98,7 @@ void release_nodes(resource_resv *resresv);
 /*
  *	create_resv_nodes - create a node universe for a reservation
  */
-node_info **create_resv_nodes(std::vector<nspec *>& nspec_arr, server_info *sinfo);
+node_info **create_resv_nodes(std::vector<nspec *> &nspec_arr, server_info *sinfo);
 
 /*
  *	release_running_resv_nodes - adjust nodes resources for reservations that

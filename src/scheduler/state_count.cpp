@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    state_count.c
  *
@@ -134,10 +133,9 @@ count_states(resource_resv **jobs, state_count *sc)
 	}
 
 	sc->total = sc->queued + sc->running + sc->transit +
-		sc->exiting + sc->held + sc->waiting +
-		sc->suspended + sc->userbusy + sc->begin +
-		sc->expired + sc->invalid;
-
+		    sc->exiting + sc->held + sc->waiting +
+		    sc->suspended + sc->userbusy + sc->begin +
+		    sc->expired + sc->invalid;
 }
 
 /**

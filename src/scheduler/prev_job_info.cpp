@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    prev_job_info.c
  *
@@ -61,7 +60,6 @@
 #include "resource_resv.h"
 #include "globals.h"
 
-
 /**
  * @brief
  *		create_prev_job_info - create the prev_job_info array from an array of jobs
@@ -79,7 +77,7 @@ create_prev_job_info(resource_resv **jobs)
 	last_running.clear();
 
 	for (i = 0; jobs[i] != NULL; i++) {
-		if(jobs[i]->job != NULL) {
+		if (jobs[i]->job != NULL) {
 			prev_job_info pjinfo(jobs[i]->name, jobs[i]->job->ginfo->name, jobs[i]->job->resused);
 
 			/* resused is shallow copied, NULL it so it doesn't get freed at the end of the cycle */
@@ -90,27 +88,28 @@ create_prev_job_info(resource_resv **jobs)
 	}
 }
 
-prev_job_info::prev_job_info(const std::string& pname, const std::string& ename, resource_req *rused): name(pname), entity_name(ename), resused(rused)
+prev_job_info::prev_job_info(const std::string &pname, const std::string &ename, resource_req *rused) : name(pname), entity_name(ename), resused(rused)
 {
 }
 
-prev_job_info::prev_job_info(const prev_job_info& opj): name(opj.name), entity_name(opj.entity_name)
+prev_job_info::prev_job_info(const prev_job_info &opj) : name(opj.name), entity_name(opj.entity_name)
 {
 	resused = dup_resource_req_list(opj.resused);
 }
 
-prev_job_info::prev_job_info(prev_job_info&& opj) : name(std::move(opj.name)), entity_name(std::move(opj.entity_name))
+prev_job_info::prev_job_info(prev_job_info &&opj) : name(std::move(opj.name)), entity_name(std::move(opj.entity_name))
 {
 	resused = opj.resused;
 	opj.resused = NULL;
 }
 
-prev_job_info& prev_job_info::operator=(const prev_job_info& opj)
+prev_job_info &
+prev_job_info::operator=(const prev_job_info &opj)
 {
 	name = opj.name;
 	entity_name = opj.entity_name;
 	resused = dup_resource_req_list(opj.resused);
-	
+
 	return *this;
 }
 
@@ -123,4 +122,3 @@ prev_job_info::~prev_job_info()
 {
 	free_resource_req_list(resused);
 }
-

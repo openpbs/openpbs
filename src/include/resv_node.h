@@ -37,19 +37,18 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_RESV_NODE_H
-#define	_RESV_NODE_H
-#ifdef	__cplusplus
+#ifndef _RESV_NODE_H
+#define _RESV_NODE_H
+#ifdef __cplusplus
 extern "C" {
 #endif
-
 
 typedef struct subUniverse subUniverse;
 typedef struct spec_and_context spec_and_context;
 typedef struct spec_and_context spec_ctx;
-typedef struct resc_resv	resc_resv;
-typedef struct pbsnode		pbsnode;
-typedef unsigned		reservationTag;
+typedef struct resc_resv resc_resv;
+typedef struct pbsnode pbsnode;
+typedef unsigned reservationTag;
 
 /*"specification and solving context"*/
 
@@ -61,38 +60,37 @@ typedef unsigned		reservationTag;
 
 struct subUniverse {
 
-	struct pbsnode	**univ;	  /*solve relative to this "universe",
+	struct pbsnode **univ; /*solve relative to this "universe",
 						 which is just an array of pbsnode
 						 pointers
 						 */
-	int		usize;	  /*number of entries in "universe" array*/
-	int		inheap;	  /*set non-zero if univ is in heap and
+	int usize;	       /*number of entries in "universe" array*/
+	int inheap;	       /*set non-zero if univ is in heap and
 					 should be freed */
 };
 
+struct spec_and_context {
+	char *nspec; /*specification of a node set*/
 
-struct	spec_and_context {
-	char	*nspec;			/*specification of a node set*/
+	subUniverse subUniv;
 
-	subUniverse	subUniv;
+	unsigned int when : 4; /*NEEDNOW or NEEDFUTURE*/
+	unsigned int type : 4; /*SPECTYPE_JOB; SPECTYPE_RESV*/
 
-	unsigned int	when:4;		/*NEEDNOW or NEEDFUTURE*/
-	unsigned int	type:4;		/*SPECTYPE_JOB; SPECTYPE_RESV*/
-
-	resc_resv	*belong_to;	/*0==no parent else, ptr to parent*/
-	reservationTag	resvTag;	/*if trying to find nodes for a */
+	resc_resv *belong_to;	/*0==no parent else, ptr to parent*/
+	reservationTag resvTag; /*if trying to find nodes for a */
 	/*reservation or reservation job*/
 	/*this is the resv's "handle"   */
 	/*currently not being used      */
 
-	long		stime;		/*job or reservation "start" time*/
-	long		etime;		/*best estimate of "end" time*/
+	long stime; /*job or reservation "start" time*/
+	long etime; /*best estimate of "end" time*/
 };
 
-extern	spec_and_context  *create_context(void*, int, char*);
-extern	void		  free_context(spec_and_context*);
+extern spec_and_context *create_context(void *, int, char *);
+extern void free_context(spec_and_context *);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/*_RESV_NODE_H*/
+#endif /*_RESV_NODE_H*/

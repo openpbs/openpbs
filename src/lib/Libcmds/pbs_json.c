@@ -44,7 +44,7 @@
 #define ARRAY_NESTING_LEVEL 500 /* describes the nesting level of a JSON array*/
 
 typedef struct JsonLink JsonLink;
-struct JsonLink{
+struct JsonLink {
 	JsonNode *node;
 	JsonLink *next;
 };
@@ -58,13 +58,14 @@ static JsonLink *head = NULL, *prev_link = NULL;
  *
  * @return	pointer to newly created json node.
  */
-static JsonNode*
-create_json_node() {
+static JsonNode *
+create_json_node()
+{
 	JsonNode *new_node = malloc(sizeof(JsonNode));
 	if (new_node == NULL) {
 		return NULL;
 	}
-	new_node->node_type  = JSON_VALUE;
+	new_node->node_type = JSON_VALUE;
 	new_node->value_type = JSON_NULL;
 	new_node->key = NULL;
 	return new_node;
@@ -82,7 +83,8 @@ create_json_node() {
  *
  */
 static int
-link_node(JsonNode *node) {
+link_node(JsonNode *node)
+{
 	JsonLink *new_link = malloc(sizeof(JsonLink));
 	if (new_link == NULL)
 		return 1;
@@ -123,13 +125,13 @@ link_node(JsonNode *node) {
  * - If a string value contains " (embedded double quote) and it's not escaped
  *   (not preceded by a backslash), then escape it, resulting in \".
  */
-char*
+char *
 strdup_escape(JsonEscapeType esc_type, const char *str)
 {
-	int       i = 0;
-	int       len = 0;
-	char      *temp = NULL;
-	char      *buf = NULL;
+	int i = 0;
+	int len = 0;
+	char *temp = NULL;
+	char *buf = NULL;
 	const char *bufstr = NULL;
 	const char *orig_str = NULL;
 	if (str != NULL) {
@@ -141,64 +143,64 @@ strdup_escape(JsonEscapeType esc_type, const char *str)
 			return NULL;
 		while (*str) {
 			switch (*str) {
-			case '\b':
-				buf[i++] = '\\';
-				buf[i++] = 'b';
-				str++;
-				break;
-			case '\f':
-				buf[i++] = '\\';
-				buf[i++] = 'f';
-				str++;
-				break;
-			case '\n':
-				buf[i++] = '\\';
-				buf[i++] = 'n';
-				str++;
-				break;
-			case '\r':
-				buf[i++] = '\\';
-				buf[i++] = 'r';
-				str++;
-				break;
-			case '\t':
-				buf[i++] = '\\';
-				buf[i++] = 't';
-				str++;
-				break;
-			case '"':
-				if (esc_type == JSON_ESCAPE) {
-					bufstr = str;
-					bufstr--;
-					if ((bufstr >= orig_str) && (*bufstr != '\\')) {
-						buf[i++] = '\\';
-					}
-					buf[i++] = *str++;
+				case '\b':
+					buf[i++] = '\\';
+					buf[i++] = 'b';
+					str++;
 					break;
-				} /* else JSON_FULLESCAPE */
-				buf[i++] = '\\';
-				buf[i++] = '"';
-				str++;
-				break;
-			case '\\':
-				if (esc_type == JSON_ESCAPE) {
-					bufstr = str + 1;
-					if (*bufstr && ((*bufstr == '\'') || (*bufstr == ','))) {
-						str++;
+				case '\f':
+					buf[i++] = '\\';
+					buf[i++] = 'f';
+					str++;
+					break;
+				case '\n':
+					buf[i++] = '\\';
+					buf[i++] = 'n';
+					str++;
+					break;
+				case '\r':
+					buf[i++] = '\\';
+					buf[i++] = 'r';
+					str++;
+					break;
+				case '\t':
+					buf[i++] = '\\';
+					buf[i++] = 't';
+					str++;
+					break;
+				case '"':
+					if (esc_type == JSON_ESCAPE) {
+						bufstr = str;
+						bufstr--;
+						if ((bufstr >= orig_str) && (*bufstr != '\\')) {
+							buf[i++] = '\\';
+						}
 						buf[i++] = *str++;
-					} else {
-						buf[i++] = *str++;
-						if (*bufstr)
+						break;
+					} /* else JSON_FULLESCAPE */
+					buf[i++] = '\\';
+					buf[i++] = '"';
+					str++;
+					break;
+				case '\\':
+					if (esc_type == JSON_ESCAPE) {
+						bufstr = str + 1;
+						if (*bufstr && ((*bufstr == '\'') || (*bufstr == ','))) {
+							str++;
 							buf[i++] = *str++;
-					}
+						} else {
+							buf[i++] = *str++;
+							if (*bufstr)
+								buf[i++] = *str++;
+						}
+						break;
+					} /* else JSON_FULLESCAPE */
+					buf[i++] = '\\';
+					buf[i++] = '\\';
+					str++;
 					break;
-				} /* else JSON_FULLESCAPE */
-				buf[i++] = '\\';
-				buf[i++] = '\\';
-				str++;
-				break;
-			default:
-				buf[i++] = *str++;
+				default:
+					buf[i++] = *str++;
 			}
 			if (i >= len - 2) {
 				len *= BUFFER_GROWTH_RATE;
@@ -266,7 +268,8 @@ free_json_node_list()
  *
  */
 static int
-whitespace_only(const char *str) {
+whitespace_only(const char *str)
+{
 
 	if (str == NULL)
 		return (0);
@@ -292,13 +295,14 @@ whitespace_only(const char *str) {
  * @retval	NULL					error
  *
  */
-JsonNode*
-add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, char *key, void *value) {
-	int 	  rc = 0;
-	char	  *ptr = NULL;
-	char 	  *pc  = NULL;
-	JsonNode  *node = NULL;
-	int	  value_is_whitespace = 0;
+JsonNode *
+add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, char *key, void *value)
+{
+	int rc = 0;
+	char *ptr = NULL;
+	char *pc = NULL;
+	JsonNode *node = NULL;
+	int value_is_whitespace = 0;
 
 	node = create_json_node();
 	if (node == NULL) {
@@ -307,7 +311,7 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
 	}
 	node->node_type = ntype;
 	if (key != NULL) {
-		ptr = strdup((char *)key);
+		ptr = strdup((char *) key);
 		if (ptr == NULL) {
 			free_json_node(node);
 			fprintf(stderr, "Json Node: out of memory\n");
@@ -330,7 +334,7 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
 		 * or is part of a decimal number < 1 (0.0001 ... 0.99999).
 		 */
 		if ((strcmp(pc, "") == 0) &&
-			((*(char *)value != '0') || (val < 1))) {
+		    ((*(char *) value != '0') || (val < 1))) {
 			node->value_type = JSON_NUMERIC;
 			ptr = strdup(value);
 			if (ptr == NULL) {
@@ -346,9 +350,9 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
 	} else {
 		node->value_type = vtype;
 		if (node->value_type == JSON_INT)
-			node->value.inumber = *((long int *)value);
+			node->value.inumber = *((long int *) value);
 		else if (node->value_type == JSON_FLOAT)
-			node->value.fnumber = *((double *)value);
+			node->value.fnumber = *((double *) value);
 	}
 
 	if (node->value_type == JSON_STRING) {
@@ -385,19 +389,20 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
  *
  */
 int
-generate_json(FILE * stream) {
-	int	  indent = 0;
-	int	  prnt_comma = 0;
-	int	  last_object_value = 0;
-	int	  last_array_value = 0;
-	int	 *arr_lvl = NULL;
-	int	  curnt_arr_lvl= 0;
+generate_json(FILE *stream)
+{
+	int indent = 0;
+	int prnt_comma = 0;
+	int last_object_value = 0;
+	int last_array_value = 0;
+	int *arr_lvl = NULL;
+	int curnt_arr_lvl = 0;
 	JsonNode *node = NULL;
 	JsonLink *link = head;
 
 	fprintf(stream, "{");
 	indent += 4;
-	arr_lvl = malloc(ARRAY_NESTING_LEVEL * sizeof(int*));
+	arr_lvl = malloc(ARRAY_NESTING_LEVEL * sizeof(int *));
 	memset(arr_lvl, 0, (ARRAY_NESTING_LEVEL * sizeof(int)));
 
 	while (link) {
@@ -428,12 +433,12 @@ generate_json(FILE * stream) {
 				else
 					fprintf(stream, "\n");
 				if (arr_lvl[curnt_arr_lvl] == indent)
-					fprintf(stream, "%*.*s[",indent,indent," ");
+					fprintf(stream, "%*.*s[", indent, indent, " ");
 				else
 					fprintf(stream, "%*.*s\"%s\":[", indent, indent, " ", node->key);
 				indent += 4;
 				prnt_comma = 0;
-				arr_lvl[curnt_arr_lvl+1] = indent;
+				arr_lvl[curnt_arr_lvl + 1] = indent;
 				curnt_arr_lvl++;
 				break;
 
@@ -454,7 +459,7 @@ generate_json(FILE * stream) {
 					fprintf(stream, ",\n");
 				else
 					fprintf(stream, "\n");
-				if (arr_lvl[curnt_arr_lvl]==indent)
+				if (arr_lvl[curnt_arr_lvl] == indent)
 					fprintf(stream, "%*.*s\"%s\"", indent, indent, " ", show_nonprint_chars(node->value.string));
 				else
 					fprintf(stream, "%*.*s\"%s\":\"%s\"", indent, indent, " ", node->key, show_nonprint_chars(node->value.string));
@@ -468,7 +473,7 @@ generate_json(FILE * stream) {
 					fprintf(stream, "\n");
 
 				if (arr_lvl[curnt_arr_lvl] == indent)
-					fprintf(stream, "%*.*s%ld",indent,indent," ", node->value.inumber);
+					fprintf(stream, "%*.*s%ld", indent, indent, " ", node->value.inumber);
 				else
 					fprintf(stream, "%*.*s\"%s\":%ld", indent, indent, " ", node->key, node->value.inumber);
 				prnt_comma = 1;
@@ -479,9 +484,8 @@ generate_json(FILE * stream) {
 				else
 					fprintf(stream, "\n");
 
-
 				if (arr_lvl[curnt_arr_lvl] == indent)
-					fprintf(stream, "%*.*s%lf",indent,indent," ", node->value.fnumber);
+					fprintf(stream, "%*.*s%lf", indent, indent, " ", node->value.fnumber);
 				else
 					fprintf(stream, "%*.*s\"%s\":%lf", indent, indent, " ", node->key, node->value.fnumber);
 				prnt_comma = 1;
@@ -493,12 +497,11 @@ generate_json(FILE * stream) {
 					fprintf(stream, "\n");
 
 				if (arr_lvl[curnt_arr_lvl] == indent)
-					fprintf(stream, "%*.*s%s", indent, indent, " ", node->value.string);      /*print the string but type remain same*/
+					fprintf(stream, "%*.*s%s", indent, indent, " ", node->value.string); /*print the string but type remain same*/
 				else
 					fprintf(stream, "%*.*s\"%s\":%s", indent, indent, " ", node->key, node->value.string); /* print the string but type remain same*/
 				prnt_comma = 1;
 				break;
-
 
 			case JSON_NULL:
 				break;

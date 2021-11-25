@@ -37,9 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_HOOK_FUNC_H
-#define	_HOOK_FUNC_H
-#ifdef	__cplusplus
+#ifndef _HOOK_FUNC_H
+#define _HOOK_FUNC_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -57,23 +57,23 @@ extern "C" {
  *	"pbs_ifl.h"
  */
 
-#define	MOM_HOOK_ACTION_NONE		0
-#define MOM_HOOK_ACTION_SEND_ATTRS	0x01
-#define	MOM_HOOK_ACTION_SEND_SCRIPT	0x02
-#define	MOM_HOOK_ACTION_DELETE		0x04
-#define	MOM_HOOK_ACTION_SEND_RESCDEF	0x08
-#define	MOM_HOOK_ACTION_DELETE_RESCDEF	0x10
-#define	MOM_HOOK_ACTION_SEND_CONFIG	0x20
+#define MOM_HOOK_ACTION_NONE 0
+#define MOM_HOOK_ACTION_SEND_ATTRS 0x01
+#define MOM_HOOK_ACTION_SEND_SCRIPT 0x02
+#define MOM_HOOK_ACTION_DELETE 0x04
+#define MOM_HOOK_ACTION_SEND_RESCDEF 0x08
+#define MOM_HOOK_ACTION_DELETE_RESCDEF 0x10
+#define MOM_HOOK_ACTION_SEND_CONFIG 0x20
 
 /* MOM_HOOK_ACTION_SEND_RESCDEF is really not part of this */
 #define MOM_HOOK_SEND_ACTIONS (MOM_HOOK_ACTION_SEND_ATTRS | MOM_HOOK_ACTION_SEND_SCRIPT | MOM_HOOK_ACTION_SEND_CONFIG)
 
 struct mom_hook_action {
-	char            hookname[PBS_HOOK_NAME_SIZE];
-	unsigned int	action;
-	unsigned int	reply_expected; /* reply expected from mom for sent out actions */
-	int		do_delete_action_first; /* force order between delete and send actions */
-	long long int	tid;	/* transaction id to group actions under */
+	char hookname[PBS_HOOK_NAME_SIZE];
+	unsigned int action;
+	unsigned int reply_expected; /* reply expected from mom for sent out actions */
+	int do_delete_action_first;  /* force order between delete and send actions */
+	long long int tid;	     /* transaction id to group actions under */
 };
 
 /* Return values to sync_mom_hookfilesTPP() function */
@@ -84,16 +84,16 @@ enum sync_hookfiles_result {
 	SYNC_HOOKFILES_FAIL
 };
 
-typedef	struct mom_hook_action mom_hook_action_t;
+typedef struct mom_hook_action mom_hook_action_t;
 
-extern	int add_mom_hook_action(mom_hook_action_t ***,
-	int *, char *, unsigned int, int, long long int);
+extern int add_mom_hook_action(mom_hook_action_t ***,
+			       int *, char *, unsigned int, int, long long int);
 
 extern int delete_mom_hook_action(mom_hook_action_t **, int,
-	char *, unsigned int);
+				  char *, unsigned int);
 
 extern mom_hook_action_t *find_mom_hook_action(mom_hook_action_t **,
-	int, char *);
+					       int, char *);
 
 extern void add_pending_mom_hook_action(void *minfo, char *, unsigned int);
 
@@ -118,7 +118,7 @@ extern long long int hook_action_tid_get(void);
 extern void set_srv_pwr_prov_attribute(void);
 extern void fprint_svrattrl_list(FILE *, char *, pbs_list_head *);
 
-#ifdef	_BATCH_REQUEST_H
+#ifdef _BATCH_REQUEST_H
 extern int status_hook(hook *, struct batch_request *, pbs_list_head *, char *, size_t);
 extern void mgr_hook_import(struct batch_request *);
 extern void mgr_hook_export(struct batch_request *);
@@ -137,13 +137,13 @@ extern int process_hooks(struct batch_request *, char *, size_t, void (*)(void))
 extern int recreate_request(struct batch_request *);
 
 /* Server periodic hook call-back */
-extern void run_periodic_hook (struct work_task *ptask);
+extern void run_periodic_hook(struct work_task *ptask);
 
 extern int get_server_hook_results(char *input_file, int *accept_flag, int *reject_flag,
-	char *reject_msg, int reject_msg_size, job *pjob, hook *phook, hook_output_param_t *hook_output);
+				   char *reject_msg, int reject_msg_size, job *pjob, hook *phook, hook_output_param_t *hook_output);
 #endif
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _HOOK_FUNC_H */
+#endif /* _HOOK_FUNC_H */

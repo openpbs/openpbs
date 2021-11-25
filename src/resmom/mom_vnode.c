@@ -40,41 +40,43 @@
 /**
  * @file	mom_vnode.c
  */
-#include	<sys/types.h>
-#include	<assert.h>
-#include	<errno.h>
-#include	<stdio.h>
-#include	<unistd.h>
-#include	<limits.h>
-#include	"pbs_config.h"
-#include	"pbs_internal.h"
-#include	"libpbs.h"
-#include	"log.h"
-#include	"server_limits.h"
-#include	"attribute.h"
-#include	"placementsets.h"
-#include	"resource.h"
-#include	"pbs_nodes.h"
-#include	"mom_mach.h"
-#include	"mom_vnode.h"
-#include	"libutil.h"
-#include	"hook_func.h"
+#include <sys/types.h>
+#include <assert.h>
+#include <errno.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <limits.h>
+#include "pbs_config.h"
+#include "pbs_internal.h"
+#include "libpbs.h"
+#include "log.h"
+#include "server_limits.h"
+#include "attribute.h"
+#include "placementsets.h"
+#include "resource.h"
+#include "pbs_nodes.h"
+#include "mom_mach.h"
+#include "mom_vnode.h"
+#include "libutil.h"
+#include "hook_func.h"
 
-#ifndef	_POSIX_ARG_MAX
-#define	_POSIX_ARG_MAX	4096	/* largest value standards guarantee */
+#ifndef _POSIX_ARG_MAX
+#define _POSIX_ARG_MAX 4096 /* largest value standards guarantee */
 #endif
 
-extern char		mom_host[];
-extern unsigned int	pbs_mom_port;
-extern unsigned int	pbs_rm_port;
-extern vnl_t		*vnlp;					/* vnode list */
-static void		*cpuctx;
-static void		cpu_inuse(unsigned int, job *, int);
-static void		*new_ctx(void);
-static mom_vninfo_t	*new_vnid(const char *, void *);
-static void		truncate_and_log(int, const char *, char *, int);
-static mom_vninfo_t	*vnid2mominfo(const char *, const void *);
-enum res_op	{ RES_DECR, RES_INCR, RES_SET };
+extern char mom_host[];
+extern unsigned int pbs_mom_port;
+extern unsigned int pbs_rm_port;
+extern vnl_t *vnlp; /* vnode list */
+static void *cpuctx;
+static void cpu_inuse(unsigned int, job *, int);
+static void *new_ctx(void);
+static mom_vninfo_t *new_vnid(const char *, void *);
+static void truncate_and_log(int, const char *, char *, int);
+static mom_vninfo_t *vnid2mominfo(const char *, const void *);
+enum res_op { RES_DECR,
+	      RES_INCR,
+	      RES_SET };
 
 /**
  * @brief
@@ -100,7 +102,7 @@ mom_CPUs_report(void)
 	if (cpuctx == NULL || !will_log_event(log_ev))
 		return;
 
-	while (pbs_idx_find(cpuctx, NULL, (void **)&mip, &idx_ctx) == PBS_IDX_RET_OK) {
+	while (pbs_idx_find(cpuctx, NULL, (void **) &mip, &idx_ctx) == PBS_IDX_RET_OK) {
 		unsigned int i;
 		int first;
 		mom_vninfo_t *mvp;
@@ -155,8 +157,7 @@ mom_CPUs_report(void)
 			bufspace -= ret;
 		}
 		log_event(log_ev, 0, LOG_DEBUG, __func__, reportbuf);
-line_done:
-		;
+	line_done:;
 	}
 
 	pbs_idx_free_ctx(idx_ctx);
@@ -276,11 +277,11 @@ mom_vnlp_report(vnl_t *vnl, char *header)
 static void
 add_CPUrange(mom_vninfo_t *mvp, char *cpurange)
 {
-	char		*p;
-	unsigned int	from, to;
-	unsigned int	cpunum;
-	unsigned int	i, ncpus;
-	static int	chunknum = 0;
+	char *p;
+	unsigned int from, to;
+	unsigned int cpunum;
+	unsigned int i, ncpus;
+	static int chunknum = 0;
 
 	if ((p = strchr(cpurange, '-')) != NULL) {
 
@@ -299,7 +300,7 @@ add_CPUrange(mom_vninfo_t *mvp, char *cpurange)
 	}
 
 	for (cpunum = from, ncpus = mvp->mvi_ncpus; cpunum <= to; cpunum++) {
-#ifdef	DEBUG
+#ifdef DEBUG
 		/*
 		 *	It's not obvious in reading the code that when we get
 		 *	to the "for" loop below, mvp->mvi_cpulist is non-NULL.
@@ -309,16 +310,16 @@ add_CPUrange(mom_vninfo_t *mvp, char *cpurange)
 		 */
 		if (ncpus > 0)
 			assert(mvp->mvi_cpulist != NULL);
-#endif	/* DEBUG */
+#endif /* DEBUG */
 		for (i = 0; i < ncpus; i++)
 			if (cpunum == mvp->mvi_cpulist[i].mvic_cpunum)
 				break;
 
-		if (i >= ncpus) {	/* CPU cpunum not in mvi_cpulist[] */
-			mom_mvic_t	*l;
+		if (i >= ncpus) { /* CPU cpunum not in mvi_cpulist[] */
+			mom_mvic_t *l;
 
 			l = realloc(mvp->mvi_cpulist,
-				(ncpus + 1) * sizeof(mom_mvic_t));
+				    (ncpus + 1) * sizeof(mom_mvic_t));
 			if (l == NULL) {
 				log_err(errno, __func__, "malloc failure");
 				return;
@@ -349,7 +350,7 @@ add_CPUrange(mom_vninfo_t *mvp, char *cpurange)
 void
 cpuindex_free(mom_vninfo_t *mvp, unsigned int cpuindex)
 {
-	char		buf[BUFSIZ];
+	char buf[BUFSIZ];
 
 	assert(mvp != NULL);
 	assert(cpuindex <= mvp->mvi_ncpus);
@@ -378,7 +379,7 @@ cpuindex_free(mom_vninfo_t *mvp, unsigned int cpuindex)
 void
 cpuindex_inuse(mom_vninfo_t *mvp, unsigned int cpuindex, job *pjob)
 {
-	char		buf[BUFSIZ];
+	char buf[BUFSIZ];
 
 	assert(mvp != NULL);
 	assert(cpuindex <= mvp->mvi_ncpus);
@@ -411,16 +412,16 @@ cpuindex_inuse(mom_vninfo_t *mvp, unsigned int cpuindex, job *pjob)
  */
 static void
 resadj(vnl_t *vp, const char *vnid, const char *res, enum res_op op,
-	unsigned int adjval)
+       unsigned int adjval)
 {
-	int	i, j;
-	char	*vna_newval;
+	int i, j;
+	char *vna_newval;
 
 	sprintf(log_buffer, "vnode %s, resource %s, res_op %d, adjval %u",
 		vnid, res, (int) op, adjval);
 	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, log_buffer);
 	for (i = 0; i < vp->vnl_used; i++) {
-		vnal_t	*vnalp;
+		vnal_t *vnalp;
 
 		vnalp = VNL_NODENUM(vp, i);
 		if (strcmp(vnalp->vnal_id, vnid) != 0)
@@ -448,7 +449,7 @@ resadj(vnl_t *vp, const char *vnid, const char *res, enum res_op op,
 						sprintf(log_buffer, "unknown res_op %d",
 							(int) op);
 						log_event(PBSEVENT_ERROR, 0, LOG_ERR, __func__,
-							log_buffer);
+							  log_buffer);
 						return;
 				}
 
@@ -462,13 +463,13 @@ resadj(vnl_t *vp, const char *vnid, const char *res, enum res_op op,
 				 */
 				if (((int) resval) < 0) {
 					log_event(PBSEVENT_ERROR, 0, LOG_ERR,
-						__func__, "res underflow");
+						  __func__, "res underflow");
 					return;
 				}
 				if (snprintf(valbuf, sizeof(valbuf), "%u",
-					resval) >= sizeof(valbuf)) {
+					     resval) >= sizeof(valbuf)) {
 					log_event(PBSEVENT_ERROR, 0, LOG_ERR,
-						__func__, "res overflow");
+						  __func__, "res overflow");
 					return;
 				}
 
@@ -505,7 +506,7 @@ resadj(vnl_t *vp, const char *vnid, const char *res, enum res_op op,
 void
 cpunum_outofservice(unsigned int cpunum)
 {
-	char		buf[BUFSIZ];
+	char buf[BUFSIZ];
 
 	sprintf(buf, "mark CPU %u out of service", cpunum);
 	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, buf);
@@ -539,7 +540,7 @@ cpu_inuse(unsigned int cpunum, job *pjob, int outofserviceflag)
 	if (cpuctx == NULL)
 		return;
 
-	while (pbs_idx_find(cpuctx, NULL, (void **)&mip, &idx_ctx) == PBS_IDX_RET_OK) {
+	while (pbs_idx_find(cpuctx, NULL, (void **) &mip, &idx_ctx) == PBS_IDX_RET_OK) {
 		unsigned int i;
 		mom_vninfo_t *mvp;
 
@@ -597,7 +598,7 @@ cpu_inuse(unsigned int cpunum, job *pjob, int outofserviceflag)
 static void
 add_CPUlist(mom_vninfo_t *mvp, char *cpulist)
 {
-	char	*p;
+	char *p;
 
 	if ((p = strtok(cpulist, ",")) != NULL) {
 		add_CPUrange(mvp, p);
@@ -638,7 +639,6 @@ add_mominfo(void *ctx, const char *vnid, void *data)
 		return (1);
 }
 
-
 /**
  * @brief
  *	Return a pointer to the mominfo_t data associated with a given vnode ID,
@@ -658,7 +658,6 @@ find_mominfo(const char *vnid)
 		return NULL;
 	} else
 		return (find_vmapent_byID(cpuctx, vnid));
-
 }
 
 /**
@@ -698,10 +697,10 @@ find_mominfo(const char *vnid)
 int
 vn_callback(const char *vnid, char *attr, char *attrval)
 {
-	static void		*ctx = NULL;
+	static void *ctx = NULL;
 
 	if (strcmp(attr, "cpus") == 0) {
-		mom_vninfo_t	*mvp;
+		mom_vninfo_t *mvp;
 
 		sprintf(log_buffer, "vnid %s, attr %s, val %s",
 			vnid, attr, attrval);
@@ -715,7 +714,7 @@ vn_callback(const char *vnid, char *attr, char *attrval)
 		add_CPUlist(mvp, attrval);
 		return (0);
 	} else if (strcmp(attr, "mems") == 0) {
-		mom_vninfo_t	*mvp;
+		mom_vninfo_t *mvp;
 
 		sprintf(log_buffer, "vnid %s, attr %s, val %s",
 			vnid, attr, attrval);
@@ -729,7 +728,7 @@ vn_callback(const char *vnid, char *attr, char *attrval)
 		mvp->mvi_memnum = atoi(attrval);
 		return (0);
 	} else if (strcmp(attr, "sharing") == 0) {
-		mom_vninfo_t	*mvp;
+		mom_vninfo_t *mvp;
 
 		if ((ctx == NULL) && ((ctx = new_ctx()) == NULL))
 			return (-1);
@@ -774,21 +773,20 @@ new_ctx(void)
 static mom_vninfo_t *
 vnid2mominfo(const char *vnid, const void *ctx)
 {
-	mominfo_t	*mip;
-	mom_vninfo_t	*mvp;
+	mominfo_t *mip;
+	mom_vninfo_t *mvp;
 
 	assert(vnid != NULL);
 	assert(ctx != NULL);
 
-	if ((mip = find_vmapent_byID((void *)ctx, vnid)) != NULL) {
+	if ((mip = find_vmapent_byID((void *) ctx, vnid)) != NULL) {
 		sprintf(log_buffer, "found vnid %s", vnid);
 		log_event(PBSEVENT_DEBUG3, 0, 0, __func__, log_buffer);
 
 		mvp = mip->mi_data;
 		assert(mvp != NULL);
-	} else
-		if ((mvp = new_vnid(vnid, (void *)ctx)) == NULL)
-			return NULL;
+	} else if ((mvp = new_vnid(vnid, (void *) ctx)) == NULL)
+		return NULL;
 
 	return (mvp);
 }
@@ -807,9 +805,9 @@ vnid2mominfo(const char *vnid, const void *ctx)
 static mom_vninfo_t *
 new_vnid(const char *vnid, void *ctx)
 {
-	mominfo_t	*mip;
-	mom_vninfo_t	*mvp;
-	char		*newid;
+	mominfo_t *mip;
+	mom_vninfo_t *mvp;
+	char *newid;
 
 	sprintf(log_buffer, "no vnid %s - creating", vnid);
 	log_event(PBSEVENT_DEBUG3, 0, 0, __func__, log_buffer);
@@ -837,7 +835,7 @@ new_vnid(const char *vnid, void *ctx)
 	mvp->mvi_id = newid;
 	mvp->mvi_ncpus = mvp->mvi_acpus = 0;
 	mvp->mvi_cpulist = NULL;
-	mvp->mvi_memnum = (unsigned int) -1;	/* uninitialized data marker */
+	mvp->mvi_memnum = (unsigned int) -1; /* uninitialized data marker */
 
 	if (add_mominfo(ctx, vnid, mip) != 0) {
 		log_errf(PBSE_SYSTEM, __func__, "add_mominfo %s failed", vnid);

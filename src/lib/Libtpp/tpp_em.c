@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file	tpp_em.c
  *
@@ -333,9 +332,9 @@ tpp_em_del_fd(void *em_ctx, int fd)
 int
 tpp_em_pwait(void *em_ctx, em_event_t **ev_array, int timeout, const sigset_t *sigmask)
 {
-        epoll_context_t *ctx = (epoll_context_t *) em_ctx;
-        *ev_array = ctx->events;
-        return (epoll_pwait(ctx->epoll_fd, ctx->events, ctx->max_nfds, timeout, sigmask));
+	epoll_context_t *ctx = (epoll_context_t *) em_ctx;
+	*ev_array = ctx->events;
+	return (epoll_pwait(ctx->epoll_fd, ctx->events, ctx->max_nfds, timeout, sigmask));
 }
 #else
 int
@@ -352,7 +351,7 @@ tpp_em_pwait(void *em_ctx, em_event_t **ev_array, int timeout, const sigset_t *s
 }
 #endif
 
-#elif defined (PBS_USE_POLL)
+#elif defined(PBS_USE_POLL)
 
 /************************************************* POLL ************************************************/
 
@@ -591,10 +590,9 @@ tpp_em_pwait(void *em_ctx, em_event_t **ev_array, int timeout, const sigset_t *s
 	return ev_count;
 }
 
-
 /*************************************** GENERIC SELECT ************************************************/
 
-#elif defined (PBS_USE_SELECT)
+#elif defined(PBS_USE_SELECT)
 /**
  * @brief
  *	Initialize event monitoring
@@ -907,7 +905,6 @@ tpp_em_wait_win(void *em_ctx, em_event_t **ev_array, int timeout)
 
 /********************************** END OF MULTIPLEXING CODE *****************************************/
 
-
 /********************************** START OF MBOX CODE ***********************************************/
 /**
  * @brief
@@ -1095,7 +1092,8 @@ tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 #ifdef HAVE_SYS_EVENTFD_H
 		read(mbox->mbox_eventfd, &u, sizeof(uint64_t));
 #else
-		while (tpp_pipe_read(mbox->mbox_pipe[0], &b, sizeof(char)) == sizeof(char));
+		while (tpp_pipe_read(mbox->mbox_pipe[0], &b, sizeof(char)) == sizeof(char))
+			;
 #endif
 	} else {
 		/* reduce from mbox size during read */
@@ -1221,7 +1219,7 @@ tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, char cmdval, void *data, int s
 		tpp_log(LOG_CRIT, __func__, "Out of memory in em_mbox_post for mbox=%s", mbox->mbox_name);
 		return -1;
 	}
-	
+
 	/* add to the size to global size during enque */
 	mbox->mbox_size += sz;
 

@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /**
  * @file    resource_resv.c
  *
@@ -113,12 +111,11 @@
 #include "simulate.h"
 #include "multi_threading.h"
 
-
 /**
  * @brief
  *		resource_resv constructor
  */
-resource_resv::resource_resv(const std::string& rname): name(rname) 
+resource_resv::resource_resv(const std::string &rname) : name(rname)
 {
 	nodepart_name = NULL;
 	select = NULL;
@@ -267,7 +264,7 @@ free_resource_resv_array(resource_resv **resresv_arr)
 	chunk_size = (chunk_size > MT_CHUNK_SIZE_MIN) ? chunk_size : MT_CHUNK_SIZE_MIN;
 	chunk_size = (chunk_size < MT_CHUNK_SIZE_MAX) ? chunk_size : MT_CHUNK_SIZE_MAX;
 	for (i = 0, num_tasks = 0; num_jobs > 0;
-			num_tasks++, i += chunk_size, num_jobs -= chunk_size) {
+	     num_tasks++, i += chunk_size, num_jobs -= chunk_size) {
 		tdata = alloc_tdata_free_rr_arr(resresv_arr, i, i + chunk_size - 1);
 		if (tdata == NULL)
 			break;
@@ -385,7 +382,7 @@ dup_resource_resv_array_chunk(th_data_dup_resresv *data)
  */
 static inline th_data_dup_resresv *
 alloc_tdata_dup_nodes(resource_resv **oresresv_arr, resource_resv **nresresv_arr, server_info *nsinfo,
-		queue_info *nqinfo, int sidx, int eidx)
+		      queue_info *nqinfo, int sidx, int eidx)
 {
 	th_data_dup_resresv *tdata;
 
@@ -419,7 +416,7 @@ alloc_tdata_dup_nodes(resource_resv **oresresv_arr, resource_resv **nresresv_arr
  */
 resource_resv **
 dup_resource_resv_array(resource_resv **oresresv_arr,
-	server_info *nsinfo, queue_info *nqinfo)
+			server_info *nsinfo, queue_info *nqinfo)
 {
 	resource_resv **nresresv_arr;
 	th_data_dup_resresv *tdata = NULL;
@@ -454,10 +451,10 @@ dup_resource_resv_array(resource_resv **oresresv_arr,
 	} else { /* We are multithreading */
 		int num_tasks = 0;
 		int chunk_size = num_resresv / num_threads;
-		chunk_size = (chunk_size > MT_CHUNK_SIZE_MIN)? chunk_size: MT_CHUNK_SIZE_MIN;
-		chunk_size = (chunk_size < MT_CHUNK_SIZE_MAX)? chunk_size: MT_CHUNK_SIZE_MAX;
+		chunk_size = (chunk_size > MT_CHUNK_SIZE_MIN) ? chunk_size : MT_CHUNK_SIZE_MIN;
+		chunk_size = (chunk_size < MT_CHUNK_SIZE_MAX) ? chunk_size : MT_CHUNK_SIZE_MAX;
 		for (int j = 0; thread_job_ct_left > 0;
-				num_tasks++, j += chunk_size, thread_job_ct_left -= chunk_size) {
+		     num_tasks++, j += chunk_size, thread_job_ct_left -= chunk_size) {
 			tdata = alloc_tdata_dup_nodes(oresresv_arr, nresresv_arr, nsinfo, nqinfo, j, j + chunk_size - 1);
 			if (tdata == NULL) {
 				th_err = 1;
@@ -468,7 +465,6 @@ dup_resource_resv_array(resource_resv **oresresv_arr,
 			task->thread_data = (void *) tdata;
 
 			queue_work_for_threads(task);
-
 		}
 
 		/* Get results from worker threads */
@@ -498,7 +494,6 @@ dup_resource_resv_array(resource_resv **oresresv_arr,
 	return nresresv_arr;
 }
 
-
 /**
  * @brief
  *		dup_resource_resv - duplicate a resource resv structure
@@ -513,7 +508,7 @@ dup_resource_resv_array(resource_resv **oresresv_arr,
  *
  */
 resource_resv *
-dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqinfo, const std::string& name)
+dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqinfo, const std::string &name)
 {
 	resource_resv *nresresv;
 	schd_error *err;
@@ -591,20 +586,18 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 		if (nresresv->job != NULL) {
 			if (nresresv->job->resv != NULL) {
 				nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr,
-					nresresv->job->resv->resv->resv_nodes);
+									  nresresv->job->resv->resv->resv_nodes);
 				nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr,
-					nresresv->job->resv->ninfo_arr, NULL);
+								 nresresv->job->resv->ninfo_arr, NULL);
 
-			}
-			else {
+			} else {
 				nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr,
-					nsinfo->nodes);
+									  nsinfo->nodes);
 				nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr,
-					nsinfo->nodes, NULL);
+								 nsinfo->nodes, NULL);
 			}
 		}
-	}
-	else if (oresresv->is_resv) {
+	} else if (oresresv->is_resv) {
 		selspec *sel;
 		nresresv->is_resv = 1;
 		nresresv->resv = dup_resv_info(oresresv->resv, nsinfo);
@@ -615,8 +608,7 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 		nresresv->resv->orig_nspec_arr = dup_nspecs(oresresv->resv->orig_nspec_arr, nsinfo->nodes, sel);
 		nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr, nsinfo->nodes);
 		nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr, nsinfo->nodes, NULL);
-	}
-	else  { /* error */
+	} else { /* error */
 		delete nresresv;
 		free_schd_error(err);
 		return NULL;
@@ -640,7 +632,8 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 	return dup_resource_resv(oresresv, nsinfo, nqinfo, oresresv->name);
 }
 
-resource_resv *find_resource_resv(resource_resv **resresv_arr, const std::string &name)
+resource_resv *
+find_resource_resv(resource_resv **resresv_arr, const std::string &name)
 {
 	int i;
 	if (resresv_arr == NULL || name.empty())
@@ -651,7 +644,6 @@ resource_resv *find_resource_resv(resource_resv **resresv_arr, const std::string
 
 	return resresv_arr[i];
 }
-
 
 /**
  * @brief
@@ -697,13 +689,13 @@ find_resource_resv_by_indrank(resource_resv **resresv_arr, int index, int rank)
  *
  */
 resource_resv *
-find_resource_resv_by_time(resource_resv **resresv_arr, const std::string& name, time_t start_time)
+find_resource_resv_by_time(resource_resv **resresv_arr, const std::string &name, time_t start_time)
 {
 	int i;
 	if (resresv_arr == NULL)
 		return NULL;
 
-	for (i = 0; resresv_arr[i] != NULL;i++) {
+	for (i = 0; resresv_arr[i] != NULL; i++) {
 		if ((resresv_arr[i]->name == name) && (resresv_arr[i]->start == start_time))
 			break;
 	}
@@ -794,7 +786,7 @@ is_resource_resv_valid(resource_resv *resresv, schd_error *err)
 			set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
 			set_schd_error_arg(err, SPECMSG, "Is running w/o exec_vnode2");
 			return 0;
-	}
+		}
 	}
 
 	if (resresv->ninfo_arr != NULL && resresv->nspec_arr.empty()) {
@@ -811,7 +803,6 @@ is_resource_resv_valid(resource_resv *resresv, schd_error *err)
 
 	return 1;
 }
-
 
 /**
  * @brief
@@ -841,8 +832,7 @@ dup_resource_req_list(resource_req *oreq)
 			else
 				prev->next = nreq;
 			prev = nreq;
-		}
-		else {
+		} else {
 			free_resource_req_list(head);
 			return NULL;
 		}
@@ -861,7 +851,8 @@ dup_resource_req_list(resource_req *oreq)
  * @return	duplicated resource_count list
  *
  */
-resource_count *dup_resource_count_list(resource_count *orcount)
+resource_count *
+dup_resource_count_list(resource_count *orcount)
 {
 	resource_count *rcount;
 	resource_count *nrcount;
@@ -879,8 +870,7 @@ resource_count *dup_resource_count_list(resource_count *orcount)
 			else
 				prev->next = nrcount;
 			prev = nrcount;
-		}
-		else {
+		} else {
 			free_resource_count_list(head);
 			return NULL;
 		}
@@ -901,7 +891,7 @@ resource_count *dup_resource_count_list(resource_count *orcount)
  *
  */
 resource_req *
-dup_selective_resource_req_list(resource_req *oreq, std::unordered_set<resdef *>& deflist)
+dup_selective_resource_req_list(resource_req *oreq, std::unordered_set<resdef *> &deflist)
 {
 	resource_req *req;
 	resource_req *nreq;
@@ -945,15 +935,13 @@ dup_resource_req(resource_req *oreq)
 	if ((nreq = new_resource_req()) == NULL)
 		return NULL;
 
-
 	nreq->def = oreq->def;
-	if(nreq->def)
+	if (nreq->def)
 		nreq->name = nreq->def->name.c_str();
 
 	memcpy(&(nreq->type), &(oreq->type), sizeof(struct resource_type));
 	nreq->res_str = string_dup(oreq->res_str);
 	nreq->amount = oreq->amount;
-
 
 	return nreq;
 }
@@ -967,7 +955,8 @@ dup_resource_req(resource_req *oreq)
  * @return	duplicated resource count
  *
  */
-resource_count *dup_resource_count(resource_count *orcount)
+resource_count *
+dup_resource_count(resource_count *orcount)
 {
 	resource_count *nrcount;
 	if (orcount == NULL)
@@ -977,7 +966,7 @@ resource_count *dup_resource_count(resource_count *orcount)
 		return NULL;
 
 	nrcount->def = orcount->def;
-	if(nrcount->def)
+	if (nrcount->def)
 		nrcount->name = nrcount->def->name.c_str();
 
 	nrcount->amount = orcount->amount;
@@ -1022,7 +1011,8 @@ new_resource_req()
  * @return	the new resource_count
  *
  */
-resource_count *new_resource_count()
+resource_count *
+new_resource_count()
 {
 	resource_count *rcount;
 
@@ -1059,7 +1049,6 @@ create_resource_req(const char *name, const char *value)
 	if (name == NULL)
 		return NULL;
 
-
 	rdef = find_resdef(name);
 
 	if (rdef != NULL) {
@@ -1071,7 +1060,7 @@ create_resource_req(const char *name, const char *value)
 			if (value != NULL) {
 				if (set_resource_req(resreq, value) != 1) {
 					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name,
-						"Bad requested resource data");
+						  "Bad requested resource data");
 					return NULL;
 				}
 			}
@@ -1099,8 +1088,8 @@ create_resource_req(const char *name, const char *value)
 resource_req *
 find_alloc_resource_req(resource_req *reqlist, resdef *def)
 {
-	resource_req *req;		/* used to find or create resource_req */
-	resource_req *prev = NULL;	/* previous resource_req in list */
+	resource_req *req;	   /* used to find or create resource_req */
+	resource_req *prev = NULL; /* previous resource_req in list */
 
 	if (def == NULL)
 		return NULL;
@@ -1135,10 +1124,11 @@ find_alloc_resource_req(resource_req *reqlist, resdef *def)
  * @retval	found or newly allocated resource_count
  *
  */
-resource_count *find_alloc_resource_count(resource_count *rcountlist, resdef *def)
+resource_count *
+find_alloc_resource_count(resource_count *rcountlist, resdef *def)
 {
-	resource_count *rcount;		/* used to find or create resource_count */
-	resource_count *prev = NULL;	/* previous resource_count in list */
+	resource_count *rcount;	     /* used to find or create resource_count */
+	resource_count *prev = NULL; /* previous resource_count in list */
 
 	if (def == NULL)
 		return NULL;
@@ -1160,7 +1150,6 @@ resource_count *find_alloc_resource_count(resource_count *rcountlist, resdef *de
 	return rcount;
 }
 
-
 /**
  * @brief
  * 		find resource_req by name or allocate and initialize a new
@@ -1176,8 +1165,8 @@ resource_count *find_alloc_resource_count(resource_count *rcountlist, resdef *de
 resource_req *
 find_alloc_resource_req_by_str(resource_req *reqlist, char *name)
 {
-	resource_req *req;		/* used to find or create resource_req */
-	resource_req *prev = NULL;	/* previous resource_req in list */
+	resource_req *req;	   /* used to find or create resource_req */
+	resource_req *prev = NULL; /* previous resource_req in list */
 
 	if (name == NULL)
 		return NULL;
@@ -1395,7 +1384,8 @@ free_resource_count(resource_count *rcount)
  * @retval 0 two strictures are not equal
  */
 int
-compare_resource_req(resource_req *req1, resource_req *req2) {
+compare_resource_req(resource_req *req1, resource_req *req2)
+{
 
 	if (req1 == NULL && req2 == NULL)
 		return 1;
@@ -1410,7 +1400,6 @@ compare_resource_req(resource_req *req1, resource_req *req2) {
 			return 1;
 
 	return 0;
-
 }
 
 /**
@@ -1423,13 +1412,13 @@ compare_resource_req(resource_req *req1, resource_req *req2) {
  * @retval 0 two lists are not equal
  */
 int
-compare_resource_req_list(resource_req *req1, resource_req *req2, std::unordered_set<resdef *>& comparr) {
+compare_resource_req_list(resource_req *req1, resource_req *req2, std::unordered_set<resdef *> &comparr)
+{
 	resource_req *cur_req1;
 	resource_req *cur_req2;
 	resource_req *cur;
 	int ret1 = 1;
 	int ret2 = 1;
-
 
 	if (req1 == NULL && req2 == NULL)
 		return 1;
@@ -1474,7 +1463,7 @@ compare_resource_req_list(resource_req *req1, resource_req *req2, std::unordered
  * @return	void
  */
 void
-update_resresv_on_run(resource_resv *resresv, std::vector<nspec *>& nspec_arr)
+update_resresv_on_run(resource_resv *resresv, std::vector<nspec *> &nspec_arr)
 {
 	queue_info *resv_queue;
 	int ret;
@@ -1506,7 +1495,7 @@ update_resresv_on_run(resource_resv *resresv, std::vector<nspec *>& nspec_arr)
 		resresv->job->accrue_type = JOB_RUNNING;
 
 		if (resresv->aoename != NULL) {
-			for (const auto ns: nspec_arr) {
+			for (const auto ns : nspec_arr) {
 				if (ns->go_provision) {
 					resresv->job->is_provisioning = 1;
 					break;
@@ -1524,13 +1513,12 @@ update_resresv_on_run(resource_resv *resresv, std::vector<nspec *>& nspec_arr)
 				resresv->job->dependent_jobs[i]->can_not_run = 1;
 			}
 		}
-	}
-	else if (resresv->is_resv && resresv->resv != NULL) {
+	} else if (resresv->is_resv && resresv->resv != NULL) {
 		resresv->resv->resv_state = RESV_RUNNING;
 		resresv->resv->is_running = 1;
 
 		resv_queue = find_queue_info(resresv->server->queues,
-			resresv->resv->queuename);
+					     resresv->resv->queuename);
 		if (resv_queue != NULL) {
 			/* reservation queues are stopped before the reservation is started */
 			resv_queue->is_started = 1;
@@ -1576,7 +1564,7 @@ update_resresv_on_end(resource_resv *resresv, const char *job_state)
 
 	/* unless of course it's a job and its queue is in an ineligible state */
 	if (resresv->is_job && resresv->job != NULL &&
-		!resresv->job->queue->is_ok_to_run)
+	    !resresv->job->queue->is_ok_to_run)
 		resresv->can_not_run = 1;
 
 	/* no longer running... clear start and end times */
@@ -1619,7 +1607,7 @@ update_resresv_on_end(resource_resv *resresv, const char *job_state)
 		resresv->resv->is_running = 0;
 
 		resv_queue = find_queue_info(resresv->server->queues,
-			resresv->resv->queuename);
+					     resresv->resv->queuename);
 		if (resv_queue != NULL) {
 			resv_queue->is_started = 0;
 			ret = is_ok_to_run_queue(resresv->server->policy, resv_queue);
@@ -1634,10 +1622,10 @@ update_resresv_on_end(resource_resv *resresv, const char *job_state)
 				 */
 				if (resresv->resv->resv_idx < resresv->resv->count) {
 					next_occr_time = get_occurrence(resresv->resv->rrule,
-						resresv->resv->req_start, resresv->resv->timezone, 2);
+									resresv->resv->req_start, resresv->resv->timezone, 2);
 					if (next_occr_time >= 0) {
 						next_occr = find_resource_resv_by_time(resresv->server->resvs,
-							resresv->name, next_occr_time);
+										       resresv->name, next_occr_time);
 						if (next_occr != NULL) {
 							if (resv_queue->jobs != NULL) {
 								for (i = 0; resv_queue->jobs[i] != NULL; i++) {
@@ -1645,10 +1633,9 @@ update_resresv_on_end(resource_resv *resresv, const char *job_state)
 										resv_queue->jobs[i]->job->resv = next_occr;
 								}
 							}
-						}
-						else
+						} else
 							log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, resresv->name,
-								"Can't find occurrence of standing reservation at time %ld", next_occr_time);
+								   "Can't find occurrence of standing reservation at time %ld", next_occr_time);
 					}
 				}
 			}
@@ -1677,20 +1664,20 @@ update_resresv_on_end(resource_resv *resresv, const char *job_state)
  */
 resource_resv **
 resource_resv_filter(resource_resv **resresv_arr, int size,
-	int (*filter_func)(resource_resv *, const void *), const void *arg, int flags)
+		     int (*filter_func)(resource_resv *, const void *), const void *arg, int flags)
 {
-	resource_resv **new_resresvs = NULL;			/* new array of jobs */
+	resource_resv **new_resresvs = NULL; /* new array of jobs */
 	resource_resv **tmp;
 	int i, j = 0;
 
 	if (filter_func == NULL) {
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
-			__func__, "NULL filter function passed in.");
+			  __func__, "NULL filter function passed in.");
 		return NULL;
 	}
 	if (resresv_arr == NULL && size != 0) {
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
-			__func__, "NULL input array with non-zero size.");
+			  __func__, "NULL input array with non-zero size.");
 		return NULL;
 	}
 
@@ -1711,13 +1698,12 @@ resource_resv_filter(resource_resv **resresv_arr, int size,
 	}
 	/* FILTER_FULL - leave the filtered array full size */
 	if (!(flags & FILTER_FULL)) {
-		if ((tmp = static_cast<resource_resv **>(realloc(new_resresvs, (j+1) *
-			sizeof(resource_resv *)))) == NULL) {
+		if ((tmp = static_cast<resource_resv **>(realloc(new_resresvs, (j + 1) *
+										       sizeof(resource_resv *)))) == NULL) {
 			free(new_resresvs);
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return NULL;
-		}
-		else
+		} else
 			new_resresvs = tmp;
 	}
 	new_resresvs[j] = NULL;
@@ -1738,7 +1724,7 @@ resource_resv_filter(resource_resv **resresv_arr, int size,
  */
 int
 remove_resresv_from_array(resource_resv **resresv_arr,
-	resource_resv *resresv)
+			  resource_resv *resresv)
 {
 	int i;
 
@@ -1753,7 +1739,7 @@ remove_resresv_from_array(resource_resv **resresv_arr,
 		 * coping the NULL back one as well
 		 */
 		for (; resresv_arr[i] != NULL; i++)
-			resresv_arr[i] = resresv_arr[i+1];
+			resresv_arr[i] = resresv_arr[i + 1];
 	}
 	return 1;
 }
@@ -1774,7 +1760,7 @@ remove_resresv_from_array(resource_resv **resresv_arr,
  */
 resource_resv **
 add_resresv_to_array(resource_resv **resresv_arr,
-	resource_resv *resresv, int flags)
+		     resource_resv *resresv, int flags)
 {
 	int size;
 	resource_resv **new_arr;
@@ -1789,22 +1775,21 @@ add_resresv_to_array(resource_resv **resresv_arr,
 		new_arr[0] = resresv;
 		new_arr[1] = NULL;
 		if (flags & SET_RESRESV_INDEX)
-		    resresv->resresv_ind = 0;
+			resresv->resresv_ind = 0;
 		return new_arr;
 	}
 
 	size = count_array(resresv_arr);
 
 	/* realloc for 1 more ptr (2 == 1 for new and 1 for NULL) */
-	new_arr = static_cast<resource_resv **>(realloc(resresv_arr, ((size+2) * sizeof(resource_resv *))));
+	new_arr = static_cast<resource_resv **>(realloc(resresv_arr, ((size + 2) * sizeof(resource_resv *))));
 
 	if (new_arr != NULL) {
 		new_arr[size] = resresv;
-		new_arr[size+1] = NULL;
+		new_arr[size + 1] = NULL;
 		if (flags & SET_RESRESV_INDEX)
-		    resresv->resresv_ind = size;
-	}
-	else {
+			resresv->resresv_ind = size;
+	} else {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1829,7 +1814,7 @@ add_resresv_to_array(resource_resv **resresv_arr,
  */
 resource_resv **
 copy_resresv_array(resource_resv **resresv_arr,
-	resource_resv **tot_arr)
+		   resource_resv **tot_arr)
 {
 	resource_resv *resresv;
 	resource_resv **new_resresv_arr;
@@ -1845,7 +1830,7 @@ copy_resresv_array(resource_resv **resresv_arr,
 	new_resresv_arr =
 		static_cast<resource_resv **>(malloc((size + 1) * sizeof(resource_resv *)));
 	if (new_resresv_arr == NULL) {
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,  "not enough memory.");
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "not enough memory.");
 		return NULL;
 	}
 
@@ -2021,7 +2006,7 @@ new_chunk()
  * @return	duplicate chunk array.
  */
 chunk **
-dup_chunk_array(const chunk * const *old_chunk_arr)
+dup_chunk_array(const chunk *const *old_chunk_arr)
 {
 	int i;
 	int ct;
@@ -2043,7 +2028,6 @@ dup_chunk_array(const chunk * const *old_chunk_arr)
 		if (new_chunk_arr[i] == NULL)
 			error = 1;
 	}
-
 
 	new_chunk_arr[i] = NULL;
 
@@ -2142,7 +2126,8 @@ free_chunk(chunk *ch)
  * @retval chunk found
  * @retval NULL if not found
  */
-chunk *find_chunk_by_seq_num(chunk **chunks, int seq_num)
+chunk *
+find_chunk_by_seq_num(chunk **chunks, int seq_num)
 {
 	int i;
 	for (i = 0; chunks[i] != NULL; i++)
@@ -2172,7 +2157,7 @@ selspec::selspec()
  *
  * @param[in]	oldspec	-	old selspec to be copied
  */
-selspec::selspec(const selspec& oldspec)
+selspec::selspec(const selspec &oldspec)
 {
 	total_chunks = oldspec.total_chunks;
 	total_cpus = oldspec.total_cpus;
@@ -2180,7 +2165,8 @@ selspec::selspec(const selspec& oldspec)
 	defs = oldspec.defs;
 }
 
-selspec& selspec::operator=(const selspec& oldspec)
+selspec &
+selspec::operator=(const selspec &oldspec)
 {
 	total_chunks = oldspec.total_chunks;
 	total_cpus = oldspec.total_cpus;
@@ -2200,7 +2186,6 @@ selspec::~selspec()
 		free_chunk_array(chunks);
 }
 
-
 /**
  * @brief
  *		compare_res_to_str - compare a resource structure of type string to
@@ -2216,7 +2201,7 @@ selspec::~selspec()
  *
  */
 int
-compare_res_to_str(schd_resource *res, char *str , enum resval_cmpflag cmpflag)
+compare_res_to_str(schd_resource *res, char *str, enum resval_cmpflag cmpflag)
 {
 	int i;
 
@@ -2230,12 +2215,10 @@ compare_res_to_str(schd_resource *res, char *str , enum resval_cmpflag cmpflag)
 		if (cmpflag == CMP_CASE) {
 			if (!strcmp(res->str_avail[i], str))
 				return 1;
-		}
-		else if (cmpflag == CMP_CASELESS) {
+		} else if (cmpflag == CMP_CASELESS) {
 			if (!strcasecmp(res->str_avail[i], str))
 				return 1;
-		}
-		else {
+		} else {
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_NOTICE, res->name, "Incorrect flag for comparison.");
 			return 0;
 		}
@@ -2317,7 +2300,7 @@ compare_non_consumable(schd_resource *res, resource_req *req)
  * @return	converted select string
  */
 std::string
-create_select_from_nspec(std::vector<nspec *>& nspec_arr)
+create_select_from_nspec(std::vector<nspec *> &nspec_arr)
 {
 	std::string select_spec;
 	char buf[2048];
@@ -2327,7 +2310,7 @@ create_select_from_nspec(std::vector<nspec *>& nspec_arr)
 		return {};
 
 	/* convert form (node:foo=X:bar=Y) into 1:vnode=node:foo=X:bay=Y*/
-	for (const auto& ns : nspec_arr) {
+	for (const auto &ns : nspec_arr) {
 		/* Don't add exclhost chunks into our select. They will be added back when
 		 * we call eval_selspec() with the original place=exclhost.  If we added
 		 * them, we'd have issues placing chunks w/o resources
@@ -2383,13 +2366,12 @@ in_runnable_state(resource_resv *resresv)
 	if (resresv == NULL)
 		return 0;
 
-	if (resresv->is_job && resresv->job !=NULL) {
+	if (resresv->is_job && resresv->job != NULL) {
 		if (resresv->job->is_array) {
-			if (range_next_value(resresv->job->queued_subjobs, -1) >= 0 ) {
+			if (range_next_value(resresv->job->queued_subjobs, -1) >= 0) {
 				if (resresv->job->is_begin || resresv->job->is_queued)
 					return 1;
-			}
-			else
+			} else
 				return 0;
 		}
 
@@ -2398,8 +2380,7 @@ in_runnable_state(resource_resv *resresv)
 
 		if (resresv->job->is_susp_sched)
 			return 1;
-	}
-	else if (resresv->is_resv && resresv->resv != NULL) {
+	} else if (resresv->is_resv && resresv->resv != NULL) {
 		if (resresv->resv->resv_state == RESV_CONFIRMED)
 			return 1;
 	}

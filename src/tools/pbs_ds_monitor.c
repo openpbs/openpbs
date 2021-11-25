@@ -138,9 +138,9 @@ check_and_stop_db(int dbpid)
 static pid_t
 get_pid()
 {
-	char pidfile[MAXPATHLEN+1];
+	char pidfile[MAXPATHLEN + 1];
 	FILE *fp;
-	char buf[TEMP_BUF_SIZE+1];
+	char buf[TEMP_BUF_SIZE + 1];
 	pid_t pid = 0;
 
 	snprintf(pidfile, MAXPATHLEN, "%s/datastore/postmaster.pid", pbs_conf.pbs_home_path);
@@ -191,7 +191,7 @@ static int
 lock_out(int fds, int op)
 {
 	struct flock flock;
-	char	 buf[PBS_MAXHOSTNAME + 10];
+	char buf[PBS_MAXHOSTNAME + 10];
 
 	(void) lseek(fds, (off_t) 0, SEEK_SET);
 	flock.l_type = op;
@@ -237,7 +237,7 @@ acquire_lock(char *lockfile, char *reason, int reasonlen, int *is_lock_hld_by_th
 	int fd;
 	struct stat st;
 	int i, j;
-	time_t	lasttime = 0;
+	time_t lasttime = 0;
 	int rc;
 	char who[PBS_MAXHOSTNAME + 10];
 	char *p;
@@ -246,9 +246,9 @@ acquire_lock(char *lockfile, char *reason, int reasonlen, int *is_lock_hld_by_th
 		reason[0] = '\0';
 
 	if (pbs_conf.pbs_secondary == NULL)
-		j = 1;		/* not fail over, try lock one time */
+		j = 1; /* not fail over, try lock one time */
 	else
-		j = MAX_LOCK_ATTEMPTS;	/* fail over, try X times */
+		j = MAX_LOCK_ATTEMPTS; /* fail over, try X times */
 
 #ifndef O_RSYNC
 #define O_RSYNC 0
@@ -270,7 +270,7 @@ again:
 	/* record the last modified timestamp */
 	lasttime = st.st_mtime;
 
-	for (i=0; i < j; i++) { /* try X times where X is MAX_LOCK_ATTEMPTS */
+	for (i = 0; i < j; i++) { /* try X times where X is MAX_LOCK_ATTEMPTS */
 		if (i > 0)
 			sleep(1);
 		/* attempt to lock the datastore directory */
@@ -325,8 +325,8 @@ again:
 		if (p) {
 			*p = '\0';
 			snprintf(reason, reasonlen,
-					"Lock seems to be held by pid: %s running on host: %s",
-					(p + 1), who);
+				 "Lock seems to be held by pid: %s running on host: %s",
+				 (p + 1), who);
 		} else {
 			snprintf(reason, reasonlen, "Lock seems to be held by %s", who);
 		}
@@ -429,9 +429,9 @@ unix_db_monitor(char *mode)
 		return 1;
 	}
 
-	(void)fclose(stdin);
-	(void)fclose(stdout);
-	(void)fclose(stderr);
+	(void) fclose(stdin);
+	(void) fclose(stdout);
+	(void) fclose(stderr);
 
 	/* Protect from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_ON);
@@ -480,7 +480,7 @@ unix_db_monitor(char *mode)
 	for (i = 0; i < MAX_DBPID_ATTEMPTS; i++) {
 		if ((dbpid = get_pid()) > 0)
 			break;
-		(void)utimes(lockfile, NULL);
+		(void) utimes(lockfile, NULL);
 		sleep(1);
 	}
 
@@ -493,7 +493,7 @@ unix_db_monitor(char *mode)
 	}
 
 	while (1) {
-		(void)utimes(lockfile, NULL);
+		(void) utimes(lockfile, NULL);
 
 		if (kill(dbpid, 0) != 0)
 			break;

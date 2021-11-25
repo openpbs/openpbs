@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file	tpp_transport.c
  *
@@ -76,10 +75,10 @@
 #include "tpp_internal.h"
 #include "auth.h"
 
-#define TPP_CONN_DISCONNECTED   1 /* Channel is disconnected */
-#define TPP_CONN_INITIATING     2 /* Channel is initiating */
-#define TPP_CONN_CONNECTING     3 /* Channel is connecting */
-#define TPP_CONN_CONNECTED      4 /* Channel is connected */
+#define TPP_CONN_DISCONNECTED 1 /* Channel is disconnected */
+#define TPP_CONN_INITIATING 2	/* Channel is initiating */
+#define TPP_CONN_CONNECTING 3	/* Channel is connecting */
+#define TPP_CONN_CONNECTED 4	/* Channel is connected */
 
 int tpp_going_down = 0;
 
@@ -89,8 +88,8 @@ int tpp_going_down = 0;
  */
 #define TPP_CONN_CONNECT_DELAY 1
 typedef struct {
-	int tfd;       /* on which physical connection */
-	char cmdval; 	/* cmd type */
+	int tfd;	  /* on which physical connection */
+	char cmdval;	  /* cmd type */
 	time_t conn_time; /* time at which to connect */
 } conn_event_t;
 
@@ -104,17 +103,17 @@ typedef struct {
  *
  */
 typedef struct {
-	int thrd_index;			  /* thread index for debugging */
+	int thrd_index;		  /* thread index for debugging */
 	pthread_t worker_thrd_id; /* Thread id of this thread */
-	int listen_fd;		/* If this is the thread that is also doing
+	int listen_fd;		  /* If this is the thread that is also doing
 				 * the listening, then the listening socket
 				 * descriptor
 				 */
-#ifdef NAS /* localmod 149 */
-	int nas_tpp_log_enabled;	/* controls the printing of statistics
+#ifdef NAS			  /* localmod 149 */
+	int nas_tpp_log_enabled;  /* controls the printing of statistics
 					 * to the log
 					 */
-	int NAS_TPP_LOG_PERIOD_A;	/* this should be the shortest of the
+	int NAS_TPP_LOG_PERIOD_A; /* this should be the shortest of the
 					 * logging periods, as it is also the
 					 * frequency with which we check if
 					 * statistics should be printed
@@ -142,32 +141,32 @@ typedef struct {
 	int nas_max_bytes_lrg_send_C;
 	int nas_min_bytes_lrg_send_C;
 	double nas_lrg_send_sum_kb_C;
-#endif /* localmod 149 */
-	void *em_context;         /* the em context */
-	tpp_que_t def_act_que;  /* The deferred action queue on this thread */
-	tpp_mbox_t mbox;     /* message box for this thread */
-	tpp_tls_t *tpp_tls;	/* tls data related to tpp work */
+#endif			       /* localmod 149 */
+	void *em_context;      /* the em context */
+	tpp_que_t def_act_que; /* The deferred action queue on this thread */
+	tpp_mbox_t mbox;       /* message box for this thread */
+	tpp_tls_t *tpp_tls;    /* tls data related to tpp work */
 } thrd_data_t;
 
 #ifdef NAS /* localmod 149 */
-static  char tpp_instr_flag_file[_POSIX_PATH_MAX] = "/PBS/flags/tpp_instrumentation";
+static char tpp_instr_flag_file[_POSIX_PATH_MAX] = "/PBS/flags/tpp_instrumentation";
 #endif /* localmod 149 */
 
 static thrd_data_t **thrd_pool; /* array of threads - holds the thread pool */
-static int num_threads;       /* number of threads in the thread pool */
-static int last_thrd = -1;    /* global index to rotate work amongst threads */
-static int max_con = MAX_CON; /* nfiles */
+static int num_threads;		/* number of threads in the thread pool */
+static int last_thrd = -1;	/* global index to rotate work amongst threads */
+static int max_con = MAX_CON;	/* nfiles */
 
-static struct tpp_config *tpp_conf;  /* store a pointer to the tpp_config supplied */
+static struct tpp_config *tpp_conf; /* store a pointer to the tpp_config supplied */
 
 /*
  * Save the connection related parameters here, so we don't have to parse
  * each time.
  */
 typedef struct {
-	char *hostname; /* the host name to connect to */
-	int port;       /* the port to connect to */
-	int need_resvport;  /* bind to resv port? */
+	char *hostname;	   /* the host name to connect to */
+	int port;	   /* the port to connect to */
+	int need_resvport; /* bind to resv port? */
 } conn_param_t;
 
 /*
@@ -177,33 +176,33 @@ typedef struct {
  * connections as "transport fd" or tfd.
  */
 typedef struct {
-	int sock_fd;             /* socket fd (TCP) for this physical connection*/
-	int lasterr;             /* last error that was captured on this socket */
-	short net_state;         /* network status of this connection, up, down etc */
-	int ev_mask;			 /* event mask in effect so far */
+	int sock_fd;	 /* socket fd (TCP) for this physical connection*/
+	int lasterr;	 /* last error that was captured on this socket */
+	short net_state; /* network status of this connection, up, down etc */
+	int ev_mask;	 /* event mask in effect so far */
 
 	conn_param_t *conn_params; /* the connection params */
 
-	tpp_mbox_t send_mbox;     /* mbox of pkts to send */
-	tpp_chunk_t scratch;      /* scratch to work on incoming data */
+	tpp_mbox_t send_mbox;	     /* mbox of pkts to send */
+	tpp_chunk_t scratch;	     /* scratch to work on incoming data */
 	tpp_packet_t *curr_send_pkt; /* current packet dequed from send_mbox to be sent out  */
-	thrd_data_t *td;          /* connections controller thread */
+	thrd_data_t *td;	     /* connections controller thread */
 
-	tpp_context_t *ctx;       /* upper layers context information */
+	tpp_context_t *ctx; /* upper layers context information */
 
-	void *extra;              /* extra data structure */
+	void *extra; /* extra data structure */
 } phy_conn_t;
 
 /* structure for holding an array of physical connection structures */
 typedef struct {
-	int slot_state;        /* slot is busy or free */
+	int slot_state;	  /* slot is busy or free */
 	phy_conn_t *conn; /* the physical connection using this slot */
 } conns_array_type_t;
 
 conns_array_type_t *conns_array = NULL; /* array of physical connections */
-int conns_array_size = 0;                    /* the size of physical connection array */
-pthread_rwlock_t cons_array_lock;            /* rwlock used to synchronize array ops */
-pthread_mutex_t thrd_array_lock;             /* mutex used to synchronize thrd assignment */
+int conns_array_size = 0;		/* the size of physical connection array */
+pthread_rwlock_t cons_array_lock;	/* rwlock used to synchronize array ops */
+pthread_mutex_t thrd_array_lock;	/* mutex used to synchronize thrd assignment */
 
 /* function forward declarations */
 static void *work(void *v);
@@ -505,7 +504,7 @@ tpp_transport_init(struct tpp_config *conf)
 
 	if (tpp_init_rwlock(&cons_array_lock))
 		return -1;
-	
+
 #ifndef WIN32
 	/* for unix, set a pthread_atfork handler */
 	if (pthread_atfork(tpp_nslookup_atfork_prepare, tpp_nslookup_atfork_parent, tpp_nslookup_atfork_child) != 0) {
@@ -705,7 +704,7 @@ tpp_transport_set_handlers(
  * @par MT-safe: No
  *
  */
-static phy_conn_t*
+static phy_conn_t *
 alloc_conn(int tfd)
 {
 	phy_conn_t *conn;
@@ -965,7 +964,7 @@ tpp_post_cmd(int tfd, char cmd, tpp_packet_t *pkt)
 	if (cmd == TPP_CMD_SEND) {
 		/* data associated that needs to be sent out, put directly into target mbox */
 		/* write to worker threads send pipe */
-		rc = tpp_mbox_post(&conn->send_mbox, tfd, cmd, (void*) pkt, pkt->totlen);
+		rc = tpp_mbox_post(&conn->send_mbox, tfd, cmd, (void *) pkt, pkt->totlen);
 		if (rc != 0)
 			return rc;
 	}
@@ -1127,7 +1126,7 @@ assign_to_worker(int tfd, int delay, thrd_data_t *td)
 		return 1;
 
 	if (conn->td != NULL)
-		tpp_log(LOG_CRIT, __func__, "ERROR! tfd=%d conn_td=%p, conn_td_index=%d, thrd_td=%p, thrd_td_index=%d", tfd, conn->td, conn->td->thrd_index, td, td ? td->thrd_index: -1);
+		tpp_log(LOG_CRIT, __func__, "ERROR! tfd=%d conn_td=%p, conn_td_index=%d, thrd_td=%p, thrd_td_index=%d", tfd, conn->td, conn->td->thrd_index, td, td ? td->thrd_index : -1);
 
 	if (td == NULL) {
 		int iters = 0;
@@ -1148,7 +1147,7 @@ assign_to_worker(int tfd, int delay, thrd_data_t *td)
 	} else
 		conn->td = td;
 
-	if (tpp_mbox_post(&conn->td->mbox, tfd, TPP_CMD_ASSIGN, (void *)(long) delay, 0) != 0)
+	if (tpp_mbox_post(&conn->td->mbox, tfd, TPP_CMD_ASSIGN, (void *) (long) delay, 0) != 0)
 		tpp_log(LOG_CRIT, __func__, "tfd=%d, Error writing to mbox", tfd);
 
 	return 0;
@@ -1253,7 +1252,7 @@ add_transport_conn(phy_conn_t *conn)
 			if (the_post_connect_handler)
 				the_post_connect_handler(fd, NULL, conn->ctx, conn->extra);
 		}
-	} else if (conn->net_state == TPP_CONN_CONNECTED) {/* accepted socket */
+	} else if (conn->net_state == TPP_CONN_CONNECTED) { /* accepted socket */
 		/* since we connected, remove EM_OUT from the list and add EM_IN */
 		conn->ev_mask = EM_IN | EM_ERR | EM_HUP;
 		TPP_DBPRT("Connected, Removed EM_OUT and added EM_IN to ev_mask, now=%x", conn->ev_mask);
@@ -1307,7 +1306,7 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 
 	conn = get_transport_atomic(tfd, &slot_state);
 
-	if(conn && (conn->td != td))
+	if (conn && (conn->td != td))
 		tpp_log(LOG_CRIT, __func__, "ERROR! tfd=%d conn_td=%p, conn_td_index=%d, thrd_td=%p, thrd_td_index=%d, cmd=%d", tfd, conn->td, conn->td->thrd_index, td, td->thrd_index, cmd);
 
 	if (cmd == TPP_CMD_CLOSE) {
@@ -1342,7 +1341,7 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 		/* no execution after this */
 
 	} else if ((cmd == TPP_CMD_ASSIGN) || (cmd == TPP_CMD_CONNECT)) {
-		int delay = (int)(long) data;
+		int delay = (int) (long) data;
 
 		if (conn == NULL || slot_state != TPP_SLOT_BUSY) {
 			tpp_log(LOG_WARNING, __func__, "Phy Con %d (cmd = %d) already deleted/closing", tfd, cmd);
@@ -1393,7 +1392,7 @@ tpp_get_thrd_index()
 	if ((tls = tpp_get_tls()) == NULL)
 		return -1;
 
-	td = (thrd_data_t *)(tpp_get_tls()->td);
+	td = (thrd_data_t *) (tpp_get_tls()->td);
 	if (td == NULL)
 		return -1;
 
@@ -1433,7 +1432,7 @@ tpp_get_thrd_index()
  * @par MT-safe: No
  *
  */
-static void*
+static void *
 work(void *v)
 {
 	thrd_data_t *td = (thrd_data_t *) v;
@@ -1452,7 +1451,7 @@ work(void *v)
 	tpp_tls_t *ptr;
 #ifndef WIN32
 	int rc;
-	sigset_t	blksigs;
+	sigset_t blksigs;
 #endif
 
 	/*
@@ -1871,7 +1870,7 @@ add_pkt(phy_conn_t *conn)
 		pkt_len = ntohl(*((int *) conn->scratch.data));
 		if (pkt_len < avl_len) {
 			/* some data corruption has happened, or sombody trying DOS */
-			tpp_log(LOG_CRIT, __func__, "tfd=%d, Critical error in protocol header, pkt_len=%d, avl_len=%d, dropping connection",conn->sock_fd, pkt_len, avl_len);
+			tpp_log(LOG_CRIT, __func__, "tfd=%d, Critical error in protocol header, pkt_len=%d, avl_len=%d, dropping connection", conn->sock_fd, pkt_len, avl_len);
 			handle_disconnect(conn);
 			return -1; /* treat as bad data rejected by upper layer */
 		}
@@ -1956,7 +1955,7 @@ send_data(phy_conn_t *conn)
 						/* set this socket in POLLOUT */
 						conn->ev_mask |= EM_OUT;
 						TPP_DBPRT("EWOULDBLOCK, added EM_OUT to ev_mask, now=%x", conn->ev_mask);
-						if (tpp_em_mod_fd(conn->td->em_context, conn->sock_fd, conn->ev_mask)	== -1) {
+						if (tpp_em_mod_fd(conn->td->em_context, conn->sock_fd, conn->ev_mask) == -1) {
 							tpp_log(LOG_ERR, __func__, "Multiplexing failed");
 							return;
 						}
@@ -2061,7 +2060,7 @@ tpp_transport_shutdown()
 	for (i = 0; i < num_threads; i++) {
 		if (tpp_is_valid_thrd(thrd_pool[i]->worker_thrd_id))
 			pthread_join(thrd_pool[i]->worker_thrd_id, &ret);
-		
+
 		tpp_em_destroy(thrd_pool[i]->em_context);
 		free(thrd_pool[i]->tpp_tls);
 		free(thrd_pool[i]);
@@ -2145,7 +2144,7 @@ tpp_transport_get_conn_hostname(int tfd)
 	phy_conn_t *conn;
 	conn = get_transport_atomic(tfd, &slot_state);
 	if (conn) {
-		return ((const char *)(conn->conn_params->hostname));
+		return ((const char *) (conn->conn_params->hostname));
 	}
 	return NULL;
 }

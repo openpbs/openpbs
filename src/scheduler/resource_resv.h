@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_RESOURCE_RESV_H
-#define	_RESOURCE_RESV_H
+#ifndef _RESOURCE_RESV_H
+#define _RESOURCE_RESV_H
 
 #include "data_types.h"
 
@@ -53,12 +53,11 @@ free_resource_resv_array_chunk(th_data_free_resresv *data);
  */
 void free_resource_resv_array(resource_resv **resresv_arr);
 
-
 /*
  *      dup_resource_resv - duplicate a resource resv structure
  */
 resource_resv *dup_resource_resv(resource_resv *oresresv, server_info *nsinfo,
-		queue_info *nqinfo, const std::string& name);
+				 queue_info *nqinfo, const std::string &name);
 
 resource_resv *dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqinfo);
 /*
@@ -70,7 +69,7 @@ void dup_resource_resv_array_chunk(th_data_dup_resresv *data);
  */
 resource_resv **
 dup_resource_resv_array(resource_resv **oresresv_arr,
-	server_info *nsinfo, queue_info *nqinfo);
+			server_info *nsinfo, queue_info *nqinfo);
 
 /*
  *      is_resource_resv_valid - do simple validity checks for a resource resv
@@ -81,8 +80,7 @@ int is_resource_resv_valid(resource_resv *resresv, schd_error *err);
 /*
  *      find_resource_resv - find a resource_resv by name
  */
-resource_resv *find_resource_resv(resource_resv **resresv_arr, const std::string& name);
-
+resource_resv *find_resource_resv(resource_resv **resresv_arr, const std::string &name);
 
 /*
  * find a resource_resv by unique numeric rank
@@ -93,7 +91,7 @@ resource_resv *find_resource_resv_by_indrank(resource_resv **resresv_arr, int in
 /**
  *  find_resource_resv_by_time - find a resource_resv by name and start time
  */
-resource_resv *find_resource_resv_by_time(resource_resv **resresv_arr, const std::string& name, time_t start_time);
+resource_resv *find_resource_resv_by_time(resource_resv **resresv_arr, const std::string &name, time_t start_time);
 
 /*
  *      find_resource_req - find a resource_req from a resource_req list
@@ -168,8 +166,7 @@ int set_resource_req(resource_req *req, const char *val);
  */
 resource_req *dup_resource_req_list(resource_req *oreq);
 
-resource_req *dup_selective_resource_req_list(resource_req *oreq, std::unordered_set<resdef *>& deflist);
-
+resource_req *dup_selective_resource_req_list(resource_req *oreq, std::unordered_set<resdef *> &deflist);
 
 /*
  *	dup_resource_count_list - duplicate a resource_req list
@@ -190,7 +187,7 @@ resource_count *dup_resource_count(resource_count *orcount);
  *      update_resresv_on_run - update information kept in a resource_resv
  *                              struct when one is started
  */
-void update_resresv_on_run(resource_resv *resresv, std::vector<nspec *>& nspec_arr);
+void update_resresv_on_run(resource_resv *resresv, std::vector<nspec *> &nspec_arr);
 
 /*
  *      update_resresv_on_end - update a resource_resv structure when
@@ -198,14 +195,12 @@ void update_resresv_on_run(resource_resv *resresv, std::vector<nspec *>& nspec_a
  */
 void update_resresv_on_end(resource_resv *resresv, const char *job_state);
 
-
 /*
  *      resource_resv_filter - filters jobs on specified argument
  */
 resource_resv **
 resource_resv_filter(resource_resv **resresv_arr, int size,
-	int (*filter_func)(resource_resv *, const void *), const void *arg, int flags);
-
+		     int (*filter_func)(resource_resv *, const void *), const void *arg, int flags);
 
 /*
  *      remove_resresv_from_array - remove a resource_resv from an array
@@ -213,7 +208,7 @@ resource_resv_filter(resource_resv **resresv_arr, int size,
  */
 int
 remove_resresv_from_array(resource_resv **resresv_arr,
-	resource_resv *resresv);
+			  resource_resv *resresv);
 
 /*
  *      add_resresv_to_array - add a resource resv to an array
@@ -221,7 +216,7 @@ remove_resresv_from_array(resource_resv **resresv_arr,
  */
 resource_resv **
 add_resresv_to_array(resource_resv **resresv_arr,
-	resource_resv *resresv, int flags);
+		     resource_resv *resresv, int flags);
 
 /*
  *      copy_resresv_array - copy an array of resource_resvs by name.
@@ -233,7 +228,7 @@ add_resresv_to_array(resource_resv **resresv_arr,
  */
 resource_resv **
 copy_resresv_array(resource_resv **resresv_arr,
-	resource_resv **tot_arr);
+		   resource_resv **tot_arr);
 
 /*
  *	is_resresv_running - is a resource resv in the running state
@@ -277,12 +272,10 @@ int compare_res_to_str(schd_resource *res, char *str, enum resval_cmpflag);
 int compare_non_consumable(schd_resource *res, resource_req *req);
 
 /* compare two resource req lists for equality.  Only compare resources in comparr */
-int compare_resource_req_list(resource_req *req1, resource_req *req2, std::unordered_set<resdef *>& comparr);
+int compare_resource_req_list(resource_req *req1, resource_req *req2, std::unordered_set<resdef *> &comparr);
 
 /* compare two resource_reqs for equality*/
 int compare_resource_req(resource_req *req1, resource_req *req2);
-
-
 
 /*
  *	new_chunk - constructor for chunk
@@ -296,7 +289,7 @@ chunk *new_chunk();
 /*
  *	dup_chunk_array - array copy constructor for array of chunk ptrs
  */
-chunk **dup_chunk_array(const chunk * const *old_chunk_arr);
+chunk **dup_chunk_array(const chunk *const *old_chunk_arr);
 
 /*
  *	dup_chunk - copy constructor for chunk
@@ -326,7 +319,7 @@ resource_req *create_resource_req(const char *name, const char *value);
  *
  * return converted select string
  */
-std::string create_select_from_nspec(std::vector<nspec *>& nspec_arr);
+std::string create_select_from_nspec(std::vector<nspec *> &nspec_arr);
 
 /* function returns true if job/resv is in a state which it can be run */
 int in_runnable_state(resource_resv *resresv);

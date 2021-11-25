@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    pbs_db.h
  *
@@ -54,7 +53,7 @@
  */
 
 #ifndef _PBS_DB_H
-#define	_PBS_DB_H
+#define _PBS_DB_H
 
 #include <pbs_ifl.h>
 #include <sys/types.h>
@@ -63,32 +62,32 @@
 #include <time.h>
 #include "list_link.h"
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifndef	MIN
-#define	MIN(x, y)	(((x) < (y)) ? (x) : (y))
+#ifndef MIN
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
-#ifndef	MAX
-#define	MAX(x, y)	(((x) > (y)) ? (x) : (y))
+#ifndef MAX
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #endif
 
-#define PBS_MAX_DB_CONN_INIT_ERR  (MAXPATHLEN*2)
+#define PBS_MAX_DB_CONN_INIT_ERR (MAXPATHLEN * 2)
 
 /* type of saves bit wise flags - see savetype */
-#define OBJ_SAVE_NEW    1   /* object is new, so whole object should be saved */
-#define OBJ_SAVE_QS     2   /* quick save area modified, it should be saved */
+#define OBJ_SAVE_NEW 1 /* object is new, so whole object should be saved */
+#define OBJ_SAVE_QS 2  /* quick save area modified, it should be saved */
 
 /**
  * @brief
  * Following are a set of mapping of DATABASE vs C data types. These are
  * typedefed here to allow mapping the database data types easily.
  */
-typedef short     SMALLINT;
-typedef int       INTEGER;
+typedef short SMALLINT;
+typedef int INTEGER;
 typedef long long BIGINT;
-typedef char      *TEXT;
+typedef char *TEXT;
 
 struct pbs_db_attr_list {
 	int attr_count;
@@ -103,7 +102,7 @@ typedef struct pbs_db_attr_list pbs_db_attr_list_t;
  *
  */
 struct pbs_db_svr_info {
-	BIGINT  sv_jobidnumber;
+	BIGINT sv_jobidnumber;
 	pbs_db_attr_list_t db_attr_list; /* list of attributes */
 };
 typedef struct pbs_db_svr_info pbs_db_svr_info_t;
@@ -114,8 +113,8 @@ typedef struct pbs_db_svr_info pbs_db_svr_info_t;
  *
  */
 struct pbs_db_sched_info {
-	char    sched_name[PBS_MAXSCHEDNAME+1]; /* sched name */
-	pbs_db_attr_list_t db_attr_list; 	/* list of attributes */
+	char sched_name[PBS_MAXSCHEDNAME + 1]; /* sched name */
+	pbs_db_attr_list_t db_attr_list;       /* list of attributes */
 };
 typedef struct pbs_db_sched_info pbs_db_sched_info_t;
 
@@ -125,9 +124,9 @@ typedef struct pbs_db_sched_info pbs_db_sched_info_t;
  *
  */
 struct pbs_db_que_info {
-	char    qu_name[PBS_MAXQUEUENAME +1]; 	/* queue name */
-	INTEGER qu_type;		 	/* queue type: exec, route */
-	pbs_db_attr_list_t db_attr_list; 	/* list of attributes */
+	char qu_name[PBS_MAXQUEUENAME + 1]; /* queue name */
+	INTEGER qu_type;		    /* queue type: exec, route */
+	pbs_db_attr_list_t db_attr_list;    /* list of attributes */
 };
 typedef struct pbs_db_que_info pbs_db_que_info_t;
 
@@ -137,14 +136,14 @@ typedef struct pbs_db_que_info pbs_db_que_info_t;
  *
  */
 struct pbs_db_node_info {
-	char	nd_name[PBS_MAXSERVERNAME+1]; /* vnode's name */
-	INTEGER nd_index;	/* global node index */
-	BIGINT	mom_modtime; 	/* node config update time */
-	char	nd_hostname[PBS_MAXSERVERNAME+1]; /* node hostname */
-	INTEGER nd_state;	/* state of node */
-	INTEGER nd_ntype;	/* node type */
-	char	nd_pque[PBS_MAXSERVERNAME+1]; /* queue to which it belongs */
-	pbs_db_attr_list_t db_attr_list; /* list of attributes */
+	char nd_name[PBS_MAXSERVERNAME + 1];	 /* vnode's name */
+	INTEGER nd_index;			 /* global node index */
+	BIGINT mom_modtime;			 /* node config update time */
+	char nd_hostname[PBS_MAXSERVERNAME + 1]; /* node hostname */
+	INTEGER nd_state;			 /* state of node */
+	INTEGER nd_ntype;			 /* node type */
+	char nd_pque[PBS_MAXSERVERNAME + 1];	 /* queue to which it belongs */
+	pbs_db_attr_list_t db_attr_list;	 /* list of attributes */
 };
 typedef struct pbs_db_node_info pbs_db_node_info_t;
 
@@ -154,8 +153,8 @@ typedef struct pbs_db_node_info pbs_db_node_info_t;
  *
  */
 struct pbs_db_mominfo_time {
-	BIGINT	mit_time; /* time of the host to vnode map */
-	INTEGER mit_gen;  /* generation of the host to vnode map */
+	BIGINT mit_time; /* time of the host to vnode map */
+	INTEGER mit_gen; /* generation of the host to vnode map */
 };
 typedef struct pbs_db_mominfo_time pbs_db_mominfo_time_t;
 
@@ -165,23 +164,23 @@ typedef struct pbs_db_mominfo_time pbs_db_mominfo_time_t;
  *
  */
 struct pbs_db_job_info {
-	char     ji_jobid[PBS_MAXSVRJOBID + 1]; /* job identifier */
-	INTEGER  ji_state;	/* Internal copy of state */
-	INTEGER  ji_substate;	/* job sub-state */
-	INTEGER  ji_svrflags;	/* server flags */
-	BIGINT   ji_stime;	/* time job started execution */
-	char     ji_queue[PBS_MAXQUEUENAME + 1];  /* name of current queue */
-	char     ji_destin[PBS_MAXROUTEDEST + 1]; /* dest from qmove/route */
-	INTEGER  ji_un_type;	/* job's queue type */
-	INTEGER  ji_exitstat;	/* job exit status from MOM */
-	BIGINT   ji_quetime;	/* time entered queue */
-	BIGINT   ji_rteretry;	/* route retry time */
-	INTEGER  ji_fromsock;	/* socket job coming over */
-	BIGINT   ji_fromaddr;	/* host job coming from   */
-	char     ji_jid[8];	/* extended job save data */
-	INTEGER  ji_credtype;	/* credential type */
-	BIGINT   ji_qrank;	/* sort key for db query */
-	pbs_db_attr_list_t db_attr_list; /* list of attributes for database */
+	char ji_jobid[PBS_MAXSVRJOBID + 1];   /* job identifier */
+	INTEGER ji_state;		      /* Internal copy of state */
+	INTEGER ji_substate;		      /* job sub-state */
+	INTEGER ji_svrflags;		      /* server flags */
+	BIGINT ji_stime;		      /* time job started execution */
+	char ji_queue[PBS_MAXQUEUENAME + 1];  /* name of current queue */
+	char ji_destin[PBS_MAXROUTEDEST + 1]; /* dest from qmove/route */
+	INTEGER ji_un_type;		      /* job's queue type */
+	INTEGER ji_exitstat;		      /* job exit status from MOM */
+	BIGINT ji_quetime;		      /* time entered queue */
+	BIGINT ji_rteretry;		      /* route retry time */
+	INTEGER ji_fromsock;		      /* socket job coming over */
+	BIGINT ji_fromaddr;		      /* host job coming from   */
+	char ji_jid[8];			      /* extended job save data */
+	INTEGER ji_credtype;		      /* credential type */
+	BIGINT ji_qrank;		      /* sort key for db query */
+	pbs_db_attr_list_t db_attr_list;      /* list of attributes for database */
 };
 typedef struct pbs_db_job_info pbs_db_job_info_t;
 
@@ -191,8 +190,8 @@ typedef struct pbs_db_job_info pbs_db_job_info_t;
  *
  */
 struct pbs_db_jobscr_info {
-	char     ji_jobid[PBS_MAXSVRJOBID + 1]; /* job identifier */
-	TEXT     script;			/* job script */
+	char ji_jobid[PBS_MAXSVRJOBID + 1]; /* job identifier */
+	TEXT script;			    /* job script */
 };
 typedef struct pbs_db_jobscr_info pbs_db_jobscr_info_t;
 
@@ -202,16 +201,16 @@ typedef struct pbs_db_jobscr_info pbs_db_jobscr_info_t;
  *
  */
 struct pbs_db_resv_info {
-	char    ri_resvid[PBS_MAXSVRJOBID + 1]; /* reservation identifier */
-	char    ri_queue[PBS_MAXQUEUENAME + 1]; /* queue used by reservation */
-	INTEGER ri_state;	/* internal copy of state */
-	INTEGER ri_substate;	/* substate of resv state */
-	BIGINT  ri_stime;	/* left window boundry  */
-	BIGINT  ri_etime;	/* right window boundry */
-	BIGINT  ri_duration;	/* reservation duration */
-	INTEGER ri_tactive;	/* time reservation became active */
-	INTEGER ri_svrflags;	/* server flags */
-	pbs_db_attr_list_t db_attr_list; /* list of attributes */
+	char ri_resvid[PBS_MAXSVRJOBID + 1]; /* reservation identifier */
+	char ri_queue[PBS_MAXQUEUENAME + 1]; /* queue used by reservation */
+	INTEGER ri_state;		     /* internal copy of state */
+	INTEGER ri_substate;		     /* substate of resv state */
+	BIGINT ri_stime;		     /* left window boundry  */
+	BIGINT ri_etime;		     /* right window boundry */
+	BIGINT ri_duration;		     /* reservation duration */
+	INTEGER ri_tactive;		     /* time reservation became active */
+	INTEGER ri_svrflags;		     /* server flags */
+	pbs_db_attr_list_t db_attr_list;     /* list of attributes */
 };
 typedef struct pbs_db_resv_info pbs_db_resv_info_t;
 
@@ -226,42 +225,41 @@ typedef struct pbs_db_resv_info pbs_db_resv_info_t;
  *
  */
 struct pbs_db_query_options {
-	int	flags;
-	time_t	timestamp;
+	int flags;
+	time_t timestamp;
 };
 typedef struct pbs_db_query_options pbs_db_query_options_t;
 
-
-#define PBS_DB_SVR		0
-#define PBS_DB_SCHED		1
-#define PBS_DB_QUEUE		2
-#define PBS_DB_NODE		3
-#define PBS_DB_MOMINFO_TIME	4
-#define PBS_DB_JOB		5
-#define PBS_DB_JOBSCR		6
-#define PBS_DB_RESV		7
-#define PBS_DB_NUM_TYPES	8
+#define PBS_DB_SVR 0
+#define PBS_DB_SCHED 1
+#define PBS_DB_QUEUE 2
+#define PBS_DB_NODE 3
+#define PBS_DB_MOMINFO_TIME 4
+#define PBS_DB_JOB 5
+#define PBS_DB_JOBSCR 6
+#define PBS_DB_RESV 7
+#define PBS_DB_NUM_TYPES 8
 
 /* connection error code */
-#define PBS_DB_SUCCESS		0
-#define PBS_DB_CONNREFUSED	1
-#define PBS_DB_AUTH_FAILED	2
-#define PBS_DB_CONNFAILED	3
-#define PBS_DB_NOMEM		4
-#define PBS_DB_STILL_STARTING	5
-#define PBS_DB_ERR		6
-#define PBS_DB_OOM_ERR		7
+#define PBS_DB_SUCCESS 0
+#define PBS_DB_CONNREFUSED 1
+#define PBS_DB_AUTH_FAILED 2
+#define PBS_DB_CONNFAILED 3
+#define PBS_DB_NOMEM 4
+#define PBS_DB_STILL_STARTING 5
+#define PBS_DB_ERR 6
+#define PBS_DB_OOM_ERR 7
 
 /* Database connection states */
-#define PBS_DB_CONNECT_STATE_NOT_CONNECTED	1
-#define PBS_DB_CONNECT_STATE_CONNECTING		2
-#define PBS_DB_CONNECT_STATE_CONNECTED		3
-#define PBS_DB_CONNECT_STATE_FAILED		4
+#define PBS_DB_CONNECT_STATE_NOT_CONNECTED 1
+#define PBS_DB_CONNECT_STATE_CONNECTING 2
+#define PBS_DB_CONNECT_STATE_CONNECTED 3
+#define PBS_DB_CONNECT_STATE_FAILED 4
 
 /* Database states */
-#define PBS_DB_DOWN		1
-#define PBS_DB_STARTING		2
-#define PBS_DB_STARTED		3
+#define PBS_DB_DOWN 1
+#define PBS_DB_STARTING 2
+#define PBS_DB_STARTED 3
 
 /**
  * @brief
@@ -275,29 +273,28 @@ typedef struct pbs_db_query_options pbs_db_query_options_t;
  *
  */
 struct pbs_db_obj_info {
-	int 	pbs_db_obj_type; /* identifies the contained object type */
+	int pbs_db_obj_type; /* identifies the contained object type */
 	union {
-		pbs_db_svr_info_t     *pbs_db_svr;		/* map database server structure to C */
-		pbs_db_sched_info_t   *pbs_db_sched;		/* map database scheduler structure to C */
-		pbs_db_que_info_t     *pbs_db_que;		/* map database queue structure to C */
-		pbs_db_node_info_t    *pbs_db_node;		/* map database node structure to C */
-		pbs_db_mominfo_time_t *pbs_db_mominfo_tm;	/* map database mominfo_time structure to C */
-		pbs_db_job_info_t     *pbs_db_job;		/* map database job structure to C */
-		pbs_db_jobscr_info_t  *pbs_db_jobscr;		/* map database job script to C */
-		pbs_db_resv_info_t    *pbs_db_resv;		/* map database resv structure to C */
+		pbs_db_svr_info_t *pbs_db_svr;		  /* map database server structure to C */
+		pbs_db_sched_info_t *pbs_db_sched;	  /* map database scheduler structure to C */
+		pbs_db_que_info_t *pbs_db_que;		  /* map database queue structure to C */
+		pbs_db_node_info_t *pbs_db_node;	  /* map database node structure to C */
+		pbs_db_mominfo_time_t *pbs_db_mominfo_tm; /* map database mominfo_time structure to C */
+		pbs_db_job_info_t *pbs_db_job;		  /* map database job structure to C */
+		pbs_db_jobscr_info_t *pbs_db_jobscr;	  /* map database job script to C */
+		pbs_db_resv_info_t *pbs_db_resv;	  /* map database resv structure to C */
 	} pbs_db_un;
 };
 typedef struct pbs_db_obj_info pbs_db_obj_info_t;
 typedef void (*query_cb_t)(pbs_db_obj_info_t *, int *);
 
-#define PBS_DB_CNT_TIMEOUT_NORMAL	30
-#define PBS_DB_CNT_TIMEOUT_INFINITE	0
-
+#define PBS_DB_CNT_TIMEOUT_NORMAL 30
+#define PBS_DB_CNT_TIMEOUT_INFINITE 0
 
 /* Database start stop control commands */
-#define PBS_DB_CONTROL_STATUS	"status"
-#define PBS_DB_CONTROL_START	"start"
-#define PBS_DB_CONTROL_STOP	"stop"
+#define PBS_DB_CONTROL_STATUS "status"
+#define PBS_DB_CONTROL_START "start"
+#define PBS_DB_CONTROL_STOP "stop"
 
 /**
  * @brief
@@ -484,9 +481,8 @@ void pbs_db_get_errmsg(int err_code, char **err_msg);
  */
 int pbs_db_password(void *conn, char *userid, char *password, char *olduser);
 
-
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* _PBS_DB_H */
+#endif /* _PBS_DB_H */

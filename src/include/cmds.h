@@ -37,17 +37,15 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /*
  * cmds.h
  *
  *	Header file for the PBS utilities.
  */
 
-#ifndef	_CMDS_H
-#define	_CMDS_H
-#ifdef	__cplusplus
+#ifndef _CMDS_H
+#define _CMDS_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -76,36 +74,36 @@ struct svr_jobid_list {
 };
 
 #ifndef TRUE
-#define TRUE	1
-#define FALSE	0
+#define TRUE 1
+#define FALSE 0
 #endif
 
-#define notNULL(x)	(((x)!=NULL) && (strlen(x)>(size_t)0))
-#define NULLstr(x)	(((x)==NULL) || (strlen(x)==0))
+#define notNULL(x) (((x) != NULL) && (strlen(x) > (size_t) 0))
+#define NULLstr(x) (((x) == NULL) || (strlen(x) == 0))
 
 #define MAX_LINE_LEN 4095
 #define LARGE_BUF_LEN 4096
-#define MAXSERVERNAME PBS_MAXSERVERNAME+PBS_MAXPORTNUM+2
+#define MAXSERVERNAME PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2
 #define PBS_DEPEND_LEN 2040
 
 /* for calling pbs_parse_quote:  to accept whitespace as data or separators */
 #define QMGR_ALLOW_WHITE_IN_VALUE 1
-#define QMGR_NO_WHITE_IN_VALUE    0
+#define QMGR_NO_WHITE_IN_VALUE 0
 
 #define QDEL_MAIL_SUPPRESS 1000
 
 extern int optind, opterr;
 extern char *optarg;
 
-extern int	parse_at_item(char *, char *, char *);
-extern int	parse_jobid(char *, char **, char **, char **);
-extern int	parse_stage_name(char *, char *, char *, char *);
-extern void	prt_error(char *, char *, int);
-extern int	check_max_job_sequence_id(struct batch_status *);
-extern void	set_attr_error_exit(struct attrl **, char *, char *);
-extern void	set_attr_resc_error_exit(struct attrl **, char *, char *, char *);
+extern int parse_at_item(char *, char *, char *);
+extern int parse_jobid(char *, char **, char **, char **);
+extern int parse_stage_name(char *, char *, char *, char *);
+extern void prt_error(char *, char *, int);
+extern int check_max_job_sequence_id(struct batch_status *);
+extern void set_attr_error_exit(struct attrl **, char *, char *);
+extern void set_attr_resc_error_exit(struct attrl **, char *, char *, char *);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _CMDS_H */
+#endif /* _CMDS_H */

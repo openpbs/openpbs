@@ -57,7 +57,7 @@ attribute *
 get_qattr(const pbs_queue *pq, int attr_idx)
 {
 	if (pq != NULL)
-		return _get_attr_by_idx((attribute *)pq->qu_attr, attr_idx);
+		return _get_attr_by_idx((attribute *) pq->qu_attr, attr_idx);
 	return NULL;
 }
 
@@ -244,7 +244,6 @@ set_qattr_c_slim(pbs_queue *pq, int attr_idx, char val, enum batch_op op)
 
 	return 0;
 }
-
 
 /**
  * @brief	Check if a queue attribute is set

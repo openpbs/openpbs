@@ -39,10 +39,9 @@
 
 #ifndef _PROVISION_H
 #define _PROVISION_H
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
-
 
 /*
  * provision.h - header file for maintaining provisioning related definitions
@@ -58,11 +57,11 @@ extern "C" {
  *	"server_limits.h"
  */
 
-#ifdef	WIN32
-typedef	HANDLE	prov_pid;
+#ifdef WIN32
+typedef HANDLE prov_pid;
 #else
-typedef	pid_t	prov_pid;
-#endif	/* WIN32 */
+typedef pid_t prov_pid;
+#endif /* WIN32 */
 
 extern void prov_track_save(void);
 
@@ -73,12 +72,12 @@ extern void prov_track_save(void);
  */
 
 struct prov_vnode_info {
-	pbs_list_link		al_link;
-	char			*pvnfo_vnode;
-	char			*pvnfo_aoe_req;
-	char			pvnfo_jobid[PBS_MAXSVRJOBID+1];  /* job id */
-	struct	work_task	*ptask_defer;
-	struct	work_task	*ptask_timed;
+	pbs_list_link al_link;
+	char *pvnfo_vnode;
+	char *pvnfo_aoe_req;
+	char pvnfo_jobid[PBS_MAXSVRJOBID + 1]; /* job id */
+	struct work_task *ptask_defer;
+	struct work_task *ptask_timed;
 };
 
 /**
@@ -87,20 +86,20 @@ struct prov_vnode_info {
  */
 
 struct prov_tracking {
-	time_t	 		pvtk_mtime;	/* time this entry modified */
-	prov_pid    		pvtk_pid;
-	char     		*pvtk_vnode;
-	char     		*pvtk_aoe_req;
-	struct prov_vnode_info	*prov_vnode_info;
+	time_t pvtk_mtime; /* time this entry modified */
+	prov_pid pvtk_pid;
+	char *pvtk_vnode;
+	char *pvtk_aoe_req;
+	struct prov_vnode_info *prov_vnode_info;
 };
 
-typedef char (*exec_vnode_listtype)[PBS_MAXHOSTNAME+1]; /* typedef to pointer to an array*/
+typedef char (*exec_vnode_listtype)[PBS_MAXHOSTNAME + 1]; /* typedef to pointer to an array*/
 
 extern int check_and_enqueue_provisioning(job *, int *);
 
-extern void do_provisioning(struct work_task * wtask);
+extern void do_provisioning(struct work_task *wtask);
 
 #ifdef __cplusplus
 }
 #endif
-#endif	/* _PROVISION_H */
+#endif /* _PROVISION_H */

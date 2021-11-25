@@ -37,9 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_GRUNT_H
-#define	_GRUNT_H
-#ifdef	__cplusplus
+#ifndef _GRUNT_H
+#define _GRUNT_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 /* structure used by grunt syntax parser located in libpbs.h */
@@ -49,7 +49,7 @@ typedef struct key_value_pair {
 } key_value_pair;
 
 #define KVP_SIZE 50
-#define MPIPROCS   "mpiprocs"
+#define MPIPROCS "mpiprocs"
 #define OMPTHREADS "ompthreads"
 
 extern struct resc_sum *svr_resc_sum;
@@ -63,7 +63,7 @@ extern char *parse_plus_spec(char *selstr, int *rc);
 extern char *parse_plus_spec_r(char *selstr, char **last, int *hp);
 extern int parse_resc_equal_string(char *start, char **name, char **value, char **last);
 char *get_first_vnode(char *execvnode);
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif  /* _GRUNT_H */
+#endif /* _GRUNT_H */

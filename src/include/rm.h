@@ -37,29 +37,26 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /*
  **	Header file defining the library calls and message formats for
  **	connecting to and communicating with the resource monitor.
  */
 
-#ifdef	__cplusplus
-extern "C"  {
+#ifdef __cplusplus
+extern "C" {
 #endif
 
+int openrm(char *, unsigned int);
+int closerm(int);
+int downrm(int);
+int configrm(int, char *);
+int addreq(int, char *);
+int allreq(char *);
+char *getreq(int);
+int flushreq(void);
+int activereq(void);
+void fullresp(int);
 
-int	openrm		(char *, unsigned int);
-int	closerm		(int);
-int	downrm		(int);
-int	configrm	(int, char *);
-int	addreq		(int, char *);
-int	allreq		(char *);
-char*	getreq		(int);
-int	flushreq	(void);
-int	activereq	(void);
-void	fullresp	(int);
-
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif

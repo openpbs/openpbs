@@ -60,7 +60,7 @@
 #include "tm.h"
 #include "pbs_version.h"
 
-char		*host = NULL;
+char *host = NULL;
 
 extern char *get_ecname(int rc);
 
@@ -92,8 +92,8 @@ usage(char *id)
 char *
 myname(void)
 {
-	uid_t		me = getuid();
-	struct passwd	*pent;
+	uid_t me = getuid();
+	struct passwd *pent;
 
 	if ((pent = getpwuid(me)) == NULL)
 		return "";
@@ -102,7 +102,7 @@ myname(void)
 }
 
 #ifndef INADDR_NONE
-#define INADDR_NONE	(in_addr_t)0xFFFFFFFF
+#define INADDR_NONE (in_addr_t) 0xFFFFFFFF
 #endif
 
 /**
@@ -121,14 +121,14 @@ myname(void)
 int
 host_match(char *line)
 {
-	int	len = strlen(line);
-	static	char	domain[PBS_MAXHOSTNAME+1];
-	char	fullhost[PBS_MAXHOSTNAME+1];
-	static	struct in_addr	addr;
-	static	int		addrvalid = -1;
+	int len = strlen(line);
+	static char domain[PBS_MAXHOSTNAME + 1];
+	char fullhost[PBS_MAXHOSTNAME + 1];
+	static struct in_addr addr;
+	static int addrvalid = -1;
 
-	if (line[len-1] == '\n')
-		line[len-1] = '\0';
+	if (line[len - 1] == '\n')
+		line[len - 1] = '\0';
 
 	if (strcmp(line, host) == 0)
 		return 1;
@@ -138,16 +138,16 @@ host_match(char *line)
 		addrvalid = (addr.s_addr == INADDR_NONE) ? 0 : 1;
 	}
 
-	if (addrvalid) {	/* compare IP addresses */
-		struct	hostent	*hp = gethostbyname(line);
-		int	i;
+	if (addrvalid) { /* compare IP addresses */
+		struct hostent *hp = gethostbyname(line);
+		int i;
 
 		if (hp == NULL)
 			return 0;
 
-		for (i=0; hp->h_addr_list[i]; i++) {
+		for (i = 0; hp->h_addr_list[i]; i++) {
 			if (memcmp(&addr, hp->h_addr_list[i],
-				hp->h_length) == 0)
+				   hp->h_length) == 0)
 				return 1;
 		}
 		return 0;
@@ -159,8 +159,8 @@ host_match(char *line)
 			exit(255);
 		}
 		if (domain[0] == '\0') {
-			int	i;
-			char	*dot;
+			int i;
+			char *dot;
 
 			if (gethostname(domain, (sizeof(domain) - 1)) == -1) {
 				perror("getdomainname");
@@ -170,7 +170,7 @@ host_match(char *line)
 				return 0;
 			if ((dot = strchr(domain, '.')) == NULL)
 				return 0;
-			for (i=0, dot++; *dot; i++, dot++)
+			for (i = 0, dot++; *dot; i++, dot++)
 				domain[i] = *dot;
 			domain[i] = '\0';
 		}
@@ -188,19 +188,19 @@ host_match(char *line)
 int
 main(int argc, char *argv[], char *envp[])
 {
-	char		*id;
-	char		*jobid;
-	int		i, arg;
-	FILE		*fp;
-	int		numnodes;
-	int		err = 0;
-	int		rc, exitval;
-	struct tm_roots	rootrot;
-	char		*nodefile;
-	tm_node_id	*nodelist;
-	tm_event_t	event;
-	tm_task_id	tid;
-	char		line[256], *cp;
+	char *id;
+	char *jobid;
+	int i, arg;
+	FILE *fp;
+	int numnodes;
+	int err = 0;
+	int rc, exitval;
+	struct tm_roots rootrot;
+	char *nodefile;
+	tm_node_id *nodelist;
+	tm_event_t event;
+	tm_task_id tid;
+	char line[256], *cp;
 
 	/*test for real deal or just version and exit*/
 
@@ -213,16 +213,16 @@ main(int argc, char *argv[], char *envp[])
 	if (argc < 3)
 		usage(id);
 
-	for (arg=1; arg<argc; arg++) {
-		char	*c = argv[arg];
-		char	lopt[] = "-l";
-		int	len = sizeof(lopt)-1;
+	for (arg = 1; arg < argc; arg++) {
+		char *c = argv[arg];
+		char lopt[] = "-l";
+		int len = sizeof(lopt) - 1;
 
-		if (*c == '-') {	/* option */
-			if (strcmp(c, "-n") == 0)	/* noop */
+		if (*c == '-') {		  /* option */
+			if (strcmp(c, "-n") == 0) /* noop */
 				continue;
 
-			if (strncmp(c, lopt, len) == 0) {	/* login name */
+			if (strncmp(c, lopt, len) == 0) { /* login name */
 				if (strlen(c) == len) {
 					arg++;
 					if (arg == argc) {
@@ -230,7 +230,7 @@ main(int argc, char *argv[], char *envp[])
 						break;
 					}
 					c = argv[arg];
-				} else			/* -lname */
+				} else /* -lname */
 					c += len;
 
 				if (strcmp(c, myname()) != 0) {
@@ -238,15 +238,14 @@ main(int argc, char *argv[], char *envp[])
 						id, c);
 					err = 1;
 				}
-			}
-			else {		/* unknown option */
+			} else { /* unknown option */
 				err = 1;
 				break;
 			}
 		} else if (host == NULL)
-			host = c;	/* first non-option is host */
+			host = c; /* first non-option is host */
 		else
-			break;		/* host is set, must be command */
+			break; /* host is set, must be command */
 	}
 
 	/*
@@ -290,7 +289,7 @@ main(int argc, char *argv[], char *envp[])
 		return 255;
 	}
 
-	for (i=0; (cp = fgets(line, sizeof(line), fp)) != NULL; i++) {
+	for (i = 0; (cp = fgets(line, sizeof(line), fp)) != NULL; i++) {
 		if (host_match(line))
 			break;
 	}
@@ -302,12 +301,13 @@ main(int argc, char *argv[], char *envp[])
 	}
 	if (i >= numnodes) {
 		fprintf(stderr, "%s: PBS_NODEFILE contains %d entries, "
-			"only %d nodes in job\n", id, i, numnodes);
+				"only %d nodes in job\n",
+			id, i, numnodes);
 		return 255;
 	}
 
-	if ((rc = tm_spawn(argc-arg, argv+arg, NULL,
-		nodelist[i], &tid, &event)) != TM_SUCCESS) {
+	if ((rc = tm_spawn(argc - arg, argv + arg, NULL,
+			   nodelist[i], &tid, &event)) != TM_SUCCESS) {
 		fprintf(stderr, "%s: tm_spawn: host \"%s\" err %s\n",
 			id, host, get_ecname(rc));
 	}

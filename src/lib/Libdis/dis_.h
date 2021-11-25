@@ -59,12 +59,12 @@ double disp10d_(int expon);
 dis_long_double_t disp10l_(int expon);
 int
 disrl_(int stream, dis_long_double_t *ldval, unsigned *ndigs,
-	unsigned *nskips, unsigned sigd, unsigned count, int recursv);
+       unsigned *nskips, unsigned sigd, unsigned count, int recursv);
 int disrsi_(int stream, int *negate, unsigned *value, unsigned count, int rescuvr);
 int
 disrsl_(int stream, int *negate, unsigned long *value,
 	unsigned long count, int recursv);
-int disrsll_(int stream,  int  *negate,  u_Long *value, unsigned long count, int recursv);
+int disrsll_(int stream, int *negate, u_Long *value, unsigned long count, int recursv);
 int diswui_(int stream, unsigned value);
 
 extern unsigned dis_dmx10;
@@ -76,7 +76,7 @@ extern dis_long_double_t *dis_lp10;
 extern dis_long_double_t *dis_ln10;
 
 extern char *__dis_buffer_location(void);
-#define dis_buffer (__dis_buffer_location ())
+#define dis_buffer (__dis_buffer_location())
 
 extern char *dis_umax;
 extern unsigned dis_umaxd;

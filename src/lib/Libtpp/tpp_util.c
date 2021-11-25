@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file	tpp_util.c
  *
@@ -47,7 +46,7 @@
  */
 #include <pbs_config.h>
 #if RWLOCK_SUPPORT == 2
-#if !defined (_XOPEN_SOURCE)
+#if !defined(_XOPEN_SOURCE)
 #define _XOPEN_SOURCE 500
 #endif
 #endif
@@ -101,12 +100,12 @@ long tpp_log_event_mask = 0;
 #define PBS_TCP_KEEPALIVE "PBS_TCP_KEEPALIVE" /* environment string to search for */
 
 /* extern functions called from this file into the tpp_transport.c */
-static pbs_tcp_chan_t * tppdis_get_user_data(int sd);
+static pbs_tcp_chan_t *tppdis_get_user_data(int sd);
 
 void
 tpp_auth_logger(int type, int objclass, int severity, const char *objname, const char *text)
 {
-	tpp_log(severity, objname, (char *)text);
+	tpp_log(severity, objname, (char *) text);
 }
 
 /**
@@ -133,12 +132,12 @@ tppdis_get_user_data(int fd)
 	if (data == NULL) {
 		if (errno != ENOTCONN) {
 			/* fd connected, but first time - so call setup */
-			dis_setup_chan(fd, (pbs_tcp_chan_t * (*)(int))&tpp_get_user_data);
+			dis_setup_chan(fd, (pbs_tcp_chan_t * (*) (int) ) & tpp_get_user_data);
 			/* get the buffer again*/
 			data = tpp_get_user_data(fd);
 		}
 	}
-	return (pbs_tcp_chan_t *)data;
+	return (pbs_tcp_chan_t *) data;
 }
 
 /**
@@ -155,11 +154,10 @@ void
 DIS_tpp_funcs()
 {
 	pfn_transport_get_chan = tppdis_get_user_data;
-	pfn_transport_set_chan = (int (*)(int, pbs_tcp_chan_t *)) &tpp_set_user_data;
+	pfn_transport_set_chan = (int (*)(int, pbs_tcp_chan_t *)) & tpp_set_user_data;
 	pfn_transport_recv = tpp_recv;
 	pfn_transport_send = tpp_send;
 }
-
 
 /**
  * @brief
@@ -351,10 +349,10 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 	tpp_conf->numthreads = 1;
 
 	tpp_conf->auth_config = make_auth_config(pbs_conf->auth_method,
-							pbs_conf->encrypt_method,
-							pbs_conf->pbs_exec_path,
-							pbs_conf->pbs_home_path,
-							(void *)tpp_auth_logger);
+						 pbs_conf->encrypt_method,
+						 pbs_conf->pbs_exec_path,
+						 pbs_conf->pbs_home_path,
+						 (void *) tpp_auth_logger);
 	if (tpp_conf->auth_config == NULL) {
 		tpp_log(LOG_CRIT, __func__, "Out of memory allocating auth config");
 		return -1;
@@ -363,7 +361,6 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 	tpp_log(LOG_INFO, NULL, "TPP authentication method = %s", tpp_conf->auth_config->auth_method);
 	if (tpp_conf->auth_config->encrypt_method[0] != '\0')
 		tpp_log(LOG_INFO, NULL, "TPP encryption method = %s", tpp_conf->auth_config->encrypt_method);
-
 
 	if ((tpp_conf->supported_auth_methods = dup_string_arr(pbs_conf->supported_auth_methods)) == NULL) {
 		tpp_log(LOG_CRIT, __func__, "Out of memory while making copy of supported auth methods");
@@ -419,8 +416,8 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 
 				/* emit a log depicting what we are going to use as keepalive */
 				tpp_log(LOG_CRIT, NULL,
-						"Using tcp_keepalive_time=%d, tcp_keepalive_intvl=%d, tcp_keepalive_probes=%d, tcp_user_timeout=%d",
-						tpp_conf->tcp_keep_idle, tpp_conf->tcp_keep_intvl, tpp_conf->tcp_keep_probes, tpp_conf->tcp_user_timeout);
+					"Using tcp_keepalive_time=%d, tcp_keepalive_intvl=%d, tcp_keepalive_probes=%d, tcp_user_timeout=%d",
+					tpp_conf->tcp_keep_idle, tpp_conf->tcp_keep_intvl, tpp_conf->tcp_keep_probes, tpp_conf->tcp_user_timeout);
 			} else {
 				tpp_log(LOG_CRIT, NULL, "tcp keepalive disabled");
 			}
@@ -474,7 +471,7 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 
 	for (i = 0; i < num_routers; i++) {
 		if (tpp_conf->routers[i] == NULL || strcmp(tpp_conf->routers[i], tpp_conf->node_name) == 0) {
-			tpp_log(LOG_CRIT, NULL, "Router name NULL or points to same node endpoint %s", (tpp_conf->routers[i]) ?(tpp_conf->routers[i]) : "");
+			tpp_log(LOG_CRIT, NULL, "Router name NULL or points to same node endpoint %s", (tpp_conf->routers[i]) ? (tpp_conf->routers[i]) : "");
 			return -1;
 		}
 	}
@@ -518,16 +515,16 @@ tpp_make_authdata(struct tpp_config *tpp_conf, int conn_type, char *auth_method,
 {
 	conn_auth_t *authdata = NULL;
 
-	if ((authdata = (conn_auth_t *)calloc(1, sizeof(conn_auth_t))) == NULL) {
+	if ((authdata = (conn_auth_t *) calloc(1, sizeof(conn_auth_t))) == NULL) {
 		tpp_log(LOG_CRIT, __func__, "Out of memory");
 		return NULL;
 	}
 	authdata->conn_type = conn_type;
 	authdata->config = make_auth_config(auth_method,
-						encrypt_method,
-						tpp_conf->auth_config->pbs_exec_path,
-						tpp_conf->auth_config->pbs_home_path,
-						tpp_conf->auth_config->logfunc);
+					    encrypt_method,
+					    tpp_conf->auth_config->pbs_exec_path,
+					    tpp_conf->auth_config->pbs_home_path,
+					    tpp_conf->auth_config->logfunc);
 	if (authdata->config == NULL) {
 		tpp_log(LOG_CRIT, __func__, "Out of memory");
 		return NULL;
@@ -573,12 +570,11 @@ tpp_handle_auth_handshake(int tfd, int conn_fd, conn_auth_t *authdata, int for_e
 				return -1;
 			}
 			authdata->authdef = authdef;
-			authdef->set_config((const pbs_auth_config_t *)(authdata->config));
+			authdef->set_config((const pbs_auth_config_t *) (authdata->config));
 			if (authdef->create_ctx(&(authdata->authctx), authdata->conn_type, AUTH_SERVICE_CONN, tpp_transport_get_conn_hostname(tfd))) {
 				tpp_log(LOG_CRIT, __func__, "Failed to create auth context");
 				return -1;
 			}
-
 		}
 		authdef = authdata->authdef;
 		authctx = authdata->authctx;
@@ -590,12 +586,11 @@ tpp_handle_auth_handshake(int tfd, int conn_fd, conn_auth_t *authdata, int for_e
 				return -1;
 			}
 			authdata->encryptdef = authdef;
-			authdef->set_config((const pbs_auth_config_t *)(authdata->config));
+			authdef->set_config((const pbs_auth_config_t *) (authdata->config));
 			if (authdef->create_ctx(&(authdata->encryptctx), authdata->conn_type, AUTH_SERVICE_CONN, tpp_transport_get_conn_hostname(tfd))) {
 				tpp_log(LOG_CRIT, __func__, "Failed to create encrypt context");
 				return -1;
 			}
-
 		}
 		authdef = authdata->encryptdef;
 		authctx = authdata->encryptctx;
@@ -604,7 +599,7 @@ tpp_handle_auth_handshake(int tfd, int conn_fd, conn_auth_t *authdata, int for_e
 
 	if (authdef->process_handshake_data(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
 		if (len_out > 0) {
-			tpp_log(LOG_CRIT, __func__, (char *)data_out);
+			tpp_log(LOG_CRIT, __func__, (char *) data_out);
 			free(data_out);
 		}
 		return -1;
@@ -767,7 +762,7 @@ tpp_free_pkt(tpp_packet_t *pkt)
 
 		if (pkt->ref_count <= 0) {
 			tpp_chunk_t *chunk;
-			while((chunk = GET_NEXT(pkt->chunks)))
+			while ((chunk = GET_NEXT(pkt->chunks)))
 				tpp_free_chunk(chunk);
 			free(pkt);
 		}
@@ -801,7 +796,7 @@ tpp_set_non_blocking(int fd)
 		flags = 0;
 	return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 #elif defined(WIN32)
-	flags=1;
+	flags = 1;
 	if (ioctlsocket(fd, FIONBIO, &flags) == SOCKET_ERROR)
 		return -1;
 	return 0;
@@ -931,7 +926,7 @@ tpp_set_keep_alive(int fd, struct tpp_config *cnf)
  *
  */
 int
-tpp_cr_thrd(void *(*start_routine)(void*), pthread_t *id, void *data)
+tpp_cr_thrd(void *(*start_routine)(void *), pthread_t *id, void *data)
 {
 	pthread_attr_t *attr = NULL;
 	int rc = -1;
@@ -947,7 +942,7 @@ tpp_cr_thrd(void *(*start_routine)(void*), pthread_t *id, void *data)
 	if (pthread_attr_getstacksize(attr, &stack_size) != 0) {
 		tpp_log(LOG_CRIT, __func__, "Failed to get stack size of thread");
 		return -1;
-	} else	{
+	} else {
 		if (stack_size < MIN_STACK_LIMIT) {
 			if (pthread_attr_setstacksize(attr, MIN_STACK_LIMIT) != 0) {
 				tpp_log(LOG_CRIT, __func__, "Failed to set stack size for thread");
@@ -998,7 +993,7 @@ tpp_init_lock(pthread_mutex_t *lock)
 		tpp_log(LOG_CRIT, __func__, "Failed to initialize mutex attr");
 		return 1;
 	}
-#if defined (linux)
+#if defined(linux)
 	type = PTHREAD_MUTEX_RECURSIVE_NP;
 #else
 	type = PTHREAD_MUTEX_RECURSIVE;
@@ -1364,7 +1359,7 @@ tpp_deque(tpp_que_t *l)
  * @par MT-safe: Yes
  *
  */
-tpp_que_elem_t*
+tpp_que_elem_t *
 tpp_que_del_elem(tpp_que_t *l, tpp_que_elem_t *n)
 {
 	tpp_que_elem_t *p = NULL;
@@ -1421,7 +1416,7 @@ tpp_que_del_elem(tpp_que_t *l, tpp_que_elem_t *n)
  * @par MT-safe: Yes
  *
  */
-tpp_que_elem_t*
+tpp_que_elem_t *
 tpp_que_ins_elem(tpp_que_t *l, tpp_que_elem_t *n, void *data, int before)
 {
 	tpp_que_elem_t *nd = NULL;
@@ -1484,7 +1479,7 @@ tpp_send_ctl_msg(int fd, int code, tpp_addr_t *src, tpp_addr_t *dest, unsigned i
 	/* send a packet back to where the original packet came from
 	 * basically reverse src and dest
 	 */
-	pkt = tpp_bld_pkt(NULL,  NULL, sizeof(tpp_ctl_pkt_hdr_t), 1, (void **) &lhdr);
+	pkt = tpp_bld_pkt(NULL, NULL, sizeof(tpp_ctl_pkt_hdr_t), 1, (void **) &lhdr);
 	if (!pkt) {
 		tpp_log(LOG_CRIT, __func__, "Failed to build packet");
 		return -1;
@@ -1726,7 +1721,7 @@ tpp_multi_deflate_do(void *c, int fini, void *inbuf, unsigned int inlen)
 				return -1;
 			}
 			ctx->cmpr_buf = p;
-			ctx->cmpr_strm.next_out = (Bytef *)((char *) ctx->cmpr_buf + filled);
+			ctx->cmpr_strm.next_out = (Bytef *) ((char *) ctx->cmpr_buf + filled);
 			ctx->cmpr_strm.avail_out = ctx->len - filled;
 		} else
 			break;
@@ -1845,7 +1840,7 @@ tpp_deflate(void *inbuf, unsigned int inlen, unsigned int *outlen)
 				return NULL;
 			}
 			data = p;
-			strm.next_out = (Bytef *)((char *) data + filled);
+			strm.next_out = (Bytef *) ((char *) data + filled);
 			strm.avail_out = len - filled;
 		} else
 			break;
@@ -1897,7 +1892,7 @@ tpp_inflate(void *inbuf, unsigned int inlen, unsigned int totlen)
 	 * in some rare cases totlen < compressed_len (inlen)
 	 * so safer to malloc the larger of the two values
 	 */
-	outbuf = malloc(totlen > inlen ? totlen:inlen);
+	outbuf = malloc(totlen > inlen ? totlen : inlen);
 	if (!outbuf) {
 		tpp_log(LOG_CRIT, __func__, "Out of memory allocating inflate buffer %d bytes", totlen);
 		return NULL;
@@ -1994,11 +1989,11 @@ tpp_validate_hdr(int tfd, char *pkt_start)
 	type = *((unsigned char *) data);
 
 	if ((data_len < 0 || type >= TPP_LAST_MSG) ||
-		(data_len > TPP_SEND_SIZE &&
-			type != TPP_DATA &&
-			type != TPP_MCAST_DATA &&
-			type != TPP_ENCRYPTED_DATA &&
-			type != TPP_AUTH_CTX)) {
+	    (data_len > TPP_SEND_SIZE &&
+	     type != TPP_DATA &&
+	     type != TPP_MCAST_DATA &&
+	     type != TPP_ENCRYPTED_DATA &&
+	     type != TPP_AUTH_CTX)) {
 		tpp_log(LOG_CRIT, __func__, "tfd=%d, Received invalid packet type with type=%d? data_len=%d", tfd, type, data_len);
 		return -1;
 	}
@@ -2048,7 +2043,7 @@ tpp_get_addresses(char *names, int *count)
 		}
 
 		*p = '\0';
-		port = atol(p+1);
+		port = atol(p + 1);
 
 		addrs_tmp = tpp_sock_resolve_host(token, &tmp_count); /* get all ipv4 addresses */
 		if (addrs_tmp) {
@@ -2100,7 +2095,7 @@ tpp_addr_t *
 tpp_get_local_host(int sock)
 {
 	struct sockaddr_storage addrs;
-	struct sockaddr *addr = (struct sockaddr *)&addrs;
+	struct sockaddr *addr = (struct sockaddr *) &addrs;
 	struct sockaddr_in *inp = NULL;
 	struct sockaddr_in6 *inp6 = NULL;
 	tpp_addr_t *taddr = NULL;
@@ -2126,7 +2121,7 @@ tpp_get_local_host(int sock)
 		memcpy(&taddr->ip, &inp->sin_addr, sizeof(inp->sin_addr));
 		taddr->port = inp->sin_port; /* keep in network order */
 		taddr->family = TPP_ADDR_FAMILY_IPV4;
-	} else if (addr->sa_family == AF_INET6){
+	} else if (addr->sa_family == AF_INET6) {
 		inp6 = (struct sockaddr_in6 *) addr;
 		memcpy(&taddr->ip, &inp6->sin6_addr, sizeof(inp6->sin6_addr));
 		taddr->port = inp6->sin6_port; /* keep in network order */
@@ -2151,7 +2146,7 @@ tpp_addr_t *
 tpp_get_connected_host(int sock)
 {
 	struct sockaddr_storage addrs;
-	struct sockaddr *addr = (struct sockaddr *)&addrs;
+	struct sockaddr *addr = (struct sockaddr *) &addrs;
 	struct sockaddr_in *inp = NULL;
 	struct sockaddr_in6 *inp6 = NULL;
 	tpp_addr_t *taddr = NULL;
@@ -2181,7 +2176,7 @@ tpp_get_connected_host(int sock)
 		memcpy(&taddr->ip, &inp->sin_addr, sizeof(inp->sin_addr));
 		taddr->port = inp->sin_port; /* keep in network order */
 		taddr->family = TPP_ADDR_FAMILY_IPV4;
-	} else if (addr->sa_family == AF_INET6){
+	} else if (addr->sa_family == AF_INET6) {
 		inp6 = (struct sockaddr_in6 *) addr;
 		memcpy(&taddr->ip, &inp6->sin6_addr, sizeof(inp6->sin6_addr));
 		taddr->port = inp6->sin6_port; /* keep in network order */
@@ -2244,7 +2239,7 @@ tpp_netaddr(tpp_addr_t *ap)
 #else
 	if (ap->family == TPP_ADDR_FAMILY_IPV4) {
 		inet_ntop(AF_INET, &ap->ip, ptr->tppstaticbuf, INET_ADDRSTRLEN);
-	}  else if (ap->family == TPP_ADDR_FAMILY_IPV6) {
+	} else if (ap->family == TPP_ADDR_FAMILY_IPV6) {
 		inet_ntop(AF_INET6, &ap->ip, ptr->tppstaticbuf, INET6_ADDRSTRLEN);
 	}
 #endif
@@ -2280,7 +2275,7 @@ tpp_netaddr_sa(struct sockaddr *sa)
 
 #ifdef WIN32
 	len = sizeof(ptr->tppstaticbuf);
-	WSAAddressToString((LPSOCKADDR)&sa, sizeof(struct sockaddr), NULL, (LPSTR)&ptr->tppstaticbuf, &len);
+	WSAAddressToString((LPSOCKADDR) &sa, sizeof(struct sockaddr), NULL, (LPSTR) &ptr->tppstaticbuf, &len);
 #else
 	if (sa->sa_family == AF_INET)
 		inet_ntop(sa->sa_family, &(((struct sockaddr_in *) sa)->sin_addr), ptr->tppstaticbuf, sizeof(ptr->tppstaticbuf));
@@ -2332,7 +2327,6 @@ tpp_set_logmask(long logmask)
 {
 	tpp_log_event_mask = logmask;
 }
-
 
 #ifndef WIN32
 
@@ -2386,7 +2380,7 @@ tpp_encrypt_pkt(conn_auth_t *authdata, tpp_packet_t *pkt)
 	tpp_encrypt_hdr_t *ehdr;
 	int totlen = pkt->totlen;
 	tpp_chunk_t *chunk, *next;
-	tpp_auth_pkt_hdr_t *data = (tpp_auth_pkt_hdr_t *)(((tpp_chunk_t *)(GET_NEXT(pkt->chunks)))->data);
+	tpp_auth_pkt_hdr_t *data = (tpp_auth_pkt_hdr_t *) (((tpp_chunk_t *) (GET_NEXT(pkt->chunks)))->data);
 	unsigned char type = data->type;
 	void *buf = NULL;
 	char *p;
@@ -2399,7 +2393,7 @@ tpp_encrypt_pkt(conn_auth_t *authdata, tpp_packet_t *pkt)
 		tpp_log(LOG_CRIT, __func__, "Failed to allocated buffer for encrypting pkt data");
 		return -1;
 	}
-	p = (char *)buf;
+	p = (char *) buf;
 	chunk = GET_NEXT(pkt->chunks);
 	while (chunk) {
 		memcpy(p, chunk->data, chunk->len);
@@ -2424,7 +2418,7 @@ tpp_encrypt_pkt(conn_auth_t *authdata, tpp_packet_t *pkt)
 		return -1;
 	}
 	free(buf);
-	if (!tpp_bld_pkt(pkt, NULL, sizeof(tpp_encrypt_hdr_t), 1, (void **)&ehdr)) {
+	if (!tpp_bld_pkt(pkt, NULL, sizeof(tpp_encrypt_hdr_t), 1, (void **) &ehdr)) {
 		tpp_log(LOG_CRIT, __func__, "Failed to add encrypt pkt header into pkt");
 		free(data_out);
 		return -1;
@@ -2462,7 +2456,7 @@ print_packet_hdr(const char *fnc, void *data, int len)
 {
 	tpp_ctl_pkt_hdr_t *hdr = (tpp_ctl_pkt_hdr_t *) data;
 
-	char str_types[][20] = { "TPP_CTL_JOIN", "TPP_CTL_LEAVE", "TPP_DATA", "TPP_CTL_MSG", "TPP_CLOSE_STRM", "TPP_MCAST_DATA" };
+	char str_types[][20] = {"TPP_CTL_JOIN", "TPP_CTL_LEAVE", "TPP_DATA", "TPP_CTL_MSG", "TPP_CLOSE_STRM", "TPP_MCAST_DATA"};
 	unsigned char type = hdr->type;
 
 	if (type == TPP_CTL_JOIN) {
@@ -2473,13 +2467,13 @@ print_packet_hdr(const char *fnc, void *data, int len)
 		tpp_log(LOG_CRIT, __func__, "%s message arrived from src_host = %s", str_types[type - 1], tpp_netaddr(addrs));
 	} else if (type == TPP_MCAST_DATA) {
 		tpp_mcast_pkt_hdr_t *mhdr = (tpp_mcast_pkt_hdr_t *) data;
-		tpp_log(LOG_CRIT, __func__,  "%s message arrived from src_host = %s", str_types[type - 1], tpp_netaddr(&mhdr->src_addr));
+		tpp_log(LOG_CRIT, __func__, "%s message arrived from src_host = %s", str_types[type - 1], tpp_netaddr(&mhdr->src_addr));
 	} else if ((type == TPP_DATA) || (type == TPP_CLOSE_STRM)) {
-		char buff[TPP_GEN_BUF_SZ+1];
+		char buff[TPP_GEN_BUF_SZ + 1];
 		tpp_data_pkt_hdr_t *dhdr = (tpp_data_pkt_hdr_t *) data;
 
 		strncpy(buff, tpp_netaddr(&dhdr->src_addr), sizeof(buff));
-		tpp_log(LOG_CRIT, __func__, "%s: src_host=%s, dest_host=%s, len=%d, data_len=%d, src_sd=%d, dest_sd=%d, src_magic=%d", 
+		tpp_log(LOG_CRIT, __func__, "%s: src_host=%s, dest_host=%s, len=%d, data_len=%d, src_sd=%d, dest_sd=%d, src_magic=%d",
 			str_types[type - 1], buff, tpp_netaddr(&dhdr->dest_addr), len + sizeof(tpp_data_pkt_hdr_t), len,
 			ntohl(dhdr->src_sd), (ntohl(dhdr->dest_sd) == UNINITIALIZED_INT) ? -1 : ntohl(dhdr->dest_sd), ntohl(dhdr->src_magic));
 

@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_STATE_COUNT_H
-#define	_STATE_COUNT_H
+#ifndef _STATE_COUNT_H
+#define _STATE_COUNT_H
 
 #include "data_types.h"
 
@@ -63,4 +63,4 @@ void total_states(state_count *sc1, state_count *sc2);
  *                        it increment, pass in 1, to decrement pass in -1
  */
 void state_count_add(state_count *sc, const char *job_state, int amount);
-#endif	/* _STATE_COUNT_H */
+#endif /* _STATE_COUNT_H */

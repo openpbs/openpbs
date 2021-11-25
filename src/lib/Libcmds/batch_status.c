@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #include <stdio.h>
 #include <string.h>
 
@@ -64,13 +63,13 @@
  */
 struct batch_status *
 bs_isort(struct batch_status *bs,
-	int (*cmp_func)(struct batch_status*, struct batch_status *))
+	 int (*cmp_func)(struct batch_status *, struct batch_status *))
 {
-	struct batch_status *new_head = NULL;	/* new list head */
-	struct batch_status *cur_old; 	/*where we are in the old list*/
-	struct batch_status *cur_new;	/* where we are in the new list */
+	struct batch_status *new_head = NULL; /* new list head */
+	struct batch_status *cur_old;	      /*where we are in the old list*/
+	struct batch_status *cur_new;	      /* where we are in the new list */
 	struct batch_status *prev_new = NULL;
-	struct batch_status *tmp;	/* tmp ptr to hold next */
+	struct batch_status *tmp; /* tmp ptr to hold next */
 
 	cur_old = bs;
 	new_head = NULL;
@@ -81,18 +80,16 @@ bs_isort(struct batch_status *bs,
 		if (new_head == NULL) {
 			cur_old->next = NULL;
 			new_head = cur_old;
-		}
-		else {
+		} else {
 			/* find where our node goes in the new list */
 			for (cur_new = new_head, prev_new = NULL;
-				cur_new != NULL && cmp_func(cur_new, cur_old) <= 0;
-				prev_new = cur_new, cur_new = cur_new->next)
-					;
+			     cur_new != NULL && cmp_func(cur_new, cur_old) <= 0;
+			     prev_new = cur_new, cur_new = cur_new->next)
+				;
 			if (prev_new == NULL) {
 				cur_old->next = new_head;
 				new_head = cur_old;
-			}
-			else {
+			} else {
 				cur_old->next = cur_new;
 				prev_new->next = cur_old;
 			}
@@ -121,8 +118,8 @@ bs_find(struct batch_status *bs, const char *name)
 	if (name == NULL)
 		return NULL;
 
-	for ( ; ((bs != NULL) && strcmp(name, bs->name)); bs = bs->next)
-		;	/* empty for loop */
+	for (; ((bs != NULL) && strcmp(name, bs->name)); bs = bs->next)
+		; /* empty for loop */
 
 	return bs;
 }

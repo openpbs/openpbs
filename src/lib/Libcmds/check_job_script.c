@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file	check_job_script.c
  * @brief
@@ -50,7 +49,6 @@
 
 #include "cmds.h"
 #include "libpbs.h"
-
 
 /**
  * @brief
@@ -69,9 +67,12 @@ pbs_isexecutable(char *s)
 	char *c;
 
 	c = s;
-	if ((*c == ':') || ((*c == '#') && (*(c+1) == '!'))) return FALSE;
-	while (isspace(*c)) c++;
-	if (notNULL(c)) return (*c != '#');
+	if ((*c == ':') || ((*c == '#') && (*(c + 1) == '!')))
+		return FALSE;
+	while (isspace(*c))
+		c++;
+	if (notNULL(c))
+		return (*c != '#');
 	return FALSE;
 }
 
@@ -93,10 +94,11 @@ pbs_ispbsdir(char *s, char *prefix)
 	int l;
 
 	it = s;
-	while (isspace(*it)) it++;
+	while (isspace(*it))
+		it++;
 	l = strlen(prefix);
 	if (l > 0 && strncmp(it, prefix, l) == 0)
-		return (it+l);
+		return (it + l);
 	else
 		return NULL;
 }

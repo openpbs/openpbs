@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * A quick explanation of the scheduler's data model:
  * To free an object, use the object’s destructor (e.g., free_node_info())

@@ -112,12 +112,12 @@
 time_t start_time = 0;
 time_t check_time = 0;
 
-char prompt[]="Qmgr: "; /* Prompt if input is from terminal */
-char contin[]="Qmgr< "; /* Prompt if input is continued across lines */
+char prompt[] = "Qmgr: "; /* Prompt if input is from terminal */
+char contin[] = "Qmgr< "; /* Prompt if input is continued across lines */
 char *cur_prompt = prompt;
-const char hist_init_err[]="History could not be initialized\n";
-const char histfile_access_err[]="Cannot read/write history file %s, history across sessions disabled\n";
-int qmgr_hist_enabled = 0; /* history is enabled by default */
+const char hist_init_err[] = "History could not be initialized\n";
+const char histfile_access_err[] = "Cannot read/write history file %s, history across sessions disabled\n";
+int qmgr_hist_enabled = 0;	     /* history is enabled by default */
 char qmgr_hist_file[MAXPATHLEN + 1]; /* history file for this user */
 
 static char hook_tempfile_errmsg[HOOK_MSG_SIZE] = {'\0'};
@@ -127,10 +127,10 @@ static char hook_tempfile_errmsg[HOOK_MSG_SIZE] = {'\0'};
  * It is declared here because it must be used by the pstderr routine to
  * determine if any message should be printed to standard error.
  */
-int zopt = FALSE;		/* -z option */
+int zopt = FALSE; /* -z option */
 
-static struct server *servers = NULL;  /* Linked list of server structures */
-static int nservers = 0;               /* Number of servers */
+static struct server *servers = NULL; /* Linked list of server structures */
+static int nservers = 0;	      /* Number of servers */
 
 /* active objects */
 struct objname *active_servers;
@@ -139,11 +139,11 @@ struct objname *active_nodes;
 struct objname *active_scheds;
 
 /* The following refer to who is executing the qmgr and from what host */
-char	cur_host[PBS_MAXHOSTNAME+1];
-char	cur_user[PBS_MAXHOSTNAME+1];
-char	conf_full_server_name[PBS_MAXHOSTNAME+1] = { '\0' };
+char cur_host[PBS_MAXHOSTNAME + 1];
+char cur_user[PBS_MAXHOSTNAME + 1];
+char conf_full_server_name[PBS_MAXHOSTNAME + 1] = {'\0'};
 
-const char	syntaxerr[] = "qmgr: Syntax error\n";
+const char syntaxerr[] = "qmgr: Syntax error\n";
 
 /* List of attribute names for attributes of type entlim */
 static char *entlim_attrs[] = {
@@ -155,19 +155,18 @@ static char *entlim_attrs[] = {
 	ATTR_max_queued_res,
 	ATTR_queued_jobs_threshold,
 	ATTR_queued_jobs_threshold_res,
-	NULL		/* keep as last one please */
+	NULL /* keep as last one please */
 };
 
 /* Hook-related variables and functions */
 
-static char *hook_tempfile = NULL;  /* a temporary file in PBS_HOOK_WORKDIR */
-static char *hook_tempdir = NULL;   /* PBS_HOOK_WORKDIR path */
+static char *hook_tempfile = NULL; /* a temporary file in PBS_HOOK_WORKDIR */
+static char *hook_tempdir = NULL;  /* PBS_HOOK_WORKDIR path */
 
 extern void qmgr_list_history(int);
 extern int init_qmgr_hist(char *);
 extern int qmgr_add_history(char *);
 extern int get_request_hist(char **);
-
 
 /**
  * @brief
@@ -194,7 +193,7 @@ dyn_strcpy(char **dest, char *src)
 	if (strlen(*dest) >= strlen(src)) {
 		strcpy(*dest, src);
 	} else {
-		p = (char *)realloc((char *)*dest, strlen(src)+1);
+		p = (char *) realloc((char *) *dest, strlen(src) + 1);
 		if (p == NULL) {
 			fprintf(stderr, "dyn_strcpy: Failed to realloc\n");
 			exit(1);
@@ -225,12 +224,12 @@ base(char *path)
 		exit(1);
 	}
 
-	p = (char *)path;
+	p = (char *) path;
 
 #ifdef WIN32
-	if (((p=strrchr(path, '/')) != NULL)  || ((p=strrchr(path, '\\')) != NULL))
+	if (((p = strrchr(path, '/')) != NULL) || ((p = strrchr(path, '\\')) != NULL))
 #else
-	if ((p=strrchr(path, '/')))
+	if ((p = strrchr(path, '/')))
 #endif
 	{
 		p++;
@@ -240,8 +239,8 @@ base(char *path)
 }
 
 static void
-attrlist_add(struct attropl  **attrlist, char *attname,
-	size_t attname_len, char *attval, size_t attval_len)
+attrlist_add(struct attropl **attrlist, char *attname,
+	     size_t attname_len, char *attval, size_t attval_len)
 {
 	struct attropl *paol;
 	int ltxt;
@@ -269,7 +268,7 @@ attrlist_add(struct attropl  **attrlist, char *attname,
 		paol->value = attval;
 	} else {
 		ltxt = attval_len;
-		Mstring(paol->value, ltxt+1);
+		Mstring(paol->value, ltxt + 1);
 		pbs_strncpy(paol->value, attval, ltxt + 1);
 	}
 }
@@ -286,11 +285,11 @@ dump_file(char *infile, char *outfile, char *infile_encoding, char *msg, size_t 
 	FILE *infp;
 	FILE *outfp;
 
-	unsigned char in_data[HOOK_BUF_SIZE+1];
+	unsigned char in_data[HOOK_BUF_SIZE + 1];
 	ssize_t in_len;
-	int	    ret = 0;
-	int	    encode_b64 = 0;	/* 1 if encode in base 64 */
-	struct  stat sb;
+	int ret = 0;
+	int encode_b64 = 0; /* 1 if encode in base 64 */
+	struct stat sb;
 
 	memset(msg, '\0', msg_len);
 
@@ -301,21 +300,19 @@ dump_file(char *infile, char *outfile, char *infile_encoding, char *msg, size_t 
 		infp = fopen(infile, "rb");
 
 		if (infp == NULL) {
-			snprintf(msg, msg_len-1,
-				"%s - %s", infile, strerror(errno));
+			snprintf(msg, msg_len - 1,
+				 "%s - %s", infile, strerror(errno));
 			return (1);
 		}
 		/* need to check if we really opened a file and not a directory/dev */
 		if ((fstat(fileno(infp), &sb) != -1) && !S_ISREG(sb.st_mode)) {
-			snprintf(msg, msg_len-1,
-				"%s - Permission denied", infile);
+			snprintf(msg, msg_len - 1,
+				 "%s - Permission denied", infile);
 
 			fclose(infp);
 			return (1);
 		}
-
 	}
-
 
 	if ((outfile == NULL) || (outfile[0] == '\0')) {
 		outfp = stdout;
@@ -323,14 +320,14 @@ dump_file(char *infile, char *outfile, char *infile_encoding, char *msg, size_t 
 		outfp = fopen(outfile, "wb");
 
 		if (outfp == NULL) {
-			snprintf(msg, msg_len-1,
-				"%s - %s", outfile, strerror(errno));
+			snprintf(msg, msg_len - 1,
+				 "%s - %s", outfile, strerror(errno));
 			ret = 1;
 			goto dump_file_exit;
 		}
 #ifdef WIN32
 		secure_file(outfile, "Administrators",
-			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
+			    READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED);
 #endif
 	}
 
@@ -338,10 +335,10 @@ dump_file(char *infile, char *outfile, char *infile_encoding, char *msg, size_t 
 		encode_b64 = 1;
 	}
 
-	while (fgets((char *)in_data, sizeof(in_data), infp) != NULL) {
-		in_len = strlen((char *)in_data);
-		if( encode_b64 && \
-			(strcmp((char *)in_data, "\n") == 0) ) {/* empty line */
+	while (fgets((char *) in_data, sizeof(in_data), infp) != NULL) {
+		in_len = strlen((char *) in_data);
+		if (encode_b64 &&
+		    (strcmp((char *) in_data, "\n") == 0)) { /* empty line */
 			/* signals end of processing, especially when     */
 			/* qmgr -c print hook output is fed back to qmgr  */
 			/* The output will have one or more hooks         */
@@ -351,18 +348,18 @@ dump_file(char *infile, char *outfile, char *infile_encoding, char *msg, size_t 
 		}
 		if (in_len > 0) {
 			if (fwrite(in_data, 1, in_len, outfp) != in_len) {
-				snprintf(msg, msg_len-1,
-					"write to %s failed! Aborting...",
-					outfile);
+				snprintf(msg, msg_len - 1,
+					 "write to %s failed! Aborting...",
+					 outfile);
 				ret = 1;
 				goto dump_file_exit;
 			}
 		}
 	}
 	if (fflush(outfp) != 0) {
-		snprintf(msg, msg_len-1,
-			"Failed to dump file %s (error %s)", outfile,
-			strerror(errno));
+		snprintf(msg, msg_len - 1,
+			 "Failed to dump file %s (error %s)", outfile,
+			 strerror(errno));
 		ret = 1;
 	}
 
@@ -375,10 +372,9 @@ dump_file_exit:
 	}
 	if (ret != 0) {
 		if (outfile)
-			(void)unlink(outfile);
+			(void) unlink(outfile);
 	}
 	return (ret);
-
 }
 
 /*
@@ -428,10 +424,10 @@ dump_file_exit:
 int
 params_import(char *attrs, struct attropl **attrlist, int doper)
 {
-	int   i;
-	char *c;            /* Pointer into the attrs text */
-	char *start;        /* Pointer to the start of a word */
-	char *v;	      /* value returned by pbs_quote_parse */
+	int i;
+	char *c;     /* Pointer into the attrs text */
+	char *start; /* Pointer to the start of a word */
+	char *v;     /* value returned by pbs_quote_parse */
 	char *e;
 
 	if ((attrs == NULL) || (attrlist == NULL)) {
@@ -452,7 +448,7 @@ params_import(char *attrs, struct attropl **attrlist, int doper)
 		c++;
 
 	if (EOL(*c))
-		return 1;	/* no parameter */
+		return 1; /* no parameter */
 
 	/* Parse the parameter values */
 
@@ -469,7 +465,7 @@ params_import(char *attrs, struct attropl **attrlist, int doper)
 		return (start - attrs);
 	}
 	attrlist_add(attrlist, CONTENT_TYPE_PARAM, strlen(CONTENT_TYPE_PARAM),
-		start, c-start);
+		     start, c - start);
 
 	/* Get the content-encoding */
 	while (White(*c))
@@ -488,9 +484,8 @@ params_import(char *attrs, struct attropl **attrlist, int doper)
 		}
 
 		attrlist_add(attrlist, CONTENT_ENCODING_PARAM,
-			strlen(CONTENT_ENCODING_PARAM), start, c-start);
-	}
-	else
+			     strlen(CONTENT_ENCODING_PARAM), start, c - start);
+	} else
 		return (c - attrs);
 
 	/* Get the input-file */
@@ -502,20 +497,18 @@ params_import(char *attrs, struct attropl **attrlist, int doper)
 		if (i == -1) {
 			pstderr("qmgr: Out of memory\n");
 			clean_up_and_exit(5);
-		}
-		else if (i > 0)
+		} else if (i > 0)
 			return (c - attrs);
 
 		/* value ok */
 		attrlist_add(attrlist, INPUT_FILE_PARAM, strlen(INPUT_FILE_PARAM), v,
-			strlen(v));
+			     strlen(v));
 
 		if (EOL(*e)) {
-			return 0;	/* end of line */
+			return 0; /* end of line */
 		}
-		c = e;		/* otherwise more to parse */
-	}
-	else
+		c = e; /* otherwise more to parse */
+	} else
 		return (c - attrs);
 
 	/* See if there is another argument */
@@ -575,10 +568,10 @@ params_import(char *attrs, struct attropl **attrlist, int doper)
 int
 params_export(char *attrs, struct attropl **attrlist, int doper)
 {
-	int   i;
-	char *c;            /* Pointer into the attrs text */
-	char *start;        /* Pointer to the start of a word */
-	char *v;	      /* value returned by pbs_quote_parse */
+	int i;
+	char *c;     /* Pointer into the attrs text */
+	char *start; /* Pointer to the start of a word */
+	char *v;     /* value returned by pbs_quote_parse */
 	char *e;
 
 	if ((attrs == NULL) || (attrlist == NULL)) {
@@ -599,7 +592,7 @@ params_export(char *attrs, struct attropl **attrlist, int doper)
 		c++;
 
 	if (EOL(*c))
-		return 1;	/* no parameter */
+		return 1; /* no parameter */
 
 	/* Parse the parameter values */
 
@@ -616,7 +609,7 @@ params_export(char *attrs, struct attropl **attrlist, int doper)
 		return (start - attrs);
 	}
 	attrlist_add(attrlist, CONTENT_TYPE_PARAM, strlen(CONTENT_TYPE_PARAM),
-		start, c-start);
+		     start, c - start);
 
 	/* Get the content-encoding */
 	while (White(*c))
@@ -635,9 +628,8 @@ params_export(char *attrs, struct attropl **attrlist, int doper)
 		}
 
 		attrlist_add(attrlist, CONTENT_ENCODING_PARAM,
-			strlen(CONTENT_ENCODING_PARAM), start, c-start);
-	}
-	else
+			     strlen(CONTENT_ENCODING_PARAM), start, c - start);
+	} else
 		return (c - attrs);
 
 	/* Get the OUTPUT_FILE_PARAM */
@@ -649,20 +641,18 @@ params_export(char *attrs, struct attropl **attrlist, int doper)
 		if (i == -1) {
 			pstderr("qmgr: Out of memory\n");
 			clean_up_and_exit(5);
-		}
-		else if (i > 0) {
+		} else if (i > 0) {
 			return (c - attrs);
 		}
 		/* value ok */
 		attrlist_add(attrlist, OUTPUT_FILE_PARAM, strlen(OUTPUT_FILE_PARAM), v,
-			strlen(v));
+			     strlen(v));
 
 		if (EOL(*e)) {
-			return 0;	/* end of line */
+			return 0; /* end of line */
 		}
-		c = e;		/* otherwise more to parse */
-	}
-	else {
+		c = e; /* otherwise more to parse */
+	} else {
 		/* ok to not have OUTPUT_FILE_PARAM, just put empty string */
 		attrlist_add(attrlist, OUTPUT_FILE_PARAM, strlen(OUTPUT_FILE_PARAM), "", 1);
 	}
@@ -691,7 +681,7 @@ who()
 	return (getlogin()); /* Windows version does not return NULL */
 
 #else
-	struct passwd	*pw;
+	struct passwd *pw;
 
 	if ((pw = getpwuid(getuid())) == NULL) {
 		return ("");
@@ -702,7 +692,6 @@ who()
 
 	return (pw->pw_name);
 #endif
-
 }
 
 int
@@ -715,16 +704,16 @@ main(int argc, char **argv)
 	int eopt = FALSE;		/* -e option */
 	int nopt = FALSE;		/* -n option */
 	char *copt = NULL;		/* -c command option */
-	int c;			/* Individual option */
-	int errflg = 0;		/* Error flag */
-	char *request = NULL;	/* Current request */
+	int c;				/* Individual option */
+	int errflg = 0;			/* Error flag */
+	char *request = NULL;		/* Current request */
 	int oper = MGR_CMD_CREATE;	/* Operation: create, delete, set, unset, list, print */
 	int type = MGR_OBJ_SERVER;	/* Object type: server or queue */
 	char *name = NULL;		/* Object name */
-	struct attropl *attribs = NULL;   /* Pointer to attribute list */
+	struct attropl *attribs = NULL; /* Pointer to attribute list */
 	struct objname *svrs;
 #ifndef WIN32
-	int	htmp_fd;		/* for creating hooks temp file */
+	int htmp_fd; /* for creating hooks temp file */
 #endif
 
 	/*test for real deal or just version and exit*/
@@ -798,30 +787,30 @@ main(int argc, char **argv)
 	 */
 	if (pbs_conf.pbs_primary != NULL) {
 		pbs_strncpy(conf_full_server_name, pbs_conf.pbs_primary,
-			sizeof(conf_full_server_name));
+			    sizeof(conf_full_server_name));
 	} else if (pbs_conf.pbs_server_host_name != NULL) {
 		pbs_strncpy(conf_full_server_name, pbs_conf.pbs_server_host_name,
-			sizeof(conf_full_server_name));
+			    sizeof(conf_full_server_name));
 	} else if (pbs_conf.pbs_server_name != NULL) {
 		pbs_strncpy(conf_full_server_name, pbs_conf.pbs_server_name,
-			sizeof(conf_full_server_name));
+			    sizeof(conf_full_server_name));
 	}
 	if (conf_full_server_name[0] != '\0') {
 		get_fullhostname(conf_full_server_name, conf_full_server_name,
-			(sizeof(conf_full_server_name) - 1));
+				 (sizeof(conf_full_server_name) - 1));
 	}
 
 	pbs_asprintf(&hook_tempdir, "%s/server_priv/%s",
-		pbs_conf.pbs_home_path, PBS_HOOK_WORKDIR);
+		     pbs_conf.pbs_home_path, PBS_HOOK_WORKDIR);
 	pbs_asprintf(&hook_tempfile, "%s/qmgr_hook%dXXXXXX",
-		hook_tempdir, getpid());
+		     hook_tempdir, getpid());
 
 #ifdef WIN32
 	/* mktemp() generates a filename */
 	if (mktemp(hook_tempfile) == NULL) {
 		snprintf(hook_tempfile_errmsg, sizeof(hook_tempfile_errmsg),
-			"unable to generate a hook_tempfile from %s - %s\n",
-			hook_tempfile, strerror(errno));
+			 "unable to generate a hook_tempfile from %s - %s\n",
+			 hook_tempfile, strerror(errno));
 		hook_tempfile[0] = '\0'; /* hook_tempfile name generation not successful */
 	}
 #else
@@ -832,23 +821,22 @@ main(int argc, char **argv)
 	 */
 	if ((htmp_fd = mkstemp(hook_tempfile)) == -1) {
 		snprintf(hook_tempfile_errmsg, sizeof(hook_tempfile_errmsg),
-			"unable to generate a hook_tempfile from %s - %s\n",
-			hook_tempfile, strerror(errno));
+			 "unable to generate a hook_tempfile from %s - %s\n",
+			 hook_tempfile, strerror(errno));
 		hook_tempfile[0] = '\0'; /* hook_tempfile name generation not successful */
-	} else { /* success */
-		(void)close(htmp_fd);
-		(void)unlink(hook_tempfile); /* we'll recreate later if needed */
+	} else {			 /* success */
+		(void) close(htmp_fd);
+		(void) unlink(hook_tempfile); /* we'll recreate later if needed */
 	}
 #endif /* Linux/Unix */
 
 	errflg = connect_servers(svrs, ALL_SERVERS);
-	if ((nservers==0) || (errflg))
+	if ((nservers == 0) || (errflg))
 		clean_up_and_exit(3);
 
 	errflg = set_active(MGR_OBJ_SERVER, svrs);
 	if (errflg && aopt)
 		clean_up_and_exit(4);
-
 
 	/*
 	 * If no command was given on the command line, then read them from
@@ -880,13 +868,13 @@ main(int argc, char **argv)
 				printf("%s\n", request);
 
 			errflg = parse(request, &oper, &type, &name, &attribs);
-			if (errflg == -1)		/* help */
+			if (errflg == -1) /* help */
 				continue;
 
 			if (aopt && errflg)
 				clean_up_and_exit(1);
 
-			if (! nopt && ! errflg) {
+			if (!nopt && !errflg) {
 				errflg = execute(aopt, oper, type, name, attribs);
 				if (aopt && errflg)
 					clean_up_and_exit(2);
@@ -912,7 +900,7 @@ main(int argc, char **argv)
 		if (aopt && errflg)
 			clean_up_and_exit(1);
 
-		if (! nopt && ! errflg) {
+		if (!nopt && !errflg) {
 			errflg = execute(aopt, oper, type, name, attribs);
 			if (aopt && errflg)
 				clean_up_and_exit(2);
@@ -925,7 +913,6 @@ main(int argc, char **argv)
 			free(name);
 			name = NULL;
 		}
-
 	}
 	if (errflg)
 		clean_up_and_exit(errflg);
@@ -942,9 +929,9 @@ main(int argc, char **argv)
 static int
 chk_special_attr_values(struct attropl *paol)
 {
-	int	     i;
-	char 	    *dupval;
-	int	     r;
+	int i;
+	char *dupval;
+	int r;
 
 	i = 0;
 	while (entlim_attrs[i]) {
@@ -960,7 +947,6 @@ chk_special_attr_values(struct attropl *paol)
 	}
 	return 0;
 }
-
 
 /*
  *
@@ -1009,12 +995,12 @@ chk_special_attr_values(struct attropl *paol)
 int
 attributes(char *attrs, struct attropl **attrlist, int doper)
 {
-	int   i;
-	char *c;            /* Pointer into the attrs text */
-	char *start;        /* Pointer to the start of a word */
-	char *v;	      /* value returned by pbs_quote_parse */
+	int i;
+	char *c;     /* Pointer into the attrs text */
+	char *start; /* Pointer to the start of a word */
+	char *v;     /* value returned by pbs_quote_parse */
 	char *e;
-	int ltxt;           /* Length of a word */
+	int ltxt; /* Length of a word */
 	struct attropl *paol;
 	char **pentlim_name;
 
@@ -1057,15 +1043,15 @@ attributes(char *attrs, struct attropl **attrlist, int doper)
 
 			/* Copy attribute into structure */
 			ltxt = c - start;
-			Mstring(paol->name, ltxt+1);
+			Mstring(paol->name, ltxt + 1);
 			pbs_strncpy(paol->name, start, ltxt + 1);
 
 			/* Resource, if any */
 			if (*c == '.') {
 				start = ++c;
 				if ((doper == MGR_CMD_UNSET) ||
-					(doper == MGR_CMD_LIST)  ||
-					(doper == MGR_CMD_PRINT)) {
+				    (doper == MGR_CMD_LIST) ||
+				    (doper == MGR_CMD_PRINT)) {
 					while (!White(*c) && !Oper(c) && !EOL(*c) && !(*c == ','))
 						c++;
 				} else {
@@ -1074,14 +1060,13 @@ attributes(char *attrs, struct attropl **attrlist, int doper)
 				}
 
 				ltxt = c - start;
-				if (ltxt == 0) 		/* No resource */
+				if (ltxt == 0) /* No resource */
 					return (start - attrs);
 
-				Mstring(paol->resource, ltxt+1);
+				Mstring(paol->resource, ltxt + 1);
 				pbs_strncpy(paol->resource, start, ltxt + 1);
 			}
-		}
-		else
+		} else
 			return (c - attrs);
 
 		/* Get the operator */
@@ -1114,13 +1099,11 @@ attributes(char *attrs, struct attropl **attrlist, int doper)
 			/* The unset command must not have a operator or value */
 			if (doper == MGR_CMD_UNSET)
 				return (c - attrs);
-		}
-		else if (doper != MGR_CMD_CREATE && doper != MGR_CMD_SET) {
+		} else if (doper != MGR_CMD_CREATE && doper != MGR_CMD_SET) {
 			Mstring(paol->value, 1);
 			paol->value[0] = '\0';
 			return 0;
-		}
-		else
+		} else
 			return (c - attrs);
 
 		/* Get the value */
@@ -1147,26 +1130,24 @@ attributes(char *attrs, struct attropl **attrlist, int doper)
 			if (i == -1) {
 				pstderr("qmgr: Out of memory\n");
 				clean_up_and_exit(5);
-			}
-			else if (i > 0)
+			} else if (i > 0)
 				return (c - attrs);
 			/* value ok */
 			paol->value = v;
 
 			/* Add special checks for syntax of value for certain attributes */
 			i = chk_special_attr_values(paol);
-			if (i > 0)  /* error return,  i is offset of error in input */
+			if (i > 0)			    /* error return,  i is offset of error in input */
 				return (c - attrs + i - 1); /* c - attrs = start + offset is err loc */
 
 			if (EOL(*e))
-				return 0;	/* end of line */
-			c = e;		/* otherwise more to parse */
-		}
-		else
+				return 0; /* end of line */
+			c = e;		  /* otherwise more to parse */
+		} else
 			return (c - attrs);
 
 		/* See if there is another attribute-value pair */
-next:
+	next:
 		while (White(*c))
 			c++;
 		if (EOL(*c))
@@ -1178,7 +1159,6 @@ next:
 			return (c - attrs);
 	}
 }
-
 
 /**
  * @brief
@@ -1252,8 +1232,7 @@ connect_servers(struct objname *server_names, int numservers)
 				servers = cur_svr;
 			}
 		}
-	}
-	else {
+	} else {
 		pstderr("qmgr: max server connections reached.\n");
 		error = 1;
 	}
@@ -1281,8 +1260,7 @@ blanks(int number)
 		spaces[i] = '\0';
 
 		pstderr(spaces);
-	}
-	else
+	} else
 		pstderr("Too many blanks requested.\n");
 }
 
@@ -1320,7 +1298,6 @@ check_list(char *list, int type)
 		} else if (!isalpha((int) *backptr) && *backptr != '@')
 			return (backptr - list ? backptr - list : 1);
 
-
 		while (*foreptr != ',' && *foreptr != '@' && !EOL(*foreptr))
 			foreptr++;
 
@@ -1347,7 +1324,7 @@ check_list(char *list, int type)
 		}
 		backptr = foreptr;
 	}
-	return 0;		/* Success! */
+	return 0; /* Success! */
 }
 
 /**
@@ -1435,7 +1412,7 @@ remove_char(char *ptr, int ch)
 int
 get_resc_type(char *rname, struct batch_status *pbs)
 {
-	struct attrl  *pat;
+	struct attrl *pat;
 
 	while (pbs) {
 		if (strcmp(rname, pbs->name) == 0) {
@@ -1519,8 +1496,8 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 	int format, struct server *mysvr)
 {
 	struct attrl *attr;
-	char *c,  *e;
-	char  q;
+	char *c, *e;
+	char q;
 	int l, comma, do_comma, first, indent_len;
 	char dump_msg[HOOK_MSG_SIZE];
 	char *hooktmp = NULL;
@@ -1528,45 +1505,45 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 	ecl_attribute_def *attrdef_l = NULL;
 	int attrdef_size = 0, i;
 	static struct attropl exp_attribs[] = {
-		{	(struct attropl *)&exp_attribs[1],
-			CONTENT_TYPE_PARAM,
-			NULL,
-			HOOKSTR_CONTENT,
-			SET					},
-		{	(struct attropl *)&exp_attribs[2],
-			CONTENT_ENCODING_PARAM,
-			NULL,
-			HOOKSTR_BASE64,
-			SET					},
-		{	NULL,
-			OUTPUT_FILE_PARAM,
-			NULL,
-			NULL,  /* has to be constant in some compilers like IRIX */
-			SET					},
+		{(struct attropl *) &exp_attribs[1],
+		 CONTENT_TYPE_PARAM,
+		 NULL,
+		 HOOKSTR_CONTENT,
+		 SET},
+		{(struct attropl *) &exp_attribs[2],
+		 CONTENT_ENCODING_PARAM,
+		 NULL,
+		 HOOKSTR_BASE64,
+		 SET},
+		{NULL,
+		 OUTPUT_FILE_PARAM,
+		 NULL,
+		 NULL, /* has to be constant in some compilers like IRIX */
+		 SET},
 	};
 
 	static struct attropl exp_attribs_config[] = {
-		{	(struct attropl *)&exp_attribs_config[1],
-			CONTENT_TYPE_PARAM,
-			NULL,
-			HOOKSTR_CONFIG,
-			SET					},
-		{	(struct attropl *)&exp_attribs_config[2],
-			CONTENT_ENCODING_PARAM,
-			NULL,
-			HOOKSTR_BASE64,
-			SET					},
-		{	NULL,
-			OUTPUT_FILE_PARAM,
-			NULL,
-			NULL,  /* has to be constant in some compilers like IRIX */
-			SET					},
+		{(struct attropl *) &exp_attribs_config[1],
+		 CONTENT_TYPE_PARAM,
+		 NULL,
+		 HOOKSTR_CONFIG,
+		 SET},
+		{(struct attropl *) &exp_attribs_config[2],
+		 CONTENT_ENCODING_PARAM,
+		 NULL,
+		 HOOKSTR_BASE64,
+		 SET},
+		{NULL,
+		 OUTPUT_FILE_PARAM,
+		 NULL,
+		 NULL, /* has to be constant in some compilers like IRIX */
+		 SET},
 	};
 
 	/* the OUTPUT_FILE_PARAM entry */
 	hooktmp = base(hook_tempfile);
-	exp_attribs[2].value = hooktmp?hooktmp:"";
-	exp_attribs_config[2].value = hooktmp?hooktmp:"";
+	exp_attribs[2].value = hooktmp ? hooktmp : "";
+	exp_attribs_config[2].value = hooktmp ? hooktmp : "";
 
 	if (format) {
 		if (otype == MGR_OBJ_SERVER)
@@ -1584,16 +1561,13 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 	if (otype == MGR_OBJ_SERVER) {
 		attrdef_l = ecl_svr_attr_def;
 		attrdef_size = ecl_svr_attr_size;
-	}
-	else if (otype == MGR_OBJ_SCHED) {
+	} else if (otype == MGR_OBJ_SCHED) {
 		attrdef_l = ecl_sched_attr_def;
 		attrdef_size = ecl_sched_attr_size;
-	}
-	else if (otype == MGR_OBJ_QUEUE) {
+	} else if (otype == MGR_OBJ_QUEUE) {
 		attrdef_l = ecl_que_attr_def;
-		attrdef_size =  ecl_que_attr_size;
-	}
-	else if (otype == MGR_OBJ_NODE) {
+		attrdef_size = ecl_que_attr_size;
+	} else if (otype == MGR_OBJ_NODE) {
 		attrdef_l = ecl_node_attr_def;
 		attrdef_size = ecl_node_attr_size;
 	}
@@ -1602,39 +1576,34 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 		if (otype == MGR_OBJ_SERVER) {
 			if (!format)
 				printf("Server %s\n", status->name);
-		}
-		else if (otype == MGR_OBJ_SCHED) {
+		} else if (otype == MGR_OBJ_SCHED) {
 			if ((oname != NULL) && *oname && strcmp(oname, status->name)) {
 				status = status->next;
 				continue;
 			}
 
 			if (format) {
-					printf("#\n# Create and define scheduler %s\n#\n", status->name);
-					printf("create sched %s\n", status->name);
-				}
-				else
-					printf("Sched %s\n", status->name);
+				printf("#\n# Create and define scheduler %s\n#\n", status->name);
+				printf("create sched %s\n", status->name);
+			} else
+				printf("Sched %s\n", status->name);
 
-		}
-		else if (otype == MGR_OBJ_QUEUE) {
+		} else if (otype == MGR_OBJ_QUEUE) {
 			/* When printing server, skip display of reservation queue. This is done
 			 * to prevent recreating the reservation queue upon migration of a server
 			 * configuration.
 			 */
 			if ((ptype == MGR_OBJ_SERVER) && is_reservation_queue(mysvr->s_connect,
-				status->name)) {
+									      status->name)) {
 				status = status->next;
 				continue;
 			}
 			if (format) {
 				printf("#\n# Create and define queue %s\n#\n", status->name);
 				printf("create queue %s\n", status->name);
-			}
-			else
+			} else
 				printf("Queue %s\n", status->name);
-		}
-		else if (otype == MGR_OBJ_NODE) {
+		} else if (otype == MGR_OBJ_NODE) {
 			if (format) {
 				first = TRUE;
 				printf("#\n# Create and define node %s\n#\n", status->name);
@@ -1646,8 +1615,8 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 					}
 				} else if ((c = get_attr(status->attribs, ATTR_NODE_Mom, NULL)) != NULL) {
 					if (strcmp(c, status->name) != 0) {
-						if (format && (strchr(c, (int)',') != NULL))
-							printf(" %s=\"%s\"", ATTR_NODE_Mom, c);	/* quote value */
+						if (format && (strchr(c, (int) ',') != NULL))
+							printf(" %s=\"%s\"", ATTR_NODE_Mom, c); /* quote value */
 						else
 							printf(" %s=%s", ATTR_NODE_Mom, c);
 						first = 0;
@@ -1663,26 +1632,20 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 					}
 				}
 				printf("\n");
-			}
-			else
+			} else
 				printf("Node %s\n", status->name);
-		}
-		else if (otype == MGR_OBJ_SITE_HOOK) {
+		} else if (otype == MGR_OBJ_SITE_HOOK) {
 			if (format) {
 				printf("#\n# Create and define hook %s\n#\n", show_nonprint_chars(status->name));
 				printf("create hook %s\n", show_nonprint_chars(status->name));
-			}
-			else
+			} else
 				printf("Hook %s\n", show_nonprint_chars(status->name));
-		}
-		else if (otype == MGR_OBJ_PBS_HOOK) {
+		} else if (otype == MGR_OBJ_PBS_HOOK) {
 			if (format) {
 				printf("#\n# Set pbshook %s\n#\n", show_nonprint_chars(status->name));
-			}
-			else
+			} else
 				printf("Hook %s\n", show_nonprint_chars(status->name));
-		}
-		else if (otype == MGR_OBJ_RSC) {
+		} else if (otype == MGR_OBJ_RSC) {
 			if ((oname == NULL) || (strcmp(oname, "") == 0)) {
 				if (strcmp(status->name, RESOURCE_UNKNOWN) == 0) {
 					custom_resource = TRUE;
@@ -1699,8 +1662,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 			if (format) {
 				printf("#\n# Create and define resource %s\n#\n", status->name);
 				printf("create resource %s\n", status->name);
-			}
-			else
+			} else
 				printf("Resource %s\n", status->name);
 		}
 
@@ -1709,19 +1671,19 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 		while (attr != NULL) {
 			if (format) {
 				if ((otype == MGR_OBJ_SITE_HOOK) || (otype == MGR_OBJ_PBS_HOOK) ||
-					is_attr(otype, attr->name, TYPE_ATTR_PUBLIC)) {
+				    is_attr(otype, attr->name, TYPE_ATTR_PUBLIC)) {
 					if ((otype != MGR_OBJ_SITE_HOOK) && (otype != MGR_OBJ_PBS_HOOK) &&
-						((strcmp(attr->name, ATTR_NODE_Host) == 0) ||
-						(strcmp(attr->name, ATTR_NODE_Mom)  == 0) ||
-						(strcmp(attr->name, ATTR_NODE_Port) == 0))) {
+					    ((strcmp(attr->name, ATTR_NODE_Host) == 0) ||
+					     (strcmp(attr->name, ATTR_NODE_Mom) == 0) ||
+					     (strcmp(attr->name, ATTR_NODE_Port) == 0))) {
 						/* skip Host, Mom and Port, already done on line with name */
 						attr = attr->next;
 						continue;
 					}
 					if ((otype != MGR_OBJ_SITE_HOOK) && (otype != MGR_OBJ_PBS_HOOK) &&
-						(strcmp(attr->name, ATTR_NODE_state) == 0) &&
-						((strncmp(attr->value, ND_state_unknown, strlen(ND_state_unknown)) == 0) ||
-						(strcmp(attr->value, ND_down) == 0))) {
+					    (strcmp(attr->name, ATTR_NODE_state) == 0) &&
+					    ((strncmp(attr->value, ND_state_unknown, strlen(ND_state_unknown)) == 0) ||
+					     (strcmp(attr->value, ND_down) == 0))) {
 						/* don't record "Down" or "state-unknown" */
 						attr = attr->next;
 						continue;
@@ -1737,7 +1699,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 						}
 						if ((attr != NULL) && (strcmp(attr->name, ATTR_RESC_FLAG) == 0)) {
 							char *rfm = find_resc_flag_map(atoi(attr->value));
-							if ((rfm != NULL)  && (strcmp(rfm, "") != 0)) {
+							if ((rfm != NULL) && (strcmp(rfm, "") != 0)) {
 								printf("set resource %s flag = %s\n", status->name, rfm);
 							}
 							attr = attr->next;
@@ -1745,8 +1707,8 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 						}
 					}
 					if ((attr->resource != NULL) &&
-						(get_resc_type(attr->resource, mysvr->s_rsc) == ATR_TYPE_STR))
-						do_comma = FALSE;	/* single string, don't parse substrings on a comma */
+					    (get_resc_type(attr->resource, mysvr->s_rsc) == ATR_TYPE_STR))
+						do_comma = FALSE; /* single string, don't parse substrings on a comma */
 					else
 						do_comma = TRUE;
 					first = TRUE;
@@ -1756,20 +1718,16 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 						printf("set ");
 						if (otype == MGR_OBJ_SERVER) {
 							printf("server ");
-						}
-						else if (otype == MGR_OBJ_SCHED) {
+						} else if (otype == MGR_OBJ_SCHED) {
 							if (strcmp(status->name, PBS_DFLT_SCHED_NAME) == 0)
 								printf("sched ");
 							else
 								printf("sched %s ", status->name);
-						}
-						else if (otype == MGR_OBJ_QUEUE) {
+						} else if (otype == MGR_OBJ_QUEUE) {
 							printf("queue %s ", status->name);
-						}
-						else if (otype == MGR_OBJ_NODE) {
+						} else if (otype == MGR_OBJ_NODE) {
 							printf("node %s ", status->name);
-						}
-						else if (otype == MGR_OBJ_SITE_HOOK)
+						} else if (otype == MGR_OBJ_SITE_HOOK)
 							printf("hook %s ", show_nonprint_chars(status->name));
 						else if (otype == MGR_OBJ_PBS_HOOK)
 							printf("pbshook %s ", show_nonprint_chars(status->name));
@@ -1779,14 +1737,14 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 						if (attr->resource != NULL)
 							printf(".%s", attr->resource);
 						if (attr->value != NULL) {
-							for(i = 0; i < attrdef_size; i++) {
+							for (i = 0; i < attrdef_size; i++) {
 								if (strcmp(attr->name, attrdef_l[i].at_name) == 0) {
 									break;
 								}
 							}
-							if((attrdef_l != NULL) && (attrdef_l[i].at_type == ATR_TYPE_STR)) {
+							if ((attrdef_l != NULL) && (attrdef_l[i].at_type == ATR_TYPE_STR)) {
 								if (strpbrk(c, "\"' ,") != NULL) {
-									if (strchr(c, (int)'"'))
+									if (strchr(c, (int) '"'))
 										q = '\'';
 									else
 										q = '"';
@@ -1794,8 +1752,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 								} else
 									printf(" = %s\n", show_nonprint_chars(c));
 								break;
-							}
-							else {
+							} else {
 								if (attr->op == INCR)
 									printf(" += ");
 								else if (first)
@@ -1814,13 +1771,13 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 								}
 								if (strpbrk(c, "\"' ,") != NULL) {
 									/* need to quote string */
-									if (strchr(c, (int)'"'))
+									if (strchr(c, (int) '"'))
 										q = '\'';
 									else
 										q = '"';
 									printf("%c%s%c", q, show_nonprint_chars(c), q);
 								} else
-									printf("%s", show_nonprint_chars(c));	/* no quoting */
+									printf("%s", show_nonprint_chars(c)); /* no quoting */
 
 								c = e;
 							}
@@ -1829,8 +1786,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 						printf("\n");
 					}
 				}
-			}
-			else  {
+			} else {
 				indent_len = 4;
 				if (otype == MGR_OBJ_RSC) {
 					if ((attr != NULL) && (strcmp(attr->name, "type") == 0)) {
@@ -1841,7 +1797,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 						}
 					} else if ((attr != NULL) && (strcmp(attr->name, "flag") == 0)) {
 						char *rfm = find_resc_flag_map(atoi(attr->value));
-						if ((rfm != NULL)  && (strcmp(rfm, "") != 0)) {
+						if ((rfm != NULL) && (strcmp(rfm, "") != 0)) {
 							printf("%*s", indent_len, " ");
 							printf("flag = %s\n", rfm);
 						}
@@ -1859,10 +1815,10 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 					printf(".%s", attr->resource);
 
 				if (attr->value != NULL) {
-					l = strlen(attr->name)+8;
+					l = strlen(attr->name) + 8;
 
-					if (attr->resource!=NULL)
-						l += strlen(attr->resource)+1;
+					if (attr->resource != NULL)
+						l += strlen(attr->resource) + 1;
 
 					l += 3; /* length of " = " */
 					printf(" = ");
@@ -1871,7 +1827,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 					comma = TRUE;
 					first = TRUE;
 					while (comma) {
-						while (*e!=',' && *e!='\0')
+						while (*e != ',' && *e != '\0')
 							e++;
 
 						comma = (*e == ',');
@@ -1908,10 +1864,10 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 					fprintf(stderr, "%s", hook_tempfile_errmsg);
 					fprintf(stderr, "can't display hooks data - no hook_tempfile!\n");
 				} else if (pbs_manager(mysvr->s_connect, MGR_CMD_EXPORT, otype,
-					status->name, exp_attribs, NULL) == 0) {
+						       status->name, exp_attribs, NULL) == 0) {
 					printf(PRINT_HOOK_IMPORT_CALL, show_nonprint_chars(status->name));
 					if (dump_file(hook_tempfile, NULL, HOOKSTR_BASE64,
-						dump_msg, sizeof(dump_msg)) != 0) {
+						      dump_msg, sizeof(dump_msg)) != 0) {
 						fprintf(stderr, "%s\n", dump_msg);
 					}
 					printf("\n");
@@ -1920,10 +1876,10 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 					fprintf(stderr, "%s", hook_tempfile_errmsg);
 					fprintf(stderr, "can't display hooks data - no hook_tempfile!\n");
 				} else if (pbs_manager(mysvr->s_connect, MGR_CMD_EXPORT, otype,
-					status->name, exp_attribs_config, NULL) == 0) {
+						       status->name, exp_attribs_config, NULL) == 0) {
 					printf(PRINT_HOOK_IMPORT_CONFIG, show_nonprint_chars(status->name));
 					if (dump_file(hook_tempfile, NULL, HOOKSTR_BASE64,
-						dump_msg, sizeof(dump_msg)) != 0) {
+						      dump_msg, sizeof(dump_msg)) != 0) {
 						fprintf(stderr, "%s\n", dump_msg);
 					}
 					printf("\n");
@@ -1933,10 +1889,10 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 					fprintf(stderr, "%s", hook_tempfile_errmsg);
 					fprintf(stderr, "can't display pbs hooks data - no hook_tempfile!\n");
 				} else if (pbs_manager(mysvr->s_connect, MGR_CMD_EXPORT, otype,
-					status->name, exp_attribs_config, NULL) == 0) {
+						       status->name, exp_attribs_config, NULL) == 0) {
 					printf(PRINT_HOOK_IMPORT_CONFIG, show_nonprint_chars(status->name));
 					if (dump_file(hook_tempfile, NULL, HOOKSTR_BASE64,
-						dump_msg, sizeof(dump_msg)) != 0) {
+						      dump_msg, sizeof(dump_msg)) != 0) {
 						fprintf(stderr, "%s\n", dump_msg);
 					}
 					printf("\n");
@@ -1975,7 +1931,7 @@ set_active(int obj_type, struct objname *obj_names)
 						svr = find_server(cur_obj->obj_name);
 						if (svr == NULL)
 							error = connect_servers(cur_obj, 1);
-						else  {
+						else {
 							cur_obj->svr = svr;
 							svr->ref++;
 						}
@@ -1986,8 +1942,7 @@ set_active(int obj_type, struct objname *obj_names)
 				if (!error) {
 					free_objname_list(active_servers);
 					active_servers = obj_names;
-				}
-				else
+				} else
 					free_objname_list(obj_names);
 
 				break;
@@ -1999,7 +1954,7 @@ set_active(int obj_type, struct objname *obj_names)
 						svr = find_server(cur_obj->obj_name);
 						if (svr == NULL)
 							error = connect_servers(cur_obj, 1);
-						else  {
+						else {
 							cur_obj->svr = svr;
 							svr->ref++;
 						}
@@ -2010,8 +1965,7 @@ set_active(int obj_type, struct objname *obj_names)
 				if (!error) {
 					free_objname_list(active_scheds);
 					active_scheds = obj_names;
-				}
-				else
+				} else
 					free_objname_list(obj_names);
 
 				break;
@@ -2065,8 +2019,7 @@ set_active(int obj_type, struct objname *obj_names)
 			default:
 				error = 1;
 		}
-	}
-	else {
+	} else {
 		switch (obj_type) {
 			case MGR_OBJ_SERVER:
 				printf("Active servers:\n");
@@ -2113,11 +2066,11 @@ void
 handle_formula(struct attropl *attribs)
 {
 	struct attropl *pattr;
-	char pathbuf[MAXPATHLEN+1];
+	char pathbuf[MAXPATHLEN + 1];
 	FILE *fp;
 
 	for (pattr = attribs; pattr != NULL; pattr = pattr->next) {
-		if (!strcmp(pattr->name, ATTR_job_sort_formula) && pattr->op ==SET) {
+		if (!strcmp(pattr->name, ATTR_job_sort_formula) && pattr->op == SET) {
 			sprintf(pathbuf, "%s/%s", pbs_conf.pbs_home_path, FORMULA_ATTR_PATH);
 			if ((fp = fopen(pathbuf, "w")) != NULL) {
 				fprintf(fp, "%s\n", pattr->value);
@@ -2125,10 +2078,9 @@ handle_formula(struct attropl *attribs)
 #ifdef WIN32
 				/* Give file an Administrators permission so pbs server can read it */
 				secure_file(pathbuf, "Administrators",
-					READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
+					    READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED);
 #endif
-			}
-			else {
+			} else {
 				PSTDERR1("qmgr: Failed to open %s for writing.\n", pathbuf)
 				return;
 			}
@@ -2164,29 +2116,29 @@ handle_formula(struct attropl *attribs)
 int
 execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 {
-	int len;			/* Used for length of an err msg*/
+	int len; /* Used for length of an err msg*/
 	int cerror;
-	int error;			/* Error value returned */
-	int perr;			/* Value returned from pbs_manager */
+	int error; /* Error value returned */
+	int perr;  /* Value returned from pbs_manager */
 	char *pmsg;
-	char *errmsg;			/* Error message from pbs_errmsg */
-	char errnomsg[256];		/* Error message with pbs_errno */
-	struct objname *name;		/* Pointer to a list of object names */
-	struct objname *pname = NULL;	/* Pointer to current object name */
-	struct objname *sname = NULL;	/* Pointer to current server name */
-	struct objname *svrs;		/* servers to loop through */
-	struct attrl *sa;		/* Argument needed for status routines */
+	char *errmsg;		      /* Error message from pbs_errmsg */
+	char errnomsg[256];	      /* Error message with pbs_errno */
+	struct objname *name;	      /* Pointer to a list of object names */
+	struct objname *pname = NULL; /* Pointer to current object name */
+	struct objname *sname = NULL; /* Pointer to current server name */
+	struct objname *svrs;	      /* servers to loop through */
+	struct attrl *sa;	      /* Argument needed for status routines */
 	/* Argument used to request queue names */
-	struct server *sp;		/* Pointer to server structure */
+	struct server *sp; /* Pointer to server structure */
 	/* Return structure from a list or print request */
 	struct batch_status *ss = NULL;
-	struct attropl       *attribs_tmp = NULL;
-	struct attropl       *attribs_file = NULL;
-	char			infile[MAXPATHLEN+1];
-	char 			outfile[MAXPATHLEN+1];
-	char 			dump_msg[HOOK_MSG_SIZE];
-	char 			content_encoding[HOOK_BUF_SIZE];
-	char 			content_type[HOOK_BUF_SIZE];
+	struct attropl *attribs_tmp = NULL;
+	struct attropl *attribs_file = NULL;
+	char infile[MAXPATHLEN + 1];
+	char outfile[MAXPATHLEN + 1];
+	char dump_msg[HOOK_MSG_SIZE];
+	char content_encoding[HOOK_BUF_SIZE];
+	char content_type[HOOK_BUF_SIZE];
 	error = 0;
 	name = commalist2objname(names, type);
 
@@ -2216,8 +2168,7 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 					pstderr("No Active Nodes, nothing done.\n");
 				break;
 		}
-	}
-	else
+	} else
 		pname = name;
 
 	for (; pname != NULL; pname = pname->next) {
@@ -2266,24 +2217,23 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 				}
 				free_attrl_list(sa);
 				perr = (ss == NULL);
-				if (! perr)
+				if (!perr)
 					display(type, type, pname->obj_name, ss, FALSE, sp);
 
 				/* For 'list hook' command of all available */
 				/* hooks, if none are found in the system, */
 				/* then force a return success value.   */
-				if ( (perr != 0) &&
-					((type == MGR_OBJ_SITE_HOOK) ||
-					 (type == MGR_OBJ_PBS_HOOK)) &&
-					((pname->obj_name == NULL) ||
-				         (pname->obj_name[0] == '\0'))	) {
+				if ((perr != 0) &&
+				    ((type == MGR_OBJ_SITE_HOOK) ||
+				     (type == MGR_OBJ_PBS_HOOK)) &&
+				    ((pname->obj_name == NULL) ||
+				     (pname->obj_name[0] == '\0'))) {
 					/* not an error */
 					perr = 0;
 				}
 
 				pbs_statfree(ss);
-			}
-			else if (oper == MGR_CMD_PRINT) {
+			} else if (oper == MGR_CMD_PRINT) {
 
 				sa = attropl2attrl(attribs);
 				switch (type) {
@@ -2323,13 +2273,11 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 
 				free_attrl_list(sa);
 				perr = (ss == NULL);
-				if (! perr) {
+				if (!perr) {
 					display(type, type, pname->obj_name, ss, TRUE, sp);
-
 				}
 				pbs_statfree(ss);
-			}
-			else  {
+			} else {
 				if (oper == MGR_CMD_IMPORT) {
 					infile[0] = '\0';
 					content_encoding[0] = '\0';
@@ -2372,7 +2320,7 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 
 					if (strcmp(content_type, HOOKSTR_CONFIG) == 0) {
 						char *p;
-						int  totlen;
+						int totlen;
 						p = strrchr(infile, '.');
 						/* need to pass the suffix */
 						/* to the server which will */
@@ -2389,17 +2337,16 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 					/* hook_tempfile could be set to empty if generating this filename */
 					/* by mktemp() was not successful */
 					if ((hook_tempfile[0] == '\0') ||
-						dump_file(infile, hook_tempfile, content_encoding,
-						dump_msg, sizeof(dump_msg)) != 0) {
+					    dump_file(infile, hook_tempfile, content_encoding,
+						      dump_msg, sizeof(dump_msg)) != 0) {
 						struct stat sbuf;
 
-						error = 1;	/* set error indicator */
+						error = 1; /* set error indicator */
 
 						if (hook_tempfile_errmsg[0] != '\0')
 							fprintf(stderr, "%s\n", hook_tempfile_errmsg);
 
-
-						/* Detect failed to access hooks working directory */
+							/* Detect failed to access hooks working directory */
 
 #ifdef WIN32
 						if ((lstat(hook_tempdir, &sbuf) == -1) && (GetLastError() == ERROR_ACCESS_DENIED))
@@ -2408,8 +2355,9 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 #endif
 						{
 							fprintf(stderr, "%s@%s is unauthorized to access hooks data "
-								"from server %s\n", cur_user, cur_host,
-								(sname->svr_name[0] == '\0')?pbs_conf.pbs_server_name:sname->svr_name);
+									"from server %s\n",
+								cur_user, cur_host,
+								(sname->svr_name[0] == '\0') ? pbs_conf.pbs_server_name : sname->svr_name);
 						} else {
 							fprintf(stderr, "%s\n", dump_msg);
 						}
@@ -2430,7 +2378,7 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 						if (hook_tempfile_errmsg[0] != '\0')
 							fprintf(stderr, "%s\n", hook_tempfile_errmsg);
 
-						/* Detect failed to access hooks working directory */
+							/* Detect failed to access hooks working directory */
 #ifdef WIN32
 						if ((lstat(hook_tempdir, &sbuf) == -1) && (GetLastError() == ERROR_ACCESS_DENIED))
 #else
@@ -2438,8 +2386,9 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 #endif
 						{
 							fprintf(stderr, "%s@%s is unauthorized to access hooks data "
-								"from server %s\n", cur_user, cur_host,
-								(sname->svr_name[0] == '\0')?conf_full_server_name:sname->svr_name);
+									"from server %s\n",
+								cur_user, cur_host,
+								(sname->svr_name[0] == '\0') ? conf_full_server_name : sname->svr_name);
 						} else {
 							fprintf(stderr, "can't export hooks data. no hook_tempfile!\n");
 						}
@@ -2454,18 +2403,18 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 							pbs_strncpy(outfile, attribs_tmp->value, sizeof(outfile));
 							attribs_file = attribs_tmp;
 						} else if (strcmp(attribs_tmp->name,
-							CONTENT_ENCODING_PARAM) == 0) {
+								  CONTENT_ENCODING_PARAM) == 0) {
 							pbs_strncpy(content_encoding, attribs_tmp->value, sizeof(content_encoding));
 						}
 						attribs_tmp = attribs_tmp->next;
 					}
 					hooktmp = base(hook_tempfile);
 					/* dyn_strcpy does not like a NULL second argument. */
-					dyn_strcpy(&attribs_file->value, (hooktmp?hooktmp:""));
+					dyn_strcpy(&attribs_file->value, (hooktmp ? hooktmp : ""));
 				}
 				handle_formula(attribs);
 				if (type == MGR_OBJ_PBS_HOOK) {
-					struct	attropl *popl;
+					struct attropl *popl;
 					perr = pbs_manager(sp->s_connect, oper, type, pname->obj_name, attribs, PBS_HOOK);
 
 					popl = attribs;
@@ -2477,11 +2426,11 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 								continue;
 							}
 							if ((strcasecmp(popl->value, HOOKSTR_FALSE) == 0) ||
-								(strcasecmp(popl->value, "f") == 0) ||
-								(strcasecmp(popl->value, "n") == 0) ||
-								(strcmp(popl->value, "0") == 0)) {
+							    (strcasecmp(popl->value, "f") == 0) ||
+							    (strcasecmp(popl->value, "n") == 0) ||
+							    (strcmp(popl->value, "0") == 0)) {
 								fprintf(stderr, "WARNING: Disabling a PBS hook "
-									"results in an unsupported configuration!\n");
+										"results in an unsupported configuration!\n");
 							}
 							popl = popl->next;
 						}
@@ -2510,16 +2459,15 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 				 ** by 'qmgr -c "p n @default" > /tmp/nodes_out'.
 				 */
 				if (isatty(0) ||
-					(oper != MGR_CMD_SET) || (type != MGR_OBJ_NODE) ||
-					(pbs_errno != PBSE_ATTRRO)) {
+				    (oper != MGR_CMD_SET) || (type != MGR_OBJ_NODE) ||
+				    (pbs_errno != PBSE_ATTRRO)) {
 					if (errmsg != NULL) {
 						len = strlen(errmsg) + strlen(pname->obj_name) + strlen(Svrname(sp)) + 20;
 						if (len < 256) {
 							sprintf(errnomsg, "qmgr obj=%s svr=%s: %s\n",
-								pname->obj_name, Svrname(sp),  errmsg);
+								pname->obj_name, Svrname(sp), errmsg);
 							pstderr(errnomsg);
-						}
-						else {
+						} else {
 							/*obviously, this is to cover a highly unlikely case*/
 
 							pstderr_big(Svrname(sp), pname->obj_name, errmsg);
@@ -2533,20 +2481,16 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 							pstderr("qmgr: Protocol error, server disconnected\n");
 						}
 						exit(1);
-					}
-					else if (pbs_errno == PBSE_HOOKERROR) {
+					} else if (pbs_errno == PBSE_HOOKERROR) {
 						pstderr("qmgr: hook error returned from server\n");
-					}
-					else
-						if (pbs_errno != 0)  /* 0 happens with hooks if no hooks found */
-							PSTDERR1("qmgr: Error (%d) returned from server\n", pbs_errno)
+					} else if (pbs_errno != 0) /* 0 happens with hooks if no hooks found */
+						PSTDERR1("qmgr: Error (%d) returned from server\n", pbs_errno)
 				}
 
 				if (aopt)
 					return perr;
 				error = perr;
-			}
-			else if (errmsg != NULL) {
+			} else if (errmsg != NULL) {
 				/* batch reply code is 0 but a text message is also being returned */
 
 				if ((pmsg = malloc(strlen(errmsg) + 2)) != NULL) {
@@ -2559,14 +2503,14 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 
 				if (oper == MGR_CMD_EXPORT) {
 					if (dump_file(hook_tempfile, outfile, content_encoding,
-						dump_msg, sizeof(dump_msg)) != 0) {
+						      dump_msg, sizeof(dump_msg)) != 0) {
 						fprintf(stderr, "%s\n", dump_msg);
 						error = 1;
 					}
 				}
 			}
 
-			temp_objname(NULL, NULL, NULL);		/* clears reference count */
+			temp_objname(NULL, NULL, NULL); /* clears reference count */
 		}
 	}
 	if (name != NULL)
@@ -2589,16 +2533,17 @@ freeattropl(struct attropl *attr)
 	struct attropl *ap;
 
 	while (attr != NULL) {
-		if (attr->name != NULL) free(attr->name);
-		if (attr->resource != NULL) free(attr->resource);
-		if (attr->value != NULL) free(attr->value);
+		if (attr->name != NULL)
+			free(attr->name);
+		if (attr->resource != NULL)
+			free(attr->resource);
+		if (attr->value != NULL)
+			free(attr->value);
 		ap = attr->next;
 		free(attr);
 		attr = ap;
 	}
 }
-
-
 
 /**
  * @brief
@@ -2615,21 +2560,23 @@ freeattropl(struct attropl *attr)
 struct objname *
 commalist2objname(char *names, int type)
 {
-	char *foreptr, *backptr;		/* front and back of words */
-	struct objname *objs = NULL;		/* the front of the name object list */
-	struct objname *cur_obj;		/* the current name object */
-	struct objname *prev_obj = NULL;	/* the previous name object */
-	int len;				/* length of segment of string */
-	char error = 0;			/* error flag */
+	char *foreptr, *backptr;	 /* front and back of words */
+	struct objname *objs = NULL;	 /* the front of the name object list */
+	struct objname *cur_obj;	 /* the current name object */
+	struct objname *prev_obj = NULL; /* the previous name object */
+	int len;			 /* length of segment of string */
+	char error = 0;			 /* error flag */
 
 	if (names != NULL) {
 		foreptr = backptr = names;
 		while (!EOL(*foreptr) && !error) {
-			while (White(*foreptr)) foreptr++;
+			while (White(*foreptr))
+				foreptr++;
 
 			backptr = foreptr;
 
-			while (*foreptr != ',' &&  *foreptr != '@' && !EOL(*foreptr)) foreptr++;
+			while (*foreptr != ',' && *foreptr != '@' && !EOL(*foreptr))
+				foreptr++;
 
 			cur_obj = new_objname();
 			cur_obj->obj_type = type;
@@ -2639,14 +2586,14 @@ commalist2objname(char *names, int type)
 				pbs_strncpy(cur_obj->obj_name, backptr, len + 1);
 				foreptr++;
 				backptr = foreptr;
-				while (*foreptr != ',' && !EOL(*foreptr)) foreptr++;
+				while (*foreptr != ',' && !EOL(*foreptr))
+					foreptr++;
 
 				len = foreptr - backptr;
 				if (strncmp(backptr, DEFAULT_SERVER, len) == 0) {
 					Mstring(cur_obj->svr_name, 1);
 					cur_obj->svr_name[0] = '\0';
-				}
-				else if (strncmp(backptr, ACTIVE_SERVER, len) == 0)
+				} else if (strncmp(backptr, ACTIVE_SERVER, len) == 0)
 					cur_obj->svr_name = NULL;
 				else {
 					Mstring(cur_obj->svr_name, len + 1);
@@ -2655,15 +2602,13 @@ commalist2objname(char *names, int type)
 
 				if (!EOL(*foreptr))
 					foreptr++;
-			}
-			else {
+			} else {
 				len = foreptr - backptr;
 
 				if ((type == MGR_OBJ_SERVER || type == MGR_OBJ_SITE_HOOK || type == MGR_OBJ_PBS_HOOK) && !strcmp(backptr, DEFAULT_SERVER)) {
 					Mstring(cur_obj->obj_name, 1);
 					cur_obj->obj_name[0] = '\0';
-				}
-				else {
+				} else {
 					Mstring(cur_obj->obj_name, len + 1);
 					pbs_strncpy(cur_obj->obj_name, backptr, len + 1);
 				}
@@ -2720,30 +2665,30 @@ commalist2objname(char *names, int type)
 int
 get_request(char **request)
 {
-	static char *line = NULL;  /* Stdin line */
-	static int empty = TRUE;      /* Line has nothing in it */
-	int eol;                      /* End of line */
-	int ll;                     /* Length of line */
-	int i = 0;                  /* Index into line */
-	char *rp;                   /* Pointer into request */
-	char *lp;                   /* Pointer into line */
-	int eoc;                    /* End of command */
-	char quote;                 /* Either ' or " */
-	char *cur_line = NULL;      /* Pointer to the current line */
-	int line_len = 0;           /* Length of the line buffer */
+	static char *line = NULL; /* Stdin line */
+	static int empty = TRUE;  /* Line has nothing in it */
+	int eol;		  /* End of line */
+	int ll;			  /* Length of line */
+	int i = 0;		  /* Index into line */
+	char *rp;		  /* Pointer into request */
+	char *lp;		  /* Pointer into line */
+	int eoc;		  /* End of command */
+	char quote;		  /* Either ' or " */
+	char *cur_line = NULL;	  /* Pointer to the current line */
+	int line_len = 0;	  /* Length of the line buffer */
 
 #ifdef QMGR_HAVE_HIST
 	if (qmgr_hist_enabled == 1) {
-                if (empty) {
-                        if (line != NULL) {
-                                free(line);
-                                line = NULL;
-                        }
+		if (empty) {
+			if (line != NULL) {
+				free(line);
+				line = NULL;
+			}
 
-                        if (get_request_hist(&cur_line) == EOF)
-                                return EOF;
-                }
-        }
+			if (get_request_hist(&cur_line) == EOF)
+				return EOF;
+		}
+	}
 #endif
 
 	/* Make sure something is in the stdin line */
@@ -2797,16 +2742,14 @@ get_request(char **request)
 					}
 					continue;
 				}
-			}
-			else {
+			} else {
 				ll = strlen(cur_line);
 				lp = cur_line;
 			}
 
-			if (cur_line[ll-1] == '\\') {
-				cur_line[ll-1] = ' ';
-			}
-			else if (*lp != '#')
+			if (cur_line[ll - 1] == '\\') {
+				cur_line[ll - 1] = ' ';
+			} else if (*lp != '#')
 				eol = TRUE;
 
 			if (*lp != '#') {
@@ -2824,13 +2767,12 @@ get_request(char **request)
 					fprintf(stderr, "malloc failure (errno %d)\n", errno);
 					exit(1);
 				}
-
 			}
 			if (cur_line != NULL) {
 				free(cur_line);
 			}
 		} /* End while(). */
-	} /* End if(empty). */
+	}	  /* End if(empty). */
 
 	/* Move a command from line to request */
 	ll = strlen(line);
@@ -2864,19 +2806,19 @@ get_request(char **request)
 					lp++;
 				}
 				*rp = *lp;
-				if(!EOL(*lp)){
-				rp++;
-				lp++;
+				if (!EOL(*lp)) {
+					rp++;
+					lp++;
 				}
 				break;
 
 			case '#':
-				if ((lp == line) || isspace(*(lp-1))) {
+				if ((lp == line) || isspace(*(lp - 1))) {
 					/* comment */
 					eoc = TRUE;
 					break;
-				}	/* not comment, fall into default case */
-				/* Move the character */
+				} /* not comment, fall into default case */
+				  /* Move the character */
 			default:
 				*rp = *lp;
 				rp++;
@@ -2901,17 +2843,17 @@ get_request(char **request)
 				lp++;
 			if (!EOL(*lp)) {
 				i = strlen(lp);
-				memmove(rp, lp, (size_t)i); /* By using memmove() we avoid strcpy's overlapping buffer issue. */
-				empty = FALSE;	    /* Note: memmove() doesn't Null terminate; so we take care of this by */
-			}			    /* nullifying 'line', at the end of this function, by setting line[i] to '\0'. */
-			else  {
+				memmove(rp, lp, (size_t) i); /* By using memmove() we avoid strcpy's overlapping buffer issue. */
+				empty = FALSE;		     /* Note: memmove() doesn't Null terminate; so we take care of this by */
+			}				     /* nullifying 'line', at the end of this function, by setting line[i] to '\0'. */
+			else {
 				i = 0;
 				empty = TRUE;
 			}
 			break;
 	}
 
-	line[i] = '\0';	/* Nullify the 'line' buffer at position 'i'. The un-processed command(s) got copied */
+	line[i] = '\0'; /* Nullify the 'line' buffer at position 'i'. The un-processed command(s) got copied */
 			/* to the start of the 'line' buffer by memmove() above. These command(s) are now */
 			/* Null terminated appropriately. */
 
@@ -3021,8 +2963,8 @@ int
 parse(char *request, int *oper, int *type, char **names, struct attropl **attr)
 {
 	int error;
-	int lp;                     /* Length of current string */
-	int len;		      /* ammount parsed by parse_request */
+	int lp;	 /* Length of current string */
+	int len; /* ammount parsed by parse_request */
 	char **req = NULL;
 	int names_len = 0;
 	char *p;
@@ -3044,13 +2986,12 @@ parse(char *request, int *oper, int *type, char **names, struct attropl **attr)
 	/* parse the request into parts */
 	len = parse_request(request, &req);
 
-
 	if (len != 0) { /* error in parse_request */
 		lp = strlen(req[IND_CMD]);
 
 		if (strncmp(req[0], "create", lp) == 0)
 			*oper = MGR_CMD_CREATE;
-		else if (strncmp(req[0], "delete", lp)  == 0)
+		else if (strncmp(req[0], "delete", lp) == 0)
 			*oper = MGR_CMD_DELETE;
 		else if (strncmp(req[0], "set", lp) == 0)
 			*oper = MGR_CMD_SET;
@@ -3070,17 +3011,14 @@ parse(char *request, int *oper, int *type, char **names, struct attropl **attr)
 			show_help(req[1]);
 			CLEAN_UP_REQ(req)
 			return -1;
-		}
-		else if (strncmp(req[0], "?", lp) == 0) {
+		} else if (strncmp(req[0], "?", lp) == 0) {
 			show_help(req[1]);
 			CLEAN_UP_REQ(req)
 			return -1;
-		}
-		else if (strncmp(req[0], "quit", lp) == 0) {
+		} else if (strncmp(req[0], "quit", lp) == 0) {
 			CLEAN_UP_REQ(req)
 			clean_up_and_exit(0);
-		}
-		else if (strncmp(req[0], "exit", lp) == 0) {
+		} else if (strncmp(req[0], "exit", lp) == 0) {
 			CLEAN_UP_REQ(req)
 			clean_up_and_exit(0);
 		}
@@ -3091,9 +3029,10 @@ parse(char *request, int *oper, int *type, char **names, struct attropl **attr)
 			return -1;
 		}
 #endif
-		else  {
+		else {
 			PSTDERR1("qmgr: Illegal operation: %s\n"
-				"Try 'help' if you are having trouble.\n", req[IND_CMD])
+				 "Try 'help' if you are having trouble.\n",
+				 req[IND_CMD])
 			CLEAN_UP_REQ(req)
 			return 1;
 		}
@@ -3108,18 +3047,18 @@ parse(char *request, int *oper, int *type, char **names, struct attropl **attr)
 		if (strncmp(req[1], "server", lp) == 0)
 			*type = MGR_OBJ_SERVER;
 		else if ((strncmp(req[1], "queue", lp) == 0) ||
-			(strncmp(req[1], "queues", lp) == 0))
+			 (strncmp(req[1], "queues", lp) == 0))
 			*type = MGR_OBJ_QUEUE;
 		else if ((strncmp(req[1], "node", lp) == 0) ||
-			(strncmp(req[1], "nodes", lp) == 0))
+			 (strncmp(req[1], "nodes", lp) == 0))
 			*type = MGR_OBJ_NODE;
 		else if (strncmp(req[1], "resource", lp) == 0)
 			*type = MGR_OBJ_RSC;
-		else  if (strncmp(req[1], "sched", lp) == 0)
+		else if (strncmp(req[1], "sched", lp) == 0)
 			*type = MGR_OBJ_SCHED;
-		else  if (strncmp(req[1], SITE_HOOK, lp) == 0)
+		else if (strncmp(req[1], SITE_HOOK, lp) == 0)
 			*type = MGR_OBJ_SITE_HOOK;
-		else  if (strncmp(req[1], PBS_HOOK, lp) == 0)
+		else if (strncmp(req[1], PBS_HOOK, lp) == 0)
 			*type = MGR_OBJ_PBS_HOOK;
 		else {
 			PSTDERR1("qmgr: Illegal object type: %s.\n", req[IND_OBJ])
@@ -3129,17 +3068,15 @@ parse(char *request, int *oper, int *type, char **names, struct attropl **attr)
 
 		if (!EOL(req[IND_NAME])) {
 			if ((*type != MGR_OBJ_SITE_HOOK) && (*type != MGR_OBJ_PBS_HOOK) && (*type != MGR_OBJ_RSC) &&
-				is_attr(*type, req[IND_NAME], TYPE_ATTR_ALL)) {
+			    is_attr(*type, req[IND_NAME], TYPE_ATTR_ALL)) {
 				len -= strlen(req[IND_NAME]);
 				req[IND_NAME][0] = '\0';
-			}
-			else if ((error = check_list(req[IND_NAME], *type))) {
+			} else if ((error = check_list(req[IND_NAME], *type))) {
 				pstderr(syntaxerr);
 				CaretErr(request, len - (int) strlen(req[IND_NAME]) + error - 1);
 				CLEAN_UP_REQ(req)
 				return 3;
-			}
-			else {
+			} else {
 				names_len = strlen(req[IND_NAME]);
 				*names = (char *) malloc(names_len + 1);
 				if (*names == NULL) {
@@ -3152,33 +3089,29 @@ parse(char *request, int *oper, int *type, char **names, struct attropl **attr)
 
 		/* Get attribute list; remaining part of the request */
 		if ((*oper != MGR_CMD_IMPORT) && (*oper != MGR_CMD_EXPORT) &&
-			((error = attributes(request + len, attr, *oper)) != 0)) {
+		    ((error = attributes(request + len, attr, *oper)) != 0)) {
 			pstderr(syntaxerr);
 			CaretErr(request, len + error);
 			CLEAN_UP_REQ(req)
 			return 4;
-		}
-		else if ((*oper == MGR_CMD_IMPORT)  &&
-			((error = params_import(request + len, attr, *oper)) != 0)) {
+		} else if ((*oper == MGR_CMD_IMPORT) &&
+			   ((error = params_import(request + len, attr, *oper)) != 0)) {
 			pstderr(syntaxerr);
 			CaretErr(request, len + error);
 			CLEAN_UP_REQ(req)
 			return 4;
-		}
-		else if ((*oper == MGR_CMD_EXPORT)  &&
-			((error = params_export(request + len, attr, *oper)) != 0)) {
+		} else if ((*oper == MGR_CMD_EXPORT) &&
+			   ((error = params_export(request + len, attr, *oper)) != 0)) {
 			pstderr(syntaxerr);
 			CaretErr(request, len + error);
 			CLEAN_UP_REQ(req)
 			return 4;
-		}
-		else if ((*oper == MGR_CMD_SET || *oper == MGR_CMD_UNSET) && *attr == NULL) {
+		} else if ((*oper == MGR_CMD_SET || *oper == MGR_CMD_UNSET) && *attr == NULL) {
 			pstderr(syntaxerr);
 			CaretErr(request, len + error);
 			CLEAN_UP_REQ(req)
 			return 4;
-		}
-		else if (*oper == MGR_CMD_ACTIVE && *attr != NULL) {
+		} else if (*oper == MGR_CMD_ACTIVE && *attr != NULL) {
 			pstderr(syntaxerr);
 			CaretErr(request, len);
 			CLEAN_UP_REQ(req)
@@ -3208,9 +3141,9 @@ parse(char *request, int *oper, int *type, char **names, struct attropl **attr)
 void
 pstderr(const char *string)
 {
-	if (! zopt) fprintf(stderr, "%s", string);
+	if (!zopt)
+		fprintf(stderr, "%s", string);
 }
-
 
 /**
  * @brief
@@ -3275,7 +3208,8 @@ free_objname_list(struct objname *list)
  * @retval return a pointer to the specified server struct or NULL if not found
  *
  */
-struct server *find_server(char *name)
+struct server *
+find_server(char *name)
 {
 	struct server *s = NULL;
 
@@ -3351,7 +3285,6 @@ free_server(struct server *svr)
 	}
 }
 
-
 /**
  * @brief
  *	new_objname - allocate new object and initialize it
@@ -3390,7 +3323,7 @@ free_objname(struct objname *obj)
 		free(obj->obj_name);
 
 	if (obj->obj_type != MGR_OBJ_SERVER && obj->svr_name != NULL &&
-		obj->obj_name != obj->svr_name)
+	    obj->obj_name != obj->svr_name)
 		free(obj->svr_name);
 
 	if (obj->svr != NULL)
@@ -3418,9 +3351,9 @@ free_objname(struct objname *obj)
 struct objname *
 strings2objname(char **str, int num, int type)
 {
-	struct objname *objs = NULL;		/* head of objname list */
-	struct objname *cur_obj;		/* current object in objname list */
-	struct objname *prev_obj = NULL;	/* previous object in objname list */
+	struct objname *objs = NULL;	 /* head of objname list */
+	struct objname *cur_obj;	 /* current object in objname list */
+	struct objname *prev_obj = NULL; /* previous object in objname list */
 	int i;
 	int len;
 
@@ -3467,8 +3400,8 @@ is_valid_object(struct objname *obj, int type)
 	/* we need something to make the pbs_stat* call.
 	 * Even if we only want the object name
 	 */
-	static struct attrl attrq = { NULL, ATTR_qtype, "", "" };
-	static struct attrl attrn = { NULL, ATTR_NODE_state, "", "" };
+	static struct attrl attrq = {NULL, ATTR_qtype, "", ""};
+	static struct attrl attrn = {NULL, ATTR_NODE_state, "", ""};
 	int valid = 1;
 	char *errmsg;
 
@@ -3490,15 +3423,13 @@ is_valid_object(struct objname *obj, int type)
 			errmsg = pbs_geterrmsg(obj->svr->s_connect);
 			PSTDERR1("qmgr: %s.\n", errmsg)
 			valid = 0;
-		}
-		else {
+		} else {
 			/* if pbs_stat*() returned something, then the object exists */
 			valid = 1;
 			pbs_statfree(batch_obj);
 		}
-	}
-	else
-		valid = 1;	/* NULL server means all active servers */
+	} else
+		valid = 1; /* NULL server means all active servers */
 
 	return valid;
 }
@@ -3539,9 +3470,10 @@ default_server_name()
  * @retval  temporary objname
  *
  */
-struct objname *temp_objname(char *obj_name, char *svr_name, struct server *svr)
+struct objname *
+temp_objname(char *obj_name, char *svr_name, struct server *svr)
 {
-	static struct objname temp = { 0, NULL, NULL, NULL, NULL};
+	static struct objname temp = {0, NULL, NULL, NULL, NULL};
 
 	if (temp.svr != NULL)
 		temp.svr->ref--;
@@ -3638,11 +3570,11 @@ parse_request(char *request, char ***req)
 
 		if (len > strlen(request)) {
 			error = 1;
-			chars_parsed = (int)(foreptr - request);
+			chars_parsed = (int) (foreptr - request);
 			pstderr("qmgr: max word length exceeded\n");
 			CaretErr(request, chars_parsed);
 		}
-		(*req)[i] = (char *)malloc(len + 1);
+		(*req)[i] = (char *) malloc(len + 1);
 		if ((*req)[i] == NULL) {
 			fprintf(stderr, "malloc failure (errno %d)\n", errno);
 			exit(1);
@@ -3651,7 +3583,6 @@ parse_request(char *request, char ***req)
 		if (len > 0)
 			pbs_strncpy((*req)[i], backptr, len + 1);
 		i++;
-
 	}
 	chars_parsed = foreptr - request;
 

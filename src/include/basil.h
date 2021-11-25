@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /*
  * This file is provided as a convenience to anyone wishing to utilize
  * the Batch and Application Scheduler Interface Layer (BASIL) for the

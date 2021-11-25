@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    pbsfs.cpp
  *
@@ -151,16 +150,13 @@ main(int argc, char *argv[])
 	if ((flags & (FS_PRINT | FS_PRINT_TREE)) && (argc - optind) != 0) {
 		fprintf(stderr, "Usage: pbsfs -[ptdgcs] [-I sched_name]\n");
 		exit(1);
-	}
-	else if ((flags & FS_GET)  && (argc - optind) != 1) {
+	} else if ((flags & FS_GET) && (argc - optind) != 1) {
 		fprintf(stderr, "Usage: pbsfs [-I sched_name] -g <fairshare_entity>\n");
 		exit(1);
-	}
-	else if ((flags & FS_SET) && (argc - optind) != 2) {
+	} else if ((flags & FS_SET) && (argc - optind) != 2) {
 		fprintf(stderr, "Usage: pbsfs [-I sched_name] -s <fairshare_entity> <usage>\n");
 		exit(1);
-	}
-	else if ((flags & FS_COMP) && (argc - optind) != 2) {
+	} else if ((flags & FS_COMP) && (argc - optind) != 2) {
 		fprintf(stderr, "Usage: pbsfs [-I sched_name] -c <entity1> <entity2>\n");
 		exit(1);
 	}
@@ -216,8 +212,7 @@ main(int argc, char *argv[])
 	if (flags & FS_TRIM_TREE) {
 		read_usage(USAGE_FILE, FS_TRIM, fstree);
 		fstree->last_decay = time(NULL);
-	}
-	else
+	} else
 		read_usage(USAGE_FILE, 0, fstree);
 
 	calc_fair_share_perc(fstree->root->child, UNSPECIFIED);
@@ -225,15 +220,13 @@ main(int argc, char *argv[])
 
 	if (flags & FS_PRINT_TREE)
 		print_fairshare(fstree->root, 0);
-	else if (flags & FS_PRINT  ) {
+	else if (flags & FS_PRINT) {
 		printf("Fairshare usage units are in: %s\n", conf.fairshare_res.c_str());
 		print_fairshare(fstree->root, -1);
-	}
-	else if (flags & FS_DECAY) {
+	} else if (flags & FS_DECAY) {
 		decay_fairshare_tree(fstree->root);
 		fstree->last_decay = time(NULL);
-	}
-	else if (flags & (FS_GET | FS_SET | FS_COMP)) {
+	} else if (flags & (FS_GET | FS_SET | FS_COMP)) {
 		ginfo = find_group_info(argv[optind], fstree->root);
 
 		if (ginfo == NULL) {
@@ -259,8 +252,7 @@ main(int argc, char *argv[])
 				case 1:
 					printf("%s\n", ginfo2->name.c_str());
 			}
-		}
-		else if (flags & FS_GET)
+		} else if (flags & FS_GET)
 			print_fairshare_entity(ginfo);
 		else {
 			testp = argv[optind + 1];
@@ -312,12 +304,11 @@ print_fairshare_entity(group_info *ginfo)
 		ginfo->tree_percentage == 0 ? -1 : ginfo->usage / ginfo->tree_percentage);
 
 	printf("Path from root: \n");
-	for (const auto& gp : ginfo->gpath) {
+	for (const auto &gp : ginfo->gpath) {
 		printf("%-10s: %5d %10.0f / %5.3f = %.0f\n",
-			gp->name.c_str(), gp->cresgroup,
-			gp->usage, gp->tree_percentage,
-			gp->tree_percentage == 0 ? -1 :
-			gp->usage / gp->tree_percentage);
+		       gp->name.c_str(), gp->cresgroup,
+		       gp->usage, gp->tree_percentage,
+		       gp->tree_percentage == 0 ? -1 : gp->usage / gp->tree_percentage);
 	}
 }
 
@@ -344,8 +335,7 @@ print_fairshare(group_info *root, int level)
 			"Shares: %-6d Usage: %-6.0lf Perc: %6.3f%%\n",
 			root->name.c_str(), root->resgroup, root->cresgroup, root->shares,
 			root->usage, (root->tree_percentage * 100));
-	}
-	else
+	} else
 		printf("%*s%s(%d)\n", level, " ", root->name.c_str(), root->cresgroup);
 
 	print_fairshare(root->child, level >= 0 ? level + 5 : -1);

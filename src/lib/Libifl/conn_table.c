@@ -45,7 +45,7 @@ static pbs_conn_t **connection = NULL;
 static int curr_connection_sz = 0;
 static int allocated_connection = 0;
 
-static pbs_conn_t * get_connection(int);
+static pbs_conn_t *get_connection(int);
 static int destroy_conntable(void);
 static void _destroy_connection(int);
 static int add_connection(int fd);
@@ -56,28 +56,28 @@ static int add_connection(int fd);
 #define INVALID_SOCK(x) (x < 0 || x >= PBS_LOCAL_CONNECTION)
 #endif
 
-#if defined (linux)
+#if defined(linux)
 #define MUTEX_TYPE PTHREAD_MUTEX_RECURSIVE_NP
 #else
 #define MUTEX_TYPE PTHREAD_MUTEX_RECURSIVE
 #endif
 
-#define LOCK_TABLE(x) \
-	do { \
+#define LOCK_TABLE(x)                                               \
+	do {                                                        \
 		if (pbs_client_thread_init_thread_context() != 0) { \
-			return (x); \
-		} \
-		if (pbs_client_thread_lock_conntable() != 0) { \
-			return (x); \
-		} \
-	} while(0)
+			return (x);                                 \
+		}                                                   \
+		if (pbs_client_thread_lock_conntable() != 0) {      \
+			return (x);                                 \
+		}                                                   \
+	} while (0)
 
-#define UNLOCK_TABLE(x) \
-	do { \
+#define UNLOCK_TABLE(x)                                          \
+	do {                                                     \
 		if (pbs_client_thread_unlock_conntable() != 0) { \
-			return (x); \
-		} \
-	} while(0)
+			return (x);                              \
+		}                                                \
+	} while (0)
 
 /**
  * @brief
@@ -112,10 +112,9 @@ add_connection(int fd)
 		p = realloc(connection, new_sz * sizeof(pbs_conn_t *));
 		if (p == NULL)
 			goto add_connection_err;
-		connection = (pbs_conn_t **)(p);
+		connection = (pbs_conn_t **) (p);
 		memset((connection + curr_connection_sz), 0, (new_sz - curr_connection_sz) * sizeof(pbs_conn_t *));
 		curr_connection_sz = new_sz;
-
 	}
 	if (connection[fd] == NULL) {
 		connection[fd] = calloc(1, sizeof(pbs_conn_t));
@@ -127,7 +126,7 @@ add_connection(int fd)
 			goto add_connection_err;
 		if (pthread_mutex_init(&(connection[fd]->ch_mutex), &attr) != 0)
 			goto add_connection_err;
-		(void)pthread_mutexattr_destroy(&attr);
+		(void) pthread_mutexattr_destroy(&attr);
 		allocated_connection++;
 	} else {
 		if (connection[fd]->ch_errtxt)
@@ -170,7 +169,6 @@ _destroy_connection(int fd)
 	}
 	connection[fd] = NULL;
 }
-
 
 /** @brief
  * 	destroy_conntable - destroy connection table

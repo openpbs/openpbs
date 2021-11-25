@@ -37,9 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_MOM_MACH_H
-#define	_MOM_MACH_H
-#ifdef	__cplusplus
+#ifndef _MOM_MACH_H
+#define _MOM_MACH_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 /*
@@ -57,32 +57,32 @@ typedef unsigned long ulong;
 #endif /* PBS_MACH */
 
 #ifndef MOM_MACH
-#define	MOM_MACH "linux"
+#define MOM_MACH "linux"
 
-#define	SET_LIMIT_SET   1
-#define	SET_LIMIT_ALTER 0
-#define	PBS_CHKPT_MIGRATE 0
-#define	PBS_PROC_SID(x)  proc_info[x].session
-#define	PBS_PROC_PID(x)  proc_info[x].pid
-#define	PBS_PROC_PPID(x) proc_info[x].ppid
-#define	CLR_SJR(sjr)	memset(&sjr, 0, sizeof(sjr));
-#define	PBS_SUPPORT_SUSPEND 1
-#define	task	pbs_task
+#define SET_LIMIT_SET 1
+#define SET_LIMIT_ALTER 0
+#define PBS_CHKPT_MIGRATE 0
+#define PBS_PROC_SID(x) proc_info[x].session
+#define PBS_PROC_PID(x) proc_info[x].pid
+#define PBS_PROC_PPID(x) proc_info[x].ppid
+#define CLR_SJR(sjr) memset(&sjr, 0, sizeof(sjr));
+#define PBS_SUPPORT_SUSPEND 1
+#define task pbs_task
 
-#if	MOM_ALPS
+#if MOM_ALPS
 #include <sys/types.h>
 #include <dlfcn.h>
 #include "/usr/include/job.h"
 #include <basil.h>
-#endif	/* MOM_ALPS */
+#endif /* MOM_ALPS */
 
-typedef struct	pbs_plinks {		/* struct to link processes */
-	pid_t	 pl_pid;		/* pid of this proc */
-	pid_t	 pl_ppid;		/* parent pid of this proc */
-	int	 pl_child;		/* index to child */
-	int	 pl_sib;		/* index to sibling */
-	int	 pl_parent;		/* index to parent */
-	int	 pl_done;		/* kill has been done */
+typedef struct pbs_plinks { /* struct to link processes */
+	pid_t pl_pid;	    /* pid of this proc */
+	pid_t pl_ppid;	    /* parent pid of this proc */
+	int pl_child;	    /* index to child */
+	int pl_sib;	    /* index to sibling */
+	int pl_parent;	    /* index to parent */
+	int pl_done;	    /* kill has been done */
 } pbs_plinks;
 
 extern ulong totalmem;
@@ -93,87 +93,85 @@ extern int bld_ptree(pid_t sid);
 /* 			child back to parent			*/
 
 struct startjob_rtn {
-	int   sj_code;		/* error code	*/
-	pid_t sj_session;	/* session	*/
+	int sj_code;	  /* error code	*/
+	pid_t sj_session; /* session	*/
 
-#if	MOM_ALPS
-	jid_t	sj_jid;
-	long			sj_reservation;
-	unsigned long long	sj_pagg;
-#endif	/* MOM_ALPS */
+#if MOM_ALPS
+	jid_t sj_jid;
+	long sj_reservation;
+	unsigned long long sj_pagg;
+#endif /* MOM_ALPS */
 };
 
-extern int mom_set_limits(job *pjob, int);	/* Set job's limits */
-extern int mom_do_poll(job *pjob);		/* Should limits be polled? */
-extern int mom_does_chkpnt;                     /* see if mom does chkpnt */
-extern int mom_open_poll();		/* Initialize poll ability */
-extern int mom_get_sample();		/* Sample kernel poll data */
-extern int mom_over_limit(job *pjob);	/* Is polled job over limit? */
-extern int mom_set_use(job *pjob);		/* Set resource_used list */
-extern int mom_close_poll();		/* Terminate poll ability */
+extern int mom_set_limits(job *pjob, int); /* Set job's limits */
+extern int mom_do_poll(job *pjob);	   /* Should limits be polled? */
+extern int mom_does_chkpnt;		   /* see if mom does chkpnt */
+extern int mom_open_poll();		   /* Initialize poll ability */
+extern int mom_get_sample();		   /* Sample kernel poll data */
+extern int mom_over_limit(job *pjob);	   /* Is polled job over limit? */
+extern int mom_set_use(job *pjob);	   /* Set resource_used list */
+extern int mom_close_poll();		   /* Terminate poll ability */
 extern int mach_checkpoint(struct task *, char *path, int abt);
-extern long mach_restart(struct task *, char *path);	/* Restart checkpointed job */
-extern int	set_job(job *, struct startjob_rtn *);
-extern void	starter_return(int, int, int, struct startjob_rtn *);
-extern void	set_globid(job *, struct startjob_rtn *);
-extern void	mom_topology(void);
+extern long mach_restart(struct task *, char *path); /* Restart checkpointed job */
+extern int set_job(job *, struct startjob_rtn *);
+extern void starter_return(int, int, int, struct startjob_rtn *);
+extern void set_globid(job *, struct startjob_rtn *);
+extern void mom_topology(void);
 
-#if	MOM_ALPS
-extern	void	ck_acct_facility_present(void);
+#if MOM_ALPS
+extern void ck_acct_facility_present(void);
 
 /*
  *	Interface to the Cray ALPS placement scheduler. (alps.c)
  */
-extern int	alps_create_reserve_request(
+extern int alps_create_reserve_request(
 	job *,
 	basil_request_reserve_t **);
-extern void	alps_free_reserve_request(basil_request_reserve_t *);
-extern int	alps_create_reservation(
+extern void alps_free_reserve_request(basil_request_reserve_t *);
+extern int alps_create_reservation(
 	basil_request_reserve_t *,
 	long *,
 	unsigned long long *);
-extern int	alps_confirm_reservation(job *);
-extern int	alps_cancel_reservation(job *);
-extern int	alps_inventory(void);
-extern int	alps_suspend_resume_reservation(job *, basil_switch_action_t);
-extern int	alps_confirm_suspend_resume(job *, basil_switch_action_t);
-extern void	alps_system_KNL(void);
-extern void	system_to_vnodes_KNL(void);
-#endif	/* MOM_ALPS */
+extern int alps_confirm_reservation(job *);
+extern int alps_cancel_reservation(job *);
+extern int alps_inventory(void);
+extern int alps_suspend_resume_reservation(job *, basil_switch_action_t);
+extern int alps_confirm_suspend_resume(job *, basil_switch_action_t);
+extern void alps_system_KNL(void);
+extern void system_to_vnodes_KNL(void);
+#endif /* MOM_ALPS */
 
-
-#define	COMSIZE		12
+#define COMSIZE 12
 typedef struct proc_stat {
-	pid_t		session;	/* session id */
-	char		state;		/* one of RSDZT: Running, Sleeping,
+	pid_t session;	    /* session id */
+	char state;	    /* one of RSDZT: Running, Sleeping,
 						 Sleeping (uninterruptable), Zombie,
 						 Traced or stopped on signal */
-	pid_t		ppid;		/* parent pid */
-	pid_t		pgrp;		/* process group id */
-	ulong		utime;		/* utime this process */
-	ulong		stime;		/* stime this process */
-	ulong		cutime;		/* sum of children's utime */
-	ulong		cstime;		/* sum of children's stime */
-	pid_t		pid;		/* process id */
-	ulong		vsize;		/* virtual memory size for proc */
-	ulong		rss;		/* resident set size */
-	ulong		start_time;	/* start time of this process */
-	ulong		flags;		/* the flags of the process */
-	ulong		uid;		/* uid of the process owner */
-	char		comm[COMSIZE];	/* command name */
+	pid_t ppid;	    /* parent pid */
+	pid_t pgrp;	    /* process group id */
+	ulong utime;	    /* utime this process */
+	ulong stime;	    /* stime this process */
+	ulong cutime;	    /* sum of children's utime */
+	ulong cstime;	    /* sum of children's stime */
+	pid_t pid;	    /* process id */
+	ulong vsize;	    /* virtual memory size for proc */
+	ulong rss;	    /* resident set size */
+	ulong start_time;   /* start time of this process */
+	ulong flags;	    /* the flags of the process */
+	ulong uid;	    /* uid of the process owner */
+	char comm[COMSIZE]; /* command name */
 } proc_stat_t;
 
-
-typedef	struct	proc_map {
-	unsigned long	vm_start;	/* start of vm for process */
-	unsigned long	vm_end;		/* end of vm for process */
-	unsigned long	vm_size;	/* vm_end - vm_start */
-	unsigned long	vm_offset;	/* offset into vm? */
-	unsigned 	inode;		/* inode of region */
-	char		*dev;		/* device */
+typedef struct proc_map {
+	unsigned long vm_start;	 /* start of vm for process */
+	unsigned long vm_end;	 /* end of vm for process */
+	unsigned long vm_size;	 /* vm_end - vm_start */
+	unsigned long vm_offset; /* offset into vm? */
+	unsigned inode;		 /* inode of region */
+	char *dev;		 /* device */
 } proc_map_t;
 #endif /* MOM_MACH */
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 #endif /* _MOM_MACH_H */

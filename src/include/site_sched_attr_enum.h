@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /*
  * Place holder for site supplied additions to the scheduler's enumerated
  * list of attributes.

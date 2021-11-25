@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file	cs_standard.c
  * @brief
@@ -47,7 +46,6 @@
  * 	  (Hooks) are for the most part stubs which return CS_SUCCESS
  */
 
-
 /* File is to be gutless if PBS not built vanilla w.r.t. security */
 
 #include <pbs_config.h>
@@ -55,7 +53,7 @@
 #include <sys/types.h>
 #include "libsec.h"
 
-#if (!defined(PBS_SECURITY ) || (PBS_SECURITY == STD )) || (defined(PBS_SECURITY) && (PBS_SECURITY == KRB5))
+#if (!defined(PBS_SECURITY) || (PBS_SECURITY == STD)) || (defined(PBS_SECURITY) && (PBS_SECURITY == KRB5))
 
 /* system includes */
 
@@ -89,7 +87,6 @@
  *------------------------------------------------------------------------
  */
 
-
 /*------------------------------------------------------------------------
  * Global symbols and default "evaluations"
  *------------------------------------------------------------------------
@@ -105,8 +102,6 @@ sec_cslog(int ecode, const char *caller, const char *txtmsg)
 }
 
 void (*p_cslog)(int ecode, const char *caller, const char *txtmsg) = sec_cslog;
-
-
 
 /*========================================================================
  * PBS hook functions
@@ -167,7 +162,6 @@ int
 CS_write(int sd, char *buf, size_t len)
 {
 	return (write(sd, buf, len));
-
 }
 
 /**
@@ -219,7 +213,6 @@ CS_server_auth(int sd)
 {
 
 	return (CS_AUTH_CHECK_PORT);
-
 }
 
 /**
@@ -270,7 +263,6 @@ CS_close_app(void)
 	return (CS_SUCCESS);
 }
 
-
 /**
  * @brief
  *	CS_client_init - the client initialization function for global security
@@ -287,7 +279,7 @@ int
 CS_client_init(void)
 {
 
-	return (CS_SUCCESS);	/* always return success if no error */
+	return (CS_SUCCESS); /* always return success if no error */
 }
 
 /**
@@ -328,7 +320,6 @@ CS_verify()
 	return (CS_SUCCESS);
 }
 
-
 /**
  * @brief
  * 	CS_remap_ctx - interface is available to remap connection's context
@@ -366,4 +357,4 @@ CS_remap_ctx(int sd, int newsd)
 	return (CS_SUCCESS);
 }
 
-#endif  /* undefined( PBS_SECURITY ) || ( PBS_SECURITY == STD ) */
+#endif /* undefined( PBS_SECURITY ) || ( PBS_SECURITY == STD ) */

@@ -37,9 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_MOM_SERVER_H
-#define	_MOM_SERVER_H
-#ifdef	__cplusplus
+#ifndef _MOM_SERVER_H
+#define _MOM_SERVER_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -57,40 +57,44 @@ extern "C" {
 typedef struct resc_used_update ruu;
 struct resc_used_update {
 	ruu *ru_next;
-	char *ru_pjobid;		/* pointer to job id */
-	char *ru_comment;		/* a general message */
-	int ru_status;			/* job exit status (or zero) */
-	int ru_hop;			/* hop/run count of job	*/
-	pbs_list_head ru_attr;		/* list of svrattrl */
+	char *ru_pjobid;       /* pointer to job id */
+	char *ru_comment;      /* a general message */
+	int ru_status;	       /* job exit status (or zero) */
+	int ru_hop;	       /* hop/run count of job	*/
+	pbs_list_head ru_attr; /* list of svrattrl */
 #ifdef PBS_MOM
-	time_t ru_created_at;		/* time in epoch at which this ruu was created */
-	job *ru_pjob;			/* pointer to job structure for this ruu */
-	int ru_cmd;			/* cmd for this ruu */
-	pbs_list_link ru_pending;	/* link to mom_pending_ruu list */
+	time_t ru_created_at;	  /* time in epoch at which this ruu was created */
+	job *ru_pjob;		  /* pointer to job structure for this ruu */
+	int ru_cmd;		  /* cmd for this ruu */
+	pbs_list_link ru_pending; /* link to mom_pending_ruu list */
 #endif
 };
 
 #ifdef PBS_MOM
-#define FREE_RUU(x) \
-do { \
-	if (x->ru_pjob) { \
-		x->ru_pjob->ji_pending_ruu = NULL; \
-		x->ru_pjob = NULL; \
-	} \
-	delete_link(&x->ru_pending); \
-	free_attrlist(&x->ru_attr); \
-	if (x->ru_pjobid) free(x->ru_pjobid); \
-	if (x->ru_comment) free(x->ru_comment); \
-	free(x); \
-} while (0)
+#define FREE_RUU(x)                                        \
+	do {                                               \
+		if (x->ru_pjob) {                          \
+			x->ru_pjob->ji_pending_ruu = NULL; \
+			x->ru_pjob = NULL;                 \
+		}                                          \
+		delete_link(&x->ru_pending);               \
+		free_attrlist(&x->ru_attr);                \
+		if (x->ru_pjobid)                          \
+			free(x->ru_pjobid);                \
+		if (x->ru_comment)                         \
+			free(x->ru_comment);               \
+		free(x);                                   \
+	} while (0)
 #else
-#define FREE_RUU(x) \
-do { \
-	free_attrlist(&x->ru_attr); \
-	if (x->ru_pjobid) free(x->ru_pjobid); \
-	if (x->ru_comment) free(x->ru_comment); \
-	free(x); \
-} while (0)
+#define FREE_RUU(x)                          \
+	do {                                 \
+		free_attrlist(&x->ru_attr);  \
+		if (x->ru_pjobid)            \
+			free(x->ru_pjobid);  \
+		if (x->ru_comment)           \
+			free(x->ru_comment); \
+		free(x);                     \
+	} while (0)
 #endif
 
 extern int job_obit(ruu *, int);
@@ -105,4 +109,4 @@ extern u_long resc_used(job *, char *, u_long (*func)(resource *pres));
 #ifdef __cplusplus
 }
 #endif
-#endif	/* _MOM_SERVER_H */
+#endif /* _MOM_SERVER_H */

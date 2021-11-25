@@ -46,9 +46,9 @@
 #include "pbs_error.h"
 #include "pbs_internal.h"
 
-#define PKT_MAGIC    "PKTV1"
+#define PKT_MAGIC "PKTV1"
 #define PKT_MAGIC_SZ sizeof(PKT_MAGIC)
-#define PKT_HDR_SZ   (PKT_MAGIC_SZ + 1 + sizeof(int))
+#define PKT_HDR_SZ (PKT_MAGIC_SZ + 1 + sizeof(int))
 
 static pbs_dis_buf_t *dis_get_readbuf(int);
 static pbs_dis_buf_t *dis_get_writebuf(int);
@@ -280,11 +280,11 @@ __send_pkt(int fd, pbs_dis_buf_t *tp, int encrypt_done)
 		if (authdef == NULL || authdef->encrypt_data == NULL)
 			return -1;
 
-		if (authdef->encrypt_data(authctx, (void *)(tp->tdis_data + PKT_HDR_SZ), tp->tdis_len - PKT_HDR_SZ, &data_out, &len_out) != 0)
+		if (authdef->encrypt_data(authctx, (void *) (tp->tdis_data + PKT_HDR_SZ), tp->tdis_len - PKT_HDR_SZ, &data_out, &len_out) != 0)
 			return -1;
 
 		dis_resize_buf(tp, len_out + PKT_HDR_SZ);
-		memcpy((void *)(tp->tdis_data + PKT_HDR_SZ), data_out, len_out);
+		memcpy((void *) (tp->tdis_data + PKT_HDR_SZ), data_out, len_out);
 		free(data_out);
 		tp->tdis_len = len_out + PKT_HDR_SZ;
 	}
@@ -672,7 +672,7 @@ dis_getc(int fd)
 		dis_clear_buf(tp);
 		if ((c = __recv_pkt(fd, &unused, tp)) <= 0) {
 			dis_clear_buf(tp);
-			return c;  /* Error or EOF */
+			return c; /* Error or EOF */
 		}
 	}
 	c = *tp->tdis_pos;
@@ -722,7 +722,7 @@ dis_gets(int fd, char *str, size_t ct)
 
 		if ((c = __recv_pkt(fd, &unused, tp)) <= 0) {
 			dis_clear_buf(tp);
-			return c;  /* Error or EOF */
+			return c; /* Error or EOF */
 		}
 	}
 	memcpy(str, tp->tdis_pos, ct);

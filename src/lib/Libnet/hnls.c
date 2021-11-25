@@ -58,9 +58,8 @@
 
 #elif defined(WIN32)
 
-#pragma comment(lib,"Ws2_32.lib")
-#pragma comment(lib,"Iphlpapi.lib")
-
+#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "Iphlpapi.lib")
 
 #else
 
@@ -76,7 +75,7 @@
 
 #endif
 
-extern char	*netaddr(struct sockaddr_in *);
+extern char *netaddr(struct sockaddr_in *);
 #define NETADDR_BUF 80
 
 /**
@@ -131,7 +130,7 @@ get_sa_family(struct sockaddr *saddr, char *family)
 	if (!saddr)
 		return;
 
-	switch(saddr->sa_family){
+	switch (saddr->sa_family) {
 		case AF_INET:
 			strncpy(family, "ipv4", IFFAMILY_MAX);
 			break;
@@ -179,7 +178,7 @@ get_if_hostnames(struct sockaddr *saddr)
 
 	switch (saddr->sa_family) {
 		case AF_INET:
-			saddr_in = (struct sockaddr_in *)saddr;
+			saddr_in = (struct sockaddr_in *) saddr;
 #ifdef WIN32
 			saddr_in->sin_family = AF_INET;
 #endif /* WIN32 */
@@ -199,7 +198,7 @@ get_if_hostnames(struct sockaddr *saddr)
 #endif /* WIN32 */
 			break;
 		case AF_INET6:
-			saddr_in6 = (struct sockaddr_in6 *)saddr;
+			saddr_in6 = (struct sockaddr_in6 *) saddr;
 #ifdef WIN32
 			saddr_in6->sin6_family = AF_INET6;
 #endif /* WIN32 */
@@ -223,20 +222,20 @@ get_if_hostnames(struct sockaddr *saddr)
 	}
 
 #ifdef WIN32
-	names = (char**)calloc(2, sizeof(char*));
-	if(!names)
+	names = (char **) calloc(2, sizeof(char *));
+	if (!names)
 		return NULL;
 	names[0] = strdup(host);
 #else
 	/* Count the aliases. */
 	for (aliases = 0; hostp->h_aliases[aliases]; aliases++)
 		;
-	names = (char **)calloc((aliases + 2), sizeof(char *));
+	names = (char **) calloc((aliases + 2), sizeof(char *));
 	if (!names)
 		return NULL;
 	names[0] = strdup(hostp->h_name);
 	for (i = 0; i < aliases; i++) {
-		names[i+1] = strdup(hostp->h_aliases[i]);
+		names[i + 1] = strdup(hostp->h_aliases[i]);
 	}
 #endif /* WIN32 */
 	return names;
@@ -279,9 +278,9 @@ get_if_info(char *msg)
 	}
 	for (listp = ifp; listp; listp = listp->ifa_next) {
 		hostnames = get_if_hostnames(listp->ifa_addr);
-		if(!hostnames)
+		if (!hostnames)
 			continue;
-		curr = (struct log_net_info *)calloc(1, sizeof(struct log_net_info));
+		curr = (struct log_net_info *) calloc(1, sizeof(struct log_net_info));
 		if (!curr) {
 			free_if_info(head);
 			free_if_hostnames(hostnames);
@@ -298,7 +297,7 @@ get_if_info(char *msg)
 		/* Count the hostname entries and allocate space */
 		for (c = 0; hostnames[c]; c++)
 			;
-		curr->ifhostnames = (char**)calloc(c + 1, sizeof(char*));
+		curr->ifhostnames = (char **) calloc(c + 1, sizeof(char *));
 		if (!curr->ifhostnames) {
 			free_if_info(head);
 			free_if_hostnames(hostnames);
@@ -306,8 +305,8 @@ get_if_info(char *msg)
 			msg[LOG_BUF_SIZE - 1] = '\0';
 			return NULL;
 		}
-		for (i = 0; i < c; i++){
-			curr->ifhostnames[i] = (char*)calloc(PBS_MAXHOSTNAME, sizeof(char));
+		for (i = 0; i < c; i++) {
+			curr->ifhostnames[i] = (char *) calloc(PBS_MAXHOSTNAME, sizeof(char));
 			if (!curr->ifhostnames[i]) {
 				free_if_info(head);
 				free_if_hostnames(hostnames);
@@ -336,7 +335,7 @@ get_if_info(char *msg)
 
 	if (!msg)
 		return NULL;
-	addrlistp = (IP_ADAPTER_ADDRESSES *)malloc(size);
+	addrlistp = (IP_ADAPTER_ADDRESSES *) malloc(size);
 	if (!addrlistp) {
 		strncpy(msg, "Out of memory", LOG_BUF_SIZE);
 		msg[LOG_BUF_SIZE - 1] = '\0';
@@ -372,10 +371,10 @@ get_if_info(char *msg)
 	}
 	for (addrp = addrlistp; addrp; addrp = addrp->Next) {
 		for (ucp = addrp->FirstUnicastAddress; ucp; ucp = ucp->Next) {
-			hostnames = get_if_hostnames((struct sockaddr *)ucp->Address.lpSockaddr);
+			hostnames = get_if_hostnames((struct sockaddr *) ucp->Address.lpSockaddr);
 			if (!hostnames)
 				continue;
-			curr = (struct log_net_info *)calloc(1, sizeof(struct log_net_info));
+			curr = (struct log_net_info *) calloc(1, sizeof(struct log_net_info));
 			if (!curr) {
 				free(addrlistp);
 				free_if_info(head);
@@ -403,7 +402,7 @@ get_if_info(char *msg)
 			/* Count the hostname entries and allocate space */
 			for (c = 0; hostnames[c]; c++)
 				;
-			curr->ifhostnames = (char**)calloc(c + 1, sizeof(char*));
+			curr->ifhostnames = (char **) calloc(c + 1, sizeof(char *));
 			if (!curr->ifhostnames) {
 				free(addrlistp);
 				free_if_info(head);
@@ -413,7 +412,7 @@ get_if_info(char *msg)
 				return NULL;
 			}
 			for (i = 0; i < c; i++) {
-				curr->ifhostnames[i] = (char*)calloc(PBS_MAXHOSTNAME, sizeof(char));
+				curr->ifhostnames[i] = (char *) calloc(PBS_MAXHOSTNAME, sizeof(char));
 				if (!(curr->ifhostnames[i])) {
 					free(addrlistp);
 					free_if_info(head);
@@ -434,7 +433,7 @@ get_if_info(char *msg)
 	free(addrlistp);
 #endif
 
-	return(head);
+	return (head);
 }
 
 /**
@@ -462,7 +461,7 @@ free_if_info(struct log_net_info *ni)
 	while (curr) {
 		struct log_net_info *temp;
 		temp = curr;
-		curr = curr -> next;
+		curr = curr->next;
 		if (temp->ifhostnames != NULL) {
 			for (i = 0; temp->ifhostnames[i]; i++)
 				free(temp->ifhostnames[i]);
@@ -623,13 +622,13 @@ get_all_ips(char *hostname, char *msg_buf, size_t msg_buf_len)
 
 		if ((listp->ifa_addr == NULL) || (listp->ifa_addr->sa_family != AF_INET))
 			continue;
-		sprintf(buf, "%s", netaddr((struct sockaddr_in *)listp->ifa_addr));
-		if (!strcmp(buf,"unknown"))
+		sprintf(buf, "%s", netaddr((struct sockaddr_in *) listp->ifa_addr));
+		if (!strcmp(buf, "unknown"))
 			continue;
 		if ((p = strchr(buf, ':')))
 			*p = '\0';
 
-		hlen = strlen (buf);
+		hlen = strlen(buf);
 		tmp = realloc(nodenames, len + hlen + 2); /* 2 for comma and null char */
 		if (!tmp) {
 			strncpy(msg_buf, "Out of memory", msg_buf_len);
@@ -652,7 +651,7 @@ get_all_ips(char *hostname, char *msg_buf, size_t msg_buf_len)
 
 #elif defined(WIN32)
 
-	pIPAddrTable = (MIB_IPADDRTABLE *) malloc(sizeof (MIB_IPADDRTABLE));
+	pIPAddrTable = (MIB_IPADDRTABLE *) malloc(sizeof(MIB_IPADDRTABLE));
 
 	if (pIPAddrTable) {
 		// Make an initial call to GetIpAddrTable to get the
@@ -660,7 +659,6 @@ get_all_ips(char *hostname, char *msg_buf, size_t msg_buf_len)
 		if (GetIpAddrTable(pIPAddrTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER) {
 			free(pIPAddrTable);
 			pIPAddrTable = (MIB_IPADDRTABLE *) malloc(dwSize);
-
 		}
 		if (pIPAddrTable == NULL) {
 			strncpy(msg_buf, "Memory allocation failed for GetIpAddrTable", msg_buf_len);
@@ -670,7 +668,7 @@ get_all_ips(char *hostname, char *msg_buf, size_t msg_buf_len)
 	}
 	// Make a second call to GetIpAddrTable to get the
 	// actual data we want
-	if ( (dwRetVal = GetIpAddrTable( pIPAddrTable, &dwSize, 0 )) != NO_ERROR ) {
+	if ((dwRetVal = GetIpAddrTable(pIPAddrTable, &dwSize, 0)) != NO_ERROR) {
 		strncpy(msg_buf, "GetIpAddrTable failed", msg_buf_len);
 		free(pIPAddrTable);
 		free(nodenames);
@@ -681,7 +679,7 @@ get_all_ips(char *hostname, char *msg_buf, size_t msg_buf_len)
 		int hlen;
 		IPAddr.S_un.S_addr = (u_long) pIPAddrTable->table[i].dwAddr;
 		sprintf(buf, "%s", inet_ntoa(IPAddr));
-		hlen = strlen (buf);
+		hlen = strlen(buf);
 		tmp = realloc(nodenames, len + hlen + 2); /* 2 for comma and null char */
 		if (!tmp) {
 			strncpy(msg_buf, "Out of memory", msg_buf_len);

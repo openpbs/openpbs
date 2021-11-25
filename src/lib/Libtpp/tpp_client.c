@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file	tpp_client.c
  *
@@ -91,7 +90,6 @@
 #include <sys/time.h>
 #include <stdint.h>
 
-
 #include "pbs_idx.h"
 #include "libpbs.h"
 #include "tpp_internal.h"
@@ -105,9 +103,9 @@
 /**
  *	file descriptor returned by tpp_init()
  */
-int		tpp_fd = -1;
+int tpp_fd = -1;
 
- /* whether a forked child called tpp_terminate or not? initialized to false */
+/* whether a forked child called tpp_terminate or not? initialized to false */
 int tpp_terminated_in_child = 0;
 
 /*
@@ -149,21 +147,21 @@ typedef struct {
 typedef struct {
 	unsigned char strm_type; /* normal stream or multicast stream */
 
-	unsigned int sd;         /* source stream descriptor, APP thread assigns, IO thread uses */
-	unsigned int dest_sd;    /* destination stream descriptor, IO thread only */
-	unsigned int src_magic;  /* A magically unique number that identifies src stream uniquely */
+	unsigned int sd;	 /* source stream descriptor, APP thread assigns, IO thread uses */
+	unsigned int dest_sd;	 /* destination stream descriptor, IO thread only */
+	unsigned int src_magic;	 /* A magically unique number that identifies src stream uniquely */
 	unsigned int dest_magic; /* A magically unique number that identifies dest stream uniquely */
 
-	short used_locally;      /* Whether this stream was accessed locally by the APP, APP thread only */
+	short used_locally; /* Whether this stream was accessed locally by the APP, APP thread only */
 
-	unsigned short u_state;   /* stream state, APP thread updates, IO thread read-only */
+	unsigned short u_state; /* stream state, APP thread updates, IO thread read-only */
 	unsigned short t_state;
-	short lasterr;            /* updated by IO thread only, for future use */
+	short lasterr; /* updated by IO thread only, for future use */
 
 	tpp_addr_t src_addr;  /* address of the source host */
 	tpp_addr_t dest_addr; /* address of destination host - set by APP thread, read-only by IO thread */
 
-	void *user_data;            /* user data set by tpp_dis functions. Basically used for DIS encoding */
+	void *user_data; /* user data set by tpp_dis functions. Basically used for DIS encoding */
 
 	tpp_que_t recv_queue; /* received packets - APP thread only, hence no lock */
 
@@ -180,16 +178,16 @@ typedef struct {
  * stream structure
  */
 typedef struct {
-	int slot_state;      /* state of the slot - used, free */
+	int slot_state; /* state of the slot - used, free */
 	stream_t *strm; /* pointer to the stream structure at this slot */
 } stream_slot_t;
 stream_slot_t *strmarray = NULL; /* array of streams */
-pthread_rwlock_t strmarray_lock;      /* global lock for the streams array and streams_idx (not for an individual stream) */
-unsigned int max_strms = 0;           /* total number of streams allocated */
+pthread_rwlock_t strmarray_lock; /* global lock for the streams array and streams_idx (not for an individual stream) */
+unsigned int max_strms = 0;	 /* total number of streams allocated */
 
 /* the following two variables are used to quickly find out a unused slot */
 unsigned int high_sd = UNINITIALIZED_INT; /* the highest stream sd used */
-tpp_que_t freed_sd_queue;            /* last freed stream sd */
+tpp_que_t freed_sd_queue;		  /* last freed stream sd */
 int freed_queue_count = 0;
 
 /* index of streams - so that we can search faster inside it */
@@ -207,14 +205,14 @@ tpp_que_t strm_action_queue;
 pthread_mutex_t strm_action_queue_lock;
 
 /* leaf specific stream states */
-#define TPP_STRM_STATE_OPEN             1   /* stream is open */
-#define TPP_STRM_STATE_CLOSE            2   /* stream is closed */
+#define TPP_STRM_STATE_OPEN 1  /* stream is open */
+#define TPP_STRM_STATE_CLOSE 2 /* stream is closed */
 
-#define TPP_TRNS_STATE_OPEN             1   /* stream open */
-#define TPP_TRNS_STATE_PEER_CLOSED      2   /* stream closed by peer */
-#define TPP_TRNS_STATE_NET_CLOSED       3   /* network closed (noroute etc) */
+#define TPP_TRNS_STATE_OPEN 1	     /* stream open */
+#define TPP_TRNS_STATE_PEER_CLOSED 2 /* stream closed by peer */
+#define TPP_TRNS_STATE_NET_CLOSED 3  /* network closed (noroute etc) */
 
-#define TPP_MCAST_SLOT_INC              100 /* inc members in mcast group */
+#define TPP_MCAST_SLOT_INC 100 /* inc members in mcast group */
 
 /* the physical connection to the router from this leaf */
 static tpp_router_t **routers = NULL;
@@ -235,7 +233,7 @@ static stream_t *get_strm(unsigned int sd);
 static stream_t *alloc_stream(tpp_addr_t *src_addr, tpp_addr_t *dest_addr);
 static void free_stream(unsigned int sd);
 static void free_stream_resources(stream_t *strm);
-static void queue_strm_close(stream_t *); /* call only by APP thread, however inserts into strm_action_queue */
+static void queue_strm_close(stream_t *);     /* call only by APP thread, however inserts into strm_action_queue */
 static void queue_strm_free(unsigned int sd); /* invoked by IO thread only, via acting on the strm_action_queue */
 static void act_strm(time_t now, int force);
 static int send_app_strm_close(stream_t *strm, int cmd, int error);
@@ -448,7 +446,7 @@ static int
 leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 {
 	tpp_context_t *ctx = (tpp_context_t *) c;
-	conn_auth_t *authdata = (conn_auth_t *)extra;
+	conn_auth_t *authdata = (conn_auth_t *) extra;
 	int rc = 0;
 
 	if (!ctx)
@@ -458,7 +456,7 @@ leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 		return 0;
 
 	if (tpp_conf->auth_config->encrypt_method[0] != '\0' ||
-		strcmp(tpp_conf->auth_config->auth_method, AUTH_RESVPORT_NAME) != 0) {
+	    strcmp(tpp_conf->auth_config->auth_method, AUTH_RESVPORT_NAME) != 0) {
 
 		/*
 		 * Since either auth is not resvport or encryption is enabled,
@@ -593,7 +591,7 @@ tpp_init(struct tpp_config *cnf)
 
 	tpp_conf = cnf;
 	if (tpp_conf->node_name == NULL) {
-		tpp_log(LOG_CRIT, NULL,  "TPP leaf node name is NULL");
+		tpp_log(LOG_CRIT, NULL, "TPP leaf node name is NULL");
 		return -1;
 	}
 
@@ -638,11 +636,11 @@ tpp_init(struct tpp_config *cnf)
 	 * from the IO thread from the transport layer
 	 */
 	tpp_transport_set_handlers(
-		leaf_pkt_presend_handler, /* called before sending packet */
-		leaf_pkt_handler, /* called when a packet arrives */
-		leaf_close_handler, /* called when a connection closes */
+		leaf_pkt_presend_handler,  /* called before sending packet */
+		leaf_pkt_handler,	   /* called when a packet arrives */
+		leaf_close_handler,	   /* called when a connection closes */
 		leaf_post_connect_handler, /* called when connection restores */
-		leaf_timer_handler /* called after amt of time from previous handler */
+		leaf_timer_handler	   /* called after amt of time from previous handler */
 	);
 
 	/* initialize the tpp transport layer */
@@ -666,7 +664,7 @@ tpp_init(struct tpp_config *cnf)
 
 	/* initialize the router structures and initiate connections to them */
 	for (i = 0; tpp_conf->routers[i]; i++) {
-		if ((routers[i] = malloc(sizeof(tpp_router_t))) == NULL)  {
+		if ((routers[i] = malloc(sizeof(tpp_router_t))) == NULL) {
 			tpp_log(LOG_CRIT, __func__, "Out of memory allocating pbs_comm structure");
 			return -1;
 		}
@@ -806,7 +804,7 @@ tpp_open(char *dest_host, unsigned int port)
 	 * elsewhere, either when network first dropped or if any message
 	 * comes to such a half open stream
 	 */
-	while (pbs_idx_find(streams_idx, &pdest_addr, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
+	while (pbs_idx_find(streams_idx, &pdest_addr, (void **) &strm, &idx_ctx) == PBS_IDX_RET_OK) {
 		if (memcmp(pdest_addr, &dest_addr, sizeof(tpp_addr_t)) != 0)
 			break;
 		if (strm->u_state == TPP_STRM_STATE_OPEN && strm->t_state == TPP_TRNS_STATE_OPEN && strm->used_locally == 1) {
@@ -837,7 +835,6 @@ tpp_open(char *dest_host, unsigned int port)
 
 	return strm->sd;
 }
-
 
 /**
  * @brief
@@ -968,7 +965,7 @@ tpp_send(int sd, void *data, int len)
 
 	rc = send_to_router(pkt);
 	if (rc == 0)
-		return len;  /* all given data sent, so return len */
+		return len; /* all given data sent, so return len */
 
 	if (rc == -2)
 		tpp_log(LOG_CRIT, __func__, "mbox full, returning error to App!");
@@ -1121,7 +1118,7 @@ alloc_stream(tpp_addr_t *src_addr, tpp_addr_t *dest_addr)
 
 	data = tpp_deque(&freed_sd_queue);
 	if (data) {
-		freed_sd = (unsigned int)(intptr_t) data;
+		freed_sd = (unsigned int) (intptr_t) data;
 		freed_queue_count--;
 	}
 
@@ -1714,7 +1711,7 @@ tpp_mcast_add_strm(int mtfd, int tfd, bool unique)
 		if (!mstrm->mcast_data->strms) {
 			free(mstrm->mcast_data);
 			tpp_log(LOG_CRIT, __func__, "Out of memory allocating strm array of %lu bytes",
-				(unsigned long)(TPP_MCAST_SLOT_INC * sizeof(int)));
+				(unsigned long) (TPP_MCAST_SLOT_INC * sizeof(int)));
 			return -1;
 		}
 		mstrm->mcast_data->num_slots = TPP_MCAST_SLOT_INC;
@@ -1904,7 +1901,7 @@ tpp_mcast_send(int mtfd, void *data, unsigned int to_send, unsigned int len)
 		memcpy(&tmp_minfo.dest_addr, &strm->dest_addr, sizeof(tpp_addr_t));
 
 		if (def_ctx == NULL) { /* no compression */
-			minfo = (tpp_mcast_pkt_info_t *)((char *) minfo_buf + (i * sizeof(tpp_mcast_pkt_info_t)));
+			minfo = (tpp_mcast_pkt_info_t *) ((char *) minfo_buf + (i * sizeof(tpp_mcast_pkt_info_t)));
 			memcpy(minfo, &tmp_minfo, sizeof(tpp_mcast_pkt_info_t));
 		} else {
 			finish = (i == (num_fds - 1)) ? 1 : 0;
@@ -2060,7 +2057,6 @@ queue_strm_close(stream_t *strm)
  * ============================================================================
  */
 
-
 /**
  * @brief
  *	Free stream and add stream slot to a queue of slots to be marked free
@@ -2182,7 +2178,7 @@ find_stream_with_dest(tpp_addr_t *dest_addr, unsigned int dest_sd, unsigned int 
 	void *idx_nkey = dest_addr;
 	stream_t *strm;
 
-	while (pbs_idx_find(streams_idx, &idx_nkey, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
+	while (pbs_idx_find(streams_idx, &idx_nkey, (void **) &strm, &idx_ctx) == PBS_IDX_RET_OK) {
 		if (memcmp(idx_nkey, dest_addr, sizeof(tpp_addr_t)) != 0)
 			break;
 		TPP_DBPRT("sd=%u, dest_sd=%u, u_state=%d, t-state=%d, dest_magic=%u", strm->sd, strm->dest_sd, strm->u_state, strm->t_state, strm->dest_magic);
@@ -2486,7 +2482,7 @@ free_stream(unsigned int sd)
 		stream_t *t_strm = NULL;
 		void *pdest_addr = &strm->dest_addr;
 
-		while (pbs_idx_find(streams_idx, &pdest_addr, (void **)&t_strm, &idx_ctx) == PBS_IDX_RET_OK) {
+		while (pbs_idx_find(streams_idx, &pdest_addr, (void **) &t_strm, &idx_ctx) == PBS_IDX_RET_OK) {
 			if (memcmp(pdest_addr, &strm->dest_addr, sizeof(tpp_addr_t)) != 0)
 				break;
 			if (strm == t_strm) {
@@ -2512,7 +2508,7 @@ free_stream(unsigned int sd)
 	free(strm);
 
 	if (freed_queue_count < 100) {
-		tpp_enque(&freed_sd_queue, (void *)(intptr_t) sd);
+		tpp_enque(&freed_sd_queue, (void *) (intptr_t) sd);
 		freed_queue_count++;
 	}
 
@@ -2555,7 +2551,7 @@ free_stream(unsigned int sd)
 static int
 leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *c, void *extra)
 {
-	conn_auth_t *authdata = (conn_auth_t *)extra;
+	conn_auth_t *authdata = (conn_auth_t *) extra;
 	tpp_context_t *ctx = (tpp_context_t *) c;
 	tpp_router_t *r;
 	tpp_data_pkt_hdr_t *data;
@@ -2564,7 +2560,7 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *c, void *extra)
 
 	if (!pkt)
 		return 0;
-		
+
 	first_chunk = GET_NEXT(pkt->chunks);
 	if (!first_chunk)
 		return 0;
@@ -2576,7 +2572,7 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *c, void *extra)
 	if (type == TPP_CTL_JOIN) {
 		r = (tpp_router_t *) ctx->ptr;
 		r->state = TPP_ROUTER_STATE_CONNECTED;
-		r->delay = 0; /* reset connection retry time to 0 */
+		r->delay = 0;		/* reset connection retry time to 0 */
 		r->conn_time = time(0); /* record connect time */
 
 		tpp_log(LOG_CRIT, NULL, "Connected to pbs_comm %s", r->router_name);
@@ -2724,7 +2720,7 @@ leaf_pkt_handler_inner(int tfd, void *buf, void **data_out, int len, void *ctx, 
 	stream_t *strm;
 	enum TPP_MSG_TYPES type;
 	tpp_data_pkt_hdr_t *dhdr = buf;
-	conn_auth_t *authdata = (conn_auth_t *)extra;
+	conn_auth_t *authdata = (conn_auth_t *) extra;
 	int totlen;
 	int rc;
 
@@ -2733,7 +2729,7 @@ again:
 	type = dhdr->type;
 	errno = 0;
 
-	if(type >= TPP_LAST_MSG)
+	if (type >= TPP_LAST_MSG)
 		return -1;
 
 	switch (type) {
@@ -2751,7 +2747,7 @@ again:
 				return -1;
 			}
 
-			if (authdata->encryptdef->decrypt_data(authdata->encryptctx, (void *)((char *)buf + sz), (size_t)len - sz, data_out, (size_t *)&len_out) != 0) {
+			if (authdata->encryptdef->decrypt_data(authdata->encryptctx, (void *) ((char *) buf + sz), (size_t) len - sz, data_out, (size_t *) &len_out) != 0) {
 				return -1;
 			}
 
@@ -2762,8 +2758,7 @@ again:
 			dhdr = *data_out;
 			len = len_out;
 			goto again;
-		}
-		break;
+		} break;
 
 		case TPP_AUTH_CTX: {
 			tpp_auth_pkt_hdr_t ahdr = {0};
@@ -2772,13 +2767,13 @@ again:
 			int rc = 0;
 
 			memcpy(&ahdr, dhdr, sizeof(tpp_auth_pkt_hdr_t));
-			len_in = (size_t)len - sizeof(tpp_auth_pkt_hdr_t);
+			len_in = (size_t) len - sizeof(tpp_auth_pkt_hdr_t);
 			data_in = calloc(1, len_in);
 			if (data_in == NULL) {
 				tpp_log(LOG_CRIT, __func__, "Out of memory");
 				return -1;
 			}
-			memcpy(data_in, (char *)dhdr + sizeof(tpp_auth_pkt_hdr_t), len_in);
+			memcpy(data_in, (char *) dhdr + sizeof(tpp_auth_pkt_hdr_t), len_in);
 
 			rc = tpp_handle_auth_handshake(tfd, tfd, authdata, ahdr.for_encrypt, data_in, len_in);
 			if (rc != 1) {
@@ -2803,8 +2798,7 @@ again:
 
 			/* send TPP_CTL_JOIN msg to router */
 			return leaf_send_ctl_join(tfd, ctx);
-		}
-		break; /* TPP_AUTH_CTX */
+		} break; /* TPP_AUTH_CTX */
 
 		case TPP_CTL_MSG: {
 			tpp_ctl_pkt_hdr_t *hdr = (tpp_ctl_pkt_hdr_t *) dhdr;
@@ -2834,8 +2828,7 @@ again:
 				tpp_log(LOG_CRIT, NULL, "tfd %d, Received authentication error from router %s, err=%d, msg=\"%s\"", tfd, tpp_netaddr(&hdr->src_addr), hdr->error_num, msg);
 				return -1; /* close connection */
 			}
-		}
-		break; /* TPP_CTL_MSG */
+		} break; /* TPP_CTL_MSG */
 
 		case TPP_CTL_LEAVE: {
 			tpp_leave_pkt_hdr_t *hdr = (tpp_leave_pkt_hdr_t *) dhdr;
@@ -2855,7 +2848,7 @@ again:
 				void *idx_ctx = NULL;
 				void *paddr = &addrs[i];
 
-				while (pbs_idx_find(streams_idx, &paddr, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
+				while (pbs_idx_find(streams_idx, &paddr, (void **) &strm, &idx_ctx) == PBS_IDX_RET_OK) {
 					if (memcmp(paddr, &addrs[i], sizeof(tpp_addr_t)) != 0)
 						break;
 					strm->lasterr = 0;
@@ -2879,9 +2872,8 @@ again:
 			}
 
 			return 0;
-		}
-		break;
-		/* TPP_CTL_LEAVE */
+		} break;
+			/* TPP_CTL_LEAVE */
 
 		case TPP_DATA:
 		case TPP_CLOSE_STRM: {
@@ -2944,17 +2936,16 @@ again:
 			 * and the ack carries the other sides sd, which we must store
 			 * and use in the next send out.
 			 */
-			strm->dest_sd = src_sd; /* next time outgoing will have dest_fd */
+			strm->dest_sd = src_sd;	      /* next time outgoing will have dest_fd */
 			strm->dest_magic = src_magic; /* used for matching next time onwards */
 
 			rc = send_pkt_to_app(strm, type, data, sz, totlen);
 
 			return rc; /* 0 - success, -1 failed, -2 app mbox full */
-		}
-		break; /* TPP_DATA, TPP_CLOSE_STRM */
+		} break;	   /* TPP_DATA, TPP_CLOSE_STRM */
 
 		default:
-			tpp_log(LOG_ERR, NULL,  "Bad header for incoming packet on fd %d, header = %d, len = %d", tfd, type, len);
+			tpp_log(LOG_ERR, NULL, "Bad header for incoming packet on fd %d, header = %d, len = %d", tfd, type, len);
 
 	} /* switch */
 
@@ -2990,7 +2981,7 @@ leaf_close_handler(int tfd, int error, void *c, void *extra)
 	int last_state;
 
 	if (extra) {
-		conn_auth_t *authdata = (conn_auth_t *)extra;
+		conn_auth_t *authdata = (conn_auth_t *) extra;
 		if (authdata->authctx && authdata->authdef)
 			authdata->authdef->destroy_ctx(authdata->authctx);
 		if (authdata->authdef != authdata->encryptdef && authdata->encryptctx && authdata->encryptdef)

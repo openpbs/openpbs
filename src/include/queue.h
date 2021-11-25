@@ -46,7 +46,7 @@ extern "C" {
 #include "attribute.h"
 #include "server_limits.h"
 
-#define QTYPE_Unset	0
+#define QTYPE_Unset 0
 #define QTYPE_Execution 1
 #define QTYPE_RoutePush 2
 #define QTYPE_RoutePull 3
@@ -106,7 +106,7 @@ extern void que_free(pbs_queue *);
 extern int que_save_db(pbs_queue *);
 
 #define QUE_SAVE_FULL 0
-#define QUE_SAVE_NEW  1
+#define QUE_SAVE_NEW 1
 
 attribute *get_qattr(const pbs_queue *pq, int attr_idx);
 char *get_qattr_str(const pbs_queue *pq, int attr_idx);

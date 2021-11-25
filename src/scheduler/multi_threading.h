@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #ifndef SRC_SCHEDULER_MULTI_THREADING_H_
 #define SRC_SCHEDULER_MULTI_THREADING_H_
 

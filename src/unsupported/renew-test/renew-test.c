@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -56,21 +55,21 @@ prepare_ccache(krb5_context context, krb5_creds *creds, krb5_ccache *cc)
 	ret = krb5_cc_new_unique(context, "MEMORY", NULL, &ccache);
 	if (ret) {
 		fprintf(stderr, "krb5_cc_new_unique() failed (%s)",
-				krb5_get_error_message(context, ret));
+			krb5_get_error_message(context, ret));
 		goto end;
 	}
 
 	ret = krb5_cc_initialize(context, ccache, creds->client);
 	if (ret) {
 		fprintf(stderr, "krb5_cc_initialize() failed (%s)",
-				krb5_get_error_message(context, ret));
+			krb5_get_error_message(context, ret));
 		goto end;
 	}
 
 	ret = krb5_cc_store_cred(context, ccache, creds);
 	if (ret) {
 		fprintf(stderr, "krb5_cc_store_cred() failed (%s)",
-				krb5_get_error_message(context, ret));
+			krb5_get_error_message(context, ret));
 		goto end;
 	}
 
@@ -95,7 +94,7 @@ get_init_creds_user(krb5_context context, const char *username, krb5_creds *cred
 	ret = krb5_parse_name(context, username, &user);
 	if (ret) {
 		fprintf(stderr, "Parsing user principal (%s) failed: %s.\n",
-				username, krb5_get_error_message(context, ret));
+			username, krb5_get_error_message(context, ret));
 		goto end;
 	}
 
@@ -105,14 +104,14 @@ get_init_creds_user(krb5_context context, const char *username, krb5_creds *cred
 		ret = krb5_kt_default(context, &keytab);
 	if (ret) {
 		fprintf(stderr, "Cannot open keytab: %s\n",
-				krb5_get_error_message(context, ret));
+			krb5_get_error_message(context, ret));
 		goto end;
 	}
 
 	ret = krb5_get_init_creds_opt_alloc(context, &opt);
 	if (ret) {
 		fprintf(stderr, "krb5_get_init_creds_opt_alloc() failed (%s)\n",
-				krb5_get_error_message(context, ret));
+			krb5_get_error_message(context, ret));
 		goto end;
 	}
 
@@ -121,7 +120,7 @@ get_init_creds_user(krb5_context context, const char *username, krb5_creds *cred
 	ret = krb5_get_init_creds_keytab(context, creds, user, keytab, 0, NULL, opt);
 	if (ret) {
 		fprintf(stderr, "krb5_get_init_creds_keytab() failed (%s)\n",
-				krb5_get_error_message(context, ret));
+			krb5_get_error_message(context, ret));
 		goto end;
 	}
 
@@ -145,7 +144,7 @@ init_auth_context(krb5_context context, krb5_auth_context *auth_context)
 	ret = krb5_auth_con_init(context, auth_context);
 	if (ret) {
 		fprintf(stderr, "krb5_auth_con_init() failed: %s.\n",
-				krb5_get_error_message(context, ret));
+			krb5_get_error_message(context, ret));
 		return ret;
 	}
 
@@ -193,10 +192,10 @@ get_fwd_creds(krb5_context context, krb5_creds *creds, krb5_data *creds_data)
 	 * wouldn't work with multi-homed machines etc.).
      */
 	ret = krb5_fwd_tgt_creds(context, auth_context, "localhost", creds->client,
-			NULL, ccache, 1, creds_data);
+				 NULL, ccache, 1, creds_data);
 	if (ret) {
 		fprintf(stderr, "krb5_fwd_tgt_creds() failed: %s.\n",
-				krb5_get_error_message(context, ret));
+			krb5_get_error_message(context, ret));
 		goto end;
 	}
 
@@ -238,13 +237,13 @@ output_creds(krb5_context context, krb5_creds *target_creds)
 	ret = krb5_rd_cred(context, auth_context, creds_data, &creds, NULL);
 	if (ret) {
 		fprintf(stderr, "krb5_rd_cred() failed: %s.\n",
-				krb5_get_error_message(context, ret));
+			krb5_get_error_message(context, ret));
 		goto end;
 	}
 
 	printf("Type: Kerberos\n");
 	/* there might be multiple credentials exported, which we silently ignore */
-	printf("Valid until: %ld\n", (long int)creds[0]->times.endtime);
+	printf("Valid until: %ld\n", (long int) creds[0]->times.endtime);
 	printf("%s\n", encoded);
 
 	ret = 0;
@@ -271,12 +270,12 @@ doit(const char *user)
 	krb5_creds my_creds;
 	krb5_context context = NULL;
 
-	memset((char *)&my_creds, 0, sizeof(my_creds));
+	memset((char *) &my_creds, 0, sizeof(my_creds));
 
 	ret = krb5_init_context(&context);
 	if (ret) {
 		fprintf(stderr, "Cannot initialize Kerberos, exiting.\n");
-		return(ret);
+		return (ret);
 	}
 
 	ret = get_init_creds_user(context, user, &my_creds);
@@ -312,5 +311,5 @@ main(int argc, char *argv[])
 
 	if (ret != 0)
 		ret = 1;
-	return(ret);
+	return (ret);
 }

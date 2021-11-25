@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_MISC_H
-#define	_MISC_H
+#ifndef _MISC_H
+#define _MISC_H
 
 #include <string>
 
@@ -58,7 +58,7 @@ char *string_dup(const char *str);
  *                      form of resource on the machine (btye/word)
  *                      example: 1kb -> 1024 or 1kw -> 1024
  */
-sch_resource_t res_to_num(const char * res_str, struct resource_type *type);
+sch_resource_t res_to_num(const char *res_str, struct resource_type *type);
 
 /*
  *      skip_line - find if the line of the config file needs to be skipped
@@ -73,8 +73,8 @@ int skip_line(char *line);
  *                   error will be printed after the message
  */
 void
-schdlogerr(int event, int event_class, int sev, const std::string& name, const char *text,
-	schd_error *err);
+schdlogerr(int event, int event_class, int sev, const std::string &name, const char *text,
+	   schd_error *err);
 
 /*
  *
@@ -91,15 +91,15 @@ schdlogerr(int event, int event_class, int sev, const std::string& name, const c
  *              - returns 0: ptr will NOT be added to filtered array
  */
 void **
-filter_array(void **ptrarr, int (*filter_func)(void*, void*),
-	void *arg, int flags);
+filter_array(void **ptrarr, int (*filter_func)(void *, void *),
+	     void *arg, int flags);
 
 /**
  * 	calc_time_left_STF - calculate the amount of time left
  *  for minimum duration and maximum duration of a STF resource resv
  *
  */
-int calc_time_left_STF(resource_resv *resresv, sch_resource_t* min_time_left);
+int calc_time_left_STF(resource_resv *resresv, sch_resource_t *min_time_left);
 
 /*
  *
@@ -111,7 +111,7 @@ int calc_time_left_STF(resource_resv *resresv, sch_resource_t* min_time_left);
  *		 SA_NO_MATCH		: no match
  *
  */
-enum match_string_array_ret match_string_array(const char * const *strarr1, const char * const *strarr2);
+enum match_string_array_ret match_string_array(const char *const *strarr1, const char *const *strarr2);
 enum match_string_array_ret match_string_array(const std::vector<std::string> &strarr1, const std::vector<std::string> &strarr2);
 
 /*
@@ -198,8 +198,7 @@ char *res_to_str_r(void *p, enum resource_fields fld, char *buf, int bufsize);
  */
 char *
 res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
-	char *buf, int bufsize);
-
+	     char *buf, int bufsize);
 
 /**
  *
@@ -212,7 +211,7 @@ res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
  */
 char *
 res_to_str_re(void *p, enum resource_fields fld, char **buf,
-	int *bufsize, unsigned int flags);
+	      int *bufsize, unsigned int flags);
 
 /*
  * clear schd_error structure for reuse
@@ -253,7 +252,6 @@ create_schd_error_complex(enum sched_error_code error_code, enum schd_err_status
 void
 add_err(schd_error **prev_err, schd_error *err);
 
-
 /*
  * add string to NULL terminated string array
  */
@@ -269,13 +267,13 @@ add_str_to_unique_array(char ***str_arr, char *str);
 /*
  * helper function to free an array of pointers
  */
-void free_ptr_array (void *inp);
+void free_ptr_array(void *inp);
 
-void log_eventf(int eventtype, int objclass, int sev, const std::string& objname, const char *fmt, ...);
-void log_event(int eventtype, int objclass, int sev, const std::string& objname, const char *text);
+void log_eventf(int eventtype, int objclass, int sev, const std::string &objname, const char *fmt, ...);
+void log_event(int eventtype, int objclass, int sev, const std::string &objname, const char *text);
 
 /*
  * overloaded break_comma_list function
  */
 std::vector<std::string> break_comma_list(const std::string &strlist);
-#endif	/* _MISC_H */
+#endif /* _MISC_H */

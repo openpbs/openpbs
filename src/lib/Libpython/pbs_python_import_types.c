@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /**
  * @file	pbs_python_import_types.c
  * @brief
@@ -79,17 +77,16 @@ ppsvr_prepare_all_types(void)
 	return rv;
 }
 
-
 /*
  * -----                 svr_types MODULE METHODS               ----- *
  */
 
 static PyMethodDef svr_types_module_methods[] = {
-	{NULL,          NULL}                                 /* sentinel */
+	{NULL, NULL} /* sentinel */
 };
 
-static char svr_types_module_doc[]=
-"PBS Server types Module providing handy access to all the types\n\
+static char svr_types_module_doc[] =
+	"PBS Server types Module providing handy access to all the types\n\
 \tavailable in the PBS Python Server modules.\n\
 ";
 
@@ -102,8 +99,7 @@ static struct PyModuleDef svr_types_module = {
 	NULL,
 	NULL,
 	NULL,
-	NULL
-};
+	NULL};
 
 /**
  * @brief
@@ -116,9 +112,8 @@ static struct PyModuleDef svr_types_module = {
 PyObject *
 ppsvr_create_types_module(void)
 {
-	PyObject *m     = NULL; /* create types module */
+	PyObject *m = NULL;	/* create types module */
 	PyObject *mdict = NULL; /* module dict  */
-
 
 	m = PyModule_Create(&svr_types_module);
 
@@ -132,7 +127,7 @@ ppsvr_create_types_module(void)
 
 	/* Add _size type to svr_types */
 	if ((PyDict_SetItemString(mdict, "_size",
-		(PyObject *)&PPSVR_Size_Type)) == -1)
+				  (PyObject *) &PPSVR_Size_Type)) == -1)
 		return NULL;
 
 	return m;
