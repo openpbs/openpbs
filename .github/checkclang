@@ -38,34 +38,18 @@
 # subject to Altair's trademark licensing policies.
 
 
-declare -a listofchecks
-listofchecks[0]="checkpep8"
-listofchecks[1]="checkclang"
+export PATH=$PATH:/usr/local/bin/
 
-checkdir=$(readlink -f $(dirname $0))
-errors_fails=0
+checkdir="$(readlink -f $(dirname $0))"
 
-for check in ${listofchecks[@]}
-do
-    echo -n "Running check: '${check}' ... "
-    if [ ! -x "${checkdir}/${check}" ]; then
-        echo "NOTFOUND"
-        errors_fails=$((errors_fails + 1))
-        continue
-    fi
-    ${checkdir}/${check} >out 2>err
-    if [ $? -ne 0 ]; then
-        echo "FAILED"
-        cat err
-        errors_fails=$((errors_fails + 1))
-    else
-        echo "OK"
-        cat out
-    fi
-done
-
-if [ ${errors_fails} -ne 0 ]; then
+which clang-format 1>/dev/null 2>/dev/null
+if [ $? -ne 0 ]; then
+    echo "Could not find clang-format command" 1>&2
     exit 1
-else
-    exit 0
 fi
+
+cd ${checkdir}/..
+
+find . -iname *.h -o -iname *.c -o -iname *.cpp | xargs clang-format --dry-run
+exit $?
+
