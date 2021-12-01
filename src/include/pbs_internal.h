@@ -252,7 +252,7 @@ struct pbs_config
 
 extern struct pbs_config pbs_conf;
 
-// clang-format off
+// clang-format on
 
 /*
  * NOTE: PBS_CONF_PATH is no longer defined here. It has moved into

@@ -977,4 +977,5 @@ typedef struct basil_response {
 
 #endif /* _BASIL_H */
 
-// clang-format off
+// clang-format on
+
