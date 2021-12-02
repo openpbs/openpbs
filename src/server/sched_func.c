@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    sched_func.c
  *
@@ -79,7 +78,6 @@ extern struct server server;
 #ifdef PYTHON
 extern char *pbs_python_object_str(PyObject *);
 #endif /* PYTHON */
-
 
 extern void *svr_db_conn;
 
@@ -151,8 +149,8 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 	if (pobject == &server) {
 		/* check if any sched's JSF is set to a different, incompatible value */
 		for (psched = (pbs_sched *) GET_NEXT(svr_allscheds);
-				psched != NULL;
-				psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
+		     psched != NULL;
+		     psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
 			if (is_sched_attr_set(psched, SCHED_ATR_job_sort_formula)) {
 				if (strcmp(get_sched_attr_str(psched, SCHED_ATR_job_sort_formula), formula) != 0)
 					return PBSE_SVR_SCHED_JSF_INCOMPAT;
@@ -168,13 +166,13 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 		return PBSE_INTERNAL;
 
 	globals1 = malloc(globals_size1);
-	if(globals1 == NULL) {
+	if (globals1 == NULL) {
 		rc = PBSE_SYSTEM;
 		goto validate_job_formula_exit;
 	}
 
 	globals2 = malloc(globals_size2);
-	if(globals2 == NULL) {
+	if (globals2 == NULL) {
 		rc = PBSE_SYSTEM;
 		goto validate_job_formula_exit;
 	}
@@ -190,27 +188,26 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 		/* unknown resource is used as a delimiter between builtin and custom resources */
 		if (strcmp(pres->rs_name, RESOURCE_UNKNOWN) != 0) {
 			snprintf(buf, sizeof(buf), "\'%s\':1,", pres->rs_name);
-			if(pbs_strcat(&globals1, &globals_size1, buf) == NULL) {
+			if (pbs_strcat(&globals1, &globals_size1, buf) == NULL) {
 				rc = PBSE_SYSTEM;
 				goto validate_job_formula_exit;
 			}
 			if (pres->rs_type == ATR_TYPE_LONG ||
-				pres->rs_type == ATR_TYPE_SIZE ||
-				pres->rs_type == ATR_TYPE_LL ||
-				pres->rs_type == ATR_TYPE_SHORT ||
-				pres->rs_type ==  ATR_TYPE_FLOAT) {
-				if(pbs_strcat(&globals2, &globals_size2, buf) ==  NULL) {
+			    pres->rs_type == ATR_TYPE_SIZE ||
+			    pres->rs_type == ATR_TYPE_LL ||
+			    pres->rs_type == ATR_TYPE_SHORT ||
+			    pres->rs_type == ATR_TYPE_FLOAT) {
+				if (pbs_strcat(&globals2, &globals_size2, buf) == NULL) {
 					rc = PBSE_SYSTEM;
 					goto validate_job_formula_exit;
 				}
 			}
-
 		}
 	}
 
 	snprintf(buf, sizeof(buf), "\'%s\':1, '%s':1, \'%s\':1,\'%s\':1, \'%s\':1, \'%s\':1, \'%s\':1, \'%s\': 1}\n",
-		FORMULA_ELIGIBLE_TIME, FORMULA_QUEUE_PRIO, FORMULA_JOB_PRIO,
-		FORMULA_FSPERC, FORMULA_FSPERC_DEP, FORMULA_TREE_USAGE, FORMULA_FSFACTOR, FORMULA_ACCRUE_TYPE);
+		 FORMULA_ELIGIBLE_TIME, FORMULA_QUEUE_PRIO, FORMULA_JOB_PRIO,
+		 FORMULA_FSPERC, FORMULA_FSPERC_DEP, FORMULA_TREE_USAGE, FORMULA_FSFACTOR, FORMULA_ACCRUE_TYPE);
 	if (pbs_strcat(&globals1, &globals_size1, buf) == NULL) {
 		rc = PBSE_SYSTEM;
 		goto validate_job_formula_exit;
@@ -264,17 +261,17 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 		goto validate_job_formula_exit;
 	}
 	sprintf(buf, "\', globals1, locals())\n"
-		"except SyntaxError as e:\n"
-		"    errnum=1\n"
-		"    errmsg=str(e)\n"
-		"except NameError as e:\n"
-		"    errnum=2\n"
-		"    errmsg=str(e)\n"
-		"except Exception as e:\n"
-		"    pass\n"
-		"if errnum == 0:\n"
-		"    try:\n"
-		"        exec(\'ans=");
+		     "except SyntaxError as e:\n"
+		     "    errnum=1\n"
+		     "    errmsg=str(e)\n"
+		     "except NameError as e:\n"
+		     "    errnum=2\n"
+		     "    errmsg=str(e)\n"
+		     "except Exception as e:\n"
+		     "    pass\n"
+		     "if errnum == 0:\n"
+		     "    try:\n"
+		     "        exec(\'ans=");
 	if (pbs_strcat(&script, &script_size, buf) == NULL) {
 		rc = PBSE_SYSTEM;
 		goto validate_job_formula_exit;
@@ -284,11 +281,11 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 		goto validate_job_formula_exit;
 	}
 	sprintf(buf, "\', globals2, locals())\n"
-		"    except NameError as e:\n"
-		"        errnum=3\n"
-		"        errmsg=str(e)\n"
-		"    except Exception as e:\n"
-		"        pass\n");
+		     "    except NameError as e:\n"
+		     "        errnum=3\n"
+		     "        errmsg=str(e)\n"
+		     "    except Exception as e:\n"
+		     "        pass\n");
 	if (pbs_strcat(&script, &script_size, buf) == NULL) {
 		rc = PBSE_SYSTEM;
 		goto validate_job_formula_exit;
@@ -326,8 +323,7 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 		}
 	}
 
-	switch(err)
-	{
+	switch (err) {
 		case 0: /* Success */
 			rc = 0;
 			break;
@@ -352,13 +348,13 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 		if (pobject == &server) {
 			/* Write formula to all scheds' sched_priv */
 			for (psched = (pbs_sched *) GET_NEXT(svr_allscheds);
-					psched != NULL;
-					psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
+			     psched != NULL;
+			     psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
 				rc = write_job_sort_formula(formula, get_sched_attr_str(psched, SCHED_ATR_sched_priv));
 				if (rc != PBSE_NONE)
 					goto validate_job_formula_exit;
 			}
-		} else {	/* Write formula to a specific sched's sched_priv */
+		} else { /* Write formula to a specific sched's sched_priv */
 			psched = (pbs_sched *) pobject;
 			rc = write_job_sort_formula(formula, get_sched_attr_str(psched, SCHED_ATR_sched_priv));
 			if (rc != PBSE_NONE)
@@ -366,7 +362,7 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 		}
 
 	} else {
-		snprintf(buf, sizeof(buf), "Validation Error: %s", errmsg?errmsg:"Internal error");
+		snprintf(buf, sizeof(buf), "Validation Error: %s", errmsg ? errmsg : "Internal error");
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, buf);
 	}
 
@@ -382,8 +378,6 @@ validate_job_formula_exit:
 	free(errmsg);
 	return rc;
 #endif
-
-
 }
 
 /**
@@ -467,7 +461,7 @@ find_sched_from_partition(char *partition)
 	if (!partition)
 		return NULL;
 
-	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+	for (psched = (pbs_sched *) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
 		if (is_sched_attr_set(psched, SCHED_ATR_partition)) {
 			char *value = get_sched_attr_str(psched, SCHED_ATR_partition);
 			if (value != NULL && !strcmp(partition, value))
@@ -524,8 +518,8 @@ sched_delete(pbs_sched *psched)
 	obj.pbs_db_un.pbs_db_sched = &dbsched;
 	if (pbs_db_delete_obj(conn, &obj) != 0) {
 		snprintf(log_buffer, LOG_BUF_SIZE,
-				"delete of scheduler %s from datastore failed",
-				psched->sc_name);
+			 "delete of scheduler %s from datastore failed",
+			 psched->sc_name);
 		log_err(errno, __func__, log_buffer);
 	}
 	sched_free(psched);
@@ -554,7 +548,7 @@ action_sched_host(attribute *pattr, void *pobj, int actmode)
 
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
 		psched->sc_conn_addr = get_hostaddr(pattr->at_val.at_str);
-		if (psched->sc_conn_addr == (pbs_net_t)0)
+		if (psched->sc_conn_addr == (pbs_net_t) 0)
 			return PBSE_BADATVAL;
 	}
 	return PBSE_NONE;
@@ -576,7 +570,7 @@ action_sched_host(attribute *pattr, void *pobj, int actmode)
 int
 action_sched_priv(attribute *pattr, void *pobj, int actmode)
 {
-	pbs_sched* psched;
+	pbs_sched *psched;
 
 	psched = (pbs_sched *) pobj;
 
@@ -594,7 +588,7 @@ action_sched_priv(attribute *pattr, void *pobj, int actmode)
 						break;
 				}
 			}
-			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
+			psched = (pbs_sched *) GET_NEXT(psched->sc_link);
 		}
 	}
 
@@ -617,14 +611,14 @@ action_sched_priv(attribute *pattr, void *pobj, int actmode)
 int
 action_sched_log(attribute *pattr, void *pobj, int actmode)
 {
-	pbs_sched* psched;
+	pbs_sched *psched;
 	psched = (pbs_sched *) pobj;
 
 	if (pobj == dflt_scheduler)
 		return PBSE_SCHED_OP_NOT_PERMITTED;
 
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
-		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
+		psched = (pbs_sched *) GET_NEXT(svr_allscheds);
 		while (psched != NULL) {
 			if (is_sched_attr_set(psched, SCHED_ATR_sched_log)) {
 				if (!strcmp(get_sched_attr_str(psched, SCHED_ATR_sched_log), pattr->at_val.at_str)) {
@@ -634,7 +628,7 @@ action_sched_log(attribute *pattr, void *pobj, int actmode)
 						break;
 				}
 			}
-			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
+			psched = (pbs_sched *) GET_NEXT(psched->sc_link);
 		}
 	}
 
@@ -746,7 +740,7 @@ action_sched_preempt_order(attribute *pattr, void *pobj, int actmode)
 					} else
 						return PBSE_BADATVAL;
 				} else if (!next_is_num) {
-					for (j = 0; tok[j] != '\0' ; j++) {
+					for (j = 0; tok[j] != '\0'; j++) {
 						switch (tok[j]) {
 							case 'S':
 								if (!s_done) {
@@ -777,8 +771,8 @@ action_sched_preempt_order(attribute *pattr, void *pobj, int actmode)
 									return PBSE_BADATVAL;
 								break;
 
-						default:
-							return PBSE_BADATVAL;
+							default:
+								return PBSE_BADATVAL;
 						}
 						next_is_num = 1;
 					}
@@ -786,8 +780,7 @@ action_sched_preempt_order(attribute *pattr, void *pobj, int actmode)
 					c_done = 0;
 					r_done = 0;
 					d_done = 0;
-				}
-				else
+				} else
 					return PBSE_BADATVAL;
 				tok = strtok(NULL, "\t ");
 			} while (tok != NULL && i < PREEMPT_ORDER_MAX);
@@ -836,7 +829,7 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
 	} else {
 		if (actmode == ATR_ACTION_ALTER) {
 			if (pattr->at_val.at_long)
-				set_scheduler_flag(SCH_SCHEDULE_CMD, (pbs_sched *)pobj);
+				set_scheduler_flag(SCH_SCHEDULE_CMD, (pbs_sched *) pobj);
 		}
 	}
 	return PBSE_NONE;
@@ -855,7 +848,7 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
 void
 set_sched_default(pbs_sched *psched, int from_scheduler)
 {
-	char dir_path[MAXPATHLEN +1] = {0};
+	char dir_path[MAXPATHLEN + 1] = {0};
 
 	if (!psched)
 		return;
@@ -897,7 +890,6 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 	if (!is_sched_attr_set(psched, SCHED_ATR_preempt_queue_prio)) {
 		set_sched_attr_l_slim(psched, SCHED_ATR_preempt_queue_prio, PBS_PREEMPT_QUEUE_PRIO_DEFAULT, SET);
 		(get_sched_attr(psched, SCHED_ATR_preempt_queue_prio))->at_flags |= ATR_VFLAG_DEFLT;
-
 	}
 	if (!is_sched_attr_set(psched, SCHED_ATR_preempt_prio)) {
 		set_sched_attr_str_slim(psched, SCHED_ATR_preempt_prio, PBS_PREEMPT_PRIO_DEFAULT, NULL);
@@ -907,12 +899,10 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 		set_sched_attr_str_slim(psched, SCHED_ATR_preempt_order, PBS_PREEMPT_ORDER_DEFAULT, NULL);
 		action_sched_preempt_order(get_sched_attr(psched, SCHED_ATR_preempt_order), psched, ATR_ACTION_ALTER);
 		(get_sched_attr(psched, SCHED_ATR_preempt_order))->at_flags |= ATR_VFLAG_DEFLT;
-
 	}
 	if (!is_sched_attr_set(psched, SCHED_ATR_preempt_sort)) {
 		set_sched_attr_str_slim(psched, SCHED_ATR_preempt_sort, PBS_PREEMPT_SORT_DEFAULT, NULL);
 		(get_sched_attr(psched, SCHED_ATR_preempt_sort))->at_flags |= ATR_VFLAG_DEFLT;
-
 	}
 	if (!is_sched_attr_set(psched, SCHED_ATR_server_dyn_res_alarm)) {
 		set_sched_attr_l_slim(psched, SCHED_ATR_server_dyn_res_alarm, PBS_SERVER_DYN_RES_ALARM_DEFAULT, SET);
@@ -940,7 +930,6 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 	set_scheduler_flag(SCH_CONFIGURE, psched);
 }
 
-
 /**
  * @brief
  * 		action routine for the scheduler's partition attribute
@@ -959,7 +948,7 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 int
 action_sched_partition(attribute *pattr, void *pobj, int actmode)
 {
-	pbs_sched* psched;
+	pbs_sched *psched;
 
 	if (actmode == ATR_ACTION_RECOV)
 		return PBSE_NONE;
@@ -971,7 +960,7 @@ action_sched_partition(attribute *pattr, void *pobj, int actmode)
 		return PBSE_NONE;
 	if (strcmp(pattr->at_val.at_str, DEFAULT_PARTITION) == 0)
 		return PBSE_DEFAULT_PARTITION;
-	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+	for (psched = (pbs_sched *) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
 		if (psched == pobj)
 			continue;
 		if (is_sched_attr_set(psched, SCHED_ATR_partition) && !strcmp(pattr->at_val.at_str, get_sched_attr_str(psched, SCHED_ATR_partition)))
@@ -1058,7 +1047,6 @@ action_job_run_wait(attribute *pattr, void *pobj, int actmode)
 	return PBSE_NONE;
 }
 
-
 /**
  * @brief action function for 'throughput_mode' sched attribute
  *
@@ -1088,7 +1076,7 @@ action_throughput_mode(attribute *pattr, void *pobj, int actmode)
 
 	/* Log a message letting user know that this attribute is deprecated */
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_REQUEST, LOG_WARNING, psched->sc_name,
-			"'throughput_mode' is being deprecated, it is recommended to use 'job_run_wait'");
+		  "'throughput_mode' is being deprecated, it is recommended to use 'job_run_wait'");
 
 	return PBSE_NONE;
 }

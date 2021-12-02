@@ -55,7 +55,7 @@ attribute *
 get_nattr(const struct pbsnode *pnode, int attr_idx)
 {
 	if (pnode != NULL)
-		return _get_attr_by_idx((attribute *)pnode->nd_attr, attr_idx);
+		return _get_attr_by_idx((attribute *) pnode->nd_attr, attr_idx);
 	return NULL;
 }
 
@@ -284,7 +284,6 @@ set_nattr_short_slim(struct pbsnode *pnode, int attr_idx, short val, enum batch_
 
 	return 0;
 }
-
 
 /**
  * @brief	Check if a node attribute is set

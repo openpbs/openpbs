@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_GLOBALS_H
-#define	_GLOBALS_H
+#ifndef _GLOBALS_H
+#define _GLOBALS_H
 #include <pthread.h>
 #include <limits.h>
 
@@ -101,14 +101,14 @@ extern std::unordered_set<resdef *> boolres;
 extern const char *sc_name;
 extern char *logfile;
 
-extern unsigned int preempt_normal;			/* preempt priority of normal_jobs */
+extern unsigned int preempt_normal; /* preempt priority of normal_jobs */
 
 extern char path_log[_POSIX_PATH_MAX];
 extern int dflt_sched;
 
 extern struct schedattrs sc_attrs;
 
-extern time_t last_attr_updates;    /* timestamp of the last time attr updates were sent */
+extern time_t last_attr_updates; /* timestamp of the last time attr updates were sent */
 
 extern int send_job_attr_updates;
 
@@ -128,4 +128,4 @@ extern char *cmp_aoename;
 
 extern fairshare_head *fstree;
 
-#endif	/* _GLOBALS_H */
+#endif /* _GLOBALS_H */

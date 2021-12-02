@@ -67,12 +67,12 @@ init_mutex_attr_recursive(pthread_mutexattr_t *attr)
 	}
 
 	if (pthread_mutexattr_settype(attr,
-#if defined (linux)
-			PTHREAD_MUTEX_RECURSIVE_NP
+#if defined(linux)
+				      PTHREAD_MUTEX_RECURSIVE_NP
 #else
-			PTHREAD_MUTEX_RECURSIVE
+				      PTHREAD_MUTEX_RECURSIVE
 #endif
-	)) {
+				      )) {
 		return -1;
 	}
 

@@ -44,7 +44,6 @@
 #include "pbs_internal.h"
 #include "log.h"
 
-
 #ifdef WIN32
 
 /**
@@ -61,15 +60,16 @@
  */
 
 int
-get_py_homepath(char **homepath) {
+get_py_homepath(char **homepath)
+{
 #ifdef PYTHON
 	static char python_homepath[MAXPATHLEN + 1] = {'\0'};
 	if (python_homepath[0] == '\0') {
 		snprintf(python_homepath, MAXPATHLEN, "%s/python", pbs_conf.pbs_exec_path);
 		fix_path(python_homepath, 3);
 		if (!file_exists(python_homepath)) {
-				log_err(-1, __func__, "Python home not found!");
-				return 1;
+			log_err(-1, __func__, "Python home not found!");
+			return 1;
 		}
 	}
 	*homepath = strdup(python_homepath);
@@ -124,7 +124,6 @@ get_py_progname(char **binpath)
 #else
 	return 1;
 #endif
-
 }
 /**
  * @brief set_py_progname
@@ -154,7 +153,7 @@ set_py_progname(void)
 	/*
 	 *  There is a bug in windows version of python resulting need to set python home explicitly.
 	 */
-	static wchar_t w_python_homepath[MAXPATHLEN + 1] = { '\0' };
+	static wchar_t w_python_homepath[MAXPATHLEN + 1] = {'\0'};
 	char *python_homepath = NULL;
 	if (w_python_homepath[0] == '\0') {
 		if (get_py_homepath(&python_homepath)) {

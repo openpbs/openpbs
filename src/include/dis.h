@@ -37,9 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_DIS_H
-#define	_DIS_H
-#ifdef	__cplusplus
+#ifndef _DIS_H
+#define _DIS_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -50,47 +50,46 @@ extern "C" {
 #include "auth.h"
 
 #ifndef TRUE
-#define TRUE	1
-#define FALSE	0
+#define TRUE 1
+#define FALSE 0
 #endif
 
 /*
  * Integer function return values from Data-is-Strings reading calls
  */
 
-#define DIS_SUCCESS	0	/* No error */
-#define DIS_OVERFLOW	1	/* Value too large to convert */
-#define DIS_HUGEVAL	2	/* Tried to write floating point infinity */
-#define DIS_BADSIGN	3	/* Negative sign on an unsigned datum */
-#define DIS_LEADZRO	4	/* Input count or value has leading zero */
-#define DIS_NONDIGIT	5	/* Non-digit found where a digit was expected */
-#define DIS_NULLSTR	6	/* String read has an embedded ASCII NUL */
-#define DIS_EOD		7	/* Premature end of message */
-#define DIS_NOMALLOC	8	/* Unable to malloc space for string */
-#define DIS_PROTO	9	/* Supporting protocol failure */
-#define DIS_NOCOMMIT	10	/* Protocol failure in commit */
-#define DIS_EOF		11	/* End of File */
-
+#define DIS_SUCCESS 0	/* No error */
+#define DIS_OVERFLOW 1	/* Value too large to convert */
+#define DIS_HUGEVAL 2	/* Tried to write floating point infinity */
+#define DIS_BADSIGN 3	/* Negative sign on an unsigned datum */
+#define DIS_LEADZRO 4	/* Input count or value has leading zero */
+#define DIS_NONDIGIT 5	/* Non-digit found where a digit was expected */
+#define DIS_NULLSTR 6	/* String read has an embedded ASCII NUL */
+#define DIS_EOD 7	/* Premature end of message */
+#define DIS_NOMALLOC 8	/* Unable to malloc space for string */
+#define DIS_PROTO 9	/* Supporting protocol failure */
+#define DIS_NOCOMMIT 10 /* Protocol failure in commit */
+#define DIS_EOF 11	/* End of File */
 
 unsigned long disrul(int stream, int *retval);
 
 /*#if UINT_MAX == ULONG_MAX*/
 #if SIZEOF_UNSIGNED == SIZEOF_LONG
-#define disrui(stream, retval) (unsigned)disrul(stream, (retval))
+#define disrui(stream, retval) (unsigned) disrul(stream, (retval))
 #else
 unsigned disrui(int stream, int *retval);
 #endif
 
 /*#if USHRT_MAX == UINT_MAX*/
 #if SIZEOF_UNSIGNED_SHORT == SIZEOF_UNSIGNED_INT
-#define disrus(stream, retval) (unsigned short)disrui(stream, (retval))
+#define disrus(stream, retval) (unsigned short) disrui(stream, (retval))
 #else
 unsigned short disrus(int stream, int *retval);
 #endif
 
 /*#if UCHAR_MAX == USHRT_MAX*/
 #if SIZEOF_UNSIGNED_CHAR == SIZEOF_UNSIGNED_SHORT
-#define disruc(stream, retval) (unsigned char)disrus(stream, (retval))
+#define disruc(stream, retval) (unsigned char) disrus(stream, (retval))
 #else
 unsigned char disruc(int stream, int *retval);
 #endif
@@ -98,21 +97,21 @@ unsigned char disruc(int stream, int *retval);
 long disrsl(int stream, int *retval);
 /*#if INT_MIN == LONG_MIN && INT_MAX == LONG_MAX*/
 #if SIZEOF_INT == SIZEOF_LONG
-#define disrsi(stream, retval) (int)disrsl(stream, (retval))
+#define disrsi(stream, retval) (int) disrsl(stream, (retval))
 #else
 int disrsi(int stream, int *retval);
 #endif
 
 /*#if SHRT_MIN == INT_MIN && SHRT_MAX == INT_MAX*/
 #if SIZEOF_SHORT == SIZEOF_INT
-#define disrss(stream, retval) (short)disrsi(stream, (retval))
+#define disrss(stream, retval) (short) disrsi(stream, (retval))
 #else
 short disrss(int stream, int *retval);
 #endif
 
 /*#if CHAR_MIN == SHRT_MIN && CHAR_MAX == SHRT_MAX*/
 #if SIZEOF_SIGNED_CHAR == SIZEOF_SHORT
-#define disrsc(stream, retval) (signed char)disrss(stream, (retval))
+#define disrsc(stream, retval) (signed char) disrss(stream, (retval))
 #else
 signed char disrsc(int stream, int *retval);
 #endif
@@ -120,9 +119,9 @@ signed char disrsc(int stream, int *retval);
 /*#if CHAR_MIN, i.e. if chars are signed*/
 /* also, flip the order of statements */
 #if __CHAR_UNSIGNED__
-#define disrc(retval, stream) (char)disruc(stream, (retval))
+#define disrc(retval, stream) (char) disruc(stream, (retval))
 #else
-#define disrc(stream, retval) (char)disrsc(stream, (retval))
+#define disrc(stream, retval) (char) disrsc(stream, (retval))
 #endif
 
 char *disrcs(int stream, size_t *nchars, int *retval);
@@ -143,14 +142,14 @@ typedef long double dis_long_double_t;
 dis_long_double_t disrl(int stream, int *retval);
 /*#if DBL_MANT_DIG == LDBL_MANT_DIG && DBL_MAX_EXP == LDBL_MAX_EXP*/
 #if SIZEOF_DOUBLE == SIZEOF_LONG_DOUBLE
-#define disrd(stream, retval) (double)disrl(stream, (retval))
+#define disrd(stream, retval) (double) disrl(stream, (retval))
 #else
 double disrd(int stream, int *retval);
 #endif
 
 /*#if FLT_MANT_DIG == DBL_MANT_DIG && FLT_MAX_EXP == DBL_MAX_EXP*/
 #if SIZEOF_FLOAT == SIZEOF_DOUBLE
-#define disrf(stream, retval) (float)disrd(stream, (retval))
+#define disrf(stream, retval) (float) disrd(stream, (retval))
 #else
 float disrf(int stream, int *retval);
 #endif
@@ -158,28 +157,28 @@ float disrf(int stream, int *retval);
 int diswul(int stream, unsigned long value);
 /*#if UINT_MAX == ULONG_MAX*/
 #if SIZEOF_UNSIGNED_INT == SIZEOF_UNSIGNED_LONG
-#define diswui(stream, value) diswul(stream, (unsigned long)(value))
+#define diswui(stream, value) diswul(stream, (unsigned long) (value))
 #else
 int diswui(int stream, unsigned value);
 #endif
-#define diswus(stream, value) diswui(stream, (unsigned)(value))
-#define diswuc(stream, value) diswui(stream, (unsigned)(value))
+#define diswus(stream, value) diswui(stream, (unsigned) (value))
+#define diswuc(stream, value) diswui(stream, (unsigned) (value))
 
 int diswsl(int stream, long value);
 /*#if INT_MIN == LONG_MIN && INT_MAX == LONG_MAX*/
 #if SIZEOF_INT == SIZEOF_LONG
-#define diswsi(stream, value) diswsl(stream, (long)(value))
+#define diswsi(stream, value) diswsl(stream, (long) (value))
 #else
 int diswsi(int stream, int value);
 #endif
-#define diswss(stream, value) diswsi(stream, (int)(value))
-#define diswsc(stream, value) diswsi(stream, (int)(value))
+#define diswss(stream, value) diswsi(stream, (int) (value))
+#define diswsc(stream, value) diswsi(stream, (int) (value))
 
 /*#if CHAR_MIN*/
 #if __UNSIGNED_CHAR__
-#define diswc(stream, value) diswui(stream, (unsigned)(value))
+#define diswc(stream, value) diswui(stream, (unsigned) (value))
 #else
-#define diswc(stream, value) diswsi(stream, (int)(value))
+#define diswc(stream, value) diswsi(stream, (int) (value))
 #endif
 
 int diswcs(int stream, const char *value, size_t nchars);
@@ -187,10 +186,10 @@ int diswcs(int stream, const char *value, size_t nchars);
 
 int diswl_(int stream, dis_long_double_t value, unsigned int ndigs);
 #define diswl(stream, value) diswl_(stream, (value), LDBL_DIG)
-#define diswd(stream, value) diswl_(stream, (dis_long_double_t)(value), DBL_DIG)
+#define diswd(stream, value) diswl_(stream, (dis_long_double_t) (value), DBL_DIG)
 /*#if FLT_MANT_DIG == DBL_MANT_DIG || DBL_MANT_DIG == LDBL_MANT_DIG*/
 #if SIZEOF_FLOAT == SIZEOF_DOUBLE
-#define diswf(stream, value) diswl_(stream, (dis_long_double_t)(value), FLT_DIG)
+#define diswf(stream, value) diswl_(stream, (dis_long_double_t) (value), FLT_DIG)
 #else
 int diswf(int stream, double value);
 #endif
@@ -235,19 +234,19 @@ int dis_getc(int);
 int dis_gets(int, char *, size_t);
 int dis_puts(int, const char *, size_t);
 int dis_flush(int);
-void dis_setup_chan(int, pbs_tcp_chan_t * (*)(int));
+void dis_setup_chan(int, pbs_tcp_chan_t *(*) (int) );
 void dis_destroy_chan(int);
 
 void transport_chan_set_ctx_status(int, int, int);
 int transport_chan_get_ctx_status(int, int);
 void transport_chan_set_authctx(int, void *, int);
-void * transport_chan_get_authctx(int, int);
+void *transport_chan_get_authctx(int, int);
 void transport_chan_set_authdef(int, auth_def_t *, int);
-auth_def_t * transport_chan_get_authdef(int, int);
+auth_def_t *transport_chan_get_authdef(int, int);
 int transport_send_pkt(int, int, void *, size_t);
 int transport_recv_pkt(int, int *, void **, size_t *);
 
-extern pbs_tcp_chan_t * (*pfn_transport_get_chan)(int);
+extern pbs_tcp_chan_t *(*pfn_transport_get_chan)(int);
 extern int (*pfn_transport_set_chan)(int, pbs_tcp_chan_t *);
 extern int (*pfn_transport_recv)(int, void *, int);
 extern int (*pfn_transport_send)(int, void *, int);
@@ -257,7 +256,7 @@ extern int (*pfn_transport_send)(int, void *, int);
 #define transport_get_chan(x) (*pfn_transport_get_chan)(x)
 #define transport_set_chan(x, y) (*pfn_transport_set_chan)(x, y)
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _DIS_H */
+#endif /* _DIS_H */

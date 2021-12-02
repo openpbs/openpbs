@@ -68,7 +68,7 @@
 char *pbs_conf_env = "PBS_CONF_FILE";
 
 static char *pbs_loadconf_buf = NULL;
-static int   pbs_loadconf_len = 0;
+static int pbs_loadconf_len = 0;
 
 /*
  * Initialize the pbs_conf structure.
@@ -77,60 +77,61 @@ static int   pbs_loadconf_len = 0;
  * structure definition in src/include/pbs_internal.h
  */
 struct pbs_config pbs_conf = {
-	0,					/* loaded */
-	0,					/* load_failed */
-	0,					/* start_server */
-	0,					/* start_mom */
-	0,					/* start_sched */
-	0,					/* start comm */
-	0,					/* locallog */
-	NULL,					/* default to NULL for supported auths */
-	{'\0'},					/* default no auth method to encrypt/decrypt data */
-	AUTH_RESVPORT_NAME,			/* default to reserved port authentication */
-	0,					/* sched_modify_event */
-	0,					/* syslogfac */
-	3,					/* syslogsvr - LOG_ERR from syslog.h */
-	PBS_BATCH_SERVICE_PORT,			/* batch_service_port */
-	PBS_BATCH_SERVICE_PORT_DIS,		/* batch_service_port_dis */
-	PBS_MOM_SERVICE_PORT,			/* mom_service_port */
-	PBS_MANAGER_SERVICE_PORT,		/* manager_service_port */
-	PBS_DATA_SERVICE_PORT,			/* pbs data service port */
-	NULL,					/* pbs_conf_file */
-	NULL,					/* pbs_home_path */
-	NULL,					/* pbs_exec_path */
-	NULL,					/* pbs_server_name */
-	NULL,					/* cp_path */
-	NULL,					/* scp_path */
-	NULL,					/* rcp_path */
-	NULL,					/* pbs_demux_path */
-	NULL,					/* pbs_environment */
-	NULL,					/* iff_path */
-	NULL,					/* primary name   */
-	NULL,					/* secondary name */
-	NULL,					/* aux Mom home   */
-	NULL,					/* pbs_core_limit */
-	NULL,					/* default database host  */
-	NULL,					/* pbs_tmpdir */
-	NULL,					/* pbs_server_host_name */
-	NULL,					/* pbs_public_host_name */
-	NULL,					/* pbs_mail_host_name */
-	NULL,					/* pbs_output_host_name */
-	NULL,					/* pbs_smtp_server_name */
-	1, 					/* use compression by default with TCP */
-	1,					/* use mcast by default with TCP */
-	NULL,					/* default leaf name */
-	NULL,					/* for leaf, default communication routers list */
-	NULL,					/* default router name */
-	NULL,					/* for router, default communication routers list */
-	0,					/* default comm logevent mask */
-	4,					/* default number of threads */
-	NULL,					/* mom short name override */
-	0,					/* high resolution timestamp logging */
-	0,					/* number of scheduler threads */
-	NULL,					/* default scheduler user */
-	{'\0'}					/* current running user */
+	0,			    /* loaded */
+	0,			    /* load_failed */
+	0,			    /* start_server */
+	0,			    /* start_mom */
+	0,			    /* start_sched */
+	0,			    /* start comm */
+	0,			    /* locallog */
+	NULL,			    /* default to NULL for supported auths */
+	{'\0'},			    /* default no auth method to encrypt/decrypt data */
+	AUTH_RESVPORT_NAME,	    /* default to reserved port authentication */
+	0,			    /* sched_modify_event */
+	0,			    /* syslogfac */
+	3,			    /* syslogsvr - LOG_ERR from syslog.h */
+	PBS_BATCH_SERVICE_PORT,	    /* batch_service_port */
+	PBS_BATCH_SERVICE_PORT_DIS, /* batch_service_port_dis */
+	PBS_MOM_SERVICE_PORT,	    /* mom_service_port */
+	PBS_MANAGER_SERVICE_PORT,   /* manager_service_port */
+	PBS_DATA_SERVICE_PORT,	    /* pbs data service port */
+	NULL,			    /* pbs_conf_file */
+	NULL,			    /* pbs_home_path */
+	NULL,			    /* pbs_exec_path */
+	NULL,			    /* pbs_server_name */
+	NULL,			    /* cp_path */
+	NULL,			    /* scp_path */
+	NULL,			    /* rcp_path */
+	NULL,			    /* pbs_demux_path */
+	NULL,			    /* pbs_environment */
+	NULL,			    /* iff_path */
+	NULL,			    /* primary name   */
+	NULL,			    /* secondary name */
+	NULL,			    /* aux Mom home   */
+	NULL,			    /* pbs_core_limit */
+	NULL,			    /* default database host  */
+	NULL,			    /* pbs_tmpdir */
+	NULL,			    /* pbs_server_host_name */
+	NULL,			    /* pbs_public_host_name */
+	NULL,			    /* pbs_mail_host_name */
+	NULL,			    /* pbs_output_host_name */
+	NULL,			    /* pbs_smtp_server_name */
+	1,			    /* use compression by default with TCP */
+	1,			    /* use mcast by default with TCP */
+	NULL,			    /* default leaf name */
+	NULL,			    /* for leaf, default communication routers list */
+	NULL,			    /* default router name */
+	NULL,			    /* for router, default communication routers list */
+	0,			    /* default comm logevent mask */
+	4,			    /* default number of threads */
+	NULL,			    /* mom short name override */
+	0,			    /* high resolution timestamp logging */
+	0,			    /* number of scheduler threads */
+	NULL,			    /* default scheduler user */
+	{'\0'}			    /* current running user */
 #ifdef WIN32
-	,NULL					/* remote viewer launcher executable along with launch options */
+	,
+	NULL /* remote viewer launcher executable along with launch options */
 #endif
 };
 
@@ -190,8 +191,7 @@ pbs_get_conf_file(void)
 	if (pbs_conf_env == NULL) {
 		if ((conf_file = getenv("PBS_CONF_FILE")) == NULL)
 			conf_file = PBS_CONF_FILE;
-	}
-	else {
+	} else {
 		if ((conf_file = getenv(pbs_conf_env)) == NULL)
 			conf_file = PBS_CONF_FILE;
 	}
@@ -232,12 +232,13 @@ parse_config_line(FILE *fp, char **key, char **val)
 		if (len < 1)
 			break;
 		/* Advance the start pointer past any whitespace. */
-		for (start = pbs_loadconf_buf; (*start != '\0') && isspace((int)*start); start++);
+		for (start = pbs_loadconf_buf; (*start != '\0') && isspace((int) *start); start++)
+			;
 		/* Is this a comment line. */
 		if (*start == '#')
 			break;
 		/* Remove whitespace from the end. */
-		for (end = pbs_loadconf_buf + len - 1; (end >= start) && isspace((int)*end); end--)
+		for (end = pbs_loadconf_buf + len - 1; (end >= start) && isspace((int) *end); end--)
 			*end = '\0';
 		/* Was there nothing but white space? */
 		if (start >= end)
@@ -285,16 +286,16 @@ __pbs_loadconf(int reload)
 {
 	FILE *fp;
 	char buf[256];
-	char *conf_name; 		/* the name of the conf parameter */
-	char *conf_value;		/* the value from the conf file or env*/
-	char *gvalue;			/* used with getenv() */
-	unsigned int uvalue;		/* used with sscanf() */
+	char *conf_name;     /* the name of the conf parameter */
+	char *conf_value;    /* the value from the conf file or env*/
+	char *gvalue;	     /* used with getenv() */
+	unsigned int uvalue; /* used with sscanf() */
 	struct passwd *pw;
 	uid_t pbs_current_uid;
 #ifndef WIN32
-	struct servent *servent;	/* for use with getservent */
-	char **servalias;		/* service alias list */
-	unsigned int *pui;		/* for use with identify_service_entry */
+	struct servent *servent; /* for use with getservent */
+	char **servalias;	 /* service alias list */
+	unsigned int *pui;	 /* for use with identify_service_entry */
 #endif
 
 	/* initialize the thread context data, if not already initialized */
@@ -309,11 +310,10 @@ __pbs_loadconf(int reload)
 		return 0;
 
 	if (pbs_conf.loaded && !reload) {
-		(void)pbs_client_thread_unlock_conf();
+		(void) pbs_client_thread_unlock_conf();
 		return 1;
-	}
-	else if (pbs_conf.load_failed && !reload) {
-		(void)pbs_client_thread_unlock_conf();
+	} else if (pbs_conf.load_failed && !reload) {
+		(void) pbs_client_thread_unlock_conf();
 		return 0;
 	}
 
@@ -348,14 +348,14 @@ __pbs_loadconf(int reload)
 		/* First, check the official service name. */
 		pui = identify_service_entry(servent->s_name);
 		if (pui != NULL) {
-			*pui = (unsigned int)ntohs(servent->s_port);
+			*pui = (unsigned int) ntohs(servent->s_port);
 			continue;
 		}
 		/* Next, check any aliases that may be defined. */
 		for (servalias = servent->s_aliases; (servalias != NULL) && (*servalias != NULL); servalias++) {
 			pui = identify_service_entry(*servalias);
 			if (pui != NULL) {
-				*pui = (unsigned int)ntohs(servent->s_port);
+				*pui = (unsigned int) ntohs(servent->s_port);
 				break;
 			}
 		}
@@ -383,101 +383,79 @@ __pbs_loadconf(int reload)
 			if (!strcmp(conf_name, PBS_CONF_START_SERVER)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.start_server = ((uvalue > 0) ? 1 : 0);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_START_MOM)) {
+			} else if (!strcmp(conf_name, PBS_CONF_START_MOM)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.start_mom = ((uvalue > 0) ? 1 : 0);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_START_SCHED)) {
+			} else if (!strcmp(conf_name, PBS_CONF_START_SCHED)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.start_sched = ((uvalue > 0) ? 1 : 0);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_START_COMM)) {
+			} else if (!strcmp(conf_name, PBS_CONF_START_COMM)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.start_comm = ((uvalue > 0) ? 1 : 0);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_LOCALLOG)) {
+			} else if (!strcmp(conf_name, PBS_CONF_LOCALLOG)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.locallog = ((uvalue > 0) ? 1 : 0);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_SYSLOG)) {
+			} else if (!strcmp(conf_name, PBS_CONF_SYSLOG)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
-					pbs_conf.syslogfac = ((uvalue <= (23<<3)) ? uvalue : 0);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_SYSLOGSEVR)) {
+					pbs_conf.syslogfac = ((uvalue <= (23 << 3)) ? uvalue : 0);
+			} else if (!strcmp(conf_name, PBS_CONF_SYSLOGSEVR)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.syslogsvr = ((uvalue <= 7) ? uvalue : 0);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_BATCH_SERVICE_PORT)) {
+			} else if (!strcmp(conf_name, PBS_CONF_BATCH_SERVICE_PORT)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.batch_service_port =
 						((uvalue <= 65535) ? uvalue : pbs_conf.batch_service_port);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_BATCH_SERVICE_PORT_DIS)) {
+			} else if (!strcmp(conf_name, PBS_CONF_BATCH_SERVICE_PORT_DIS)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.batch_service_port_dis =
 						((uvalue <= 65535) ? uvalue : pbs_conf.batch_service_port_dis);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_MOM_SERVICE_PORT)) {
+			} else if (!strcmp(conf_name, PBS_CONF_MOM_SERVICE_PORT)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.mom_service_port =
 						((uvalue <= 65535) ? uvalue : pbs_conf.mom_service_port);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_MANAGER_SERVICE_PORT)) {
+			} else if (!strcmp(conf_name, PBS_CONF_MANAGER_SERVICE_PORT)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.manager_service_port =
 						((uvalue <= 65535) ? uvalue : pbs_conf.manager_service_port);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_DATA_SERVICE_PORT)) {
+			} else if (!strcmp(conf_name, PBS_CONF_DATA_SERVICE_PORT)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_data_service_port =
 						((uvalue <= 65535) ? uvalue : pbs_conf.pbs_data_service_port);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_DATA_SERVICE_HOST)) {
+			} else if (!strcmp(conf_name, PBS_CONF_DATA_SERVICE_HOST)) {
 				free(pbs_conf.pbs_data_service_host);
 				pbs_conf.pbs_data_service_host = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_USE_COMPRESSION)) {
+			} else if (!strcmp(conf_name, PBS_CONF_USE_COMPRESSION)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_use_compression = ((uvalue > 0) ? 1 : 0);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_USE_MCAST)) {
+			} else if (!strcmp(conf_name, PBS_CONF_USE_MCAST)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_use_mcast = ((uvalue > 0) ? 1 : 0);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_LEAF_NAME)) {
+			} else if (!strcmp(conf_name, PBS_CONF_LEAF_NAME)) {
 				if (pbs_conf.pbs_leaf_name)
 					free(pbs_conf.pbs_leaf_name);
 				pbs_conf.pbs_leaf_name = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_LEAF_ROUTERS)) {
+			} else if (!strcmp(conf_name, PBS_CONF_LEAF_ROUTERS)) {
 				if (pbs_conf.pbs_leaf_routers)
 					free(pbs_conf.pbs_leaf_routers);
 				pbs_conf.pbs_leaf_routers = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_COMM_NAME)) {
+			} else if (!strcmp(conf_name, PBS_CONF_COMM_NAME)) {
 				if (pbs_conf.pbs_comm_name)
 					free(pbs_conf.pbs_comm_name);
 				pbs_conf.pbs_comm_name = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_COMM_ROUTERS)) {
+			} else if (!strcmp(conf_name, PBS_CONF_COMM_ROUTERS)) {
 				if (pbs_conf.pbs_comm_routers)
 					free(pbs_conf.pbs_comm_routers);
 				pbs_conf.pbs_comm_routers = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_COMM_THREADS)) {
+			} else if (!strcmp(conf_name, PBS_CONF_COMM_THREADS)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_comm_threads = uvalue;
-			}
-			else if (!strcmp(conf_name, PBS_CONF_COMM_LOG_EVENTS)) {
+			} else if (!strcmp(conf_name, PBS_CONF_COMM_LOG_EVENTS)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_comm_log_events = uvalue;
-			}
-			else if (!strcmp(conf_name, PBS_CONF_HOME)) {
+			} else if (!strcmp(conf_name, PBS_CONF_HOME)) {
 				free(pbs_conf.pbs_home_path);
 				pbs_conf.pbs_home_path = shorten_and_cleanup_path(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_EXEC)) {
+			} else if (!strcmp(conf_name, PBS_CONF_EXEC)) {
 				free(pbs_conf.pbs_exec_path);
 				pbs_conf.pbs_exec_path = shorten_and_cleanup_path(conf_value);
 			}
@@ -485,20 +463,16 @@ __pbs_loadconf(int reload)
 			else if (!strcmp(conf_name, PBS_CONF_DEFAULT_NAME)) {
 				free(pbs_conf.pbs_server_name);
 				pbs_conf.pbs_server_name = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_SERVER_NAME)) {
+			} else if (!strcmp(conf_name, PBS_CONF_SERVER_NAME)) {
 				free(pbs_conf.pbs_server_name);
 				pbs_conf.pbs_server_name = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_RCP)) {
+			} else if (!strcmp(conf_name, PBS_CONF_RCP)) {
 				free(pbs_conf.rcp_path);
 				pbs_conf.rcp_path = shorten_and_cleanup_path(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_SCP)) {
+			} else if (!strcmp(conf_name, PBS_CONF_SCP)) {
 				free(pbs_conf.scp_path);
 				pbs_conf.scp_path = shorten_and_cleanup_path(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_CP)) {
+			} else if (!strcmp(conf_name, PBS_CONF_CP)) {
 				free(pbs_conf.cp_path);
 				pbs_conf.cp_path = shorten_and_cleanup_path(conf_value);
 			}
@@ -507,56 +481,43 @@ __pbs_loadconf(int reload)
 			else if (!strcmp(conf_name, PBS_CONF_ENVIRONMENT)) {
 				free(pbs_conf.pbs_environment);
 				pbs_conf.pbs_environment = shorten_and_cleanup_path(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_PRIMARY)) {
+			} else if (!strcmp(conf_name, PBS_CONF_PRIMARY)) {
 				free(pbs_conf.pbs_primary);
 				pbs_conf.pbs_primary = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_SECONDARY)) {
+			} else if (!strcmp(conf_name, PBS_CONF_SECONDARY)) {
 				free(pbs_conf.pbs_secondary);
 				pbs_conf.pbs_secondary = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_MOM_HOME)) {
+			} else if (!strcmp(conf_name, PBS_CONF_MOM_HOME)) {
 				free(pbs_conf.pbs_mom_home);
 				pbs_conf.pbs_mom_home = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_CORE_LIMIT)) {
+			} else if (!strcmp(conf_name, PBS_CONF_CORE_LIMIT)) {
 				free(pbs_conf.pbs_core_limit);
 				pbs_conf.pbs_core_limit = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_SERVER_HOST_NAME)) {
+			} else if (!strcmp(conf_name, PBS_CONF_SERVER_HOST_NAME)) {
 				free(pbs_conf.pbs_server_host_name);
 				pbs_conf.pbs_server_host_name = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_PUBLIC_HOST_NAME)) {
+			} else if (!strcmp(conf_name, PBS_CONF_PUBLIC_HOST_NAME)) {
 				free(pbs_conf.pbs_public_host_name);
 				pbs_conf.pbs_public_host_name = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_MAIL_HOST_NAME)) {
+			} else if (!strcmp(conf_name, PBS_CONF_MAIL_HOST_NAME)) {
 				free(pbs_conf.pbs_mail_host_name);
 				pbs_conf.pbs_mail_host_name = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_SMTP_SERVER_NAME)) {
+			} else if (!strcmp(conf_name, PBS_CONF_SMTP_SERVER_NAME)) {
 				free(pbs_conf.pbs_smtp_server_name);
 				pbs_conf.pbs_smtp_server_name = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_OUTPUT_HOST_NAME)) {
+			} else if (!strcmp(conf_name, PBS_CONF_OUTPUT_HOST_NAME)) {
 				free(pbs_conf.pbs_output_host_name);
 				pbs_conf.pbs_output_host_name = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_SCHEDULER_MODIFY_EVENT)) {
+			} else if (!strcmp(conf_name, PBS_CONF_SCHEDULER_MODIFY_EVENT)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.sched_modify_event = ((uvalue > 0) ? 1 : 0);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_MOM_NODE_NAME)) {
+			} else if (!strcmp(conf_name, PBS_CONF_MOM_NODE_NAME)) {
 				free(pbs_conf.pbs_mom_node_name);
 				pbs_conf.pbs_mom_node_name = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_LOG_HIGHRES_TIMESTAMP)) {
+			} else if (!strcmp(conf_name, PBS_CONF_LOG_HIGHRES_TIMESTAMP)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_log_highres_timestamp = ((uvalue > 0) ? 1 : 0);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_SCHED_THREADS)) {
+			} else if (!strcmp(conf_name, PBS_CONF_SCHED_THREADS)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_sched_threads = uvalue;
 			}
@@ -573,16 +534,14 @@ __pbs_loadconf(int reload)
 				memset(pbs_conf.auth_method, '\0', sizeof(pbs_conf.auth_method));
 				strcpy(pbs_conf.auth_method, value);
 				free(value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_ENCRYPT_METHOD)) {
+			} else if (!strcmp(conf_name, PBS_CONF_ENCRYPT_METHOD)) {
 				char *value = convert_string_to_lowercase(conf_value);
 				if (value == NULL)
 					goto err;
 				memset(pbs_conf.encrypt_method, '\0', sizeof(pbs_conf.encrypt_method));
 				strcpy(pbs_conf.encrypt_method, value);
 				free(value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_SUPPORTED_AUTH_METHODS)) {
+			} else if (!strcmp(conf_name, PBS_CONF_SUPPORTED_AUTH_METHODS)) {
 				char *value = convert_string_to_lowercase(conf_value);
 				if (value == NULL)
 					goto err;
@@ -592,8 +551,7 @@ __pbs_loadconf(int reload)
 					goto err;
 				}
 				free(value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_DAEMON_SERVICE_USER)) {
+			} else if (!strcmp(conf_name, PBS_CONF_DAEMON_SERVICE_USER)) {
 				free(pbs_conf.pbs_daemon_service_user);
 				pbs_conf.pbs_daemon_service_user = strdup(conf_value);
 			}
@@ -632,7 +590,7 @@ __pbs_loadconf(int reload)
 	}
 	if ((gvalue = getenv(PBS_CONF_SYSLOG)) != NULL) {
 		if (sscanf(gvalue, "%u", &uvalue) == 1)
-			pbs_conf.syslogfac = ((uvalue <= (23<<3)) ? uvalue : 0);
+			pbs_conf.syslogfac = ((uvalue <= (23 << 3)) ? uvalue : 0);
 	}
 	if ((gvalue = getenv(PBS_CONF_SYSLOGSEVR)) != NULL) {
 		if (sscanf(gvalue, "%u", &uvalue) == 1)
@@ -842,29 +800,28 @@ __pbs_loadconf(int reload)
 		goto err;
 	}
 
-
 	/*
 	 * Perform sanity checks on PBS_*_HOST_NAME values and PBS_CONF_SMTP_SERVER_NAME.
 	 * See IDD for SPID 4534.
 	 */
 	buf[0] = '\0';
 	if ((pbs_conf.pbs_server_host_name != NULL) &&
-			(strchr(pbs_conf.pbs_server_host_name, ':') != NULL))
+	    (strchr(pbs_conf.pbs_server_host_name, ':') != NULL))
 		strcpy(buf, PBS_CONF_SERVER_HOST_NAME);
 	else if ((pbs_conf.pbs_public_host_name != NULL) &&
-			(strchr(pbs_conf.pbs_public_host_name, ':') != NULL))
+		 (strchr(pbs_conf.pbs_public_host_name, ':') != NULL))
 		strcpy(buf, PBS_CONF_PUBLIC_HOST_NAME);
 	else if ((pbs_conf.pbs_mail_host_name != NULL) &&
-			(strchr(pbs_conf.pbs_mail_host_name, ':') != NULL))
+		 (strchr(pbs_conf.pbs_mail_host_name, ':') != NULL))
 		strcpy(buf, PBS_CONF_MAIL_HOST_NAME);
 	else if ((pbs_conf.pbs_smtp_server_name != NULL) &&
-			(strchr(pbs_conf.pbs_smtp_server_name, ':') != NULL))
+		 (strchr(pbs_conf.pbs_smtp_server_name, ':') != NULL))
 		strcpy(buf, PBS_CONF_SMTP_SERVER_NAME);
 	else if ((pbs_conf.pbs_output_host_name != NULL) &&
-			(strchr(pbs_conf.pbs_output_host_name, ':') != NULL))
+		 (strchr(pbs_conf.pbs_output_host_name, ':') != NULL))
 		strcpy(buf, PBS_CONF_OUTPUT_HOST_NAME);
 	else if ((pbs_conf.pbs_mom_node_name != NULL) &&
-			(strchr(pbs_conf.pbs_mom_node_name, ':') != NULL))
+		 (strchr(pbs_conf.pbs_mom_node_name, ':') != NULL))
 		strcpy(buf, PBS_CONF_MOM_NODE_NAME);
 
 	if (buf[0] != '\0') {
@@ -880,7 +837,7 @@ __pbs_loadconf(int reload)
 		/* a reasonable default for the pbs_environment file is in pbs_home */
 		/* strlen("/pbs_environment") + '\0' == 16 + 1 == 17 */
 		if ((pbs_conf.pbs_environment =
-			malloc(strlen(pbs_conf.pbs_home_path) + 17)) != NULL) {
+			     malloc(strlen(pbs_conf.pbs_home_path) + 17)) != NULL) {
 			sprintf(pbs_conf.pbs_environment, "%s/pbs_environment",
 				pbs_conf.pbs_home_path);
 			fix_path(pbs_conf.pbs_environment, 1);
@@ -892,7 +849,7 @@ __pbs_loadconf(int reload)
 	free(pbs_conf.iff_path);
 	/* strlen("/sbin/pbs_iff") + '\0' == 13 + 1 == 14 */
 	if ((pbs_conf.iff_path =
-		malloc(strlen(pbs_conf.pbs_exec_path) + 14)) != NULL) {
+		     malloc(strlen(pbs_conf.pbs_exec_path) + 14)) != NULL) {
 		sprintf(pbs_conf.iff_path, "%s/sbin/pbs_iff", pbs_conf.pbs_exec_path);
 		fix_path(pbs_conf.iff_path, 1);
 	} else {
@@ -901,7 +858,7 @@ __pbs_loadconf(int reload)
 
 	if (pbs_conf.rcp_path == NULL) {
 		if ((pbs_conf.rcp_path =
-			malloc(strlen(pbs_conf.pbs_exec_path) + 14)) != NULL) {
+			     malloc(strlen(pbs_conf.pbs_exec_path) + 14)) != NULL) {
 			sprintf(pbs_conf.rcp_path, "%s/sbin/pbs_rcp", pbs_conf.pbs_exec_path);
 			fix_path(pbs_conf.rcp_path, 1);
 		} else {
@@ -923,7 +880,7 @@ __pbs_loadconf(int reload)
 	free(pbs_conf.pbs_demux_path);
 	/* strlen("/sbin/pbs_demux") + '\0' == 15 + 1 == 16 */
 	if ((pbs_conf.pbs_demux_path =
-		malloc(strlen(pbs_conf.pbs_exec_path) + 16)) != NULL) {
+		     malloc(strlen(pbs_conf.pbs_exec_path) + 16)) != NULL) {
 		sprintf(pbs_conf.pbs_demux_path, "%s/sbin/pbs_demux",
 			pbs_conf.pbs_exec_path);
 		fix_path(pbs_conf.pbs_demux_path, 1);
@@ -1012,13 +969,12 @@ __pbs_loadconf(int reload)
 	}
 	strcpy(pbs_conf.current_user, pw->pw_name);
 
-
 	pbs_conf.loaded = 1;
 
 	if (pbs_client_thread_unlock_conf() != 0)
 		return 0;
 
-	return 1;		/* success */
+	return 1; /* success */
 
 err:
 	if (pbs_conf.pbs_conf_file) {
@@ -1079,7 +1035,7 @@ err:
 	}
 
 	pbs_conf.load_failed = 1;
-	(void)pbs_client_thread_unlock_conf();
+	(void) pbs_client_thread_unlock_conf();
 	return 0;
 }
 
@@ -1108,7 +1064,7 @@ pbs_get_tmpdir(void)
 	if ((pbs_conf.loaded != 0) && (pbs_conf.pbs_tmpdir != NULL))
 		return (pbs_conf.pbs_tmpdir);
 
-	/* Next, try the environment. */
+		/* Next, try the environment. */
 #ifdef WIN32
 	if ((p = getenv("TMP")) != NULL)
 #else
@@ -1145,7 +1101,7 @@ pbs_get_tmpdir(void)
 	if (tmpdir != NULL)
 		return tmpdir;
 
-	/* Finally, resort to the default. */
+		/* Finally, resort to the default. */
 #ifdef WIN32
 	if (stat(TMP_DIR, &sb) == 0) {
 		tmpdir = shorten_and_cleanup_path(TMP_DIR);
@@ -1167,11 +1123,11 @@ pbs_get_tmpdir(void)
 	}
 	/* Strip the trailing separator. */
 #ifdef WIN32
-	if (tmpdir[strlen(tmpdir)-1] == '\\')
-		tmpdir[strlen(tmpdir)-1] = '\0';
+	if (tmpdir[strlen(tmpdir) - 1] == '\\')
+		tmpdir[strlen(tmpdir) - 1] = '\0';
 #else
-	if (tmpdir[strlen(tmpdir)-1] == '/')
-		tmpdir[strlen(tmpdir)-1] = '\0';
+	if (tmpdir[strlen(tmpdir) - 1] == '/')
+		tmpdir[strlen(tmpdir) - 1] = '\0';
 #endif
 	return tmpdir;
 }

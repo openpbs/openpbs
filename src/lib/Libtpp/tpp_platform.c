@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file	tpp_platform.c
  *
@@ -457,14 +456,29 @@ tr_2_errno(int win_errno)
 	 * for others, we do not care,
 	 */
 	switch (win_errno) {
-		case WSAEINVAL: ret = EINVAL; break;
-		case WSAEINPROGRESS: ret = EINPROGRESS; break;
-		case WSAEINTR: ret = EINTR; break;
-		case WSAECONNREFUSED: ret = ECONNREFUSED; break;
-		case WSAEWOULDBLOCK: ret = EWOULDBLOCK; break;
-		case WSAEADDRINUSE: ret = EADDRINUSE; break;
-		case WSAEADDRNOTAVAIL: ret = EADDRNOTAVAIL; break;
-		default: ret = EINVAL;
+		case WSAEINVAL:
+			ret = EINVAL;
+			break;
+		case WSAEINPROGRESS:
+			ret = EINPROGRESS;
+			break;
+		case WSAEINTR:
+			ret = EINTR;
+			break;
+		case WSAECONNREFUSED:
+			ret = ECONNREFUSED;
+			break;
+		case WSAEWOULDBLOCK:
+			ret = EWOULDBLOCK;
+			break;
+		case WSAEADDRINUSE:
+			ret = EADDRINUSE;
+			break;
+		case WSAEADDRNOTAVAIL:
+			ret = EADDRNOTAVAIL;
+			break;
+		default:
+			ret = EINVAL;
 	}
 	return ret;
 }
@@ -486,7 +500,7 @@ tr_2_errno(int win_errno)
 int
 tpp_sock_layer_init()
 {
-	WSADATA	data;
+	WSADATA data;
 	if (WSAStartup(MAKEWORD(2, 2), &data)) {
 		tpp_log(LOG_CRIT, NULL, "winsock_init failed! error=%d", WSAGetLastError());
 		return -1;
@@ -677,7 +691,7 @@ tpp_sock_resolve_ip(tpp_addr_t *addr, char *host, int len)
 	rc = getnameinfo(sa, salen, host, len, NULL, 0, 0);
 	/* unlock nslookup mutex */
 #ifndef WIN32
-		tpp_unlock(&tpp_nslookup_mutex);
+	tpp_unlock(&tpp_nslookup_mutex);
 #endif
 	if (rc != 0) {
 		TPP_DBPRT("Error: %s", gai_strerror(rc));
@@ -730,7 +744,7 @@ tpp_sock_resolve_host(char *host, int *count)
 	rc = getaddrinfo(host, NULL, &hints, &pai);
 	/* unlock nslookup mutex */
 #ifndef WIN32
-		tpp_unlock(&tpp_nslookup_mutex);
+	tpp_unlock(&tpp_nslookup_mutex);
 #endif
 	if (rc != 0) {
 		tpp_log(LOG_CRIT, NULL, "Error %d resolving %s", rc, host);
@@ -769,10 +783,10 @@ tpp_sock_resolve_host(char *host, int *count)
 				struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *) aip->ai_addr;
 				memcpy(&ips[i].ip, &sa6->sin6_addr, sizeof(sa6->sin6_addr));
 			}
-			ips[i].family = (aip->ai_family == AF_INET6)? TPP_ADDR_FAMILY_IPV6 : TPP_ADDR_FAMILY_IPV4;
+			ips[i].family = (aip->ai_family == AF_INET6) ? TPP_ADDR_FAMILY_IPV6 : TPP_ADDR_FAMILY_IPV4;
 			ips[i].port = 0;
 
-			for (j=0; j < i; j++) {
+			for (j = 0; j < i; j++) {
 				/* check for duplicate ip addresses dont add if duplicate */
 				if (memcmp(&ips[j].ip, &ips[i].ip, sizeof(ips[j].ip)) == 0) {
 					break;
@@ -794,7 +808,7 @@ tpp_sock_resolve_host(char *host, int *count)
 
 	if (i < *count) {
 		/* try to resize the buffer, don't bother if resize failed */
-		tmp = realloc(ips, i*sizeof(tpp_addr_t));
+		tmp = realloc(ips, i * sizeof(tpp_addr_t));
 		if (tmp)
 			ips = tmp;
 	}
@@ -843,15 +857,15 @@ tpp_sock_attempt_connection(int fd, char *host, int port)
 	if (i == count) {
 		/* did not find a ipv4 address, fail for now */
 		free(addr);
-		errno  = EADDRNOTAVAIL;
+		errno = EADDRNOTAVAIL;
 		return -1;
 	}
 
 	dest_addr.sin_family = AF_INET;
 	dest_addr.sin_port = htons(port);
 
-	memcpy((char *)&dest_addr.sin_addr, &addr[i].ip, sizeof(dest_addr.sin_addr));
-	rc = tpp_sock_connect(fd, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+	memcpy((char *) &dest_addr.sin_addr, &addr[i].ip, sizeof(dest_addr.sin_addr));
+	rc = tpp_sock_connect(fd, (struct sockaddr *) &dest_addr, sizeof(dest_addr));
 	free(addr);
 
 	return rc;

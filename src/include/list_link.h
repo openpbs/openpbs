@@ -37,12 +37,11 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_LIST_LINK_H
-#define	_LIST_LINK_H
-#ifdef	__cplusplus
+#ifndef _LIST_LINK_H
+#define _LIST_LINK_H
+#ifdef __cplusplus
 extern "C" {
 #endif
-
 
 /*
  * list_link.h - header file for general linked list routines
@@ -58,7 +57,7 @@ extern "C" {
 typedef struct pbs_list_link {
 	struct pbs_list_link *ll_prior;
 	struct pbs_list_link *ll_next;
-	void		 *ll_struct;
+	void *ll_struct;
 } pbs_list_link;
 typedef pbs_list_link pbs_list_head;
 
@@ -68,13 +67,13 @@ typedef pbs_list_link pbs_list_head;
 #define CLEAR_LINK(e) e.ll_next = &e, e.ll_prior = &e
 
 #define LINK_INSET_BEFORE 0
-#define LINK_INSET_AFTER  1
+#define LINK_INSET_AFTER 1
 
 #if defined(DEBUG) && !defined(NDEBUG)
 #define GET_NEXT(pe) get_next((pe), __FILE__, __LINE__)
 #define GET_PRIOR(pe) get_prior((pe), __FILE__, __LINE__)
 #else
-#define GET_NEXT(pe)  (pe).ll_next->ll_struct
+#define GET_NEXT(pe) (pe).ll_next->ll_struct
 #define GET_PRIOR(pe) (pe).ll_prior->ll_struct
 #endif
 
@@ -84,16 +83,16 @@ extern void insert_link(pbs_list_link *oldp, pbs_list_link *newp, void *pobj, in
 extern void append_link(pbs_list_head *head, pbs_list_link *newp, void *pnewobj);
 extern void delete_link(pbs_list_link *oldp);
 extern void delete_clear_link(pbs_list_link *oldp);
-extern void swap_link   (pbs_list_link *, pbs_list_link *);
-extern int  is_linked(pbs_list_link *head, pbs_list_link *oldp);
+extern void swap_link(pbs_list_link *, pbs_list_link *);
+extern int is_linked(pbs_list_link *head, pbs_list_link *oldp);
 extern void list_move(pbs_list_head *oldp, pbs_list_head *newp);
 
 #ifndef NDEBUG
 extern void *get_next(pbs_list_link, char *file, int line);
 extern void *get_prior(pbs_list_link, char *file, int line);
-#endif	/* NDEBUG */
+#endif /* NDEBUG */
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 #endif /* _LIST_LINK_H */

@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #ifndef PBS_ARRAY_LIST_H__
 #define PBS_ARRAY_LIST_H__
 
@@ -77,39 +76,38 @@ typedef long unsigned int T;
 typedef struct pbs_ip_range {
 	T ra_low;
 	T ra_high;
-}PBS_IP_RANGE; /* ra_high  is the number of addresses in the range 'in addition' to the starting address */
+} PBS_IP_RANGE; /* ra_high  is the number of addresses in the range 'in addition' to the starting address */
 
-typedef PBS_IP_RANGE* pntPBS_IP_RANGE;
+typedef PBS_IP_RANGE *pntPBS_IP_RANGE;
 
 /**
  * The PBS_IP_LIST data structure contains an array of ordered pairs (PBS_IP_RANGE)
  * Carries meta-data about the range: the number of slots used and number of
  * slots available
  */
-typedef struct pbs_ip_list{
+typedef struct pbs_ip_list {
 	pntPBS_IP_RANGE li_range;
 	int li_nrowsused;
 	int li_totalsize;
-}PBS_IP_LIST;
+} PBS_IP_LIST;
 
-
-typedef PBS_IP_LIST* pntPBS_IP_LIST;
-#define CHUNK 5     /* The number of slots by which PBS_IP_LIST is resized */
-#define  INIT_VALUE 0
+typedef PBS_IP_LIST *pntPBS_IP_LIST;
+#define CHUNK 5 /* The number of slots by which PBS_IP_LIST is resized */
+#define INIT_VALUE 0
 
 /* Various macros to retrieve or set 'ra_low' or 'ra_high' for a given PBS_IP_RANGE */
-#define  IPLIST_GET_LOW(X , Y ) (X)->li_range[(Y)].ra_low
-#define  IPLIST_GET_HIGH(X , Y ) (X)->li_range[(Y)].ra_high
-#define  IPLIST_SET_LOW(X , Y , Z ) (X)->li_range[(Y)].ra_low = (Z)
-#define  IPLIST_SET_HIGH(X , Y , Z ) (X)->li_range[(Y)].ra_high = (Z)
-#define  IPLIST_IS_CONTINUOUS(X , Y ) ((X) + 1 == (Y) )
+#define IPLIST_GET_LOW(X, Y) (X)->li_range[(Y)].ra_low
+#define IPLIST_GET_HIGH(X, Y) (X)->li_range[(Y)].ra_high
+#define IPLIST_SET_LOW(X, Y, Z) (X)->li_range[(Y)].ra_low = (Z)
+#define IPLIST_SET_HIGH(X, Y, Z) (X)->li_range[(Y)].ra_high = (Z)
+#define IPLIST_IS_CONTINUOUS(X, Y) ((X) + 1 == (Y))
 
-#define IPLIST_IS_CONTINUOUS_ROW(X , Y , Z ) (IPLIST_IS_CONTINUOUS((IPLIST_GET_LOW(X , Y ) + IPLIST_GET_HIGH(X , Y )), (Z)))
-#define IPLIST_IS_ROW_SAME(X , Y , Z ) ((IPLIST_GET_LOW(X , Y ) + IPLIST_GET_HIGH(X , Y )) == (Z))
-#define IPLIST_MOVE_DOWN(X , Y ) (((X) - (Y)) * sizeof(PBS_IP_RANGE))
-#define IPLIST_MOVE_UP(X , Y ) (((X) - ((Y) + 1)) * sizeof(PBS_IP_RANGE) )
-#define IPLIST_SHIFT_ALL_DOWN_BY_ONE(X , Y , Z ) memmove((X)->li_range + (Y) + 1, (X)->li_range + (Y), (Z) * sizeof(PBS_IP_RANGE) )
-#define IPLIST_SHIFT_ALL_UP_BY_ONE(X , Y , Z ) memmove((X)->li_range + (Y) , (X)->li_range + (Y) + 1, (Z) * sizeof(PBS_IP_RANGE) )
+#define IPLIST_IS_CONTINUOUS_ROW(X, Y, Z) (IPLIST_IS_CONTINUOUS((IPLIST_GET_LOW(X, Y) + IPLIST_GET_HIGH(X, Y)), (Z)))
+#define IPLIST_IS_ROW_SAME(X, Y, Z) ((IPLIST_GET_LOW(X, Y) + IPLIST_GET_HIGH(X, Y)) == (Z))
+#define IPLIST_MOVE_DOWN(X, Y) (((X) - (Y)) * sizeof(PBS_IP_RANGE))
+#define IPLIST_MOVE_UP(X, Y) (((X) - ((Y) + 1)) * sizeof(PBS_IP_RANGE))
+#define IPLIST_SHIFT_ALL_DOWN_BY_ONE(X, Y, Z) memmove((X)->li_range + (Y) + 1, (X)->li_range + (Y), (Z) * sizeof(PBS_IP_RANGE))
+#define IPLIST_SHIFT_ALL_UP_BY_ONE(X, Y, Z) memmove((X)->li_range + (Y), (X)->li_range + (Y) + 1, (Z) * sizeof(PBS_IP_RANGE))
 
 #define IPLIST_INSERT_SUCCESS 0
 #define IPLIST_INSERT_FAILURE -1
@@ -190,7 +188,6 @@ void delete_pbs_iplist(pntPBS_IP_LIST);
  */
 int search_iplist_location(pntPBS_IP_LIST, T, int *);
 
-
 /**
  * @brief
  *	Inserts provided key into provided PBS_IP_LIST
@@ -210,7 +207,7 @@ int search_iplist_location(pntPBS_IP_LIST, T, int *);
  * 0 - SUCCESS
  * 1 - FAILURE
  */
-int insert_iplist_element(pntPBS_IP_LIST , T);
+int insert_iplist_element(pntPBS_IP_LIST, T);
 
 /**
  * @brief
@@ -229,6 +226,6 @@ int insert_iplist_element(pntPBS_IP_LIST , T);
  * 0 - SUCCESS
  * 1 - FAILURE
  */
-int delete_iplist_element(pntPBS_IP_LIST , T);
+int delete_iplist_element(pntPBS_IP_LIST, T);
 
 #endif

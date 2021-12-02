@@ -84,8 +84,8 @@
 
 typedef char way3; /* -1, 0, 1 */
 
-#define way3stop  ((way3) 0)
-#define way3left  ((way3) -1)
+#define way3stop ((way3) 0)
+#define way3left ((way3) -1)
 #define way3right ((way3) 1)
 
 #define way3sum(x, y) ((x) + (y)) /* assume x!=y */
@@ -106,17 +106,17 @@ typedef struct _node {
 /* tree.h */
 
 #define SRF_FINDEQUAL 1
-#define SRF_FINDLESS  2
+#define SRF_FINDLESS 2
 #define SRF_FINDGREAT 4
-#define SRF_SETMARK   8
-#define SRF_FROMMARK  16
+#define SRF_SETMARK 8
+#define SRF_FROMMARK 16
 
 #define avltree_init(x) (*(x) = NULL)
 
 typedef struct {
 	short __tind; /* index of this thread */
 	int __ix_keylength;
-	int __ix_flags;    /* set from AVL_IX_DESC */
+	int __ix_flags;	     /* set from AVL_IX_DESC */
 	int __rec_keylength; /* set from actual key */
 	int __node_overhead;
 
@@ -136,13 +136,13 @@ pthread_mutex_t tind_lock;
  * Set max_threads to 2 by default since mom, server etc have basically 2 threads
  * If caller has > 2 threads, e.g. pbs_comm, it must first call avl_set_maxthreads()
  */
-static int max_threads = 2; 
+static int max_threads = 2;
 
 /**
  * @brief set the max threads that the application uses, before any calls to avltree
  * 
  */
-void 
+void
 avl_set_maxthreads(int n)
 {
 	max_threads = n;
@@ -176,7 +176,7 @@ get_thread_index(void)
 {
 	static short tind = -1;
 	short retval;
-	
+
 	pthread_mutex_lock(&tind_lock);
 	retval = ++tind;
 	pthread_mutex_unlock(&tind_lock);
@@ -211,7 +211,6 @@ get_avl_tls(void)
 	return p_avl_tls;
 }
 
-
 /**
  * @brief
  *	Free the thread local storage used for avltree for this thread
@@ -223,19 +222,19 @@ free_avl_tls(void)
 
 	pthread_once(&avl_init_once, avl_init_func);
 
-	if ((p_avl_tls = (avl_tls_t *) pthread_getspecific(avl_tls_key))) 
+	if ((p_avl_tls = (avl_tls_t *) pthread_getspecific(avl_tls_key)))
 		free(p_avl_tls);
 }
 
-#define tind             (((avl_tls_t *) get_avl_tls())->__tind)
-#define ix_keylength  (((avl_tls_t *) get_avl_tls())->__ix_keylength)
-#define ix_flags   (((avl_tls_t *) get_avl_tls())->__ix_flags)
+#define tind (((avl_tls_t *) get_avl_tls())->__tind)
+#define ix_keylength (((avl_tls_t *) get_avl_tls())->__ix_keylength)
+#define ix_flags (((avl_tls_t *) get_avl_tls())->__ix_flags)
 #define rec_keylength (((avl_tls_t *) get_avl_tls())->__rec_keylength)
 #define node_overhead (((avl_tls_t *) get_avl_tls())->__node_overhead)
-#define avl_t	      (((avl_tls_t *) get_avl_tls())->__t)
-#define avl_r	      (((avl_tls_t *) get_avl_tls())->__r)
-#define avl_s	      (((avl_tls_t *) get_avl_tls())->__s)
-#define avl_wayhand   (((avl_tls_t *) get_avl_tls())->__wayhand)
+#define avl_t (((avl_tls_t *) get_avl_tls())->__t)
+#define avl_r (((avl_tls_t *) get_avl_tls())->__r)
+#define avl_s (((avl_tls_t *) get_avl_tls())->__s)
+#define avl_wayhand (((avl_tls_t *) get_avl_tls())->__wayhand)
 
 /******************************************************************************
  WAY3
@@ -243,7 +242,8 @@ free_avl_tls(void)
 static way3
 makeway3(int n)
 {
-	return n > 0 ? way3right : n < 0 ? way3left : way3stop;
+	return n > 0 ? way3right : n < 0 ? way3left
+					 : way3stop;
 }
 
 static way3
@@ -433,7 +433,8 @@ avltree_search(node **tt, rectype *key, unsigned short searchflags)
 		return NULL;
 	if (!(searchflags & (SRF_FINDGREAT | SRF_FINDEQUAL | SRF_FINDLESS)))
 		return NULL;
-	waydir = searchflags & SRF_FINDGREAT ? way3right : searchflags & SRF_FINDLESS ? way3left : way3stop;
+	waydir = searchflags & SRF_FINDGREAT ? way3right : searchflags & SRF_FINDLESS ? way3left
+										      : way3stop;
 	wayopp = way3opp(waydir);
 	p = q = NULL;
 	while ((pp = *tt) != NULL) {
@@ -564,7 +565,8 @@ avltree_delete(node **tt, rectype *key, unsigned short searchflags)
 	aaa = way3stop;
 
 	while ((pp = *tt) != NULL) {
-		aa = aaa != way3stop ? aaa : searchflags & SRF_FROMMARK ? pp->trace[tind] : makeway3(compkey(key, &(pp->data)));
+		aa = aaa != way3stop ? aaa : searchflags & SRF_FROMMARK ? pp->trace[tind]
+									: makeway3(compkey(key, &(pp->data)));
 		b = pp->balance;
 		if (aa == way3stop) {
 			qq1 = tt;

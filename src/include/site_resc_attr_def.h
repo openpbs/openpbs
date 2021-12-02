@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /*
  * Place holder for site supplied additions to the array of
  * resource definitions, see server/resc_def_all.c

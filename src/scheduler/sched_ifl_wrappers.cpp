@@ -64,7 +64,7 @@
  * @retval	return value of the runjob call
  */
 int
-send_run_job(int sd, int has_runjob_hook, const std::string& jobid, char *execvnode)
+send_run_job(int sd, int has_runjob_hook, const std::string &jobid, char *execvnode)
 {
 	if (jobid.empty() || execvnode == NULL)
 		return 1;
@@ -94,7 +94,7 @@ send_attr_updates(int sd, resource_resv *resresv, struct attrl *pattr)
 {
 	const char *errbuf;
 	int one_attr = 0;
-	const std::string& job_name = resresv->name;
+	const std::string &job_name = resresv->name;
 
 	if (job_name.empty() || pattr == NULL)
 		return 0;
@@ -117,7 +117,7 @@ send_attr_updates(int sd, resource_resv *resresv, struct attrl *pattr)
 				   pattr->name, pattr->value);
 		else
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, job_name,
-				"Failed to update job attributes, Job already finished");
+				  "Failed to update job attributes, Job already finished");
 		return 0;
 	}
 
@@ -130,8 +130,8 @@ send_attr_updates(int sd, resource_resv *resresv, struct attrl *pattr)
 			   pattr->name, pattr->value, errbuf, pbs_errno);
 	else
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, job_name,
-			"Failed to update job attributes: %s (%d)",
-			errbuf, pbs_errno);
+			   "Failed to update job attributes: %s (%d)",
+			   errbuf, pbs_errno);
 
 	return 0;
 }
@@ -148,7 +148,7 @@ send_attr_updates(int sd, resource_resv *resresv, struct attrl *pattr)
 preempt_job_info *
 send_preempt_jobs(int sd, char **preempt_jobs_list)
 {
-    return pbs_preempt_jobs(sd, preempt_jobs_list);
+	return pbs_preempt_jobs(sd, preempt_jobs_list);
 }
 
 /**

@@ -101,6 +101,7 @@
 #include "pbs_ifl.h"
 #include "glob.h"
 
+// clang-format off
 
 #ifndef	S_ISLNK
 #define	S_ISLNK(m)	(((m) & S_IFMT) == S_IFLNK)
@@ -3452,3 +3453,4 @@ fix_perm_owner(MPUG *p_mpug, struct stat *ps, ADJ *p_adj)
 			break;
 	}
 }
+// clang-format on

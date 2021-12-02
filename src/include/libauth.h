@@ -62,7 +62,7 @@ enum AUTH_ROLE {
 
 /* Type of connections */
 enum AUTH_CONN_TYPE {
-	 /* user-oriented connection (aka like PBS client is connecting to PBS Server) */
+	/* user-oriented connection (aka like PBS client is connecting to PBS Server) */
 	AUTH_USER_CONN = 0,
 	/* service-oriented connection (aka like PBS Mom is connecting to PBS Server via PBS Comm) */
 	AUTH_SERVICE_CONN
@@ -153,7 +153,6 @@ extern DLLEXPORT int pbs_auth_get_userinfo(void *ctx, char **user, char **host, 
  */
 extern DLLEXPORT int pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done);
 
-
 /** @brief
  *	pbs_auth_encrypt_data - encrypt data based on given auth context.
  *
@@ -183,7 +182,6 @@ extern DLLEXPORT int pbs_auth_encrypt_data(void *ctx, void *data_in, size_t len_
  * @retval	1 on error
  */
 extern DLLEXPORT int pbs_auth_decrypt_data(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out);
-
 
 #ifdef __cplusplus
 }

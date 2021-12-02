@@ -55,7 +55,7 @@ attribute *
 get_sched_attr(const pbs_sched *psched, int attr_idx)
 {
 	if (psched != NULL)
-		return _get_attr_by_idx((attribute *)psched->sch_attr, attr_idx);
+		return _get_attr_by_idx((attribute *) psched->sch_attr, attr_idx);
 	return NULL;
 }
 

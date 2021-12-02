@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    parse.c
  *
@@ -114,26 +113,25 @@ config::config() : fairshare_res("cput"), fairshare_ent("euser")
 	ignore_res.insert("mpiprocs");
 	ignore_res.insert("ompthreads");
 	memset(prime, 0, sizeof(prime));
-	holiday_year = 0;			/* the year the holidays are for */
-	unknown_shares = 0;			/* unknown group shares */
-	max_preempt_attempts = SCHD_INFINITY;					/* max num of preempt attempts per cyc*/
-	max_jobs_to_check = SCHD_INFINITY;			/* max number of jobs to check in cyc*/
-	fairshare_decay_factor = .5;		/* decay factor used when decaying fairshare tree */
+	holiday_year = 0;		      /* the year the holidays are for */
+	unknown_shares = 0;		      /* unknown group shares */
+	max_preempt_attempts = SCHD_INFINITY; /* max num of preempt attempts per cyc*/
+	max_jobs_to_check = SCHD_INFINITY;    /* max number of jobs to check in cyc*/
+	fairshare_decay_factor = .5;	      /* decay factor used when decaying fairshare tree */
 #ifdef NAS
 	/* localmod 034 */
-	max_borrow = 0;			/* job share borrowing limit */
-	per_share_topjobs = 0;		/* per share group guaranteed top jobs*/
+	max_borrow = 0;	       /* job share borrowing limit */
+	per_share_topjobs = 0; /* per share group guaranteed top jobs*/
 	/* localmod 038 */
-	per_queues_topjobs = 0;		/* per queues guaranteed top jobs */
+	per_queues_topjobs = 0; /* per queues guaranteed top jobs */
 	/* localmod 030 */
-	min_intrptd_cycle_length = 0;		/* min length of interrupted cycle */
-	max_intrptd_cycles = 0;		/* max consecutive interrupted cycles */
+	min_intrptd_cycle_length = 0; /* min length of interrupted cycle */
+	max_intrptd_cycles = 0;	      /* max consecutive interrupted cycles */
 #endif
 
 	/* selection criteria of nodes for provisioning */
 	provision_policy = AGGRESSIVE_PROVISION;
 }
-
 
 /* strtok delimiters for parsing the sched_config file are space and tab */
 #define DELIM "\t "
@@ -156,10 +154,10 @@ config::config() : fairshare_res("cput"), fairshare_ent("euser")
 config
 parse_config(const char *fname)
 {
-	FILE *fp;			/* file pointer to config file */
+	FILE *fp; /* file pointer to config file */
 	char *buf = NULL;
 	int buf_size = 0;
-	int linenum = 0;		/* the current line number in the file */
+	int linenum = 0; /* the current line number in the file */
 
 	/* resource type for validity checking */
 	struct resource_type type;
@@ -168,7 +166,7 @@ parse_config(const char *fname)
 
 	if ((fp = fopen(fname, "r")) == NULL) {
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-			fname, "Can not open file: %s", fname);
+			   fname, "Can not open file: %s", fname);
 		return config();
 	}
 
@@ -216,7 +214,7 @@ parse_config(const char *fname)
 					if (!strcmp(prime_value, "prime") || !strcmp(prime_value, "PRIME"))
 						prime = PRIME;
 					else if (!strcmp(prime_value, "non_prime") ||
-						!strcmp(prime_value, "NON_PRIME"))
+						 !strcmp(prime_value, "NON_PRIME"))
 						prime = NON_PRIME;
 					else if (!strcmp(prime_value, "all") || !strcmp(prime_value, "ALL"))
 						prime = PT_ALL;
@@ -233,34 +231,29 @@ parse_config(const char *fname)
 						tmpconf.prime_rr = num ? 1 : 0;
 					if (prime == NON_PRIME || prime == PT_ALL)
 						tmpconf.non_prime_rr = num ? 1 : 0;
-				}
-				else if (!strcmp(config_name, PARSE_BY_QUEUE)) {
+				} else if (!strcmp(config_name, PARSE_BY_QUEUE)) {
 					if (prime == PRIME || prime == PT_ALL)
 						tmpconf.prime_bq = num ? 1 : 0;
 					if (prime == NON_PRIME || prime == PT_ALL)
 						tmpconf.non_prime_bq = num ? 1 : 0;
-				}
-				else if (!strcmp(config_name, PARSE_STRICT_FIFO)) {
+				} else if (!strcmp(config_name, PARSE_STRICT_FIFO)) {
 					if (prime == PRIME || prime == PT_ALL)
 						tmpconf.prime_sf = num ? 1 : 0;
 					if (prime == NON_PRIME || prime == PT_ALL)
 						tmpconf.non_prime_sf = num ? 1 : 0;
 					obsolete[0] = config_name;
 					obsolete[1] = "strict_ordering";
-				}
-				else if (!strcmp(config_name, PARSE_STRICT_ORDERING)) {
+				} else if (!strcmp(config_name, PARSE_STRICT_ORDERING)) {
 					if (prime == PRIME || prime == PT_ALL)
 						tmpconf.prime_so = num ? 1 : 0;
 					if (prime == NON_PRIME || prime == PT_ALL)
 						tmpconf.non_prime_so = num ? 1 : 0;
-				}
-				else if (!strcmp(config_name, PARSE_FAIR_SHARE)) {
+				} else if (!strcmp(config_name, PARSE_FAIR_SHARE)) {
 					if (prime == PRIME || prime == PT_ALL)
 						tmpconf.prime_fs = num ? 1 : 0;
 					if (prime == NON_PRIME || prime == PT_ALL)
 						tmpconf.non_prime_fs = num ? 1 : 0;
-				}
-				else if (!strcmp(config_name, PARSE_HELP_STARVING_JOBS)) {
+				} else if (!strcmp(config_name, PARSE_HELP_STARVING_JOBS)) {
 					obsolete[0] = config_name;
 					obsolete[1] = "use eligible_time in job_sort_formula";
 				} else if (!strcmp(config_name, PARSE_BACKFILL)) {
@@ -301,12 +294,11 @@ parse_config(const char *fname)
 						snprintf(errbuf, sizeof(errbuf), "Invalid time %s", config_value);
 						error = true;
 					}
-				}
-				else if (!strcmp(config_name, PARSE_MAX_STARVE)) {
+				} else if (!strcmp(config_name, PARSE_MAX_STARVE)) {
 					obsolete[0] = config_name;
 					obsolete[1] = "use eligible_time in job_sort_formula";
 				} else if (!strcmp(config_name, PARSE_HALF_LIFE) || !strcmp(config_name, PARSE_FAIRSHARE_DECAY_TIME)) {
-					if(!strcmp(config_name, PARSE_HALF_LIFE)) {
+					if (!strcmp(config_name, PARSE_HALF_LIFE)) {
 						obsolete[0] = PARSE_HALF_LIFE;
 						obsolete[1] = PARSE_FAIRSHARE_DECAY_TIME " and " PARSE_FAIRSHARE_DECAY_FACTOR " instead";
 					}
@@ -320,7 +312,7 @@ parse_config(const char *fname)
 				else if (!strcmp(config_name, PARSE_FAIRSHARE_DECAY_FACTOR)) {
 					float fnum;
 					fnum = strtod(config_value, &endp);
-					if(*endp == '\0')  {
+					if (*endp == '\0') {
 						if (fnum <= 0 || fnum >= 1) {
 							sprintf(errbuf, "%s: Invalid value: %.*f.  Valid values are between 0 and 1.", PARSE_FAIRSHARE_DECAY_FACTOR, float_digits(fnum, 2), fnum);
 							error = true;
@@ -330,45 +322,38 @@ parse_config(const char *fname)
 						pbs_strncpy(errbuf, "Invalid " PARSE_FAIRSHARE_DECAY_FACTOR, sizeof(errbuf));
 						error = true;
 					}
-				}
-				else if (!strcmp(config_name, PARSE_FAIRSHARE_RES)) {
+				} else if (!strcmp(config_name, PARSE_FAIRSHARE_RES)) {
 					tmpconf.fairshare_res = config_value;
-				}
-				else if (!strcmp(config_name, PARSE_FAIRSHARE_ENT)) {
+				} else if (!strcmp(config_name, PARSE_FAIRSHARE_ENT)) {
 					if (strcmp(config_value, ATTR_euser) &&
-						strcmp(config_value, ATTR_egroup) &&
-						strcmp(config_value, ATTR_A) &&
-						strcmp(config_value, "queue") &&
-						strcmp(config_value, "egroup:euser")) {
+					    strcmp(config_value, ATTR_egroup) &&
+					    strcmp(config_value, ATTR_A) &&
+					    strcmp(config_value, "queue") &&
+					    strcmp(config_value, "egroup:euser")) {
 						error = true;
 						sprintf(errbuf, "%s %s is erroneous (or deprecated).",
 							PARSE_FAIRSHARE_ENT, config_value);
 					}
 					tmpconf.fairshare_ent = config_value;
-				}
-				else if (!strcmp(config_name, PARSE_NODE_GROUP_KEY)) {
+				} else if (!strcmp(config_name, PARSE_NODE_GROUP_KEY)) {
 					obsolete[0] = PARSE_NODE_GROUP_KEY;
 					obsolete[1] = "nothing - set via qmgr";
-				}
-				else if (!strcmp(config_name, PARSE_LOG_FILTER)) {
+				} else if (!strcmp(config_name, PARSE_LOG_FILTER)) {
 					obsolete[0] = PARSE_LOG_FILTER;
 					obsolete[1] = "nothing - set log_events via qmgr";
-				}
-				else if (!strcmp(config_name, PARSE_PREEMPT_QUEUE_PRIO)) {
+				} else if (!strcmp(config_name, PARSE_PREEMPT_QUEUE_PRIO)) {
 					obsolete[0] = PARSE_PREEMPT_QUEUE_PRIO;
 					obsolete[1] = "nothing - set via qmgr";
-				}
-				else if (!strcmp(config_name, PARSE_RES_UNSET_INFINITE)) {
+				} else if (!strcmp(config_name, PARSE_RES_UNSET_INFINITE)) {
 					char **strarr;
-					
+
 					// mpiprocs and ompthreads are added in the constructor
 					strarr = break_comma_list(config_value);
 					for (int i = 0; strarr[i] != NULL; i++)
 						tmpconf.ignore_res.insert(strarr[i]);
 					free_string_array(strarr);
 
-				}
-				else if (!strcmp(config_name, PARSE_RESV_CONFIRM_IGNORE)) {
+				} else if (!strcmp(config_name, PARSE_RESV_CONFIRM_IGNORE)) {
 					if (!strcmp(config_value, "dedicated_time"))
 						tmpconf.resv_conf_ignore = 1;
 					else if (!strcmp(config_value, "none"))
@@ -378,8 +363,7 @@ parse_config(const char *fname)
 						sprintf(errbuf, "%s valid values: dedicated_time or none",
 							PARSE_RESV_CONFIRM_IGNORE);
 					}
-				}
-				else if (!strcmp(config_name, PARSE_RESOURCES)) {
+				} else if (!strcmp(config_name, PARSE_RESOURCES)) {
 					bool need_host = false;
 					bool need_vnode = false;
 					char **strarr;
@@ -441,17 +425,14 @@ parse_config(const char *fname)
 						tok = strtok(NULL, DELIM);
 						if (tok != NULL) {
 							if (!strcmp(tok, "high") || !strcmp(tok, "HIGH") ||
-								!strcmp(tok, "High")) {
+							    !strcmp(tok, "High")) {
 								si.order = DESC;
-							}
-							else if (!strcmp(tok, "low") || !strcmp(tok, "LOW") ||
-								!strcmp(tok, "Low")) {
+							} else if (!strcmp(tok, "low") || !strcmp(tok, "LOW") ||
+								   !strcmp(tok, "Low")) {
 								si.order = ASC;
-							}
-							else
+							} else
 								error = true;
-						}
-						else
+						} else
 							error = true;
 
 						if (!error) {
@@ -483,17 +464,14 @@ parse_config(const char *fname)
 						tok = strtok(NULL, DELIM);
 						if (tok != NULL) {
 							if (!strcmp(tok, "high") || !strcmp(tok, "HIGH") ||
-								!strcmp(tok, "High")) {
+							    !strcmp(tok, "High")) {
 								si.order = DESC;
-							}
-							else if (!strcmp(tok, "low") || !strcmp(tok, "LOW") ||
-								!strcmp(tok, "Low")) {
+							} else if (!strcmp(tok, "low") || !strcmp(tok, "LOW") ||
+								   !strcmp(tok, "Low")) {
 								si.order = ASC;
-							}
-							else
+							} else
 								error = true;
-						}
-						else
+						} else
 							error = true;
 
 						if (!error) {
@@ -546,25 +524,23 @@ parse_config(const char *fname)
 								snprintf(errbuf, sizeof(errbuf), "server_dyn_res script %s does not exist", tok);
 								error = true;
 							} else {
-								#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-									int err;
-									err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
-									if (err != 0) {
-										snprintf(errbuf, sizeof(errbuf),
-											"error: %s file has a non-secure file access, errno: %d", filename, err);
-										error = true;
-									}
-								#endif
+#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+								int err;
+								err = tmp_file_sec_user(filename, 0, 1, S_IWGRP | S_IWOTH, 1, getuid());
+								if (err != 0) {
+									snprintf(errbuf, sizeof(errbuf),
+										 "error: %s file has a non-secure file access, errno: %d", filename, err);
+									error = true;
+								}
+#endif
 								tmpconf.dynamic_res.emplace_back(res, command_line, filename);
 								free(filename);
 							}
-						}
-						else {
+						} else {
 							pbs_strncpy(errbuf, "Invalid server_dyn_res", sizeof(errbuf));
 							error = true;
 						}
-					}
-					else {
+					} else {
 						pbs_strncpy(errbuf, "Invalid server_dyn_res", sizeof(errbuf));
 						error = true;
 					}
@@ -585,7 +561,8 @@ parse_config(const char *fname)
 					if (lqueue != NULL) {
 						auto rqueue = strtok(NULL, "@");
 						if (rqueue != NULL) {
-							while (isspace(*rqueue)) rqueue++;
+							while (isspace(*rqueue))
+								rqueue++;
 							const char *rserver = strtok(NULL, DELIM);
 							if (rserver == NULL)
 								rserver = "";
@@ -649,15 +626,15 @@ parse_config(const char *fname)
 
 		if (error)
 			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
-				"Error reading line %d: %s", linenum, errbuf);
+				   "Error reading line %d: %s", linenum, errbuf);
 
 		if (obsolete[0] != NULL) {
 			if (obsolete[1] != NULL)
 				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
-					"Obsolete config name %s, instead use %s", obsolete[0], obsolete[1]);
+					   "Obsolete config name %s, instead use %s", obsolete[0], obsolete[1]);
 			else
 				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
-					"Obsolete config name %s", obsolete[0]);
+					   "Obsolete config name %s", obsolete[0]);
 		}
 	}
 	fclose(fp);
@@ -684,7 +661,9 @@ parse_config(const char *fname)
  * @retval	1	: is special case sort
  * @retval	0	: not special case sort
  */
-int is_speccase_sort(const std::string& sort_res, int sort_type) {
+int
+is_speccase_sort(const std::string &sort_res, int sort_type)
+{
 	if (sort_type == SOBJ_JOB) {
 		if (sort_res == SORT_JOB_PRIORITY)
 			return 1;
@@ -724,10 +703,10 @@ int is_speccase_sort(const std::string& sort_res, int sort_type) {
 char *
 scan(char *str, char target)
 {
-	static char *isp = NULL;	/* internal state pointer used if a NULL is
+	static char *isp = NULL; /* internal state pointer used if a NULL is
 					 * passed in to str
 					 */
-	char *ptr;			/* pointer used to search through the str */
+	char *ptr;		 /* pointer used to search through the str */
 	char *start;
 
 	if (str == NULL && isp == NULL)
@@ -742,7 +721,8 @@ scan(char *str, char target)
 	if (target == 0)
 		target = ' ';
 
-	while (isspace(*ptr) || *ptr == target) ptr++;
+	while (isspace(*ptr) || *ptr == target)
+		ptr++;
 
 	start = ptr;
 
@@ -752,8 +732,7 @@ scan(char *str, char target)
 			start = ++ptr;
 			while (*ptr != '\0' && *ptr != quote)
 				ptr++;
-		}
-		else {
+		} else {
 			while (*ptr != '\0' && !isspace(*ptr) && *ptr != target)
 				ptr++;
 		}
@@ -837,9 +816,9 @@ preempt_cmp(const void *p1, const void *p2)
 	else if (BITCOUNT16(*i1) > BITCOUNT16(*i2))
 		return -1;
 	else {
-		if (*(i1+1) < *(i2+1))
+		if (*(i1 + 1) < *(i2 + 1))
 			return 1;
-		else if (*(i1+1) > *(i2+1))
+		else if (*(i1 + 1) > *(i2 + 1))
 			return -1;
 		else
 			return 0;

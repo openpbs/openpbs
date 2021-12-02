@@ -37,9 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	__TPP_INTERNAL_H
+#ifndef __TPP_INTERNAL_H
 #define __TPP_INTERNAL_H
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -57,26 +57,26 @@ extern "C" {
 
 #ifndef WIN32
 
-#define tpp_pipe_cr(a)               pipe(a)
-#define tpp_pipe_read(a, b, c)         read(a, b, c)
-#define tpp_pipe_write(a, b, c)        write(a, b, c)
-#define tpp_pipe_close(a)            close(a)
+#define tpp_pipe_cr(a) pipe(a)
+#define tpp_pipe_read(a, b, c) read(a, b, c)
+#define tpp_pipe_write(a, b, c) write(a, b, c)
+#define tpp_pipe_close(a) close(a)
 
-#define tpp_sock_socket(a, b, c)       socket(a, b, c)
-#define tpp_sock_bind(a, b, c)         bind(a, b, c)
-#define tpp_sock_listen(a, b)         listen(a, b)
-#define tpp_sock_accept(a, b, c)       accept(a, b, c)
-#define tpp_sock_connect(a, b, c)      connect(a, b, c)
-#define tpp_sock_recv(a, b, c, d)       recv(a, b, c, d)
-#define tpp_sock_send(a, b, c, d)       send(a, b, c, d)
-#define tpp_sock_select(a, b, c, d, e)   select(a, b, c, d, e)
-#define tpp_sock_close(a)            close(a)
-#define tpp_sock_getsockopt(a, b, c, d, e)   getsockopt(a, b, c, d, e)
-#define tpp_sock_setsockopt(a, b, c, d, e)   setsockopt(a, b, c, d, e)
+#define tpp_sock_socket(a, b, c) socket(a, b, c)
+#define tpp_sock_bind(a, b, c) bind(a, b, c)
+#define tpp_sock_listen(a, b) listen(a, b)
+#define tpp_sock_accept(a, b, c) accept(a, b, c)
+#define tpp_sock_connect(a, b, c) connect(a, b, c)
+#define tpp_sock_recv(a, b, c, d) recv(a, b, c, d)
+#define tpp_sock_send(a, b, c, d) send(a, b, c, d)
+#define tpp_sock_select(a, b, c, d, e) select(a, b, c, d, e)
+#define tpp_sock_close(a) close(a)
+#define tpp_sock_getsockopt(a, b, c, d, e) getsockopt(a, b, c, d, e)
+#define tpp_sock_setsockopt(a, b, c, d, e) setsockopt(a, b, c, d, e)
 
 #else
 #ifndef EINPROGRESS
-#define EINPROGRESS   EAGAIN
+#define EINPROGRESS EAGAIN
 #endif
 
 int tpp_pipe_cr(int fds[2]);
@@ -106,41 +106,39 @@ void tpp_invalidate_thrd_handle(pthread_t *);
 int tpp_is_valid_thrd(pthread_t);
 
 #define MAX_CON TPP_MAXOPENFD /* default max connections */
-#define UNINITIALIZED_INT       -1
-#define TPP_GEN_BUF_SZ        	1024
-#define TPP_MAXADDRLEN          (INET6_ADDRSTRLEN + 10)
+#define UNINITIALIZED_INT -1
+#define TPP_GEN_BUF_SZ 1024
+#define TPP_MAXADDRLEN (INET6_ADDRSTRLEN + 10)
 
 /* some built in timing control defines to retry connections to routers */
-#define TPP_CONNNECT_RETRY_MIN	2
-#define TPP_CONNECT_RETRY_INC	2
-#define TPP_CONNECT_RETRY_MAX	10
-#define TPP_THROTTLE_RETRY      5 /* retry time after throttling a packet */
-
+#define TPP_CONNNECT_RETRY_MIN 2
+#define TPP_CONNECT_RETRY_INC 2
+#define TPP_CONNECT_RETRY_MAX 10
+#define TPP_THROTTLE_RETRY 5 /* retry time after throttling a packet */
 
 /* defines for the TPP address families
  * we don't use the AF_INET etc, since their values could (though mostly does not)
  * differ between OS flavors, so choosing something that fits in a char
  * and also is same for TPP libraries on all OS flavors
  */
-#define TPP_ADDR_FAMILY_IPV4 	0
-#define TPP_ADDR_FAMILY_IPV6 	1
-#define TPP_ADDR_FAMILY_UNSPEC 	2
-
+#define TPP_ADDR_FAMILY_IPV4 0
+#define TPP_ADDR_FAMILY_IPV6 1
+#define TPP_ADDR_FAMILY_UNSPEC 2
 
 /*
  * Structure to hold an Address (ipv4 or ipv6)
  */
 typedef struct {
-	int ip[4]; /* can hold ipv6 as well */
+	int ip[4];   /* can hold ipv6 as well */
 	short port;  /* hold short port, keep as int for alignment */
 	char family; /* Ipv4 or IPV6 etc */
 } tpp_addr_t;
 
 typedef struct {
 	pbs_list_link chunk_link;
-	char *data;	/* pointer to the data buffer */
-	size_t len;	/* length of the data buffer */
-	char *pos;	/* current position - till which data is consumed */
+	char *data; /* pointer to the data buffer */
+	size_t len; /* length of the data buffer */
+	char *pos;  /* current position - till which data is consumed */
 } tpp_chunk_t;
 
 /*
@@ -151,7 +149,7 @@ typedef struct {
 	pbs_list_head chunks;
 	tpp_chunk_t *curr_chunk;
 	size_t totlen;
-	int ref_count;	/* number of accessors */
+	int ref_count; /* number of accessors */
 } tpp_packet_t;
 
 typedef struct {
@@ -176,11 +174,11 @@ typedef struct {
  */
 typedef struct {
 	unsigned int ntotlen;
-	unsigned char type;         /* type packet, JOIN, LEAVE etc */
-	unsigned char hop;          /* hop count */
-	unsigned char node_type;    /* node type - leaf or router */
-	unsigned char index;        /* in case of leaves, primary connection or backup */
-	unsigned char num_addrs;    /* number of addresses of source joining, max 128 */
+	unsigned char type;	 /* type packet, JOIN, LEAVE etc */
+	unsigned char hop;	 /* hop count */
+	unsigned char node_type; /* node type - leaf or router */
+	unsigned char index;	 /* in case of leaves, primary connection or backup */
+	unsigned char num_addrs; /* number of addresses of source joining, max 128 */
 } tpp_join_pkt_hdr_t;
 /* a bunch of tpp_addr structs follow this packet */
 
@@ -189,7 +187,7 @@ typedef struct {
  */
 typedef struct {
 	unsigned int ntotlen;
-	unsigned char type;      /* type packet, JOIN, LEAVE etc */
+	unsigned char type; /* type packet, JOIN, LEAVE etc */
 	unsigned char hop;
 	unsigned char ecode;
 	unsigned char num_addrs; /* number of addresses of source leaving, max 128 */
@@ -202,11 +200,11 @@ typedef struct {
 typedef struct {
 	unsigned int ntotlen;
 	unsigned char type;
-	unsigned char code;        /* NOROUTE, UPDATE, ERROR */
-	unsigned char error_num;   /* error_num in case of NOROUTE, ERRORs */
-	unsigned int  src_sd;      /* source sd in case of NO ROUTE */
-	tpp_addr_t src_addr;       /* src host address */
-	tpp_addr_t dest_addr;      /* destination host dest host address */
+	unsigned char code;	 /* NOROUTE, UPDATE, ERROR */
+	unsigned char error_num; /* error_num in case of NOROUTE, ERRORs */
+	unsigned int src_sd;	 /* source sd in case of NO ROUTE */
+	tpp_addr_t src_addr;	 /* src host address */
+	tpp_addr_t dest_addr;	 /* destination host dest host address */
 } tpp_ctl_pkt_hdr_t;
 
 /*
@@ -214,14 +212,14 @@ typedef struct {
  */
 typedef struct {
 	unsigned int ntotlen;
-	unsigned char type;        /* type of the packet - TPP_DATA, JOIN etc */	
+	unsigned char type; /* type of the packet - TPP_DATA, JOIN etc */
 
-	unsigned int src_magic;    /* magic id of source stream */
+	unsigned int src_magic; /* magic id of source stream */
 
-	unsigned int src_sd;       /* source stream descriptor */
-	unsigned int dest_sd;      /* destination stream descriptor */
+	unsigned int src_sd;  /* source stream descriptor */
+	unsigned int dest_sd; /* destination stream descriptor */
 
-	unsigned int totlen;       /* total pkt len */
+	unsigned int totlen; /* total pkt len */
 
 	tpp_addr_t src_addr;  /* src host address */
 	tpp_addr_t dest_addr; /* dest host address */
@@ -232,13 +230,13 @@ typedef struct {
  */
 typedef struct {
 	unsigned int ntotlen;
-	unsigned char type;       /* type of packet - TPP_MCAST_DATA */
-	unsigned char hop;        /* hop count */
-	unsigned int num_streams; /* number of member streams */
-	unsigned int info_len;    /* total length of info */
+	unsigned char type;	      /* type of packet - TPP_MCAST_DATA */
+	unsigned char hop;	      /* hop count */
+	unsigned int num_streams;     /* number of member streams */
+	unsigned int info_len;	      /* total length of info */
 	unsigned int info_cmprsd_len; /* compressed length of info */
-	unsigned int totlen;          /* total pkt len (in case of fragmented pkts) */
-	tpp_addr_t src_addr;     /* source host address */
+	unsigned int totlen;	      /* total pkt len (in case of fragmented pkts) */
+	tpp_addr_t src_addr;	      /* source host address */
 } tpp_mcast_pkt_hdr_t;
 
 /*
@@ -253,13 +251,13 @@ typedef struct {
 	tpp_addr_t dest_addr;	/* dest host address of member */
 } tpp_mcast_pkt_info_t;
 
-#define SLOT_INC                1000
+#define SLOT_INC 1000
 
-#define TPP_SLOT_FREE           0
-#define TPP_SLOT_BUSY           1
-#define TPP_SLOT_DELETED        2
+#define TPP_SLOT_FREE 0
+#define TPP_SLOT_BUSY 1
+#define TPP_SLOT_DELETED 2
 
-#define TPP_MAX_MBOX_SIZE 		640000
+#define TPP_MAX_MBOX_SIZE 640000
 
 /* tpp internal message header types */
 enum TPP_MSG_TYPES {
@@ -274,45 +272,44 @@ enum TPP_MSG_TYPES {
 	TPP_LAST_MSG
 };
 
-#define TPP_MSG_NOROUTE         1
-#define TPP_MSG_UPDATE          2
-#define TPP_MSG_AUTHERR         3
+#define TPP_MSG_NOROUTE 1
+#define TPP_MSG_UPDATE 2
+#define TPP_MSG_AUTHERR 3
 
+#define TPP_STRM_NORMAL 1
+#define TPP_STRM_MCAST 2
 
-#define TPP_STRM_NORMAL         1
-#define TPP_STRM_MCAST          2
-
-#define TPP_MAX_ACK_DELAY       1
-#define TPP_MAX_RETRY_DELAY     30
-#define TPP_CLOSE_WAIT          60
-#define TPP_STRM_TIMEOUT        600
-#define TPP_MIN_WAIT            2
-#define TPP_SEND_SIZE           8192
-#define TPP_COMPR_SIZE          8192
+#define TPP_MAX_ACK_DELAY 1
+#define TPP_MAX_RETRY_DELAY 30
+#define TPP_CLOSE_WAIT 60
+#define TPP_STRM_TIMEOUT 600
+#define TPP_MIN_WAIT 2
+#define TPP_SEND_SIZE 8192
+#define TPP_COMPR_SIZE 8192
 
 /* tpp cmds used internally by the layer to notify messages between threads */
-#define TPP_CMD_SEND            1
-#define TPP_CMD_CLOSE           2
-#define TPP_CMD_ASSIGN          3
-#define TPP_CMD_EXIT            4
-#define TPP_CMD_NET_CLOSE       5
-#define TPP_CMD_PEER_CLOSE      6
-#define TPP_CMD_NET_DATA        7
+#define TPP_CMD_SEND 1
+#define TPP_CMD_CLOSE 2
+#define TPP_CMD_ASSIGN 3
+#define TPP_CMD_EXIT 4
+#define TPP_CMD_NET_CLOSE 5
+#define TPP_CMD_PEER_CLOSE 6
+#define TPP_CMD_NET_DATA 7
 #define TPP_CMD_DELAYED_CONNECT 8
-#define TPP_CMD_NET_RESTORE     9
-#define TPP_CMD_NET_DOWN        10
-#define TPP_CMD_WAKEUP          11
-#define TPP_CMD_READ			12
-#define TPP_CMD_CONNECT			13
+#define TPP_CMD_NET_RESTORE 9
+#define TPP_CMD_NET_DOWN 10
+#define TPP_CMD_WAKEUP 11
+#define TPP_CMD_READ 12
+#define TPP_CMD_CONNECT 13
 
-#define TPP_DEF_ROUTER_PORT     17001
-#define TPP_SCRATCHSIZE         8192
+#define TPP_DEF_ROUTER_PORT 17001
+#define TPP_SCRATCHSIZE 8192
 
-#define TPP_ROUTER_STATE_DISCONNECTED	0   /* Leaf not connected to router */
-#define TPP_ROUTER_STATE_CONNECTING		1   /* Leaf is connecting to router */
-#define TPP_ROUTER_STATE_CONNECTED		2   /* Leaf connected to router */
+#define TPP_ROUTER_STATE_DISCONNECTED 0 /* Leaf not connected to router */
+#define TPP_ROUTER_STATE_CONNECTING 1	/* Leaf is connecting to router */
+#define TPP_ROUTER_STATE_CONNECTED 2	/* Leaf connected to router */
 
-#define TPP_MBOX_NAME_SZ	10 /* max 10 mbox_name size */
+#define TPP_MBOX_NAME_SZ 10 /* max 10 mbox_name size */
 
 /*
  * This structure contains the information about what kind of end-point
@@ -325,7 +322,7 @@ enum TPP_MSG_TYPES {
  */
 typedef struct {
 	unsigned char type; /* leaf or router */
-	void *ptr; /* pointer to router or leaf structure */
+	void *ptr;	    /* pointer to router or leaf structure */
 } tpp_context_t;
 
 /*
@@ -347,14 +344,14 @@ typedef struct {
  * Structure to hold information of a leaf node
  */
 typedef struct {
-	int conn_fd;                /* real connection id. -1 if not directly connected */
-	unsigned char leaf_type;    /* need notifications or not */
+	int conn_fd;		 /* real connection id. -1 if not directly connected */
+	unsigned char leaf_type; /* need notifications or not */
 
-	int   tot_routers;          /* total number of routers which has this this leaf */
-	int   num_routers;
-	tpp_router_t **r;      /* list of routers leaf is connected to */
+	int tot_routers; /* total number of routers which has this this leaf */
+	int num_routers;
+	tpp_router_t **r; /* list of routers leaf is connected to */
 
-	int   num_addrs;
+	int num_addrs;
 	tpp_addr_t *leaf_addrs; /* list of leaf's addresses */
 } tpp_leaf_t;
 
@@ -403,13 +400,14 @@ typedef struct {
 #endif
 } tpp_mbox_t;
 
-
 /* quickie macros to work with queues */
-#define TPP_QUE_CLEAR(q)   (q)->head = NULL; (q)->tail = NULL
-#define TPP_QUE_HEAD(q)    (q)->head
-#define TPP_QUE_TAIL(q)    (q)->tail
-#define TPP_QUE_NEXT(q, n) (((n) == NULL)?(q)->head:(n)->next)
-#define TPP_QUE_DATA(n)    (((n) == NULL)?NULL:(n)->queue_data)
+#define TPP_QUE_CLEAR(q)  \
+	(q)->head = NULL; \
+	(q)->tail = NULL
+#define TPP_QUE_HEAD(q) (q)->head
+#define TPP_QUE_TAIL(q) (q)->tail
+#define TPP_QUE_NEXT(q, n) (((n) == NULL) ? (q)->head : (n)->next)
+#define TPP_QUE_DATA(n) (((n) == NULL) ? NULL : (n)->queue_data)
 
 typedef struct {
 	void *td;
@@ -430,10 +428,10 @@ extern int tpp_terminated_in_child; /* whether a forked child called tpp_termina
 
 conn_auth_t *tpp_make_authdata(struct tpp_config *, int, char *, char *);
 int tpp_handle_auth_handshake(int, int, conn_auth_t *, int, void *, size_t);
-tpp_que_elem_t* tpp_enque(tpp_que_t *, void *);
+tpp_que_elem_t *tpp_enque(tpp_que_t *, void *);
 void *tpp_deque(tpp_que_t *);
-tpp_que_elem_t* tpp_que_del_elem(tpp_que_t *, tpp_que_elem_t *);
-tpp_que_elem_t* tpp_que_ins_elem(tpp_que_t *, tpp_que_elem_t *, void *, int);
+tpp_que_elem_t *tpp_que_del_elem(tpp_que_t *, tpp_que_elem_t *);
+tpp_que_elem_t *tpp_que_ins_elem(tpp_que_t *, tpp_que_elem_t *, void *, int);
 /* End - routines and headers to manage FIFO queues */
 
 int tpp_send(int, void *, int);
@@ -441,12 +439,12 @@ int tpp_recv(int, void *, int);
 int tpp_ready_fds(int *, int);
 void *tpp_get_user_data(int);
 int tpp_set_user_data(int, void *);
-char* convert_to_ip_port(char *, int);
+char *convert_to_ip_port(char *, int);
 
 int tpp_init_tls_key(void);
 tpp_tls_t *tpp_get_tls(void);
 char *mk_hostname(char *, int);
-struct sockaddr_in* tpp_localaddr(int);
+struct sockaddr_in *tpp_localaddr(int);
 tpp_packet_t *tpp_bld_pkt(tpp_packet_t *, void *, int, int, void **);
 
 void tpp_router_terminate(void);
@@ -461,8 +459,7 @@ void tpp_transport_set_handlers(
 	int (*pkt_handler)(int, void *, int, void *, void *),
 	int (*close_handler)(int, int, void *, void *),
 	int (*post_connect_handler)(int, void *, void *, void *),
-	int (*timer_handler)(time_t)
-	);
+	int (*timer_handler)(time_t));
 void tpp_set_logmask(long);
 int tpp_transport_shutdown(void);
 int tpp_transport_terminate(void);
@@ -495,7 +492,7 @@ int tpp_set_close_on_exec(int);
 void tpp_free_chunk(tpp_chunk_t *);
 void tpp_free_pkt(tpp_packet_t *);
 int tpp_send_ctl_msg(int, int, tpp_addr_t *, tpp_addr_t *, unsigned int, char, char *);
-int tpp_cr_thrd(void *(*start_routine)(void*), pthread_t *, void *);
+int tpp_cr_thrd(void *(*start_routine)(void *), pthread_t *, void *);
 int tpp_set_keep_alive(int, struct tpp_config *);
 
 void *tpp_deflate(void *, unsigned int, unsigned int *);
@@ -526,7 +523,7 @@ tpp_addr_t *tpp_get_connected_host(int);
 int tpp_sock_resolve_ip(tpp_addr_t *, char *, int);
 tpp_addr_t *tpp_sock_resolve_host(char *, int *);
 
-const char * tpp_transport_get_conn_hostname(int);
+const char *tpp_transport_get_conn_hostname(int);
 void tpp_transport_set_conn_extra(int, void *);
 extern int tpp_get_thrd_index();
 char *tpp_netaddr(tpp_addr_t *);
@@ -546,7 +543,7 @@ int tr_2_errno(int);
 /**********************************************************************/
 /* em related definitions (internal version) */
 /**********************************************************************/
-#if defined (PBS_USE_POLL)
+#if defined(PBS_USE_POLL)
 
 typedef struct {
 	struct pollfd *fds;
@@ -555,7 +552,7 @@ typedef struct {
 	int max_nfds;
 } poll_context_t;
 
-#elif defined (PBS_USE_EPOLL)
+#elif defined(PBS_USE_EPOLL)
 
 typedef struct {
 	int epoll_fd;
@@ -564,7 +561,7 @@ typedef struct {
 	em_event_t *events;
 } epoll_context_t;
 
-#elif defined (PBS_USE_POLLSET)
+#elif defined(PBS_USE_POLLSET)
 
 typedef struct {
 	pollset_t ps;
@@ -572,7 +569,7 @@ typedef struct {
 	em_event_t *events;
 } pollset_context_t;
 
-#elif defined (PBS_USE_SELECT)
+#elif defined(PBS_USE_SELECT)
 
 typedef struct {
 	fd_set master_read_fds;
@@ -586,7 +583,7 @@ typedef struct {
 	em_event_t *events;
 } sel_context_t;
 
-#elif defined (PBS_USE_DEVPOLL)
+#elif defined(PBS_USE_DEVPOLL)
 
 typedef struct {
 	int devpoll_fd;
@@ -595,7 +592,6 @@ typedef struct {
 } devpoll_context_t;
 
 #endif
-
 
 /* platform independent functions that manipulate a mbox of a thread
  * Internally these functions may use a eventfd, signalfd, signals,
@@ -618,9 +614,9 @@ extern int tpp_going_down;
  * debug TPP in a PTL run where forked daemons are required
  * Hence use a separate macro
  */
-#ifdef  TPPDEBUG
+#ifdef TPPDEBUG
 
-#define TPP_DBPRT(...) tpp_log(LOG_CRIT, __func__,  __VA_ARGS__)
+#define TPP_DBPRT(...) tpp_log(LOG_CRIT, __func__, __VA_ARGS__)
 
 void print_packet_hdr(const char *, void *, int);
 #define PRTPKTHDR(id, data, len) print_packet_hdr(id, data, len);
@@ -632,7 +628,7 @@ void print_packet_hdr(const char *, void *, int);
 
 #endif
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _TPP_INTERNAL_H */
+#endif /* _TPP_INTERNAL_H */

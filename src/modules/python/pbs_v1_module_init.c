@@ -57,18 +57,18 @@
 /* #define MODULE_NAME "_pbs_v1_module" */
 #define MODULE_NAME "pbs_python"
 
-
 PyMODINIT_FUNC
-PyInit__pbs_v1(void) {
+PyInit__pbs_v1(void)
+{
 	int i;
-	PyObject * module = NULL;
+	PyObject *module = NULL;
 	PyObject *py_sys_modules = NULL;
 
 	memset(&server, 0, sizeof(server));
 
 	if (set_msgdaemonname(MODULE_NAME)) {
 		return PyErr_Format(PyExc_MemoryError,
-			 "set_msgdaemonname() failed to allocate memory");
+				    "set_msgdaemonname() failed to allocate memory");
 	}
 
 	if (pbs_loadconf(0) == 0) {
@@ -76,8 +76,8 @@ PyInit__pbs_v1(void) {
 	}
 
 	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
-			pbs_conf.locallog, pbs_conf.syslogfac,
-			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+		     pbs_conf.locallog, pbs_conf.syslogfac,
+		     pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 
 	pbs_python_set_use_static_data_value(0);
 
@@ -88,47 +88,47 @@ PyInit__pbs_v1(void) {
 	pbs_server_name = pbs_default();
 	if ((!pbs_server_name) || (*pbs_server_name == '\0')) {
 		return PyErr_Format(PyExc_Exception,
-			 "pbs_default() failed acquire the server name");
+				    "pbs_default() failed acquire the server name");
 	}
 
 	/* determine the server host name */
 	if (get_fullhostname(pbs_server_name, server_host, PBS_MAXSERVERNAME) != 0) {
 		return PyErr_Format(PyExc_Exception,
-			 "get_fullhostname() failed to acqiure the server host name");
+				    "get_fullhostname() failed to acqiure the server host name");
 	}
 
 	if ((job_attr_idx = cr_attrdef_idx(job_attr_def, JOB_ATR_LAST)) == NULL) {
 		return PyErr_Format(PyExc_Exception,
-			"Failed creating job attribute search index");
+				    "Failed creating job attribute search index");
 	}
 	if ((node_attr_idx = cr_attrdef_idx(node_attr_def, ND_ATR_LAST)) == NULL) {
 		return PyErr_Format(PyExc_Exception,
-			"Failed creating node attribute search index");
+				    "Failed creating node attribute search index");
 	}
 	if ((que_attr_idx = cr_attrdef_idx(que_attr_def, QA_ATR_LAST)) == NULL) {
 		return PyErr_Format(PyExc_Exception,
-			"Failed creating queue attribute search index");
+				    "Failed creating queue attribute search index");
 	}
 	if ((svr_attr_idx = cr_attrdef_idx(svr_attr_def, SVR_ATR_LAST)) == NULL) {
 		return PyErr_Format(PyExc_Exception,
-			"Failed creating server attribute search index");
+				    "Failed creating server attribute search index");
 	}
 	if ((sched_attr_idx = cr_attrdef_idx(sched_attr_def, SCHED_ATR_LAST)) == NULL) {
 		return PyErr_Format(PyExc_Exception,
-			"Failed creating sched attribute search index");
+				    "Failed creating sched attribute search index");
 	}
 	if ((resv_attr_idx = cr_attrdef_idx(resv_attr_def, RESV_ATR_LAST)) == NULL) {
 		return PyErr_Format(PyExc_Exception,
-			"Failed creating resv attribute search index");
+				    "Failed creating resv attribute search index");
 	}
 	if (cr_rescdef_idx(svr_resc_def, svr_resc_size) != 0) {
 		return PyErr_Format(PyExc_Exception,
-			"Failed creating resc definition search index");
+				    "Failed creating resc definition search index");
 	}
 
 	/* initialize the pointers in the resource_def array */
 	for (i = 0; i < (svr_resc_size - 1); ++i) {
-		svr_resc_def[i].rs_next = &svr_resc_def[i+1];
+		svr_resc_def[i].rs_next = &svr_resc_def[i + 1];
 	}
 
 	/* set python interp data */
@@ -138,7 +138,7 @@ PyInit__pbs_v1(void) {
 	svr_interp_data.pbs_python_types_loaded = 0;
 	if (gethostname(svr_interp_data.local_host_name, PBS_MAXHOSTNAME) == -1) {
 		return PyErr_Format(PyExc_Exception,
-			"gethostname() failed to acquire the local host name");
+				    "gethostname() failed to acquire the local host name");
 	}
 	svr_interp_data.daemon_name = strdup(MODULE_NAME);
 	svr_interp_data.data_initialized = 1;
@@ -147,8 +147,8 @@ PyInit__pbs_v1(void) {
 	module = pbs_v1_module_init();
 	if (module == NULL) {
 		return PyErr_Format(PyExc_Exception,
-			 PBS_PYTHON_V1_MODULE_EXTENSION_NAME
-			 " module initialization failed");
+				    PBS_PYTHON_V1_MODULE_EXTENSION_NAME
+				    " module initialization failed");
 	}
 
 	/*
@@ -157,18 +157,18 @@ PyInit__pbs_v1(void) {
 	 */
 	py_sys_modules = PyImport_GetModuleDict();
 	if (PyDict_SetItemString(py_sys_modules,
-			PBS_PYTHON_V1_MODULE_EXTENSION_NAME, module)) {
+				 PBS_PYTHON_V1_MODULE_EXTENSION_NAME, module)) {
 		return PyErr_Format(PyExc_Exception,
-			"failed to addd the " PBS_PYTHON_V1_MODULE_EXTENSION_NAME
-			" module to sys.modules");
+				    "failed to addd the " PBS_PYTHON_V1_MODULE_EXTENSION_NAME
+				    " module to sys.modules");
 	}
 
 	/* load python types into the _pbs_v1 module */
 	if ((pbs_python_load_python_types(&svr_interp_data) == -1)) {
 		PyDict_DelItemString(py_sys_modules,
-			PBS_PYTHON_V1_MODULE_EXTENSION_NAME);
+				     PBS_PYTHON_V1_MODULE_EXTENSION_NAME);
 		return PyErr_Format(PyExc_Exception,
-			"pbs_python_load_python_types() failed to load Python types");
+				    "pbs_python_load_python_types() failed to load Python types");
 	}
 
 	return module;

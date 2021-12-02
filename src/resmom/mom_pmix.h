@@ -43,7 +43,7 @@
 
 #ifndef _MOM_PMIX_H
 #define _MOM_PMIX_H
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -71,7 +71,7 @@ pbs_pmix_job_clean_extra(job *);
 
 #endif /* PMIX */
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 #endif /* _MOM_PMIX_H */

@@ -37,14 +37,12 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "pbs_bitmap.h"
 
-#define BYTES_TO_BITS(x) ((x) * 8)
-
+#define BYTES_TO_BITS(x) ((x) *8)
 
 /**
  * @brief allocate space for a pbs_bitmap (and possibly the bitmap itself)
@@ -61,22 +59,21 @@ pbs_bitmap_alloc(pbs_bitmap *pbm, unsigned long num_bits)
 	unsigned long *tmp_bits;
 	long prev_longs;
 
-	if(num_bits == 0)
+	if (num_bits == 0)
 		return NULL;
 
-	if(pbm == NULL) {
+	if (pbm == NULL) {
 		bm = static_cast<pbs_bitmap *>(calloc(1, sizeof(pbs_bitmap)));
-		if(bm == NULL)
+		if (bm == NULL)
 			return NULL;
-	}
-	else
+	} else
 		bm = pbm;
 
 	/* shrinking bitmap, clear previously used bits */
 	if (num_bits < bm->num_bits) {
 		long i;
 		i = num_bits / BYTES_TO_BITS(sizeof(unsigned long)) + 1;
-		for ( ; static_cast<unsigned long>(i) < bm->num_longs; i++)
+		for (; static_cast<unsigned long>(i) < bm->num_longs; i++)
 			bm->bits[i] = 0;
 		for (i = pbs_bitmap_next_on_bit(bm, num_bits); i != -1; i = pbs_bitmap_next_on_bit(bm, i))
 			pbs_bitmap_bit_off(bm, i);
@@ -88,7 +85,6 @@ pbs_bitmap_alloc(pbs_bitmap *pbm, unsigned long num_bits)
 		return bm;
 	}
 
-
 	prev_longs = bm->num_longs;
 
 	bm->num_bits = num_bits;
@@ -97,14 +93,14 @@ pbs_bitmap_alloc(pbs_bitmap *pbm, unsigned long num_bits)
 		bm->num_longs++;
 	tmp_bits = static_cast<unsigned long *>(calloc(bm->num_longs, sizeof(unsigned long)));
 	if (tmp_bits == NULL) {
-		if(pbm == NULL) /* we allocated the memory */
+		if (pbm == NULL) /* we allocated the memory */
 			pbs_bitmap_free(bm);
 		return NULL;
 	}
 
-	if(bm->bits != NULL) {
+	if (bm->bits != NULL) {
 		int i;
-		for(i = 0; i < prev_longs; i++)
+		for (i = 0; i < prev_longs; i++)
 			tmp_bits[i] = bm->bits[i];
 
 		free(bm->bits);
@@ -118,7 +114,7 @@ pbs_bitmap_alloc(pbs_bitmap *pbm, unsigned long num_bits)
 void
 pbs_bitmap_free(pbs_bitmap *bm)
 {
-	if(bm == NULL)
+	if (bm == NULL)
 		return;
 	free(bm->bits);
 	free(bm);
@@ -136,11 +132,11 @@ pbs_bitmap_bit_on(pbs_bitmap *pbm, unsigned long bit)
 	long long_ind;
 	unsigned long b;
 
-	if(pbm == NULL)
+	if (pbm == NULL)
 		return 0;
 
 	if (bit >= pbm->num_bits) {
-		if(pbs_bitmap_alloc(pbm, bit + 1) == NULL)
+		if (pbs_bitmap_alloc(pbm, bit + 1) == NULL)
 			return 0;
 	}
 
@@ -167,7 +163,7 @@ pbs_bitmap_bit_off(pbs_bitmap *pbm, unsigned long bit)
 		return 0;
 
 	if (bit >= pbm->num_bits) {
-		if(pbs_bitmap_alloc(pbm, bit + 1) == NULL)
+		if (pbs_bitmap_alloc(pbm, bit + 1) == NULL)
 			return 0;
 	}
 
@@ -242,13 +238,13 @@ pbs_bitmap_next_on_bit(pbs_bitmap *pbm, unsigned long start_bit)
 		}
 	}
 
-	for( ; long_ind < pbm->num_longs && pbm->bits[long_ind] == 0; long_ind++)
+	for (; long_ind < pbm->num_longs && pbm->bits[long_ind] == 0; long_ind++)
 		;
 
 	if (long_ind == pbm->num_longs)
 		return -1;
 
-	for (i = 0 ; i < BYTES_TO_BITS(sizeof(unsigned long)) ; i++) {
+	for (i = 0; i < BYTES_TO_BITS(sizeof(unsigned long)); i++) {
 		if (pbm->bits[long_ind] & (1UL << i)) {
 			return (long_ind * BYTES_TO_BITS(sizeof(unsigned long)) + i);
 		}
@@ -267,7 +263,7 @@ pbs_bitmap_next_on_bit(pbs_bitmap *pbm, unsigned long start_bit)
 int
 pbs_bitmap_first_on_bit(pbs_bitmap *bm)
 {
-	if(pbs_bitmap_get_bit(bm, 0))
+	if (pbs_bitmap_get_bit(bm, 0))
 		return 0;
 
 	return pbs_bitmap_next_on_bit(bm, 0);
@@ -296,13 +292,13 @@ pbs_bitmap_assign(pbs_bitmap *L, pbs_bitmap *R)
 	 * This happens if it had a previous call to pbs_bitmap_equals() with a shorter bitmap.
 	 */
 	if (R->num_longs > L->num_longs)
-		if(pbs_bitmap_alloc(L, BYTES_TO_BITS(R->num_longs * sizeof(unsigned long))) == NULL)
+		if (pbs_bitmap_alloc(L, BYTES_TO_BITS(R->num_longs * sizeof(unsigned long))) == NULL)
 			return 0;
 
 	for (i = 0; i < R->num_longs; i++)
 		L->bits[i] = R->bits[i];
 	if (R->num_longs < L->num_longs)
-		for(; i < L->num_longs; i++)
+		for (; i < L->num_longs; i++)
 			L->bits[i] = 0;
 
 	L->num_bits = R->num_bits;
@@ -322,14 +318,14 @@ pbs_bitmap_is_equal(pbs_bitmap *L, pbs_bitmap *R)
 {
 	unsigned long i;
 
-	if(L == NULL || R == NULL)
+	if (L == NULL || R == NULL)
 		return 0;
 
 	if (L->num_bits != R->num_bits)
 		return 0;
 
-	for(i = 0; i < L->num_longs; i++)
-		if(L->bits[i] != R->bits[i])
+	for (i = 0; i < L->num_longs; i++)
+		if (L->bits[i] != R->bits[i])
 			return 0;
 
 	return 1;

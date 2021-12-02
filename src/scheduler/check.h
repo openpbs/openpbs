@@ -37,9 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-#ifndef	_CHECK_H
-#define	_CHECK_H
+#ifndef _CHECK_H
+#define _CHECK_H
 
 #include <unordered_set>
 
@@ -57,7 +56,7 @@ enum sched_error_code is_ok_to_run_queue(status *policy, queue_info *qinfo);
  */
 std::vector<nspec *>
 is_ok_to_run(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *perr);
+	     queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *perr);
 
 /**
  *
@@ -66,36 +65,36 @@ is_ok_to_run(status *policy, server_info *sinfo,
  */
 std::vector<nspec *>
 is_ok_to_run_STF(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err,
-	std::vector<nspec *>(*shrink_heuristic)(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err));
+		 queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err,
+		 std::vector<nspec *> (*shrink_heuristic)(status *policy, server_info *sinfo,
+							  queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err));
 /*
  * shrink_job_algorithm - generic algorithm for shrinking a job
  */
 std::vector<nspec *>
 shrink_job_algorithm(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err);/* Generic shrinking heuristic */
+		     queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err); /* Generic shrinking heuristic */
 
 /*
  * shrink_to_boundary - Shrink job to dedicated/prime time boundary
  */
 std::vector<nspec *>
 shrink_to_boundary(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err);
+		   queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err);
 
 /*
  * shrink_to_minwt - Shrink job to it's minimum walltime
  */
 std::vector<nspec *>
 shrink_to_minwt(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err);
+		queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err);
 
 /*
  * shrink_to_run_event - Shrink job before reservation or top job.
  */
 std::vector<nspec *>
 shrink_to_run_event(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err);
+		    queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err);
 
 /*
  *      check_avail_resources - This function will calculate the number of
@@ -110,8 +109,8 @@ shrink_to_run_event(status *policy, server_info *sinfo,
  */
 long long
 check_avail_resources(schd_resource *reslist, resource_req *reqlist,
-	unsigned int flags, std::unordered_set<resdef *>& checklist,
-	enum sched_error_code fail_code, schd_error *perr);
+		      unsigned int flags, std::unordered_set<resdef *> &checklist,
+		      enum sched_error_code fail_code, schd_error *perr);
 long long
 check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 		      unsigned int flags, enum sched_error_code fail_code, schd_error *perr);
@@ -135,17 +134,15 @@ sch_resource_t dynamic_avail(schd_resource *res);
  */
 sch_resource_t find_counts_elm(counts_umap &cts_list, const std::string &name, resdef *rdef, counts **rcount, resource_count **rreq);
 
-
 /*
  *      check_nodes - check to see if there is sufficient nodes available to
  *                    run a job/resv.
  */
-std::vector<nspec *>check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err);
+std::vector<nspec *> check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err);
 
 /* Normal node searching algorithm */
 std::vector<nspec *>
 check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err);
-
 
 /*
  *      is_node_available - determine that there is a node available to run
@@ -189,7 +186,6 @@ enum sched_error_code check_nonprime_queue(status *policy, queue_info *qinfo);
  */
 enum sched_error_code check_prime_boundary(status *policy, resource_resv *resresv, struct schd_error *err);
 
-
 /*
  *      check_node_resources - check to see if resources are available on
  *                             timesharing nodes for a job to run
@@ -225,4 +221,4 @@ schd_resource *unset_str_res(void);
  *	returns void
  */
 void get_resresv_spec(resource_resv *resresv, selspec **spec, place **pl);
-#endif	/* _CHECK_H */
+#endif /* _CHECK_H */

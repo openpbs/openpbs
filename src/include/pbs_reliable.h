@@ -37,11 +37,10 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #ifndef _PBS_RELIABLE_H
-#define	_PBS_RELIABLE_H
+#define _PBS_RELIABLE_H
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -50,8 +49,8 @@ extern "C" {
 #include "placementsets.h"
 #include "list_link.h"
 
-#define	DEFAULT_JOINJOB_ALARM 30
-#define	DEFAULT_JOB_LAUNCH_DELAY 30
+#define DEFAULT_JOINJOB_ALARM 30
+#define DEFAULT_JOB_LAUNCH_DELAY 30
 /*
  *
  *  pbs_reliable.h
@@ -64,10 +63,10 @@ extern "C" {
  * The reliable_job_node structure is used to keep track of nodes
  * representing mom hosts fore reliable job startup.
  */
-typedef struct	reliable_job_node {
-	pbs_list_link	rjn_link;
-	int		prologue_hook_success; /* execjob_prologue hook execution succeeded */
-	char		rjn_host[PBS_MAXHOSTNAME+1]; /* mom host name */
+typedef struct reliable_job_node {
+	pbs_list_link rjn_link;
+	int prologue_hook_success;	    /* execjob_prologue hook execution succeeded */
+	char rjn_host[PBS_MAXHOSTNAME + 1]; /* mom host name */
 } reliable_job_node;
 
 extern reliable_job_node *reliable_job_node_find(pbs_list_head *, char *);
@@ -95,16 +94,16 @@ extern void reliable_job_node_print(char *, pbs_list_head *, int);
  * @param[out]	p_new_schedselect - holds the new schedselect value after release
  *
  */
-typedef struct	relnodes_input {
-	char		*jobid;
-	void		*vnodes_data;
-	char		*execvnode;
-	char		*exechost;
-	char		*exechost2;
-	char		*schedselect;
-	char		**p_new_exec_vnode;
-	char		**p_new_exec_host[2];
-	char		**p_new_schedselect;
+typedef struct relnodes_input {
+	char *jobid;
+	void *vnodes_data;
+	char *execvnode;
+	char *exechost;
+	char *exechost2;
+	char *schedselect;
+	char **p_new_exec_vnode;
+	char **p_new_exec_host[2];
+	char **p_new_schedselect;
 } relnodes_input_t;
 
 /**
@@ -118,10 +117,10 @@ typedef struct	relnodes_input {
  * @param[in]	deallocated_nodes_orig - job's current deallocated_exevnode value
  * @param[out]	p_new_deallocated_execvnode - holds the new deallocated_exec_vnode after release
  */
-typedef struct	relnodes_input_vnodelist {
-	char		*vnodelist;
-	char		*deallocated_nodes_orig;
-	char		**p_new_deallocated_execvnode;
+typedef struct relnodes_input_vnodelist {
+	char *vnodelist;
+	char *deallocated_nodes_orig;
+	char **p_new_deallocated_execvnode;
 } relnodes_input_vnodelist_t;
 
 /**
@@ -137,12 +136,12 @@ typedef struct	relnodes_input_vnodelist {
  * @param[in]	failed_vnodes - list of vnodes assigned to the job managed by unhealthy moms
  * @param[in]	good_vnodes- list of vnodes assigned to the job managed by healthy moms
  */
-typedef struct	relnodes_input_select {
-	char		*select_str;
-	pbs_list_head	*failed_mom_list;
-	pbs_list_head	*succeeded_mom_list;
-	vnl_t		**failed_vnodes;
-	vnl_t		**good_vnodes;
+typedef struct relnodes_input_select {
+	char *select_str;
+	pbs_list_head *failed_mom_list;
+	pbs_list_head *succeeded_mom_list;
+	vnl_t **failed_vnodes;
+	vnl_t **good_vnodes;
 } relnodes_input_select_t;
 
 extern void relnodes_input_init(relnodes_input_t *r_input);
@@ -155,8 +154,9 @@ extern int pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_
 extern int do_schedselect(char *, void *, void *, char **, char **);
 
 #include "placementsets.h"
-extern int prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **good_vnodes, char *err_msg, int err_msg_sz);
+extern int prune_exec_vnode(job *pjob, char *select_str, vnl_t **failed_vnodes, vnl_t **good_vnodes, char *err_msg, int err_msg_sz);
 
+// clang-format off
 #define FREE_VNLS(vnf, vng) { \
 vnl_free(vnf); \
 vnf = NULL; \
@@ -164,8 +164,10 @@ vnl_free(vng); \
 vng = NULL; \
 }
 
-#ifdef	__cplusplus
+// clang-format on
+
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* _PBS_INTERNAL_H */
+#endif /* _PBS_INTERNAL_H */

@@ -37,9 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #include <pbs_config.h>
-#include <pbs_python_private.h>   /* include the internal python file */
+#include <pbs_python_private.h> /* include the internal python file */
 #include <log.h>
 #include <pbs_error.h>
 #include "hook.h"
@@ -74,21 +73,25 @@ pbs_python_write_object_to_log(PyObject *obj, char *pre, int severity)
 	PyObject *py_tmp_str = NULL;
 	const char *obj_str = NULL;
 
-	if (!(py_tmp_str = PyObject_Str(obj))) { goto ERROR_EXIT; }
-	if (!(obj_str = PyUnicode_AsUTF8(py_tmp_str))) { goto ERROR_EXIT; }
-	if (pre) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s %s", pre, obj_str);
-	} else {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", obj_str);
+	if (!(py_tmp_str = PyObject_Str(obj))) {
+		goto ERROR_EXIT;
 	}
-	log_buffer[LOG_BUF_SIZE-1] = '\0';
+	if (!(obj_str = PyUnicode_AsUTF8(py_tmp_str))) {
+		goto ERROR_EXIT;
+	}
+	if (pre) {
+		snprintf(log_buffer, LOG_BUF_SIZE - 1, "%s %s", pre, obj_str);
+	} else {
+		snprintf(log_buffer, LOG_BUF_SIZE - 1, "%s", obj_str);
+	}
+	log_buffer[LOG_BUF_SIZE - 1] = '\0';
 
 	if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name))
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-			severity, pbs_python_daemon_name, log_buffer);
+			  severity, pbs_python_daemon_name, log_buffer);
 	else
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER,
-			severity, pbs_python_daemon_name, log_buffer);
+			  severity, pbs_python_daemon_name, log_buffer);
 
 	Py_CLEAR(py_tmp_str);
 	return;
@@ -125,19 +128,19 @@ pbs_python_modify_syspath(const char *dirname, int pos)
 	PyErr_Clear(); /* clear any exceptions */
 
 	/* if sucess we ger a NEW ref */
-	if (!(pystr_dirname = PyUnicode_FromString(dirname))) {/* failed */
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s:creating pystr_dirname <%s>",
-			__func__, dirname);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+	if (!(pystr_dirname = PyUnicode_FromString(dirname))) { /* failed */
+		snprintf(log_buffer, LOG_BUF_SIZE - 1, "%s:creating pystr_dirname <%s>",
+			 __func__, dirname);
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		pbs_python_write_error_to_log(log_buffer);
 		goto ERROR_EXIT;
 	}
 
 	/* if sucess we ger a NEW ref */
-	if (!(path = PySys_GetObject("path"))) {/* failed */
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s:PySys_GetObject failed",
-			__func__);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+	if (!(path = PySys_GetObject("path"))) { /* failed */
+		snprintf(log_buffer, LOG_BUF_SIZE - 1, "%s:PySys_GetObject failed",
+			 __func__);
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		pbs_python_write_error_to_log(log_buffer);
 		goto ERROR_EXIT;
 	}
@@ -145,31 +148,31 @@ pbs_python_modify_syspath(const char *dirname, int pos)
 	if (PyList_Check(path)) {
 		if (pos == -1) {
 			if (PyList_Append(path, pystr_dirname) == -1) {
-				snprintf(log_buffer, LOG_BUF_SIZE-1,
+				snprintf(log_buffer, LOG_BUF_SIZE - 1,
 #ifdef NAS /* localmod 005 */
-					"%s:could not append to list pos:<%ld>",
-					__func__, (long)pos
+					 "%s:could not append to list pos:<%ld>",
+					 __func__, (long) pos
 #else
-					"%s:could not append to list pos:<%d>",
-					__func__, pos
+					 "%s:could not append to list pos:<%d>",
+					 __func__, pos
 #endif /* localmod 005 */
-					);
-				log_buffer[LOG_BUF_SIZE-1] = '\0';
+				);
+				log_buffer[LOG_BUF_SIZE - 1] = '\0';
 				pbs_python_write_error_to_log(log_buffer);
 				goto ERROR_EXIT;
 			}
 		} else {
 			if (PyList_Insert(path, pos, pystr_dirname) == -1) {
-				snprintf(log_buffer, LOG_BUF_SIZE-1,
+				snprintf(log_buffer, LOG_BUF_SIZE - 1,
 #ifdef NAS /* localmod 005 */
-					"%s:could not append to list pos:<%ld>",
-					__func__, (long)pos
+					 "%s:could not append to list pos:<%ld>",
+					 __func__, (long) pos
 #else
-					"%s:could not append to list pos:<%d>",
-					__func__, pos
+					 "%s:could not append to list pos:<%d>",
+					 __func__, pos
 #endif /* localmod 005 */
-					);
-				log_buffer[LOG_BUF_SIZE-1] = '\0';
+				);
+				log_buffer[LOG_BUF_SIZE - 1] = '\0';
 				pbs_python_write_error_to_log(log_buffer);
 				goto ERROR_EXIT;
 			}
@@ -184,9 +187,9 @@ pbs_python_modify_syspath(const char *dirname, int pos)
 		char *str;
 		obj_repr = PyObject_Repr(path);
 		str = pbs_python_object_str(obj_repr);
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "--> Python module path is now: %s <--", str);
+		snprintf(log_buffer, LOG_BUF_SIZE - 1, "--> Python module path is now: %s <--", str);
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-			LOG_DEBUG, pbs_python_daemon_name, log_buffer);
+			  LOG_DEBUG, pbs_python_daemon_name, log_buffer);
 		Py_CLEAR(obj_repr);
 	}
 
@@ -212,10 +215,10 @@ ERROR_EXIT:
 void
 pbs_python_write_error_to_log(const char *emsg)
 {
-	PyObject *exc_type = NULL;      /* NEW refrence, please DECREF */
-	PyObject *exc_value = NULL;     /* NEW refrence, please DECREF */
+	PyObject *exc_type = NULL;	/* NEW refrence, please DECREF */
+	PyObject *exc_value = NULL;	/* NEW refrence, please DECREF */
 	PyObject *exc_traceback = NULL; /* NEW refrence, please DECREF */
-	PyObject *exc_string = NULL;    /* the exception message to be written to pbs log */
+	PyObject *exc_string = NULL;	/* the exception message to be written to pbs log */
 
 	/* get the exception */
 	if (!PyErr_Occurred()) {
@@ -228,14 +231,13 @@ pbs_python_write_error_to_log(const char *emsg)
 
 	exc_string = NULL;
 	if ((exc_type != NULL) && /* get the string representation of the object */
-		((exc_string = PyObject_Str(exc_type)) != NULL) &&
-		(PyUnicode_Check(exc_string))
-		) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", PyUnicode_AsUTF8(exc_string));
+	    ((exc_string = PyObject_Str(exc_type)) != NULL) &&
+	    (PyUnicode_Check(exc_string))) {
+		snprintf(log_buffer, LOG_BUF_SIZE - 1, "%s", PyUnicode_AsUTF8(exc_string));
 	} else {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", "<could not figure out the exception type>");
+		snprintf(log_buffer, LOG_BUF_SIZE - 1, "%s", "<could not figure out the exception type>");
 	}
-	log_buffer[LOG_BUF_SIZE-1] = '\0';
+	log_buffer[LOG_BUF_SIZE - 1] = '\0';
 	Py_XDECREF(exc_string);
 	if (log_buffer[0] != '\0')
 		log_err(PBSE_INTERNAL, emsg, log_buffer);
@@ -243,14 +245,13 @@ pbs_python_write_error_to_log(const char *emsg)
 	/* Log error exception value */
 	exc_string = NULL;
 	if ((exc_value != NULL) && /* get the string representation of the object */
-		((exc_string = PyObject_Str(exc_value)) != NULL) &&
-		(PyUnicode_Check(exc_string))
-		) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", PyUnicode_AsUTF8(exc_string));
+	    ((exc_string = PyObject_Str(exc_value)) != NULL) &&
+	    (PyUnicode_Check(exc_string))) {
+		snprintf(log_buffer, LOG_BUF_SIZE - 1, "%s", PyUnicode_AsUTF8(exc_string));
 	} else {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", "<could not figure out the exception value>");
+		snprintf(log_buffer, LOG_BUF_SIZE - 1, "%s", "<could not figure out the exception value>");
 	}
-	log_buffer[LOG_BUF_SIZE-1] = '\0';
+	log_buffer[LOG_BUF_SIZE - 1] = '\0';
 	Py_XDECREF(exc_string);
 	if (log_buffer[0] != '\0')
 		log_err(PBSE_INTERNAL, emsg, log_buffer);
@@ -290,8 +291,8 @@ pbs_python_write_error_to_log(const char *emsg)
 
 int
 pbs_python_object_set_attr_string_value(PyObject *obj,
-	const char *key,
-	const char *value)
+					const char *key,
+					const char *value)
 {
 	PyObject *tmp_py_str = NULL;
 
@@ -303,9 +304,9 @@ pbs_python_object_set_attr_string_value(PyObject *obj,
 	}
 
 	if (!value) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"Null value passed while setting attribute '%s'", key);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		snprintf(log_buffer, LOG_BUF_SIZE - 1,
+			 "Null value passed while setting attribute '%s'", key);
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		log_err(PBSE_INTERNAL, __func__, log_buffer);
 		return rv;
 	}
@@ -347,12 +348,12 @@ pbs_python_object_set_attr_string_value(PyObject *obj,
 
 int
 pbs_python_object_set_attr_integral_value(PyObject *obj,
-	const char *key,
-	int value)
+					  const char *key,
+					  int value)
 {
 	PyObject *tmp_py_int = PyLong_FromSsize_t(value); /* NEW reference */
 
-	int rv = -1; /* default failure */
+	int rv = -1;	   /* default failure */
 	if (!tmp_py_int) { /* Uh-of failed */
 		pbs_python_write_error_to_log(__func__);
 		return rv;
@@ -384,17 +385,17 @@ pbs_python_object_set_attr_integral_value(PyObject *obj,
 int
 pbs_python_object_get_attr_integral_value(PyObject *obj, const char *key)
 {
-	int 		rv = -1; /* default failure */
-	PyObject 	*py_int = NULL;
-	int 		retval;
+	int rv = -1; /* default failure */
+	PyObject *py_int = NULL;
+	int retval;
 
 	if (!key) { /* Uh-of failed */
 		return rv;
 	}
 	if (!PyObject_HasAttrString(obj, key)) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"obj %s has no key %s", pbs_python_object_str(obj), key);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		snprintf(log_buffer, LOG_BUF_SIZE - 1,
+			 "obj %s has no key %s", pbs_python_object_str(obj), key);
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		return rv;
 	}
 
@@ -435,8 +436,8 @@ pbs_python_object_str(PyObject *obj)
 	const char *str = NULL;
 	PyObject *py_str;
 	static char *ret_str = NULL;
-	char  	*tmp_str = NULL;
-	size_t	alloc_sz = 0;
+	char *tmp_str = NULL;
+	size_t alloc_sz = 0;
 
 	py_str = PyObject_Str(obj); /* NEW ref */
 
@@ -448,10 +449,10 @@ pbs_python_object_str(PyObject *obj)
 	if (str)
 		alloc_sz = strlen(str) + 1;
 	else
-		alloc_sz = 1;  /* for null byte */
+		alloc_sz = 1; /* for null byte */
 
-	tmp_str = (char *)realloc((char *)ret_str, alloc_sz);
-	if (!tmp_str) {  /* error on realloc */
+	tmp_str = (char *) realloc((char *) ret_str, alloc_sz);
+	if (!tmp_str) { /* error on realloc */
 		log_err(errno, __func__, "error on realloc");
 		Py_CLEAR(py_str);
 		return ("");
@@ -465,7 +466,6 @@ pbs_python_object_str(PyObject *obj)
 	Py_CLEAR(py_str);
 	return (ret_str);
 }
-
 
 /**
  * @brief
@@ -502,7 +502,7 @@ pbs_python_object_get_attr_string_value(PyObject *obj, const char *name)
 		return NULL;
 	}
 
-	py_attrval =  PyObject_GetAttrString(obj, name);
+	py_attrval = PyObject_GetAttrString(obj, name);
 
 	if (py_attrval) {
 		if (py_attrval != Py_None)
@@ -510,7 +510,6 @@ pbs_python_object_get_attr_string_value(PyObject *obj, const char *name)
 		Py_DECREF(py_attrval);
 	}
 	return (attrval_str);
-
 }
 
 /**
@@ -533,22 +532,22 @@ pbs_python_object_get_attr_string_value(PyObject *obj, const char *name)
 
 int
 pbs_python_dict_set_item_string_value(PyObject *dict,
-	const char *key,
-	const char *value)
+				      const char *key,
+				      const char *value)
 {
 	PyObject *tmp_py_str;
 
 	int rv = -1; /* default failure */
 	if (!value) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"Null value passed while setting key '%s'", key);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		snprintf(log_buffer, LOG_BUF_SIZE - 1,
+			 "Null value passed while setting key '%s'", key);
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		log_err(PBSE_INTERNAL, __func__, log_buffer);
 		return rv;
 	}
 
 	tmp_py_str = PyUnicode_FromString(value); /* NEW reference */
-	if (!tmp_py_str) { /* Uh-of failed */
+	if (!tmp_py_str) {			  /* Uh-of failed */
 		pbs_python_write_error_to_log(__func__);
 		return rv;
 	}
@@ -578,10 +577,10 @@ pbs_python_dict_set_item_string_value(PyObject *dict,
  */
 
 char *
-pbs_python_list_get_item_string_value(PyObject *list,  int index)
+pbs_python_list_get_item_string_value(PyObject *list, int index)
 {
 	PyObject *py_item = NULL;
-	char	*ret_str = NULL;
+	char *ret_str = NULL;
 
 	if (!PyList_Check(list)) {
 		log_err(PBSE_INTERNAL, __func__, "Did not get passed a list object");
@@ -618,13 +617,13 @@ pbs_python_list_get_item_string_value(PyObject *list,  int index)
 
 int
 pbs_python_dict_set_item_integral_value(PyObject *dict,
-	const char *key,
-	const Py_ssize_t value)
+					const char *key,
+					const Py_ssize_t value)
 {
 	int rv = -1; /* default failure */
 
 	PyObject *tmp_py_int = PyLong_FromSsize_t(value); /* NEW reference */
-	if (!tmp_py_int) { /* Uh-of failed */
+	if (!tmp_py_int) {				  /* Uh-of failed */
 		pbs_python_write_error_to_log(__func__);
 		return rv;
 	}
@@ -656,7 +655,7 @@ pbs_python_import_name(const char *module_name, const char *fromname)
 	PyObject *py_mod_obj = NULL;
 	PyObject *py_fromname_obj = NULL;
 
-	py_mod_obj = PyImport_ImportModule(module_name);           /* fetch module */
+	py_mod_obj = PyImport_ImportModule(module_name); /* fetch module */
 	if (py_mod_obj == NULL) {
 		goto ERROR_EXIT;
 	}
@@ -676,7 +675,6 @@ ERROR_EXIT:
 	return NULL;
 }
 
-
 /*
  * logmsg module method implementation and documentation
  *
@@ -685,7 +683,7 @@ ERROR_EXIT:
  */
 
 const char pbsv1mod_meth_logmsg_doc[] =
-"logmsg(strSeverity,strMessage)\n\
+	"logmsg(strSeverity,strMessage)\n\
   where:\n\
 \n\
    strSeverity: one of module constants\n\
@@ -699,16 +697,16 @@ const char pbsv1mod_meth_logmsg_doc[] =
 ";
 
 /* note this is undefind later */
-#define VALID_SEVERITY_VALUE(val)  \
-        ((val == SEVERITY_LOG_WARNING) || (val == SEVERITY_LOG_ERR) || (val == SEVERITY_LOG_DEBUG))
+#define VALID_SEVERITY_VALUE(val) \
+	((val == SEVERITY_LOG_WARNING) || (val == SEVERITY_LOG_ERR) || (val == SEVERITY_LOG_DEBUG))
 
-#define VALID_EVENTTYPE_VALUE(val)  \
-	 ((val == PBSEVENT_ERROR) || (val == PBSEVENT_SYSTEM) || \
-	 (val == PBSEVENT_JOB) || (val == PBSEVENT_JOB_USAGE) || \
+#define VALID_EVENTTYPE_VALUE(val)                                \
+	((val == PBSEVENT_ERROR) || (val == PBSEVENT_SYSTEM) ||   \
+	 (val == PBSEVENT_JOB) || (val == PBSEVENT_JOB_USAGE) ||  \
 	 (val == PBSEVENT_SECURITY) || (val == PBSEVENT_SCHED) || \
-	 (val == PBSEVENT_DEBUG) || (val == PBSEVENT_DEBUG2) || \
-	 (val == PBSEVENT_RESV) || (val == PBSEVENT_DEBUG3) || \
-	 (val == PBSEVENT_DEBUG4) || (val == PBSEVENT_FORCE) || \
+	 (val == PBSEVENT_DEBUG) || (val == PBSEVENT_DEBUG2) ||   \
+	 (val == PBSEVENT_RESV) || (val == PBSEVENT_DEBUG3) ||    \
+	 (val == PBSEVENT_DEBUG4) || (val == PBSEVENT_FORCE) ||   \
 	 (val == PBSEVENT_ADMIN))
 
 /**
@@ -736,31 +734,29 @@ PyObject *
 pbsv1mod_meth_logmsg(PyObject *self, PyObject *args, PyObject *kwds)
 {
 
-	static char *kwlist[] = {"loglevel", "message" , NULL};
+	static char *kwlist[] = {"loglevel", "message", NULL};
 
-	int   loglevel;
-	int   severity = -1;
-	int   eventtype = -1;
-	char *emsg     = NULL;
-	int  emsg_len = 0;
+	int loglevel;
+	int severity = -1;
+	int eventtype = -1;
+	char *emsg = NULL;
+	int emsg_len = 0;
 
 	/* The use of "s#" below is to allow embedded NULLs, to guarantee */
 	/* something will get printed and not get an exception */
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
-		"is#:logmsg",
-		kwlist,
-		&loglevel,
-		&emsg,
-		&emsg_len
-		)
-		) {
+					 "is#:logmsg",
+					 kwlist,
+					 &loglevel,
+					 &emsg,
+					 &emsg_len)) {
 		return NULL;
 	}
 
 	if (!VALID_SEVERITY_VALUE(loglevel) &&
-		!VALID_EVENTTYPE_VALUE(loglevel)) {
+	    !VALID_EVENTTYPE_VALUE(loglevel)) {
 		PyErr_Format(PyExc_TypeError, "Invalid severity or eventtype value <%d>",
-			loglevel);
+			     loglevel);
 		return NULL;
 	}
 	/* log the message */
@@ -795,10 +791,10 @@ pbsv1mod_meth_logmsg(PyObject *self, PyObject *args, PyObject *kwds)
 	}
 
 	log_event(eventtype, PBS_EVENTCLASS_HOOK,
-		severity, pbs_python_daemon_name, emsg);
+		  severity, pbs_python_daemon_name, emsg);
 	Py_RETURN_NONE;
 }
-#undef  VALID_SEVERITY_VALUE
+#undef VALID_SEVERITY_VALUE
 
 /*
  * logjobmsg module method implementation and documentation
@@ -806,7 +802,7 @@ pbsv1mod_meth_logmsg(PyObject *self, PyObject *args, PyObject *kwds)
  */
 
 const char pbsv1mod_meth_logjobmsg_doc[] =
-"logjobmsg(strJobId,strMessage)\n\
+	"logjobmsg(strJobId,strMessage)\n\
   where:\n\
 \n\
    strJobId:  a PBS  job id\n\
@@ -821,22 +817,20 @@ PyObject *
 pbsv1mod_meth_logjobmsg(PyObject *self, PyObject *args, PyObject *kwds)
 {
 
-	static char *kwlist[] = {"jobid", "message" , NULL};
+	static char *kwlist[] = {"jobid", "message", NULL};
 
-	char  *jobid = NULL;
-	char  *msg     = NULL;
-	int   msg_len = 0;
+	char *jobid = NULL;
+	char *msg = NULL;
+	int msg_len = 0;
 
 	/* The use of "s#" below is to allow embedded NULLs, to guarantee */
 	/* something will get printed and not get an exception */
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
-		"ss#:logjobmsg",
-		kwlist,
-		&jobid,
-		&msg,
-		&msg_len
-		)
-		) {
+					 "ss#:logjobmsg",
+					 kwlist,
+					 &jobid,
+					 &msg,
+					 &msg_len)) {
 		return NULL;
 	}
 

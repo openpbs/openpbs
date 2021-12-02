@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * A quick explanation of the scheduler's data model:
  * To free an object, use the object’s destructor (e.g., free_node_info())
@@ -48,6 +47,8 @@
  * If you are an array of references (e.g., sinfo->queues[i]->nodes), you call
  * free().  You are just an array of pointers that are referencing objects.
  */
+
+// clang-format off
 
 #ifndef	_DATA_TYPES_H
 #define	_DATA_TYPES_H
@@ -1303,3 +1304,5 @@ class sched_exception: public std::exception
 
 };
 #endif	/* _DATA_TYPES_H */
+
+// clang-format on

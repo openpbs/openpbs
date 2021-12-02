@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_JOB_INFO_H
-#define	_JOB_INFO_H
+#ifndef _JOB_INFO_H
+#define _JOB_INFO_H
 
 #include <pbs_ifl.h>
 #include "data_types.h"
@@ -54,8 +54,7 @@ resource_resv *query_job(int pbs_sd, struct batch_status *job, server_info *sinf
 void query_jobs_chunk(th_data_query_jinfo *data);
 
 /* create an array of jobs for a particular queue */
-resource_resv **query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs, const std::string& queue_name);
-
+resource_resv **query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs, const std::string &queue_name);
 
 /*
  *	new_job_info  - allocate and initialize new job_info structure
@@ -81,7 +80,7 @@ int set_job_state(const char *state, job_info *jinfo);
 /* update_job_attr - update job attributes on the server */
 int
 update_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name,
-	const char *attr_resc, const char *attr_value, struct attrl *extra, unsigned int flags );
+		const char *attr_resc, const char *attr_value, struct attrl *extra, unsigned int flags);
 
 /* send delayed job attribute updates for job using send_attr_updates() */
 int send_job_updates(int pbs_sd, resource_resv *job);
@@ -94,7 +93,6 @@ preempt_job_info *send_preempt_jobs(int virtual_sd, char **preempt_jobs_list);
 int send_sigjob(int virtual_sd, resource_resv *resresv, const char *signal, char *extend);
 
 struct batch_status *send_selstat(int virtual_fd, struct attropl *attrib, struct attrl *rattrib, char *extend);
-
 
 /*
  *
@@ -121,7 +119,7 @@ unset_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name, unsign
  */
 void
 update_jobs_cant_run(int pbs_sd, resource_resv **resresv_arr,
-	resource_resv *start, struct schd_error *err, int start_where);
+		     resource_resv *start, struct schd_error *err, int start_where);
 
 /*
  *	update_job_comment - update a job's comment attribute.  If the job's
@@ -160,7 +158,7 @@ int find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, serve
  */
 int *
 find_jobs_to_preempt(status *policy, resource_resv *hjob,
-	server_info *sinfo, int *fail_list, int *no_of_jobs);
+		     server_info *sinfo, int *fail_list, int *no_of_jobs);
 
 /*
  *      select_job_to_preempt - select the best candidite out of the running
@@ -168,8 +166,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob,
  */
 long
 select_index_to_preempt(status *policy, resource_resv *hjob,
-	resource_resv **rjobs, long skipto, schd_error *err,
-	int *fail_list);
+			resource_resv **rjobs, long skipto, schd_error *err,
+			int *fail_list);
 
 /*
  *      preempt_level - take a preemption priority and return a preemption
@@ -190,7 +188,7 @@ void set_preempt_prio(resource_resv *job, queue_info *qinfo, server_info *sinfo)
  *
  * return created subjob name
  */
-std::string create_subjob_name(const std::string& array_id, int index);
+std::string create_subjob_name(const std::string &array_id, int index);
 
 /*
  *	create_subjob_from_array - create a resource_resv structure for a subjob
@@ -198,7 +196,7 @@ std::string create_subjob_name(const std::string& array_id, int index);
  *				   will be in state 'Q'
  */
 resource_resv *
-create_subjob_from_array(resource_resv *array, int index, const std::string& subjob_name);
+create_subjob_from_array(resource_resv *array, int index, const std::string &subjob_name);
 
 /*
  *	update_array_on_run - update a job array object when a subjob is run
@@ -207,7 +205,7 @@ int update_array_on_run(job_info *array, job_info *subjob);
 /*
  *	dup_job_info - duplicate the information in a job_info structure
  */
-job_info *dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info * nsinfo);
+job_info *dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo);
 
 /*
  *	is_job_array - is a job name a job array range
@@ -243,7 +241,7 @@ int modify_job_array_for_qrun(server_info *sinfo, char *jobid);
  */
 resource_resv *
 queue_subjob(resource_resv *array, server_info *sinfo,
-	queue_info *qinfo);
+	     queue_info *qinfo);
 /*
  *	formula_evaluate - evaluate a math formula for jobs based on their resources
  *		NOTE: currently done through embedded python interpreter
@@ -278,7 +276,7 @@ void update_accruetype(int pbs_sd, server_info *sinfo, enum update_accruetype_mo
  * @retval	NULL - no aoe found or failure encountered
  * @retval	aoe name string
  */
-char * getaoename(selspec *select);
+char *getaoename(selspec *select);
 
 /**
  *  * @brief
@@ -290,7 +288,7 @@ char * getaoename(selspec *select);
  * @retval	NULL - no eoe found or failure encountered
  * @retval	eoe name string
  */
-char * geteoename(selspec *select);
+char *geteoename(selspec *select);
 
 /*
  *
@@ -307,7 +305,7 @@ char * geteoename(selspec *select);
  */
 int
 update_estimated_attrs(int pbs_sd, resource_resv *job,
-	time_t start_time, char *exec_vnode, int force);
+		       time_t start_time, char *exec_vnode, int force);
 
 /*
  *
@@ -320,7 +318,7 @@ update_estimated_attrs(int pbs_sd, resource_resv *job,
  *	retval - PREEMPT_NONE :If preemption set is set to "NONE"
  *	retval - 0 :If preemption set is not set as "NONE"
  */
-int check_preempt_targets_for_none(char ** res_list);
+int check_preempt_targets_for_none(char **res_list);
 
 /*
  *
@@ -397,4 +395,4 @@ int associate_array_parent(resource_resv *pjob, server_info *sinfo);
 /* Set start, end, duration, and possibly STF parts of the job */
 void set_job_times(int pbs_sd, resource_resv *resresv, time_t server_time);
 
-#endif	/* _JOB_INFO_H */
+#endif /* _JOB_INFO_H */

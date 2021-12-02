@@ -37,8 +37,5 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
-
 #define LONG_DIG_VALUE "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 extern int Long_neg;

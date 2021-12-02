@@ -37,15 +37,15 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_LIMITS_IF_H
-#define	_LIMITS_IF_H
-#include	"pbs_ifl.h"
-#include	"pbs_entlim.h"
+#ifndef _LIMITS_IF_H
+#define _LIMITS_IF_H
+#include "pbs_ifl.h"
+#include "pbs_entlim.h"
 
 enum limtype {
-	LIM_RES,	/* new-style resource limit */
-	LIM_RUN,	/* new-style run (i.e. job count) limit */
-	LIM_OLD		/* old-style run limit */
+	LIM_RES, /* new-style resource limit */
+	LIM_RUN, /* new-style run (i.e. job count) limit */
+	LIM_OLD	 /* old-style run limit */
 };
 
 /**	@fn void *lim_alloc_liminfo(void)
@@ -186,7 +186,7 @@ int lim_setlimits(const struct attrl *, enum limtype, void *);
  *	@par MT-safe:	No
  */
 int check_limits(server_info *, queue_info *, resource_resv *,
-	schd_error *, unsigned int);
+		 schd_error *, unsigned int);
 
 /**	@fn int check_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
  *	@brief	check to see whether a job exceeds its run-time soft limits
@@ -225,7 +225,7 @@ void clear_limres(void);
  */
 schd_resource *query_limres(void);
 
- /**
+/**
   *  @brief check the soft limit using soft limit function.
   *
   *  @return void
@@ -238,4 +238,4 @@ void update_soft_limits(server_info *, queue_info *, resource_resv *);
  * @return	int
  */
 int find_preempt_bits(counts *, std::string &, resource_resv *);
-#endif	/* _LIMITS_IF_H */
+#endif /* _LIMITS_IF_H */

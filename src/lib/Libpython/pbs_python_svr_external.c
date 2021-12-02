@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /**
  * @file	pbs_python_svr_external.c
  * @brief
@@ -57,7 +55,7 @@
 
 #include <pbs_python.h>
 #include <server_limits.h>
-#include "pbs_ifl.h"	/* picks up the extern decl for pbs_config */
+#include "pbs_ifl.h" /* picks up the extern decl for pbs_config */
 #include "resource.h"
 #include "pbs_share.h"
 #include "pbs_error.h"
@@ -71,7 +69,7 @@ extern void _pbs_python_set_mode(int mode);
 extern int _pbs_python_event_mark_readonly(void);
 
 extern int _pbs_python_event_set(unsigned int hook_event, char *req_user,
-	char *req_host, hook_input_param_t *req_params, char *perf_label);
+				 char *req_host, hook_input_param_t *req_params, char *perf_label);
 
 extern void _pbs_python_event_unset(void);
 
@@ -79,13 +77,13 @@ extern int _pbs_python_event_to_request(unsigned int hook_event, hook_output_par
 
 extern int _pbs_python_event_set_attrval(char *name, char *value);
 
-extern char * _pbs_python_event_get_attrval(char *name);
+extern char *_pbs_python_event_get_attrval(char *name);
 
 extern void _pbs_python_event_accept(void);
 
 extern void _pbs_python_event_reject(char *msg);
 
-extern char * _pbs_python_event_get_reject_msg(void);
+extern char *_pbs_python_event_get_reject_msg(void);
 
 extern int _pbs_python_event_get_accept_flag(void);
 
@@ -97,7 +95,7 @@ extern int _pbs_python_event_param_get_mod_flag(void);
 
 extern char *
 _pbs_python_event_job_getval_hookset(char *attrib_name, char *opval,
-	int opval_len, char *delval, int delval_len);
+				     int opval_len, char *delval, int delval_len);
 
 extern char *
 _pbs_python_event_job_getval(char *attrib_name);
@@ -119,7 +117,6 @@ extern char *pbs_python_object_str(PyObject *);
 
 #endif /* PYTHON */
 
-
 /* GLOBAL vars */
 extern char *msg_daemonname; /* pbsd_main.c for SERVER */
 
@@ -135,16 +132,17 @@ extern char *msg_daemonname; /* pbsd_main.c for SERVER */
  *
  */
 void
-pbs_python_svr_initialize_interpreter_data(struct python_interpreter_data *interp_data) {
+pbs_python_svr_initialize_interpreter_data(struct python_interpreter_data *interp_data)
+{
 	/* check whether we are already initialized */
 	if (interp_data->data_initialized)
-		return ;
+		return;
 
 	interp_data->daemon_name = msg_daemonname;
 	interp_data->interp_started = 0;
 	interp_data->data_initialized = 1;
 	interp_data->pbs_python_types_loaded = 0;
-	return ;
+	return;
 }
 
 /**
@@ -161,9 +159,8 @@ pbs_python_svr_destroy_interpreter_data(struct python_interpreter_data *interp_d
 	interp_data->data_initialized = 0;
 	interp_data->interp_started = 0;
 	interp_data->pbs_python_types_loaded = 0;
-	return ;
+	return;
 }
-
 
 /*
  * Helper functions related to PBS events
@@ -187,7 +184,6 @@ pbs_python_set_mode(int mode)
 #ifdef PYTHON
 	_pbs_python_set_mode(mode);
 #endif
-
 }
 
 /**
@@ -210,7 +206,6 @@ pbs_python_event_mark_readonly(void)
 #endif
 }
 
-
 /**
  *
  * @brief
@@ -231,8 +226,8 @@ pbs_python_event_mark_readonly(void)
  */
 int
 pbs_python_event_set(unsigned int hook_event, char *req_user,
-	char *req_host, hook_input_param_t *req_params,
-	char *perf_label)
+		     char *req_host, hook_input_param_t *req_params,
+		     char *perf_label)
 {
 #ifdef PYTHON
 	int rc;
@@ -240,15 +235,14 @@ pbs_python_event_set(unsigned int hook_event, char *req_user,
 
 	if (rc == -2) { /* _pbs_python_event_set got interrupted, retry */
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-			"_pbs_python_event_set", "retrying call");
+			  "_pbs_python_event_set", "retrying call");
 		rc = _pbs_python_event_set(hook_event, req_user, req_host,
-			req_params, perf_label);
+					   req_params, perf_label);
 	}
 	return (rc);
 #else
 	return (0);
 #endif
-
 }
 
 /**
@@ -262,7 +256,6 @@ pbs_python_event_unset(void)
 #ifdef PYTHON
 	_pbs_python_event_unset();
 #endif
-
 }
 
 /**
@@ -304,10 +297,11 @@ pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_pa
 
 char *
 pbs_python_event_job_getval_hookset(char *attrib_name, char *opval,
-	int opval_len, char *delval, int delval_len) {
+				    int opval_len, char *delval, int delval_len)
+{
 #ifdef PYTHON
 	return (_pbs_python_event_job_getval_hookset(attrib_name, opval,
-		opval_len, delval, delval_len));
+						     opval_len, delval, delval_len));
 #else
 	return (0);
 #endif
@@ -440,7 +434,6 @@ pbs_python_event_accept(void)
 #ifdef PYTHON
 	_pbs_python_event_accept();
 #endif
-
 }
 
 /**
@@ -472,7 +465,6 @@ pbs_python_event_get_reject_msg(void)
 #endif
 }
 
-
 /**
  * @brief
  * 	Returns the value of the event accept flag (1 for TRUE or 0 for FALSE).
@@ -484,9 +476,8 @@ pbs_python_event_get_accept_flag(void)
 #ifdef PYTHON
 	return (_pbs_python_event_get_accept_flag());
 #else
-	return (0);	/* for FALSE */
+	return (0); /* for FALSE */
 #endif
-
 }
 
 /**
@@ -501,7 +492,6 @@ pbs_python_event_param_mod_allow(void)
 #ifdef PYTHON
 	_pbs_python_event_param_mod_allow();
 #endif
-
 }
 
 /**
@@ -516,7 +506,6 @@ pbs_python_event_param_mod_disallow(void)
 #ifdef PYTHON
 	_pbs_python_event_param_mod_disallow();
 #endif
-
 }
 
 /**
@@ -531,9 +520,8 @@ pbs_python_event_param_get_mod_flag(void)
 #ifdef PYTHON
 	return (_pbs_python_event_param_get_mod_flag());
 #else
-	return (0);	/* for FALSE */
+	return (0); /* for FALSE */
 #endif
-
 }
 
 /*
@@ -556,9 +544,8 @@ pbs_python_has_vnode_set(void)
 #ifdef PYTHON
 	return (_pbs_python_has_vnode_set());
 #else
-	return (0);	/* for FALSE */
+	return (0); /* for FALSE */
 #endif
-
 }
 
 /**
@@ -575,7 +562,6 @@ pbs_python_do_vnode_set(void)
 	_pbs_python_do_vnode_set();
 #endif
 }
-
 
 /**
  * @brief

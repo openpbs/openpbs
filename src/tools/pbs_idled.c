@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file	pbs_idled.c
  *
@@ -73,8 +72,7 @@
 #define EVER 1
 
 /* used to pass back pointer locations from pointer_query() */
-struct xy
-{
+struct xy {
 	int x;
 	int y;
 };
@@ -172,8 +170,7 @@ main(int argc, char *argv[], char *envp[])
 				exit(1);
 			}
 			close(fd);
-		}
-		else {
+		} else {
 			perror("File Error");
 			exit(1);
 		}
@@ -211,10 +208,10 @@ main(int argc, char *argv[], char *envp[])
 
 	event_setup(w, dsp);
 
-	for (; EVER ;) {
+	for (; EVER;) {
 		sleep(delay);
 
-		while (XCheckMaskEvent(dsp, KeyPressMask | KeyReleaseMask | SubstructureNotifyMask , &event)) {
+		while (XCheckMaskEvent(dsp, KeyPressMask | KeyReleaseMask | SubstructureNotifyMask, &event)) {
 			switch (event.type) {
 				case KeyPress:
 				case KeyRelease:
@@ -244,7 +241,6 @@ main(int argc, char *argv[], char *envp[])
 			do_update = 0;
 		}
 	}
-
 }
 
 /**
@@ -310,11 +306,10 @@ pointer_query(Display *dsp, Window w, struct xy *p)
 		return 0;
 
 	if (XQueryPointer(dsp, w,
-		&root_return, &child_return, &root_x, &root_y, &win_x, &win_y, &mask)) {
+			  &root_return, &child_return, &root_x, &root_y, &win_x, &win_y, &mask)) {
 		p->x = root_x;
 		p->y = root_y;
-	}
-	else
+	} else
 		printf("XQueryPointer failed\n");
 
 	return 1;

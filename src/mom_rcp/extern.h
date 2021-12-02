@@ -78,15 +78,15 @@ typedef struct {
 
 extern int iamremote;
 
-BUF	*allocbuf(BUF *, int, int);
-char	*colon(char *);
-void	 lostconn(int);
-void	 nospace(void);
-int	 okname(char *);
-void	 run_err(const char *, ...);
-int	 susystem(char *, uid_t, char *);
-void	 verifydir(char *);
-char    *strerror(int);
-void	errx(int err, const char *fmt, ...);
-void	err(int val, char *str);
-void	warnx(const char *fmt, ...);
+BUF *allocbuf(BUF *, int, int);
+char *colon(char *);
+void lostconn(int);
+void nospace(void);
+int okname(char *);
+void run_err(const char *, ...);
+int susystem(char *, uid_t, char *);
+void verifydir(char *);
+char *strerror(int);
+void errx(int err, const char *fmt, ...);
+void err(int val, char *str);
+void warnx(const char *fmt, ...);

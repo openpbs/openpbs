@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
@@ -85,7 +84,7 @@
 #define MAX_SORTS 21
 
 /* maximum number of scheduling cycle restarts in event of job-run failure */
-#define MAX_RESTART_CYCLECNT  5
+#define MAX_RESTART_CYCLECNT 5
 
 /* estimate of how long a node will take to provision - used in simulation */
 #define PROVISION_DURATION 600
@@ -144,17 +143,17 @@
 
 #ifdef NAS
 /* localmod 034 */
-#define	PARSE_MAX_BORROW "max_borrow"
-#define	PARSE_SHARES_TRACK_ONLY "shares_track_only"
-#define	PARSE_PER_SHARE_DEPTH	"per_share_depth"	/* old name */
-#define	PARSE_PER_SHARE_TOPJOBS	"per_share_topjobs"
+#define PARSE_MAX_BORROW "max_borrow"
+#define PARSE_SHARES_TRACK_ONLY "shares_track_only"
+#define PARSE_PER_SHARE_DEPTH "per_share_depth" /* old name */
+#define PARSE_PER_SHARE_TOPJOBS "per_share_topjobs"
 
 /* localmod 038 */
-#define	PARSE_PER_QUEUES_TOPJOBS	"per_queues_topjobs"
+#define PARSE_PER_QUEUES_TOPJOBS "per_queues_topjobs"
 
 /* localmod 030 */
-#define	PARSE_MIN_INTERRUPTED_CYCLE_LENGTH	"min_interrupted_cycle_length"
-#define	PARSE_MAX_CONS_INTERRUPTED_CYCLES	"max_cons_interrupted_cycles"
+#define PARSE_MIN_INTERRUPTED_CYCLE_LENGTH "min_interrupted_cycle_length"
+#define PARSE_MAX_CONS_INTERRUPTED_CYCLES "max_cons_interrupted_cycles"
 #endif
 
 /* undocumented */
@@ -167,12 +166,10 @@
 /* deprecated */
 #define PARSE_STRICT_FIFO "strict_fifo"
 
-
-
 /* max sizes */
 #define MAX_HOLIDAY_SIZE 50
 #define MAX_DEDTIME_SIZE 50
-#define MAX_SERVER_DYN_RES 201    /* 200 elements + 1 sentinel */
+#define MAX_SERVER_DYN_RES 201 /* 200 elements + 1 sentinel */
 #define MAX_LOG_SIZE 1024
 #define MAX_RES_NAME_SIZE 256
 #define MAX_RES_RET_SIZE 256
@@ -200,7 +197,7 @@
 #endif
 
 /* max num of retries for preemption */
-#define MAX_PREEMPT_RETRIES     5
+#define MAX_PREEMPT_RETRIES 5
 
 /* provisioning policy */
 #define PROVPOLICY_AVOID "avoid_provision"
@@ -226,4 +223,4 @@
 #define ATTR_topjob_setaside "topjob_set_aside"
 #endif
 
-#endif	/* _CONFIG_H */
+#endif /* _CONFIG_H */

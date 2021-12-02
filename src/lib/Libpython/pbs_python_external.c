@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file	pbs_python_external.c
  * @brief
@@ -55,28 +54,28 @@
 #ifdef PYTHON
 
 #include <pbs_python_private.h> /* private python file  */
-#include <eval.h>               /* For PyEval_EvalCode  */
-#include <pythonrun.h>          /* For Py_SetPythonHome */
+#include <eval.h>		/* For PyEval_EvalCode  */
+#include <pythonrun.h>		/* For Py_SetPythonHome */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <signal.h>
 #include <unistd.h>
 #include <wchar.h>
 
-extern PyObject* PyInit__pbs_ifl(void);
+extern PyObject *PyInit__pbs_ifl(void);
 
 static struct _inittab pbs_python_inittab_modules[] = {
 	{PBS_PYTHON_V1_MODULE_EXTENSION_NAME, pbs_v1_module_inittab},
 	{"_pbs_ifl", PyInit__pbs_ifl},
-	{NULL, NULL}                    /* sentinel */
+	{NULL, NULL} /* sentinel */
 };
 
 static PyObject *
 _pbs_python_compile_file(const char *file_name,
-	const char *compiled_code_file_name);
+			 const char *compiled_code_file_name);
 extern int pbs_python_setup_namespace_dict(PyObject *globals);
 
-#endif      /* PYTHON */
+#endif /* PYTHON */
 
 #include <pbs_python.h>
 
@@ -111,12 +110,12 @@ int
 pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 {
 
-#ifdef	PYTHON           /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
+#ifdef PYTHON /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
 	struct stat sbuf;
 	char pbs_python_destlib[MAXPATHLEN + 1] = {'\0'};
 	char pbs_python_destlib2[MAXPATHLEN + 1] = {'\0'};
-	int  evtype;
-	int  rc;
+	int evtype;
+	int rc;
 
 	/*
 	 * initialize the convenience global pbs_python_daemon_name, as it is
@@ -134,16 +133,16 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 		evtype = PBSEVENT_DEBUG2;
 
 	snprintf(pbs_python_destlib, MAXPATHLEN, "%s/lib64/python/altair",
-		pbs_conf.pbs_exec_path);
+		 pbs_conf.pbs_exec_path);
 	snprintf(pbs_python_destlib2, MAXPATHLEN, "%s/lib64/python/altair/pbs/v1",
-		pbs_conf.pbs_exec_path);
+		 pbs_conf.pbs_exec_path);
 	rc = stat(pbs_python_destlib, &sbuf);
 	if (rc != 0) {
 		snprintf(pbs_python_destlib, MAXPATHLEN, "%s/lib/python/altair",
-			pbs_conf.pbs_exec_path);
+			 pbs_conf.pbs_exec_path);
 		rc = stat(pbs_python_destlib, &sbuf);
 		snprintf(pbs_python_destlib2, MAXPATHLEN, "%s/lib/python/altair/pbs/v1",
-			pbs_conf.pbs_exec_path);
+			 pbs_conf.pbs_exec_path);
 	}
 	if (rc != 0) {
 		log_err(-1, __func__,
@@ -160,11 +159,11 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 		interp_data->init_interpreter_data(interp_data); /* to be safe */
 		if (interp_data->interp_started) {
 			log_event(evtype, PBS_EVENTCLASS_SERVER,
-				LOG_INFO, interp_data->daemon_name,
-				"--> Python interpreter already started <--");
+				  LOG_INFO, interp_data->daemon_name,
+				  "--> Python interpreter already started <--");
 			goto SUCCESS_EXIT;
 		} /* else { we are not started but ready } */
-	} else { /* we need to allocate memory */
+	} else {  /* we need to allocate memory */
 		log_err(-1, __func__,
 			"--> Passed NULL for interpreter data <--");
 		goto ERROR_EXIT;
@@ -172,8 +171,8 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 
 	Py_NoSiteFlag = 1;
 	Py_FrozenFlag = 1;
-	Py_OptimizeFlag = 2;            /* TODO make this a compile flag variable */
-	Py_IgnoreEnvironmentFlag = 1;   /* ignore PYTHONPATH and PYTHONHOME */
+	Py_OptimizeFlag = 2;	      /* TODO make this a compile flag variable */
+	Py_IgnoreEnvironmentFlag = 1; /* ignore PYTHONPATH and PYTHONHOME */
 
 	set_py_progname();
 
@@ -197,10 +196,10 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 		interp_data->interp_started = 1; /* mark python as initialized */
 		/* print only the first five characters, TODO check for NULL? */
 		pbs_asprintf(&msgbuf,
-			"--> Python Interpreter started, compiled with version:'%s' <--",
-			Py_GetVersion());
+			     "--> Python Interpreter started, compiled with version:'%s' <--",
+			     Py_GetVersion());
 		log_event(evtype, PBS_EVENTCLASS_SERVER,
-			LOG_INFO, interp_data->daemon_name, msgbuf);
+			  LOG_INFO, interp_data->daemon_name, msgbuf);
 		free(msgbuf);
 	} else {
 		log_err(-1, "Py_InitializeEx",
@@ -213,19 +212,19 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 	 * standard required python modules
 	 */
 	if (pbs_python_modify_syspath(pbs_python_destlib, -1) == -1) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"could not insert %s into sys.path shutting down",
-			pbs_python_destlib);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		snprintf(log_buffer, LOG_BUF_SIZE - 1,
+			 "could not insert %s into sys.path shutting down",
+			 pbs_python_destlib);
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		log_err(-1, __func__, log_buffer);
 		goto ERROR_EXIT;
 	}
 
 	if (pbs_python_modify_syspath(pbs_python_destlib2, -1) == -1) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"could not insert %s into sys.path shutting down",
-			pbs_python_destlib2);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		snprintf(log_buffer, LOG_BUF_SIZE - 1,
+			 "could not insert %s into sys.path shutting down",
+			 pbs_python_destlib2);
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		log_err(-1, __func__, log_buffer);
 		goto ERROR_EXIT;
 	}
@@ -275,10 +274,11 @@ ERROR_EXIT:
 	}
 	return 1;
 #else  /* !PYTHON */
-	log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN |
-		PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-		LOG_INFO, "start_python",
-		"--> Python interpreter not built in <--");
+	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN |
+			  PBSEVENT_DEBUG,
+		  PBS_EVENTCLASS_SERVER,
+		  LOG_INFO, "start_python",
+		  "--> Python interpreter not built in <--");
 	return 0;
 #endif /* PYTHON */
 }
@@ -298,12 +298,11 @@ ERROR_EXIT:
  *	DEBUG3; otherwise, DEBUG2.
  */
 
-
 void
 pbs_python_ext_shutdown_interpreter(struct python_interpreter_data *interp_data)
 {
-#ifdef	PYTHON           /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
-	int	evtype;
+#ifdef PYTHON /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
+	int evtype;
 
 	if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name))
 		evtype = PBSEVENT_DEBUG3;
@@ -313,11 +312,11 @@ pbs_python_ext_shutdown_interpreter(struct python_interpreter_data *interp_data)
 	if (interp_data) {
 		if (interp_data->interp_started) {
 			log_event(evtype, PBS_EVENTCLASS_SERVER,
-				LOG_INFO, interp_data->daemon_name,
-				"--> Stopping Python interpreter <--");
+				  LOG_INFO, interp_data->daemon_name,
+				  "--> Stopping Python interpreter <--");
 
 			/* before finalize clear global python objects */
-			pbs_python_event_unset();  /* clear Python event object */
+			pbs_python_event_unset(); /* clear Python event object */
 			pbs_python_unload_python_types(interp_data);
 			Py_Finalize();
 		}
@@ -327,7 +326,6 @@ pbs_python_ext_shutdown_interpreter(struct python_interpreter_data *interp_data)
 	}
 
 #endif /* PYTHON */
-
 }
 
 /**
@@ -340,19 +338,19 @@ void
 pbs_python_ext_quick_start_interpreter(void)
 {
 
-#ifdef	PYTHON           /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
+#ifdef PYTHON /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
 	char pbs_python_destlib[MAXPATHLEN + 1] = {'\0'};
 	char pbs_python_destlib2[MAXPATHLEN + 1] = {'\0'};
 
 	snprintf(pbs_python_destlib, MAXPATHLEN, "%s/lib/python/altair",
-		pbs_conf.pbs_exec_path);
+		 pbs_conf.pbs_exec_path);
 	snprintf(pbs_python_destlib2, MAXPATHLEN, "%s/lib/python/altair/pbs/v1",
-		pbs_conf.pbs_exec_path);
+		 pbs_conf.pbs_exec_path);
 
 	Py_NoSiteFlag = 1;
 	Py_FrozenFlag = 1;
-	Py_OptimizeFlag = 2;            /* TODO make this a compile flag variable */
-	Py_IgnoreEnvironmentFlag = 1;   /* ignore PYTHONPATH and PYTHONHOME */
+	Py_OptimizeFlag = 2;	      /* TODO make this a compile flag variable */
+	Py_IgnoreEnvironmentFlag = 1; /* ignore PYTHONPATH and PYTHONHOME */
 	set_py_progname();
 
 	/* we make sure our top level module is initialized */
@@ -362,17 +360,18 @@ pbs_python_ext_quick_start_interpreter(void)
 		return;
 	}
 
-	Py_InitializeEx(0);  /* SKIP initialization of signals */
+	Py_InitializeEx(0); /* SKIP initialization of signals */
 
 	if (Py_IsInitialized()) {
 		char *msgbuf;
 
 		pbs_asprintf(&msgbuf,
-			"--> Python Interpreter quick started, compiled with version:'%s' <--",
-			Py_GetVersion());
-		log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN |
-			PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-			LOG_INFO, __func__, msgbuf);
+			     "--> Python Interpreter quick started, compiled with version:'%s' <--",
+			     Py_GetVersion());
+		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN |
+				  PBSEVENT_DEBUG,
+			  PBS_EVENTCLASS_SERVER,
+			  LOG_INFO, __func__, msgbuf);
 		free(msgbuf);
 	} else {
 		log_err(-1, "Py_InitializeEx",
@@ -385,43 +384,44 @@ pbs_python_ext_quick_start_interpreter(void)
 	 * standard required python modules
 	 */
 	if (pbs_python_modify_syspath(pbs_python_destlib, -1) == -1) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"could not insert %s into sys.path shutting down",
-			pbs_python_destlib);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		snprintf(log_buffer, LOG_BUF_SIZE - 1,
+			 "could not insert %s into sys.path shutting down",
+			 pbs_python_destlib);
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		log_err(-1, __func__, log_buffer);
 		goto ERROR_EXIT;
 	}
 
 	if (pbs_python_modify_syspath(pbs_python_destlib2, -1) == -1) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"could not insert %s into sys.path shutting down",
-			pbs_python_destlib2);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		snprintf(log_buffer, LOG_BUF_SIZE - 1,
+			 "could not insert %s into sys.path shutting down",
+			 pbs_python_destlib2);
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		log_err(-1, __func__, log_buffer);
 		goto ERROR_EXIT;
 	}
 
-	snprintf(log_buffer, LOG_BUF_SIZE-1,
-		"--> Inserted Altair PBS Python modules dir '%s' '%s'<--", pbs_python_destlib, pbs_python_destlib2);
-	log_buffer[LOG_BUF_SIZE-1] = '\0';
-	log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN |
-		PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-		LOG_INFO, __func__, log_buffer);
+	snprintf(log_buffer, LOG_BUF_SIZE - 1,
+		 "--> Inserted Altair PBS Python modules dir '%s' '%s'<--", pbs_python_destlib, pbs_python_destlib2);
+	log_buffer[LOG_BUF_SIZE - 1] = '\0';
+	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN |
+			  PBSEVENT_DEBUG,
+		  PBS_EVENTCLASS_SERVER,
+		  LOG_INFO, __func__, log_buffer);
 
 	return;
 
 ERROR_EXIT:
 	pbs_python_ext_quick_shutdown_interpreter();
 	return;
-#else   /* !PYTHON */
-	log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN |
-		PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-		LOG_INFO, "start_python",
-		"--> Python interpreter not built in <--");
+#else  /* !PYTHON */
+	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN |
+			  PBSEVENT_DEBUG,
+		  PBS_EVENTCLASS_SERVER,
+		  LOG_INFO, "start_python",
+		  "--> Python interpreter not built in <--");
 	return;
-#endif  /* PYTHON */
-
+#endif /* PYTHON */
 }
 
 /**
@@ -432,14 +432,14 @@ ERROR_EXIT:
 void
 pbs_python_ext_quick_shutdown_interpreter(void)
 {
-#ifdef	PYTHON           /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
-	log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN |
-		PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-		LOG_INFO, "pbs_python_ext_quick_shutdown_interpreter",
-		"--> Stopping Python interpreter <--");
+#ifdef PYTHON /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
+	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN |
+			  PBSEVENT_DEBUG,
+		  PBS_EVENTCLASS_SERVER,
+		  LOG_INFO, "pbs_python_ext_quick_shutdown_interpreter",
+		  "--> Stopping Python interpreter <--");
 	Py_Finalize();
 #endif /* PYTHON */
-
 }
 
 void
@@ -450,33 +450,33 @@ pbs_python_ext_free_python_script(
 		if (py_script->path)
 			free(py_script->path);
 
-#ifdef PYTHON                 /* --- BEGIN PYTHON BLOCK --- */
+#ifdef PYTHON /* --- BEGIN PYTHON BLOCK --- */
 		if (py_script->py_code_obj)
 			Py_CLEAR(py_script->py_code_obj);
 		if (py_script->global_dict) {
-			PyDict_Clear((PyObject *)py_script->global_dict); /* clear k,v */
+			PyDict_Clear((PyObject *) py_script->global_dict); /* clear k,v */
 			Py_CLEAR(py_script->global_dict);
 		}
-#endif                        /* --- END   PYTHON BLOCK --- */
-
+#endif /* --- END   PYTHON BLOCK --- */
 	}
 	return;
 }
-#define COPY_STRING(dst,src) \
-	do { \
-	   if (!((dst) = strdup(src))) { \
-	     log_err(errno, __func__, "could not copy string"); \
-	     goto ERROR_EXIT; \
-	   } \
+#define COPY_STRING(dst, src)                                              \
+	do {                                                               \
+		if (!((dst) = strdup(src))) {                              \
+			log_err(errno, __func__, "could not copy string"); \
+			goto ERROR_EXIT;                                   \
+		}                                                          \
 	} while (0)
 
 int
 pbs_python_ext_alloc_python_script(
 	const char *script_path,
 	struct python_script **py_script /* returned value */
-	) {
+)
+{
 
-#ifdef PYTHON                 /* --- BEGIN PYTHON BLOCK --- */
+#ifdef PYTHON /* --- BEGIN PYTHON BLOCK --- */
 
 	struct python_script *tmp_py_script = NULL;
 	size_t nbytes = sizeof(struct python_script);
@@ -495,14 +495,14 @@ pbs_python_ext_alloc_python_script(
 	COPY_STRING(tmp_py_script->path, script_path);
 	/* store the stat */
 	if ((stat(script_path, &sbuf) == -1)) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"failed to stat <%s>", script_path);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		snprintf(log_buffer, LOG_BUF_SIZE - 1,
+			 "failed to stat <%s>", script_path);
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		log_err(errno, __func__, log_buffer);
 		goto ERROR_EXIT;
 	}
 	(void) memcpy(&(tmp_py_script->cur_sbuf), &sbuf,
-		sizeof(tmp_py_script->cur_sbuf));
+		      sizeof(tmp_py_script->cur_sbuf));
 	/* ok, we are set with py_script */
 	*py_script = tmp_py_script;
 	return 0;
@@ -517,7 +517,7 @@ ERROR_EXIT:
 
 	log_err(-1, __func__, "--> Python is disabled <--");
 	return -1;
-#endif                        /* --- END   PYTHON BLOCK --- */
+#endif /* --- END   PYTHON BLOCK --- */
 }
 
 /**
@@ -534,7 +534,7 @@ pbs_python_ext_namespace_init(
 	struct python_interpreter_data *interp_data)
 {
 
-#ifdef PYTHON                        /* --- BEGIN PYTHON BLOCK --- */
+#ifdef PYTHON /* --- BEGIN PYTHON BLOCK --- */
 
 	PyObject *namespace_dict = NULL;
 	PyObject *py_v1_module = NULL;
@@ -549,8 +549,7 @@ pbs_python_ext_namespace_init(
 	 * run the python scripts
 	 */
 	if ((PyDict_SetItemString(namespace_dict, "__builtins__",
-		PyEval_GetBuiltins()) == -1)
-		) {
+				  PyEval_GetBuiltins()) == -1)) {
 		pbs_python_write_error_to_log(__func__);
 		goto ERROR_EXIT;
 	}
@@ -562,13 +561,12 @@ pbs_python_ext_namespace_init(
 	if (py_v1_module == NULL)
 		goto ERROR_EXIT;
 	if ((PyDict_SetItemString(namespace_dict,
-		PBS_PYTHON_V1_MODULE_EXTENSION_NAME,
-		py_v1_module) == -1)
-		) {
+				  PBS_PYTHON_V1_MODULE_EXTENSION_NAME,
+				  py_v1_module) == -1)) {
 		Py_XDECREF(py_v1_module);
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s|adding extension object",
-			__func__);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		snprintf(log_buffer, LOG_BUF_SIZE - 1, "%s|adding extension object",
+			 __func__);
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		pbs_python_write_error_to_log(__func__);
 		goto ERROR_EXIT;
 	}
@@ -584,10 +582,9 @@ ERROR_EXIT:
 	}
 	return namespace_dict;
 
-#else	/* !PYTHON */
+#else  /* !PYTHON */
 	return NULL;
-#endif  /* --- END   PYTHON BLOCK --- */
-
+#endif /* --- END   PYTHON BLOCK --- */
 }
 
 /**
@@ -608,10 +605,10 @@ ERROR_EXIT:
  */
 int
 pbs_python_check_and_compile_script(struct python_interpreter_data *interp_data,
-	struct python_script *py_script)
+				    struct python_script *py_script)
 {
 
-#ifdef	PYTHON           /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
+#ifdef PYTHON		  /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
 	struct stat nbuf; /* new stat buf */
 	struct stat obuf; /* old buf */
 	int recompile = 1;
@@ -628,14 +625,14 @@ pbs_python_check_and_compile_script(struct python_interpreter_data *interp_data,
 		(void) memcpy(&obuf, &(py_script->cur_sbuf), sizeof(obuf));
 		if (py_script->check_for_recompile) {
 			if ((stat(py_script->path, &nbuf) != 1) &&
-				(nbuf.st_ino   == obuf.st_ino) &&
-				(nbuf.st_size  == obuf.st_size) &&
-				(nbuf.st_mtime == obuf.st_mtime)) {
+			    (nbuf.st_ino == obuf.st_ino) &&
+			    (nbuf.st_size == obuf.st_size) &&
+			    (nbuf.st_mtime == obuf.st_mtime)) {
 				recompile = 0;
 			} else {
 				recompile = 1;
 				(void) memcpy(&(py_script->cur_sbuf), &nbuf,
-					sizeof(py_script->cur_sbuf));
+					      sizeof(py_script->cur_sbuf));
 				Py_CLEAR(py_script->py_code_obj); /* we are rebuilding */
 			}
 		}
@@ -643,19 +640,20 @@ pbs_python_check_and_compile_script(struct python_interpreter_data *interp_data,
 
 	if (recompile) {
 		snprintf(log_buffer, LOG_BUF_SIZE,
-			"Compiling script file: <%s>", py_script->path);
+			 "Compiling script file: <%s>", py_script->path);
 
 		if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name))
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-				LOG_INFO, interp_data->daemon_name, log_buffer);
+				  LOG_INFO, interp_data->daemon_name, log_buffer);
 		else
-			log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN |
-				PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-				LOG_INFO, interp_data->daemon_name, log_buffer);
+			log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN |
+					  PBSEVENT_DEBUG,
+				  PBS_EVENTCLASS_SERVER,
+				  LOG_INFO, interp_data->daemon_name, log_buffer);
 
 		if (!(py_script->py_code_obj =
-			_pbs_python_compile_file(py_script->path,
-			"<embedded code object>"))) {
+			      _pbs_python_compile_file(py_script->path,
+						       "<embedded code object>"))) {
 			pbs_python_write_error_to_log("Failed to compile script");
 			return -2;
 		}
@@ -664,14 +662,14 @@ pbs_python_check_and_compile_script(struct python_interpreter_data *interp_data,
 	/* set dict to null during compilation, clearing previous global/local */
 	/* dictionary to prevent leaks.                                        */
 	if (py_script->global_dict) {
-		PyDict_Clear((PyObject *)py_script->global_dict);
+		PyDict_Clear((PyObject *) py_script->global_dict);
 		Py_CLEAR(py_script->global_dict);
 	}
 
 	return 0;
-#else	/* !PYTHON */
+#else  /* !PYTHON */
 	return -1;
-#endif 	/* PYTHON */
+#endif /* PYTHON */
 }
 
 /**
@@ -690,11 +688,11 @@ pbs_python_check_and_compile_script(struct python_interpreter_data *interp_data,
  */
 int
 pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
-	struct python_script *py_script,
-	int *exit_code)
+				 struct python_script *py_script,
+				 int *exit_code)
 {
 
-#ifdef	PYTHON           /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
+#ifdef PYTHON /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
 
 	PyObject *pdict;
 	struct stat nbuf; /* new stat buf */
@@ -705,8 +703,8 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 	PyObject *ptraceback;
 	PyObject *pobjStr;
 	PyObject *retval;
-	const char      *pStr;
-	int rc=0;
+	const char *pStr;
+	int rc = 0;
 	pid_t orig_pid;
 
 	if (!interp_data || !py_script) {
@@ -721,35 +719,35 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 		(void) memcpy(&obuf, &(py_script->cur_sbuf), sizeof(obuf));
 		if (py_script->check_for_recompile) {
 			if ((stat(py_script->path, &nbuf) != -1) &&
-				(nbuf.st_ino   == obuf.st_ino)    &&
-				(nbuf.st_size  == obuf.st_size)   &&
-				(nbuf.st_mtime == obuf.st_mtime)
-				) {
+			    (nbuf.st_ino == obuf.st_ino) &&
+			    (nbuf.st_size == obuf.st_size) &&
+			    (nbuf.st_mtime == obuf.st_mtime)) {
 				recompile = 0;
 			} else {
 				recompile = 1;
 				(void) memcpy(&(py_script->cur_sbuf), &nbuf,
-					sizeof(py_script->cur_sbuf));
+					      sizeof(py_script->cur_sbuf));
 				Py_CLEAR(py_script->py_code_obj); /* we are rebuilding */
 			}
 		}
 	} while (0);
 
 	if (recompile) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"Compiling script file: <%s>", py_script->path);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		snprintf(log_buffer, LOG_BUF_SIZE - 1,
+			 "Compiling script file: <%s>", py_script->path);
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name))
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-				LOG_INFO, interp_data->daemon_name, log_buffer);
+				  LOG_INFO, interp_data->daemon_name, log_buffer);
 		else
-			log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN |
-				PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-				LOG_INFO, interp_data->daemon_name, log_buffer);
+			log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN |
+					  PBSEVENT_DEBUG,
+				  PBS_EVENTCLASS_SERVER,
+				  LOG_INFO, interp_data->daemon_name, log_buffer);
 
 		if (!(py_script->py_code_obj =
-			_pbs_python_compile_file(py_script->path,
-			"<embedded code object>"))) {
+			      _pbs_python_compile_file(py_script->path,
+						       "<embedded code object>"))) {
 			pbs_python_write_error_to_log("Failed to compile script");
 			return -2;
 		}
@@ -757,7 +755,7 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 
 	/* make new namespace dictionary, NOTE new reference */
 
-	if (!(pdict = (PyObject *)pbs_python_ext_namespace_init(interp_data))) {
+	if (!(pdict = (PyObject *) pbs_python_ext_namespace_init(interp_data))) {
 		log_err(-1, __func__, "while calling pbs_python_ext_namespace_init");
 		return -1;
 	}
@@ -768,7 +766,7 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 
 	/* clear previous global/local dictionary */
 	if (py_script->global_dict) {
-		PyDict_Clear((PyObject *)py_script->global_dict); /* clear k,v */
+		PyDict_Clear((PyObject *) py_script->global_dict); /* clear k,v */
 		Py_CLEAR(py_script->global_dict);
 	}
 
@@ -778,8 +776,8 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 
 	PyErr_Clear(); /* clear any exceptions before starting code */
 	/* precompile strings of code to bytecode objects */
-	retval = PyEval_EvalCode((PyObject *)py_script->py_code_obj,
-		pdict, pdict);
+	retval = PyEval_EvalCode((PyObject *) py_script->py_code_obj,
+				 pdict, pdict);
 
 	/* check for a fork of the hook, terminate fork immediately */
 	if (orig_pid != getpid())
@@ -824,17 +822,15 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 	Py_XDECREF(retval);
 
 	if (exit_code)
-		*exit_code=rc; /* set exit code if var is not null */
+		*exit_code = rc; /* set exit code if var is not null */
 
 	return 0;
-#else	/* !PYTHON */
+#else  /* !PYTHON */
 	return -1;
-#endif 	/* PYTHON */
-
+#endif /* PYTHON */
 }
 
-
-#ifdef PYTHON               /*  === BEGIN ALL FUNCTIONS REQUIRING PYTHON HEADERS === */
+#ifdef PYTHON /*  === BEGIN ALL FUNCTIONS REQUIRING PYTHON HEADERS === */
 
 /**
  * @brief
@@ -850,21 +846,21 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
  */
 static PyObject *
 _pbs_python_compile_file(const char *file_name,
-	const char *compiled_code_file_name)
+			 const char *compiled_code_file_name)
 {
 	FILE *fp = NULL;
 
 	long len = 0;
-	size_t file_sz = 0;   /* script file no. of bytes */
+	size_t file_sz = 0;	  /* script file no. of bytes */
 	char *file_buffer = NULL; /* buffer to hold the python script file */
-	char *cp = NULL; /* useful character pointer */
+	char *cp = NULL;	  /* useful character pointer */
 	PyObject *rv = NULL;
 
 	fp = fopen(file_name, "rb");
 	if (!fp) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"could not open file <%s>: %s\n", file_name, strerror(errno));
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		snprintf(log_buffer, LOG_BUF_SIZE - 1,
+			 "could not open file <%s>: %s\n", file_name, strerror(errno));
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		log_err(errno, __func__, log_buffer);
 		goto ERROR_EXIT;
 	}
@@ -872,31 +868,31 @@ _pbs_python_compile_file(const char *file_name,
 	if ((fseek(fp, 0L, SEEK_END) == 0)) { /* ok we reached the end */
 		len = ftell(fp);
 		if (len == -1) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1,
-				"could not determine the file length: %s\n", strerror(errno));
-			log_buffer[LOG_BUF_SIZE-1] = '\0';
+			snprintf(log_buffer, LOG_BUF_SIZE - 1,
+				 "could not determine the file length: %s\n", strerror(errno));
+			log_buffer[LOG_BUF_SIZE - 1] = '\0';
 			log_err(errno, __func__, log_buffer);
 			goto ERROR_EXIT;
 		}
 		if ((fseek(fp, 0L, SEEK_SET) == -1)) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1,
-				"could not fseek to beginning: %s\n", strerror(errno));
-			log_buffer[LOG_BUF_SIZE-1] = '\0';
+			snprintf(log_buffer, LOG_BUF_SIZE - 1,
+				 "could not fseek to beginning: %s\n", strerror(errno));
+			log_buffer[LOG_BUF_SIZE - 1] = '\0';
 			log_err(errno, __func__, log_buffer);
 			goto ERROR_EXIT;
 		}
 		file_sz = len; /* ok good we have a file size */
-	} else { /* Uh-oh bad news */
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"could not fseek to end: %s\n", strerror(errno));
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+	} else {	       /* Uh-oh bad news */
+		snprintf(log_buffer, LOG_BUF_SIZE - 1,
+			 "could not fseek to end: %s\n", strerror(errno));
+		log_buffer[LOG_BUF_SIZE - 1] = '\0';
 		log_err(errno, __func__, log_buffer);
 		goto ERROR_EXIT;
 	}
 	/* allocate memory for file + \n\0 */
 	file_sz += 2;
 
-	if (!(file_buffer = (char *)PyMem_Malloc(sizeof(char)*file_sz))) {
+	if (!(file_buffer = (char *) PyMem_Malloc(sizeof(char) * file_sz))) {
 		/* could not allocate memory */
 		pbs_python_write_error_to_log(__func__);
 		goto ERROR_EXIT;
@@ -906,7 +902,7 @@ _pbs_python_compile_file(const char *file_name,
 	file_sz = fread(file_buffer, sizeof(char), (file_sz - 2), fp);
 
 	file_buffer[file_sz] = '\n';
-	file_buffer[file_sz+1] = '\0';
+	file_buffer[file_sz + 1] = '\0';
 
 	if (*file_buffer == '\r')
 		*file_buffer = ' ';
@@ -935,6 +931,5 @@ ERROR_EXIT:
 		PyMem_Free(file_buffer); /* to be safe */
 	return rv;
 }
-
 
 #endif /* PYTHON */

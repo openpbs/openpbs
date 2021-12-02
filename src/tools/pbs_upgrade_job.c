@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file pbs_upgrade_job.c
  *
@@ -88,9 +87,9 @@
  */
 
 /* From pbs_ifl.h */
-#define PBS_MAXSEQNUM_PRE19	7
-#define PBS_MAXSVRJOBID_PRE19	(PBS_MAXSEQNUM_PRE19 - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2)
-#define PBS_MAXSVRJOBID_19_21	(PBS_MAXSEQNUM - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2)
+#define PBS_MAXSEQNUM_PRE19 7
+#define PBS_MAXSVRJOBID_PRE19 (PBS_MAXSEQNUM_PRE19 - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2)
+#define PBS_MAXSVRJOBID_19_21 (PBS_MAXSEQNUM - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2)
 
 /*
  * Replicate the jobfix structure as it was defined in versions 19.x - 21.x
@@ -165,17 +164,16 @@ union jobextend_19_21 {
  * Replicate the jobfix and taskfix structures as they were defined in 13.x to pre 19.x versions.
  * Use the macros defined above for convenience.
  */
-typedef struct jobfix_PRE19
-{
-	int ji_jsversion;   	/* job structure version - JSVERSION */
-	int ji_state;		/* internal copy of state */
-	int ji_substate;	/* job sub-state */
-	int ji_svrflags;	/* server flags */
-	int ji_numattr;		/* not used */
-	int ji_ordering;	/* special scheduling ordering */
-	int ji_priority;	/* internal priority */
-	time_t ji_stime;	/* time job started execution */
-	time_t ji_endtBdry; 	/* estimate upper bound on end time */
+typedef struct jobfix_PRE19 {
+	int ji_jsversion;   /* job structure version - JSVERSION */
+	int ji_state;	    /* internal copy of state */
+	int ji_substate;    /* job sub-state */
+	int ji_svrflags;    /* server flags */
+	int ji_numattr;	    /* not used */
+	int ji_ordering;    /* special scheduling ordering */
+	int ji_priority;    /* internal priority */
+	time_t ji_stime;    /* time job started execution */
+	time_t ji_endtBdry; /* estimate upper bound on end time */
 
 	char ji_jobid[PBS_MAXSVRJOBID_PRE19 + 1]; /* job identifier */
 	char ji_fileprefix[PBS_JOBBASE + 1];	  /* no longer used */
@@ -186,10 +184,10 @@ typedef struct jobfix_PRE19
 	int ji_un_type; /* type of ji_un union */
 	union {		/* depends on type of queue currently in */
 		struct
-		{					/* if in execution queue .. */
-			pbs_net_t ji_momaddr;		/* host addr of Server */
-			unsigned int ji_momport;	/* port # */
-			int ji_exitstat;		/* job exit status from MOM */
+		{				 /* if in execution queue .. */
+			pbs_net_t ji_momaddr;	 /* host addr of Server */
+			unsigned int ji_momport; /* port # */
+			int ji_exitstat;	 /* job exit status from MOM */
 		} ji_exect;
 		struct
 		{
@@ -198,32 +196,31 @@ typedef struct jobfix_PRE19
 		} ji_routet;
 		struct
 		{
-			int ji_fromsock;		/* socket job coming over */
-			pbs_net_t ji_fromaddr;		/* host job coming from   */
-			unsigned int ji_scriptsz; 	/* script size */
+			int ji_fromsock;	  /* socket job coming over */
+			pbs_net_t ji_fromaddr;	  /* host job coming from   */
+			unsigned int ji_scriptsz; /* script size */
 		} ji_newt;
 		struct
 		{
-			pbs_net_t ji_svraddr;		/* host addr of Server */
-			int ji_exitstat;	  	/* job exit status from MOM */
-			uid_t ji_exuid;		  	/* execution uid */
-			gid_t ji_exgid;		  	/* execution gid */
+			pbs_net_t ji_svraddr; /* host addr of Server */
+			int ji_exitstat;      /* job exit status from MOM */
+			uid_t ji_exuid;	      /* execution uid */
+			gid_t ji_exgid;	      /* execution gid */
 		} ji_momt;
 	} ji_un;
 } jobfix_PRE19;
 
-typedef struct taskfix_PRE19
-{
+typedef struct taskfix_PRE19 {
 	char ti_parentjobid[PBS_MAXSVRJOBID_PRE19 + 1];
-	tm_node_id ti_parentnode;	/* parent vnode */
-	tm_node_id ti_myvnode;		/* my vnode */
-	tm_task_id ti_parenttask;	/* parent task */
-	tm_task_id ti_task;		/* task's taskid */
-	int ti_status;			/* status of task */
-	pid_t ti_sid;			/* session id */
-	int ti_exitstat;		/* exit status */
+	tm_node_id ti_parentnode; /* parent vnode */
+	tm_node_id ti_myvnode;	  /* my vnode */
+	tm_task_id ti_parenttask; /* parent task */
+	tm_task_id ti_task;	  /* task's taskid */
+	int ti_status;		  /* status of task */
+	pid_t ti_sid;		  /* session id */
+	int ti_exitstat;	  /* exit status */
 	union {
-		int ti_hold[16]; 	/* reserved space */
+		int ti_hold[16]; /* reserved space */
 	} ti_u;
 } taskfix_PRE19;
 
@@ -272,15 +269,15 @@ check_job_file(int fd)
 	/*---------- For PBS >=13.x or <=18.x versions jobfix structure ---------- */
 	pos_new = lseek(fd, pos_saved, SEEK_SET);
 	if (pos_new != 0) {
-			fprintf(stderr, "Couldn't set the file position to zero [%s]\n",
-					errno ? strerror(errno) : "No error");
-			goto check_job_file_exit;
+		fprintf(stderr, "Couldn't set the file position to zero [%s]\n",
+			errno ? strerror(errno) : "No error");
+		goto check_job_file_exit;
 	}
 	old_jobfix_pre19.ji_jsversion = 0;
-	length = read(fd, (char *)&old_jobfix_pre19.ji_jsversion, sizeof(old_jobfix_pre19.ji_jsversion));
+	length = read(fd, (char *) &old_jobfix_pre19.ji_jsversion, sizeof(old_jobfix_pre19.ji_jsversion));
 	if (length < 0) {
 		fprintf(stderr, "Failed to read input file [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		goto check_job_file_exit;
 	}
 	if (old_jobfix_pre19.ji_jsversion == JSVERSION_18) {
@@ -295,19 +292,19 @@ check_job_file(int fd)
 		/* if job has already updated structure */
 		ret_version = 21;
 		goto check_job_file_exit;
-	}else {
+	} else {
 		fprintf(stderr, "Job structure version (JSVERSION) not recognized, found=%d.\n",
-				old_jobfix_pre19.ji_jsversion);
+			old_jobfix_pre19.ji_jsversion);
 		goto check_job_file_exit;
 	}
 
 check_job_file_exit:
 	pos_new = lseek(fd, pos_saved, SEEK_SET);
 	if (pos_new != 0) {
-			fprintf(stderr, "Couldn't set the file position back to zero [%s]\n",
-					errno ? strerror(errno) : "No error");
-			goto check_job_file_exit;
-		}
+		fprintf(stderr, "Couldn't set the file position back to zero [%s]\n",
+			errno ? strerror(errno) : "No error");
+		goto check_job_file_exit;
+	}
 	return ret_version;
 }
 
@@ -336,13 +333,13 @@ convert_pre19jf_to_19(jobfix_PRE19 old_jobfix_pre19)
 	jf_19_21.ji_stime = old_jobfix_pre19.ji_stime;
 	jf_19_21.ji_endtBdry = old_jobfix_pre19.ji_endtBdry;
 	snprintf(jf_19_21.ji_jobid, sizeof(jf_19_21.ji_jobid),
-			"%s", old_jobfix_pre19.ji_jobid);
+		 "%s", old_jobfix_pre19.ji_jobid);
 	snprintf(jf_19_21.ji_fileprefix, sizeof(jf_19_21.ji_fileprefix),
-			"%s", old_jobfix_pre19.ji_fileprefix);
+		 "%s", old_jobfix_pre19.ji_fileprefix);
 	snprintf(jf_19_21.ji_queue, sizeof(jf_19_21.ji_queue),
-			"%s", old_jobfix_pre19.ji_queue);
+		 "%s", old_jobfix_pre19.ji_queue);
 	snprintf(jf_19_21.ji_destin, sizeof(jf_19_21.ji_destin),
-			"%s", old_jobfix_pre19.ji_destin);
+		 "%s", old_jobfix_pre19.ji_destin);
 	jf_19_21.ji_un_type = old_jobfix_pre19.ji_un_type;
 	memcpy(&jf_19_21.ji_un, &old_jobfix_pre19.ji_un, sizeof(jf_19_21.ji_un));
 
@@ -475,7 +472,7 @@ upgrade_job_file(int fd, int ver)
 
 	/* Convert old extended data to new */
 	memset(&old_ji_extended, 0, sizeof(old_ji_extended));
-	len = read(fd, (char *)&old_ji_extended, sizeof(union jobextend_19_21));
+	len = read(fd, (char *) &old_ji_extended, sizeof(union jobextend_19_21));
 	if (len < 0) {
 		fprintf(stderr, "Failed to read input file [%s]\n", errno ? strerror(errno) : "No error");
 		return 1;
@@ -516,8 +513,7 @@ upgrade_job_file(int fd, int ver)
 				stateset = true;
 				if (substateset)
 					break;
-			}
-			else if (strcmp(pali->al_name, ATTR_substate) == 0) {
+			} else if (strcmp(pali->al_name, ATTR_substate) == 0) {
 				pali->al_valln = strlen(ssbuf) + 1;
 				pali->al_value = pali->al_name + pali->al_nameln + pali->al_rescln;
 				strcpy(pali->al_value, ssbuf);
@@ -555,13 +551,13 @@ upgrade_job_file(int fd, int ver)
 	len = write(tmpfd, &new_job.ji_extended, sizeof(new_job.ji_extended));
 	if (len != sizeof(new_job.ji_extended)) {
 		fprintf(stderr, "Failed to write job extend data to output file [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 
 	/* Write the job attribute list to the output file */
 	pali = pal;
-	while (pali != NULL) {	/* Modeled after save_struct() */
+	while (pali != NULL) { /* Modeled after save_struct() */
 		int copysize;
 		int objsize;
 
@@ -621,14 +617,14 @@ upgrade_job_file(int fd, int ver)
 	pos = lseek(tmpfd, 0, SEEK_SET);
 	if (pos != 0) {
 		fprintf(stderr, "Failed to reset temporary file position [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 
 	/* truncate the original file before writing new contents */
 	if (ftruncate(fd, 0) != 0) {
 		fprintf(stderr, "Failed to truncate the job file [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 
@@ -684,16 +680,16 @@ upgrade_task_file(char *taskfile)
 	fd = open(taskfile, O_BINARY | O_RDWR);
 	if (fd < 0) {
 		fprintf(stderr, "Failed to open %s [%s]\n", taskfile,
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 
 	/* Read in the pre19 task structure */
 	memset(&old_taskfix_pre19, 0, sizeof(old_taskfix_pre19));
-	len = read(fd, (char *)&old_taskfix_pre19, sizeof(old_taskfix_pre19));
+	len = read(fd, (char *) &old_taskfix_pre19, sizeof(old_taskfix_pre19));
 	if (len < 0) {
 		fprintf(stderr, "Failed to read input file [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 	if (len != sizeof(old_taskfix_pre19)) {
@@ -703,7 +699,7 @@ upgrade_task_file(char *taskfile)
 	/* Copy the data to the new task structure */
 	memset(&new_task, 0, sizeof(new_task));
 	strncpy(new_task.ti_qs.ti_parentjobid, old_taskfix_pre19.ti_parentjobid,
-			sizeof(new_task.ti_qs.ti_parentjobid));
+		sizeof(new_task.ti_qs.ti_parentjobid));
 	new_task.ti_qs.ti_parentnode = old_taskfix_pre19.ti_parentnode;
 	new_task.ti_qs.ti_myvnode = old_taskfix_pre19.ti_myvnode;
 	new_task.ti_qs.ti_parenttask = old_taskfix_pre19.ti_parenttask;
@@ -717,13 +713,13 @@ upgrade_task_file(char *taskfile)
 	tmp = tmpfile();
 	if (!tmp) {
 		fprintf(stderr, "Failed to open temporary file [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 	tmpfd = fileno(tmp);
 	if (tmpfd < 0) {
 		fprintf(stderr, "Failed to find temporary file descriptor [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 
@@ -731,7 +727,7 @@ upgrade_task_file(char *taskfile)
 	len = write(tmpfd, &new_task.ti_qs, sizeof(new_task.ti_qs));
 	if (len != sizeof(new_task.ti_qs)) {
 		fprintf(stderr, "Failed to write taskfix to output file [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 
@@ -740,7 +736,7 @@ upgrade_task_file(char *taskfile)
 		len = read(fd, buf, sizeof(buf));
 		if (len < 0) {
 			fprintf(stderr, "Failed to read input file [%s]\n",
-					errno ? strerror(errno) : "No error");
+				errno ? strerror(errno) : "No error");
 			return 1;
 		}
 		if (len < 1)
@@ -748,7 +744,7 @@ upgrade_task_file(char *taskfile)
 		len = write(tmpfd, buf, len);
 		if (len < 0) {
 			fprintf(stderr, "Failed to write output file [%s]\n",
-					errno ? strerror(errno) : "No error");
+				errno ? strerror(errno) : "No error");
 			return 1;
 		}
 	} while (len > 0);
@@ -757,13 +753,13 @@ upgrade_task_file(char *taskfile)
 	pos = lseek(fd, 0, SEEK_SET);
 	if (pos != 0) {
 		fprintf(stderr, "Failed to reset task file position [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 	pos = lseek(tmpfd, 0, SEEK_SET);
 	if (pos != 0) {
 		fprintf(stderr, "Failed to reset temporary file position [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 
@@ -772,7 +768,7 @@ upgrade_task_file(char *taskfile)
 		len = read(tmpfd, buf, sizeof(buf));
 		if (len < 0) {
 			fprintf(stderr, "Failed to read temporary file [%s]\n",
-					errno ? strerror(errno) : "No error");
+				errno ? strerror(errno) : "No error");
 			return 1;
 		}
 		if (len < 1)
@@ -780,7 +776,7 @@ upgrade_task_file(char *taskfile)
 		len = write(fd, buf, len);
 		if (len < 0) {
 			fprintf(stderr, "Failed to write job file [%s]\n",
-					errno ? strerror(errno) : "No error");
+				errno ? strerror(errno) : "No error");
 			return 1;
 		}
 	} while (len > 0);
@@ -788,7 +784,7 @@ upgrade_task_file(char *taskfile)
 	ret = fclose(tmp);
 	if (ret != 0) {
 		fprintf(stderr, "Failed to close temporary file [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 
@@ -862,7 +858,7 @@ main(int argc, char *argv[])
 	ret = stat(namebuf, &statbuf);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to stat task directory %s [%s]\n",
-				namebuf, errno ? strerror(errno) : "No error");
+			namebuf, errno ? strerror(errno) : "No error");
 		return 1;
 	}
 	if (!S_ISDIR(statbuf.st_mode)) {
@@ -882,7 +878,7 @@ main(int argc, char *argv[])
 	fd = open(jobfile, flags);
 	if (fd < 0) {
 		fprintf(stderr, "Failed to open %s [%s]\n", jobfile,
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 
@@ -923,7 +919,7 @@ main(int argc, char *argv[])
 	ret = close(fd);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to close the job file [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 
@@ -931,14 +927,14 @@ main(int argc, char *argv[])
 	dir = opendir(taskdir);
 	if (!dir) {
 		fprintf(stderr, "Failed to open the task directory [%s]\n",
-				errno ? strerror(errno) : "No error");
+			errno ? strerror(errno) : "No error");
 		return 1;
 	}
 	errno = 0;
 	while ((dirent = readdir(dir)) != NULL) {
 		if (errno != 0) {
 			fprintf(stderr, "Failed to read directory [%s]\n",
-					errno ? strerror(errno) : "No error");
+				errno ? strerror(errno) : "No error");
 			closedir(dir);
 			return 1;
 		}
