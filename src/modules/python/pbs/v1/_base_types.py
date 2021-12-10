@@ -99,7 +99,7 @@ __all__ = ['_generic_attr',
 import _pbs_v1
 import sys
 import math
-import weakref
+
 _size = _pbs_v1.svr_types._size
 _LOG = _pbs_v1.logmsg
 _IS_SETTABLE = _pbs_v1.is_attrib_val_settable
@@ -151,10 +151,20 @@ class PbsAttributeDescriptor():
 
         __attributes = getattr(cls, _ATTRIBUTES_KEY_NAME)
         __attributes[name] = None
-        #: now we need to maintain a unique value for each object
-        self.__per_instance = weakref.WeakKeyDictionary()
-
     #: m(__init__)
+
+    @staticmethod
+    def _get_values_dict(obj):
+        """
+        Obtain the values dictionary from the instance ("obj") of the class to
+        which the PbsAttributeDescriptors are attached.
+        """
+        try:
+            values_dict = object.__getattribute__(obj, "__pad_values")
+        except AttributeError as e:
+            values_dict = {}
+            object.__setattr__(obj, "__pad_values", values_dict)
+        return values_dict
 
     def __get__(self, obj, cls=None):
         """__get__
@@ -164,18 +174,20 @@ class PbsAttributeDescriptor():
         if obj is None:
             return self
 
-        #: if this attribute has never been accessed or set by the instance then
-        #: we just return the default value
-        #: NOTE: Doing the more compact:
-        #   return self.__per_instance.setdefault(obj,self._get_default_value())
-        #  caused pbs_resource to be instantiated every time. Probably due to
-        #  _get_default_value() getting evaluatd every time.
-
-        if obj not in self.__per_instance:
-            v = self._get_default_value()
-            self.__per_instance[obj] = v
-
-        return self.__per_instance[obj]
+        values_dict = PbsAttributeDescriptor._get_values_dict(obj)
+        try:
+            value = values_dict[self._name]
+        except KeyError:
+            try:
+                value = self._get_default_value()
+            except Exception as e:
+                _pbs_v1.logmsg(
+                    _pbs_v1.EVENT_ERROR,
+                    f'PbsAttributeDescriptor._get_default_value() failed for '
+                    f'attribute "{self._name}": {str(e)}')
+                raise
+            values_dict[self._name] = value
+        return value
     #: m(__get__)
 
     def __set__(self, obj, value):
@@ -216,8 +228,7 @@ class PbsAttributeDescriptor():
                 set_value = value
             else:
                 set_value = self._value_type[0](value)
-        #:
-        self.__per_instance[obj] = set_value
+        PbsAttributeDescriptor._get_values_dict(obj)[self._name] = set_value
     #: m(__set__)
 
     def _set_resc_atttr(self, resc_attr, is_entity=0):
@@ -231,8 +242,7 @@ class PbsAttributeDescriptor():
 
     def __delete__(self, obj):
         """__delete__, we just set the attribute value to None"""
-
-        self.__per_instance[obj] = None
+        PbsAttributeDescriptor._get_values_dict(obj)[self._name] = None
     #: m(__delete__)
 
     def _get_default_value(self):
@@ -1548,8 +1558,6 @@ class pbs_resource():
 
     __resources = PbsReadOnlyDescriptor('__resources', {})
     attributes = __resources
-    _attributes_hook_set = weakref.WeakKeyDictionary()
-    _attributes_unknown = weakref.WeakKeyDictionary()
 
     def __init__(self, name, is_entity=0):
         """__init__"""
@@ -1567,6 +1575,8 @@ class pbs_resource():
                     descr._set_resc_atttr(name, is_entity)
                 #:
             #:
+        self._attributes_hook_set = {}
+        self._attributes_unknown = {}
         self._name = name
         self._readonly = False
         self._has_value = True
@@ -1583,11 +1593,9 @@ class pbs_resource():
         rv = []
 
         d = pbs_resource.attributes.copy()
-
-        if self in pbs_resource._attributes_unknown:
-            # update pbs_resource list of attribute names to contain the
-            # "unknown" names as well.
-            d.update(pbs_resource._attributes_unknown[self])
+        # update pbs_resource list of attribute names to contain the "unknown"
+        # names as well.
+        d.update(self._attributes_unknown)
 
         for resc in d:
             if resc == '_name' or resc == '_has_value':
@@ -1630,6 +1638,12 @@ class pbs_resource():
 
     def __setattr__(self, nameo, value):
         """__setattr__"""
+        if nameo == '_attributes_hook_set' or nameo == '_attributes_unknown':
+            if _pbs_v1.in_python_mode() and hasattr(self, nameo):
+                raise BadAttributeValueError(
+                    f"the attribute '{nameo}' is readonly")
+            super().__setattr__(nameo, value)
+            return
 
         name = nameo
         if (nameo == "_readonly"):
@@ -1657,7 +1671,6 @@ class pbs_resource():
                     found = True
 
             if not found:
-
                 if _pbs_v1.in_python_mode():
                     # if attribute name not found,and executing inside Python
                     # script
@@ -1665,33 +1678,22 @@ class pbs_resource():
                         # we're in a server hook
                         raise UnsetResourceNameError(
                             "resource attribute '%s' not found" % (name,))
-
-                    # we're in a mom hook, so no longer raising an exception here since if
-                    # it's an unknown resource, we can now tell server to
-                    # automatically add a custom resource.
-                    if self not in self._attributes_unknown:
-                        self._attributes_unknown[self] = {}
-                    # add the current attribute name to the "unknown" list
-                    self._attributes_unknown[self].update({name: None})
-                else:
-                    if self not in self._attributes_unknown:
-                        self._attributes_unknown[self] = {}
-                    # add the current attribute name to the "unknown" list
-                    self._attributes_unknown[self].update({name: None})
+                    else:
+                        # we're in a mom hook, so no longer raising an
+                        # exception here since if it's an unknown resource, we
+                        # can now tell server to automatically add a custom
+                        # resource.
+                        pass
+                # add the current attribute name to the "unknown" list
+                self._attributes_unknown[name] = None
 
         super().__setattr__(name, value)
 
         # attributes that are set in python mode will be reflected in
         # _attributes_hook_set dictionary.
-        # For example,
-        # _attributes_hook_set[<pbs_resource object>]=['walltime', 'mem']
-        # if 'walltime' or 'mem' has been assigned a value within the hook
-        # script, or been unset.
         if _pbs_v1.in_python_mode():
-            if self not in self._attributes_hook_set:
-                self._attributes_hook_set[self] = {}
             # using a dictionary value as easier to search for keys
-            self._attributes_hook_set[self].update({name: None})
+            self._attributes_hook_set[name] = None
     #: m(__setattr__)
 
     def keys(self):

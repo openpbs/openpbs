@@ -2613,9 +2613,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 {
 	PyObject	*py_attr_dict = NULL;
 	PyObject	*py_attr_hookset_dict = NULL;
-	PyObject	*py_attr_hookset_dict0 = NULL;
 	PyObject	*py_resc_hookset_dict = NULL;
-	PyObject	*py_resc_hookset_dict0 = NULL;
 	PyObject	*py_attr_keys = NULL;
 	PyObject 	*py_val = NULL;
 	PyObject	*py_keys = NULL;
@@ -2696,22 +2694,12 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 		goto svrattrl_exit;
 	}
 
-	/* Get the attributes that have been setin the hook script */
-	if (PyObject_HasAttrString(py_instance, PY_ATTRIBUTES_HOOK_SET)) {
-
-		py_attr_hookset_dict = PyObject_GetAttrString(py_instance,
-			PY_ATTRIBUTES_HOOK_SET); /* must be Py_CLEAR(-)ed or Py_DECREF()-ed later, so as to not leak memory */
-
-		if (py_attr_hookset_dict) {
-
-			py_attr_hookset_dict0=PyDict_GetItem(py_attr_hookset_dict,
-				py_instance);
-			if ((py_attr_hookset_dict0 != NULL) &&
-				!PyDict_Check(py_attr_hookset_dict0))
-				py_attr_hookset_dict0 = NULL; /* don't use */
-		}
+	/* Get the attributes that have been set in the hook script */
+	py_attr_hookset_dict = PyObject_GetAttrString(py_instance,
+			PY_ATTRIBUTES_HOOK_SET); /* new ref */
+	if (py_attr_hookset_dict != NULL && !PyDict_Check(py_attr_hookset_dict)) {
+		Py_CLEAR(py_attr_hookset_dict); /* don't use if not dict */
 	}
-
 
 	/* Reservation specific, let's see if our  object already contains */
 	/* a non-NULL, non-None ATTR_resv_duration attribute */
@@ -2830,29 +2818,14 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 			 * for custom resource names defined in a hook but
 			 * not yet in resource table.
 			 */
-			if (PyObject_HasAttrString(py_class,
-				"_attributes_unknown")) {
-				PyObject *py_i = NULL;
-
-				py_keys_dict2 = PyObject_GetAttrString(py_class,
-					"_attributes_unknown");
-				/* must be Py_CLEAR(-)ed or Py_DECREF()-ed
-				 * later, so as to not leak memory
-		 		*/
-
-				if (py_keys_dict2) {
-					/* Merge resource list dictionary
-					 * with the dictionary of unknown
-					 * resources
-					 */
-					if (PyDict_Check(py_keys_dict2) &&
-					    PyDict_Contains(py_keys_dict2,
-							py_val) &&
-					    (py_i=PyDict_GetItem(py_keys_dict2,
-						py_val))) {
-						PyDict_Update(py_keys_dict,
-							py_i);
-					}
+			py_keys_dict2 = PyObject_GetAttrString(py_val,
+				"_attributes_unknown"); /* new ref */
+			if (py_keys_dict2) {
+				/* Merge resource list dictionary with the dictionary of
+				 * unknown resources
+				 */
+				if (PyDict_Check(py_keys_dict2)) {
+					PyDict_Update(py_keys_dict, py_keys_dict2);
 				}
 			}
 
@@ -2864,20 +2837,10 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 			}
 
 			/* Get the resources that have been set in the hook script */
-			if (PyObject_HasAttrString(py_val, PY_ATTRIBUTES_HOOK_SET)) {
-
-				py_resc_hookset_dict = PyObject_GetAttrString(py_val,
-					PY_ATTRIBUTES_HOOK_SET); /* NEW */
-
-				if (py_resc_hookset_dict) {
-
-					py_resc_hookset_dict0 =
-						PyDict_GetItem(py_resc_hookset_dict, py_val);
-
-					if ((py_resc_hookset_dict0 != NULL) &&
-						!PyDict_Check(py_resc_hookset_dict0))
-						py_resc_hookset_dict0 = NULL;/* don't use */
-				}
+			py_resc_hookset_dict = PyObject_GetAttrString(py_val,
+				PY_ATTRIBUTES_HOOK_SET); /* new ref */
+			if (py_resc_hookset_dict != NULL && !PyDict_Check(py_resc_hookset_dict)) {
+				Py_CLEAR(py_resc_hookset_dict);/* don't useif not dict */
 			}
 
 			num_keys = PyList_Size(py_keys);
@@ -2913,8 +2876,8 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 				}
 
 				hook_set_flag = 0;
-				if ((py_resc_hookset_dict0 != NULL) &&
-				(PyDict_GetItemString(py_resc_hookset_dict0, resc) != NULL)) {
+				if (py_resc_hookset_dict != NULL &&
+						PyDict_GetItemString(py_resc_hookset_dict, resc) != NULL) {
 					hook_set_flag = 1;	/* resource set/unset in hook script */
 				}
 
@@ -3058,9 +3021,8 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 			}
 
 			hook_set_flag = 0;
-			if ((py_attr_hookset_dict0 != NULL) &&
-				(PyDict_GetItemString(py_attr_hookset_dict0,
-				name_str) != NULL)) {
+			if (py_attr_hookset_dict != NULL &&
+					PyDict_GetItemString(py_attr_hookset_dict, name_str) != NULL) {
 				hook_set_flag = 1; /* attribute set/unset in a hook script */
 			}
 			if (strcmp(name_str, ATTR_v) == 0) {
@@ -8988,7 +8950,6 @@ _pbs_python_event_job_getval_hookset(char *attrib_name, char *opval,
 {
 	PyObject *py_job = NULL;
 	PyObject *py_attr_hookset_dict = NULL;
-	PyObject *py_attr_hookset_dict0 = NULL;
 	char  *strval = NULL;
 
 	if (py_hook_pbsevent == NULL) {
@@ -9028,19 +8989,13 @@ _pbs_python_event_job_getval_hookset(char *attrib_name, char *opval,
 		goto getval_exit;
 	}
 
-	/* here returns py_attr_hookset_dict[py_job] value - list py_job */
-	/* attributes set by hook. 					 */
-	py_attr_hookset_dict0=PyDict_GetItem(py_attr_hookset_dict, py_job);
-
-	if ((py_attr_hookset_dict0 == NULL) ||
-		!PyDict_Check(py_attr_hookset_dict0)) {
-		/* no value set inside hook script - ok */
+	if (!PyDict_Check(py_attr_hookset_dict)) {
+		LOG_ERROR_ARG2("%s: <%s> is not a dict",
+			PY_TYPE_JOB, PY_ATTRIBUTES_HOOK_SET);
 		goto getval_exit;
 	}
 
-	if (PyDict_GetItemString(py_attr_hookset_dict0,
-		attrib_name) != NULL) {
-
+	if (PyDict_GetItemString(py_attr_hookset_dict, attrib_name) != NULL) {
 		if (PyObject_HasAttrString(py_job, attrib_name)) {
 			PyObject *py_attrval = NULL;
 
@@ -10296,7 +10251,6 @@ _pbs_python_event_jobresc_getval_hookset(char *attr_name, char *resc_name)
 	PyObject *py_job = NULL;
 	PyObject *py_jobresc = NULL;
 	PyObject *py_attr_hookset_dict = NULL;
-	PyObject *py_attr_hookset_dict0 = NULL;
 	PyObject *py_rescval = NULL;
 
 	char  *strval = NULL;
@@ -10332,32 +10286,18 @@ _pbs_python_event_jobresc_getval_hookset(char *attr_name, char *resc_name)
 		goto jobresc_getval_hookset_exit;
 	}
 
-	/* Get the attributes that have been set in the hook script via */
-	/* the _attributes_hook_set dictionary.				*/
-	if (!PyObject_HasAttrString(py_jobresc, PY_ATTRIBUTES_HOOK_SET)) {
-		LOG_ERROR_ARG2("%s: does not have attributes <%s>",
-			attr_name, PY_ATTRIBUTES_HOOK_SET);
-		goto jobresc_getval_hookset_exit;
-	}
-
-	/* This is: pbs.event().job.Resource_List[]._attributes_hook_set[]  */
+	/* Get the attributes that have been set in the hook script via the
+	   _attributes_hook_set dictionary. */
 	py_attr_hookset_dict = PyObject_GetAttrString(py_jobresc,
 		PY_ATTRIBUTES_HOOK_SET); /* NEW */
-
 	if (py_attr_hookset_dict == NULL) {
 		LOG_ERROR_ARG2("%s: does not have a value for <%s>",
 			attr_name, PY_ATTRIBUTES_HOOK_SET);
 		goto jobresc_getval_hookset_exit;
 	}
-
-	/* Returns: (kind of convoluted but this is how got this to work:
-	 Ex. pbs.event().job.Resource_List[]._attributes_hook_set[<pbs.event().job.Resource_List[]'s instance>]
-	 */
-	py_attr_hookset_dict0=PyDict_GetItem(py_attr_hookset_dict, py_jobresc);
-
-	if ((py_attr_hookset_dict0 == NULL) ||
-		!PyDict_Check(py_attr_hookset_dict0)) {
-		/* no value set inside hook script - ok */
+	if (!PyDict_Check(py_attr_hookset_dict)) {
+		LOG_ERROR_ARG2("%s: <%s> is not a dict",
+			attr_name, PY_ATTRIBUTES_HOOK_SET);
 		goto jobresc_getval_hookset_exit;
 	}
 
@@ -10365,7 +10305,7 @@ _pbs_python_event_jobresc_getval_hookset(char *attr_name, char *resc_name)
 	 Ex. pbs.event().job.Resource_List[]._attributes_hook_set[<pbs.event().job.Resource_List[]'s instance>][<resc_name>] = <resc_val>
 	 */
 
-	if (PyDict_GetItemString(py_attr_hookset_dict0,
+	if (PyDict_GetItemString(py_attr_hookset_dict,
 		resc_name) != NULL) {
 
 		if (PyObject_HasAttrString(py_jobresc, resc_name)) {
@@ -10512,18 +10452,15 @@ _pbs_python_event_jobresc_clear_hookset(char *attr_name)
 
 	/* Get the attributes that have been set in the hook script via */
 	/* the _attributes_hook_set dictionary.				*/
-	if (!PyObject_HasAttrString(py_jobresc, PY_ATTRIBUTES_HOOK_SET)) {
-		LOG_ERROR_ARG2("%s: does not have attributes <%s>",
+	py_attr_hookset_dict = PyObject_GetAttrString(py_jobresc,
+		PY_ATTRIBUTES_HOOK_SET); /* NEW */
+	if (py_attr_hookset_dict == NULL) {
+		LOG_ERROR_ARG2("%s: does not have a value for <%s>",
 			attr_name, PY_ATTRIBUTES_HOOK_SET);
 		goto jobresc_clear_hookset_exit;
 	}
-
-	/* This is: pbs.event().job.Resource_List[]._attributes_hook_set[]  */
-	py_attr_hookset_dict = PyObject_GetAttrString(py_jobresc,
-		PY_ATTRIBUTES_HOOK_SET); /* NEW */
-
-	if (py_attr_hookset_dict == NULL) {
-		LOG_ERROR_ARG2("%s: does not have a value for <%s>",
+	if (!PyDict_Check(py_attr_hookset_dict)) {
+		LOG_ERROR_ARG2("%s: <%s> is not a dict",
 			attr_name, PY_ATTRIBUTES_HOOK_SET);
 		goto jobresc_clear_hookset_exit;
 	}
@@ -12405,7 +12342,6 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 	PyObject *py_keep_select = (PyObject *)NULL;
 	PyObject *py_nodes = (PyObject *) NULL;
 	PyObject *py_attr_hookset_dict = (PyObject *)NULL;
-	PyObject *py_attr_hookset_dict0 = (PyObject *)NULL;
 	PyObject *py_attr_keys = (PyObject *)NULL;
 	char	*vnodelist = NULL;
 	int	vnodelist_sz = 0;
@@ -12678,26 +12614,12 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 	hook_set_mode = C_MODE;
 
 	/* Get the attributes that have been set in the hook script */
-	if (PyObject_HasAttrString(py_job, PY_ATTRIBUTES_HOOK_SET)) {
-
-		py_attr_hookset_dict = PyObject_GetAttrString(py_job, PY_ATTRIBUTES_HOOK_SET); /* must be Py_CLEAR(-)ed or Py_DECREF()-ed later, so as to not leak memory */
-
-		if (py_attr_hookset_dict != NULL) {
-
-			py_attr_hookset_dict0 = PyDict_GetItem(py_attr_hookset_dict, py_job);
-			if (py_attr_hookset_dict0 == NULL) {
-				if (PyDict_SetItem(py_attr_hookset_dict, py_job, PyDict_New()) != 0) {
-					log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Failed to set py_attr_hookset_dict entry for py_job");
-					goto release_nodes_exit;
-				}
-			}
-			py_attr_hookset_dict0 = PyDict_GetItem(py_attr_hookset_dict, py_job);
-			if ((py_attr_hookset_dict0 != NULL) && !PyDict_Check(py_attr_hookset_dict0)) {
-				py_attr_hookset_dict0 = (PyObject *)NULL; /* don't use */
-			}
-		}
-
+	py_attr_hookset_dict = PyObject_GetAttrString(py_job, PY_ATTRIBUTES_HOOK_SET); /* new ref */
+	if (py_attr_hookset_dict == NULL) {
+		py_attr_hookset_dict = PyDict_New();
+		PyObject_SetAttrString(py_job, PY_ATTRIBUTES_HOOK_SET, py_attr_hookset_dict);
 	}
+
 	if ((new_exec_vnode != NULL) && (new_exec_vnode[0] != '\0')) {
 		entry = strlen(new_exec_vnode)-1;
 		if (new_exec_vnode[entry] == '+')
@@ -12709,9 +12631,9 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, log_buffer);
 			goto release_nodes_exit;
 		}
-		if (py_attr_hookset_dict0 != NULL) {
+		if (py_attr_hookset_dict != NULL) {
 			/* mark that exec_vnode of the job has been set in a hook */
-			PyDict_SetItemString(py_attr_hookset_dict0, ATTR_execvnode, Py_None);
+			PyDict_SetItemString(py_attr_hookset_dict, ATTR_execvnode, Py_None);
 		}
 	}
 
@@ -12727,9 +12649,9 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 				LOG_ERR, __func__, log_buffer);
 			goto release_nodes_exit;
 		}
-		if (py_attr_hookset_dict0 != NULL) {
+		if (py_attr_hookset_dict != NULL) {
 			/* mark that exec_host of the job has been set in a hook */
-			PyDict_SetItemString(py_attr_hookset_dict0, ATTR_exechost, Py_None);
+			PyDict_SetItemString(py_attr_hookset_dict, ATTR_exechost, Py_None);
 		}
 	}
 
@@ -12744,9 +12666,9 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, log_buffer);
 			goto release_nodes_exit;
 		}
-		if (py_attr_hookset_dict0 != NULL) {
+		if (py_attr_hookset_dict != NULL) {
 			/* mark that exec_host2 of the job has been set in a hook */
-			PyDict_SetItemString(py_attr_hookset_dict0, ATTR_exechost2, Py_None);
+			PyDict_SetItemString(py_attr_hookset_dict, ATTR_exechost2, Py_None);
 		}
 	}
 
@@ -12757,9 +12679,9 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, log_buffer);
 			goto release_nodes_exit;
 		}
-		if (py_attr_hookset_dict0 != NULL) {
+		if (py_attr_hookset_dict != NULL) {
 			/* mark that exec_host2 of the job has been set in a hook */
-			PyDict_SetItemString(py_attr_hookset_dict0, ATTR_SchedSelect, Py_None);
+			PyDict_SetItemString(py_attr_hookset_dict, ATTR_SchedSelect, Py_None);
 		}
 	}
 
