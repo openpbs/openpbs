@@ -47,13 +47,13 @@
  */
 
 #ifdef WIN32
-#define pbs_stat(path, buffer)   _stati64(path, buffer)
-typedef struct _stati64  pbs_stat_struct;
+#define pbs_stat(path, buffer) _stati64(path, buffer)
+typedef struct _stati64 pbs_stat_struct;
 typedef INT64 off_t_pbs;
 typedef INT64 int_pbs;
 #else
-#define pbs_stat(path, buffer)   stat(path, buffer)
-typedef struct stat  pbs_stat_struct;
+#define pbs_stat(path, buffer) stat(path, buffer)
+typedef struct stat pbs_stat_struct;
 typedef off_t off_t_pbs;
 typedef long int_pbs;
 #endif

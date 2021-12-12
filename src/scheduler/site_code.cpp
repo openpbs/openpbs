@@ -43,6 +43,8 @@
  *=====================================================================
  */
 
+// clang-format off
+
 #include <pbs_config.h>
 
 #include <stdio.h>
@@ -3780,3 +3782,4 @@ check_for_cycle_interrupt(int do_logging)
 /* end localmod 030 */
 
 #endif /* NAS */
+// clang-format on

@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    queue_info.c
  *
@@ -125,7 +124,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	/* peer server descriptor */
 	int peer_sd = 0;
 
-	int err = 0;			/* an error has occurred */
+	int err = 0; /* an error has occurred */
 
 	schd_error *sch_err;
 
@@ -134,7 +133,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 	sch_err = new_schd_error();
 
-	if(sch_err == NULL)
+	if (sch_err == NULL)
 		return qinfo_arr;
 
 	/* get queue info from PBS server */
@@ -142,8 +141,8 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 		const char *errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";
-	log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_QUEUE, LOG_NOTICE, "queue_info",
-			"Statque failed: %s (%d)", errmsg, pbs_errno);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_QUEUE, LOG_NOTICE, "queue_info",
+			   "Statque failed: %s (%d)", errmsg, pbs_errno);
 		free_schd_error(sch_err);
 		return qinfo_arr;
 	}
@@ -169,10 +168,9 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 			if (qinfo->has_nodes) {
 				qinfo->nodes = node_filter(sinfo->nodes, sinfo->num_nodes,
-					node_queue_cmp, (void *) qinfo->name.c_str(), 0);
+							   node_queue_cmp, (void *) qinfo->name.c_str(), 0);
 
 				qinfo->num_nodes = count_array(qinfo->nodes);
-
 			}
 
 			if (ret != QUEUE_NOT_EXEC) {
@@ -186,27 +184,26 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 				else if (qinfo->is_nonprime_queue)
 					sinfo->has_nonprime_queue = true;
 
-				for (auto& pq : conf.peer_queues) {
+				for (auto &pq : conf.peer_queues) {
 					if (qinfo->name == pq.local_queue) {
 						int peer_on = 1;
 						/* Locally-peered queues reuse the scheduler's connection */
 						if (pq.remote_server.empty()) {
 							peer_sd = pbs_sd;
-						}
-						else if ((peer_sd = pbs_connect_noblk(const_cast<char *>(pq.remote_server.c_str()))) < 0) {
+						} else if ((peer_sd = pbs_connect_noblk(const_cast<char *>(pq.remote_server.c_str()))) < 0) {
 							/* Message was PBSEVENT_SCHED - moved to PBSEVENT_DEBUG2 for
 							 * failover reasons (see bz3002)
 							 */
 							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_INFO, qinfo->name,
-								"Can not connect to peer %s", pq.remote_server.c_str());
+								   "Can not connect to peer %s", pq.remote_server.c_str());
 							pq.peer_sd = -1;
 							peer_on = 0; /* do not proceed */
 						}
 						if (peer_on) {
-								pq.peer_sd = peer_sd;
-								qinfo->is_peer_queue = 1;
-								/* get peered jobs */
-								qinfo->jobs = query_jobs(policy, peer_sd, qinfo, qinfo->jobs, pq.remote_queue);
+							pq.peer_sd = peer_sd;
+							qinfo->is_peer_queue = 1;
+							/* get peered jobs */
+							qinfo->jobs = query_jobs(policy, peer_sd, qinfo, qinfo->jobs, pq.remote_queue);
 						}
 					}
 				}
@@ -221,7 +218,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 				count_states(qinfo->jobs, &(qinfo->sc));
 
 				qinfo->running_jobs = resource_resv_filter(qinfo->jobs,
-					qinfo->sc.total, check_run_job, NULL, 0);
+									   qinfo->sc.total, check_run_job, NULL, 0);
 
 				if (qinfo->running_jobs == NULL)
 					err = 1;
@@ -229,21 +226,21 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 				if (qinfo->has_soft_limit || qinfo->has_hard_limit) {
 					counts *allcts;
 					allcts = find_alloc_counts(qinfo->alljobcounts,
-						PBS_ALL_ENTITY);
+								   PBS_ALL_ENTITY);
 
 					if (qinfo->running_jobs != NULL) {
 						/* set the user and group counts */
 						for (int j = 0; qinfo->running_jobs[j] != NULL; j++) {
 							cts = find_alloc_counts(qinfo->user_counts,
-								qinfo->running_jobs[j]->user);
+										qinfo->running_jobs[j]->user);
 							update_counts_on_run(cts, qinfo->running_jobs[j]->resreq);
 
 							cts = find_alloc_counts(qinfo->group_counts,
-								qinfo->running_jobs[j]->group);
+										qinfo->running_jobs[j]->group);
 							update_counts_on_run(cts, qinfo->running_jobs[j]->resreq);
 
 							cts = find_alloc_counts(qinfo->project_counts,
-								qinfo->running_jobs[j]->project);
+										qinfo->running_jobs[j]->project);
 							update_counts_on_run(cts, qinfo->running_jobs[j]->resreq);
 
 							update_counts_on_run(allcts, qinfo->running_jobs[j]->resreq);
@@ -263,7 +260,6 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	free_schd_error(sch_err);
 	if (err) {
 		free_queues(qinfo_arr);
-
 	}
 
 	return qinfo_arr;
@@ -286,11 +282,11 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 queue_info *
 query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 {
-	struct attrl *attrp;		/* linked list of attributes from server */
-	struct queue_info *qinfo;	/* queue_info being created */
-	schd_resource *resp;		/* resource in resource qres list */
-	char *endp;			/* used with strtol() */
-	sch_resource_t count;		/* used to convert string -> num */
+	struct attrl *attrp;	  /* linked list of attributes from server */
+	struct queue_info *qinfo; /* queue_info being created */
+	schd_resource *resp;	  /* resource in resource qres list */
+	char *endp;		  /* used with strtol() */
+	sch_resource_t count;	  /* used to convert string -> num */
 
 	if ((qinfo = new queue_info(queue->name)) == NULL)
 		return NULL;
@@ -306,21 +302,17 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 				qinfo->is_started = 1;
 			else
 				qinfo->is_started = 0;
-		}
-		else if (!strcmp(attrp->name, ATTR_HasNodes)) {
+		} else if (!strcmp(attrp->name, ATTR_HasNodes)) {
 			if (!strcmp(attrp->value, ATR_TRUE)) {
 				sinfo->has_nodes_assoc_queue = 1;
 				qinfo->has_nodes = 1;
-			}
-			else
+			} else
 				qinfo->has_nodes = 0;
-		}
-		else if(!strcmp(attrp->name, ATTR_backfill_depth)) {
+		} else if (!strcmp(attrp->name, ATTR_backfill_depth)) {
 			qinfo->backfill_depth = strtol(attrp->value, NULL, 10);
-			if(qinfo->backfill_depth > 0)
+			if (qinfo->backfill_depth > 0)
 				policy->backfill = 1;
-		}
-		else if(!strcmp(attrp->name, ATTR_partition)) {
+		} else if (!strcmp(attrp->name, ATTR_partition)) {
 			if (attrp->value != NULL) {
 				qinfo->partition = string_dup(attrp->value);
 				if (qinfo->partition == NULL) {
@@ -329,56 +321,49 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 					return NULL;
 				}
 			}
-		}
-		else if (is_reslimattr(attrp)) {
+		} else if (is_reslimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RES, qinfo->liminfo);
-			if(strstr(attrp->value, "u:") != NULL)
+			if (strstr(attrp->value, "u:") != NULL)
 				qinfo->has_user_limit = 1;
-			if(strstr(attrp->value, "g:") != NULL)
+			if (strstr(attrp->value, "g:") != NULL)
 				qinfo->has_grp_limit = 1;
-			if(strstr(attrp->value, "p:") != NULL)
+			if (strstr(attrp->value, "p:") != NULL)
 				qinfo->has_proj_limit = 1;
-			if(strstr(attrp->value, "o:") != NULL)
+			if (strstr(attrp->value, "o:") != NULL)
 				qinfo->has_all_limit = 1;
-		}
-		else if (is_runlimattr(attrp)) {
+		} else if (is_runlimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RUN, qinfo->liminfo);
-			if(strstr(attrp->value, "u:") != NULL)
+			if (strstr(attrp->value, "u:") != NULL)
 				qinfo->has_user_limit = 1;
-			if(strstr(attrp->value, "g:") != NULL)
+			if (strstr(attrp->value, "g:") != NULL)
 				qinfo->has_grp_limit = 1;
-			if(strstr(attrp->value, "p:") != NULL)
+			if (strstr(attrp->value, "p:") != NULL)
 				qinfo->has_proj_limit = 1;
-			if(strstr(attrp->value, "o:") != NULL)
+			if (strstr(attrp->value, "o:") != NULL)
 				qinfo->has_all_limit = 1;
-		}
-		else if (is_oldlimattr(attrp)) {
+		} else if (is_oldlimattr(attrp)) {
 			const char *limname = convert_oldlim_to_new(attrp);
 			(void) lim_setlimits(attrp, LIM_OLD, qinfo->liminfo);
 
-			if(strstr(limname, "u:") != NULL)
+			if (strstr(limname, "u:") != NULL)
 				qinfo->has_user_limit = 1;
-			if(strstr(limname, "g:") != NULL)
+			if (strstr(limname, "g:") != NULL)
 				qinfo->has_grp_limit = 1;
 			/* no need to check for project limits because there were no old style project limits */
-		}
-		else if (!strcmp(attrp->name, ATTR_p)) { /* priority */
+		} else if (!strcmp(attrp->name, ATTR_p)) { /* priority */
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp != '\0')
 				count = -1;
 			qinfo->priority = count;
-		}
-		else if (!strcmp(attrp->name, ATTR_qtype)) { /* queue_type */
+		} else if (!strcmp(attrp->name, ATTR_qtype)) { /* queue_type */
 			if (!strcmp(attrp->value, "Execution")) {
 				qinfo->is_exec = 1;
 				qinfo->is_route = 0;
-			}
-			else if (!strcmp(attrp->value, "Route")) {
+			} else if (!strcmp(attrp->value, "Route")) {
 				qinfo->is_route = 1;
 				qinfo->is_exec = 0;
 			}
-		}
-		else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
+		} else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
 			qinfo->node_group_key = break_comma_list(std::string(attrp->value));
 		else if (!strcmp(attrp->name, ATTR_rescavail)) { /* resources_available*/
 #ifdef NAS
@@ -390,7 +375,7 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 					qinfo->ignore_nodect_sort = 0;
 
 				resp = NULL;
-			}/* localmod 038 */
+			} /* localmod 038 */
 			else if (!strcmp(attrp->resource, ATTR_topjob_setaside)) {
 				if (!strcmp(attrp->value, ATR_TRUE))
 					qinfo->is_topjob_set_aside = 1;
@@ -425,13 +410,13 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 #ifdef NAS
 		/* localmod 046 */
 		else if (!strcmp(attrp->name, ATTR_maxstarve)) {
-			time_t	starve;
+			time_t starve;
 			starve = site_decode_time(attrp->value);
 			qinfo->max_starve = starve;
 		}
 		/* localmod 034 */
 		else if (!strcmp(attrp->name, ATTR_maxborrow)) {
-			time_t	borrow;
+			time_t borrow;
 			borrow = site_decode_time(attrp->value);
 			qinfo->max_borrow = borrow;
 		}
@@ -449,7 +434,7 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 }
 
 // queue_info constructor
-queue_info::queue_info(const char *qname): name(qname)
+queue_info::queue_info(const char *qname) : name(qname)
 {
 	is_started = false;
 	is_exec = false;
@@ -481,13 +466,13 @@ queue_info::queue_info(const char *qname): name(qname)
 	backfill_depth = UNSPECIFIED;
 #ifdef NAS
 	/* localmod 046 */
-	max_starve	 = 0;
+	max_starve = 0;
 	/* localmod 034 */
-	max_borrow	 = UNSPECIFIED;
+	max_borrow = UNSPECIFIED;
 	/* localmod 038 */
-	is_topjob_set_aside	 = 0;
+	is_topjob_set_aside = 0;
 	/* localmod 040 */
-	ignore_nodect_sort	 = 0;
+	ignore_nodect_sort = 0;
 #endif
 	partition = NULL;
 
@@ -552,7 +537,7 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 	if (qinfo == NULL || resresv == NULL)
 		return;
 
-	if (resresv->is_job &&  resresv->job == NULL)
+	if (resresv->is_job && resresv->job == NULL)
 		return;
 
 	if (resresv->is_job) {
@@ -567,8 +552,7 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 
 	if (!cstat.node_sort->empty() && conf.node_sort_unused && qinfo->nodes != NULL)
 		qsort(qinfo->nodes, qinfo->num_nodes, sizeof(node_info *),
-			multi_node_sort);
-
+		      multi_node_sort);
 
 	if ((job_state != NULL) && (*job_state == 'S') && (resresv->job->resreq_rel != NULL))
 		req = resresv->job->resreq_rel;
@@ -628,8 +612,8 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 void
 update_queue_on_end(queue_info *qinfo, resource_resv *resresv, const char *job_state)
 {
-	schd_resource *res = NULL;			/* resource from queue */
-	resource_req *req = NULL;			/* resource request from job */
+	schd_resource *res = NULL; /* resource from queue */
+	resource_req *req = NULL;  /* resource request from job */
 
 	if (qinfo == NULL || resresv == NULL)
 		return;
@@ -641,8 +625,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv, const char *job_s
 		if (resresv->job->is_running) {
 			qinfo->sc.running--;
 			remove_resresv_from_array(qinfo->running_jobs, resresv);
-		}
-		else if (resresv->job->is_exiting)
+		} else if (resresv->job->is_exiting)
 			qinfo->sc.exiting--;
 
 		state_count_add(&(qinfo->sc), job_state, 1);
@@ -661,7 +644,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv, const char *job_s
 
 			if (res->assigned < 0) {
 				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
-					"%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
+					   "%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
 				res->assigned = 0;
 			}
 		}
@@ -670,7 +653,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv, const char *job_s
 
 	if (qinfo->has_soft_limit || qinfo->has_hard_limit) {
 		if (is_resresv_running(resresv)) {
-			update_total_counts_on_end(NULL, qinfo, resresv , QUEUE);
+			update_total_counts_on_end(NULL, qinfo, resresv, QUEUE);
 			auto cts = find_counts(qinfo->group_counts, resresv->group);
 			update_counts_on_end(cts, resresv->resreq);
 
@@ -725,7 +708,7 @@ dup_queues(const std::vector<queue_info *> &oqueues, server_info *nsinfo)
 	if (oqueues.empty())
 		return new_queues;
 
-	for (auto queue: oqueues) {
+	for (auto queue : oqueues) {
 		queue_info *temp;
 		try {
 			temp = new queue_info(*queue, nsinfo);
@@ -745,7 +728,7 @@ dup_queues(const std::vector<queue_info *> &oqueues, server_info *nsinfo)
  * @param[in]	nsinfo	-	the server which owns the duplicated queue
  *
  */
-queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.name), sc(oqinfo.sc)
+queue_info::queue_info(queue_info &oqinfo, server_info *nsinfo) : name(oqinfo.name), sc(oqinfo.sc)
 {
 	server = nsinfo;
 
@@ -772,7 +755,7 @@ queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.nam
 	backfill_depth = oqinfo.backfill_depth;
 	num_nodes = oqinfo.num_nodes;
 
-#ifdef	NAS
+#ifdef NAS
 	/* localmod 046 */
 	max_starve = oqinfo.max_starve;
 	/* localmod 034 */
@@ -804,14 +787,14 @@ queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.nam
 		} else {
 			/* For standing reservations, we need to restore the resv_queue pointers for all occurrences */
 			int i;
-			for(i = 0; server->resvs[i] != NULL; i++) {
+			for (i = 0; server->resvs[i] != NULL; i++) {
 				if (server->resvs[i]->name == resv->name)
 					server->resvs[i]->resv->resv_queue = this;
 			}
 		}
 	} else
 		resv = NULL;
-	
+
 	jobs = dup_resource_resv_array(oqinfo.jobs, server, this);
 
 	running_jobs = resource_resv_filter(jobs, sc.total, check_run_job, NULL, 0);
@@ -822,7 +805,6 @@ queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.nam
 		nodes = NULL;
 
 	partition = string_dup(oqinfo.partition);
-
 }
 
 /**
@@ -837,12 +819,12 @@ queue_info::queue_info(queue_info& oqinfo, server_info *nsinfo): name(oqinfo.nam
  *
  */
 queue_info *
-find_queue_info(std::vector<queue_info *> &qinfo_arr, const std::string& name)
+find_queue_info(std::vector<queue_info *> &qinfo_arr, const std::string &name)
 {
 	if (qinfo_arr.empty())
 		return NULL;
 
-	for (auto queue: qinfo_arr) {
+	for (auto queue : qinfo_arr) {
 		if (queue->name == name)
 			return queue;
 	}

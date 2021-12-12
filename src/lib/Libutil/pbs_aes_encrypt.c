@@ -62,8 +62,13 @@ extern unsigned char pbs_aes_iv[];
 #define CIPHER_CONTEXT_INIT(v) EVP_CIPHER_CTX_init(v)
 #define CIPHER_CONTEXT_CLEAN(v) EVP_CIPHER_CTX_cleanup(v)
 #else
-#define CIPHER_CONTEXT_INIT(v) v = EVP_CIPHER_CTX_new(); if (!v) return -1
-#define CIPHER_CONTEXT_CLEAN(v) EVP_CIPHER_CTX_cleanup(v);EVP_CIPHER_CTX_free(v)
+#define CIPHER_CONTEXT_INIT(v)    \
+	v = EVP_CIPHER_CTX_new(); \
+	if (!v)                   \
+	return -1
+#define CIPHER_CONTEXT_CLEAN(v)    \
+	EVP_CIPHER_CTX_cleanup(v); \
+	EVP_CIPHER_CTX_free(v)
 #endif
 
 /**
@@ -84,52 +89,52 @@ extern unsigned char pbs_aes_iv[];
 int
 pbs_encrypt_pwd(char *uncrypted, int *credtype, char **crypted, size_t *outlen, const unsigned char *aes_key, const unsigned char *aes_iv)
 {
-        int plen, len2 = 0;
-        unsigned char *cblk;
-        size_t len = strlen(uncrypted) + 1;
+	int plen, len2 = 0;
+	unsigned char *cblk;
+	size_t len = strlen(uncrypted) + 1;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-        EVP_CIPHER_CTX real_ctx;
-        EVP_CIPHER_CTX *ctx = &real_ctx;
+	EVP_CIPHER_CTX real_ctx;
+	EVP_CIPHER_CTX *ctx = &real_ctx;
 #else
-        EVP_CIPHER_CTX *ctx = NULL;
+	EVP_CIPHER_CTX *ctx = NULL;
 #endif
 
-        CIPHER_CONTEXT_INIT(ctx);
+	CIPHER_CONTEXT_INIT(ctx);
 
-        if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) aes_key, (const unsigned char *) aes_iv) == 0) {
-                CIPHER_CONTEXT_CLEAN(ctx);
-                return -1;
-        }
+	if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) aes_key, (const unsigned char *) aes_iv) == 0) {
+		CIPHER_CONTEXT_CLEAN(ctx);
+		return -1;
+	}
 
-        plen = len + EVP_CIPHER_CTX_block_size(ctx) + 1;
-        cblk = malloc(plen);
-        if (!cblk) {
-                CIPHER_CONTEXT_CLEAN(ctx);
-                return -1;
-        }
+	plen = len + EVP_CIPHER_CTX_block_size(ctx) + 1;
+	cblk = malloc(plen);
+	if (!cblk) {
+		CIPHER_CONTEXT_CLEAN(ctx);
+		return -1;
+	}
 
-        if (EVP_EncryptUpdate(ctx, cblk, &plen, (unsigned char *)uncrypted, len) == 0) {
-                CIPHER_CONTEXT_CLEAN(ctx);
-                free(cblk);
-                cblk = NULL;
-                return -1;
-        }
+	if (EVP_EncryptUpdate(ctx, cblk, &plen, (unsigned char *) uncrypted, len) == 0) {
+		CIPHER_CONTEXT_CLEAN(ctx);
+		free(cblk);
+		cblk = NULL;
+		return -1;
+	}
 
-        if (EVP_EncryptFinal_ex(ctx, cblk + plen, &len2) == 0) {
-                CIPHER_CONTEXT_CLEAN(ctx);
-                free(cblk);
-                cblk = NULL;
-                return -1;
-        }
+	if (EVP_EncryptFinal_ex(ctx, cblk + plen, &len2) == 0) {
+		CIPHER_CONTEXT_CLEAN(ctx);
+		free(cblk);
+		cblk = NULL;
+		return -1;
+	}
 
-        CIPHER_CONTEXT_CLEAN(ctx);
+	CIPHER_CONTEXT_CLEAN(ctx);
 
-        *crypted = (char *)cblk;
-        *outlen = plen + len2;
-        *credtype = PBS_CREDTYPE_AES;
+	*crypted = (char *) cblk;
+	*outlen = plen + len2;
+	*credtype = PBS_CREDTYPE_AES;
 
-        return 0;
+	return 0;
 }
 
 /**
@@ -150,49 +155,49 @@ pbs_encrypt_pwd(char *uncrypted, int *credtype, char **crypted, size_t *outlen, 
 int
 pbs_decrypt_pwd(char *crypted, int credtype, size_t len, char **uncrypted, const unsigned char *aes_key, const unsigned char *aes_iv)
 {
-        unsigned char *cblk;
-        int plen, len2 = 0;
+	unsigned char *cblk;
+	int plen, len2 = 0;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-        EVP_CIPHER_CTX real_ctx;
-        EVP_CIPHER_CTX *ctx = &real_ctx;
+	EVP_CIPHER_CTX real_ctx;
+	EVP_CIPHER_CTX *ctx = &real_ctx;
 #else
-        EVP_CIPHER_CTX *ctx = NULL;
+	EVP_CIPHER_CTX *ctx = NULL;
 #endif
 
-        CIPHER_CONTEXT_INIT(ctx);
+	CIPHER_CONTEXT_INIT(ctx);
 
-        if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) aes_key, (const unsigned char *) aes_iv) == 0) {
-                CIPHER_CONTEXT_CLEAN(ctx);
-                return -1;
-        }
+	if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) aes_key, (const unsigned char *) aes_iv) == 0) {
+		CIPHER_CONTEXT_CLEAN(ctx);
+		return -1;
+	}
 
-        cblk = malloc(len + EVP_CIPHER_CTX_block_size(ctx) + 1);
-        if (!cblk) {
-                CIPHER_CONTEXT_CLEAN(ctx);
-                return -1;
-        }
+	cblk = malloc(len + EVP_CIPHER_CTX_block_size(ctx) + 1);
+	if (!cblk) {
+		CIPHER_CONTEXT_CLEAN(ctx);
+		return -1;
+	}
 
-        if (EVP_DecryptUpdate(ctx, cblk, &plen, (unsigned char *)crypted, len) == 0) {
-                CIPHER_CONTEXT_CLEAN(ctx);
-                free(cblk);
-                cblk = NULL;
-                return -1;
-        }
+	if (EVP_DecryptUpdate(ctx, cblk, &plen, (unsigned char *) crypted, len) == 0) {
+		CIPHER_CONTEXT_CLEAN(ctx);
+		free(cblk);
+		cblk = NULL;
+		return -1;
+	}
 
-        if (EVP_DecryptFinal_ex(ctx, cblk + plen, &len2) == 0) {
-                CIPHER_CONTEXT_CLEAN(ctx);
-                free(cblk);
-                cblk = NULL;
-                return -1;
-        }
+	if (EVP_DecryptFinal_ex(ctx, cblk + plen, &len2) == 0) {
+		CIPHER_CONTEXT_CLEAN(ctx);
+		free(cblk);
+		cblk = NULL;
+		return -1;
+	}
 
-        CIPHER_CONTEXT_CLEAN(ctx);
+	CIPHER_CONTEXT_CLEAN(ctx);
 
-        *uncrypted = (char *)cblk;
-        (*uncrypted)[plen + len2] = '\0';
+	*uncrypted = (char *) cblk;
+	(*uncrypted)[plen + len2] = '\0';
 
-        return 0;
+	return 0;
 }
 
 /**
@@ -208,7 +213,7 @@ pbs_decrypt_pwd(char *crypted, int credtype, size_t len, char **uncrypted, const
  * @retval 1 - for failure
  */
 int
-encode_to_base64(const unsigned char* buffer, size_t buffer_len, char** ret_encoded_data)
+encode_to_base64(const unsigned char *buffer, size_t buffer_len, char **ret_encoded_data)
 {
 	BIO *mem_obj1, *mem_obj2;
 	long buf_len = 0;
@@ -226,11 +231,11 @@ encode_to_base64(const unsigned char* buffer, size_t buffer_len, char** ret_enco
 	mem_obj1 = BIO_push(mem_obj2, mem_obj1);
 	BIO_set_flags(mem_obj1, BIO_FLAGS_BASE64_NO_NL);
 	BIO_write(mem_obj1, buffer, buffer_len);
-	(void)BIO_flush(mem_obj1);
+	(void) BIO_flush(mem_obj1);
 	buf_len = BIO_get_mem_data(mem_obj1, &buf);
 	if (buf_len <= 0)
 		return 1;
-	*ret_encoded_data = (char *)malloc(buf_len + 1);
+	*ret_encoded_data = (char *) malloc(buf_len + 1);
 	if (*ret_encoded_data == NULL) {
 		BIO_free_all(mem_obj1);
 		return 1;
@@ -255,7 +260,7 @@ encode_to_base64(const unsigned char* buffer, size_t buffer_len, char** ret_enco
  * @retval 1 - for failure
  */
 int
-decode_from_base64(char* buffer, unsigned char** ret_decoded_data, size_t* ret_decoded_len)
+decode_from_base64(char *buffer, unsigned char **ret_decoded_data, size_t *ret_decoded_len)
 {
 	BIO *mem_obj1, *mem_obj2;
 	size_t decode_length = 0;
@@ -274,8 +279,8 @@ decode_from_base64(char* buffer, unsigned char** ret_decoded_data, size_t* ret_d
 		if (buffer[input_len - 1] == '=')
 			char_padding = 1;
 	}
-	decode_length = ((input_len * 3)/4 - char_padding);
-	*ret_decoded_data = (unsigned char*)malloc(decode_length + 1);
+	decode_length = ((input_len * 3) / 4 - char_padding);
+	*ret_decoded_data = (unsigned char *) malloc(decode_length + 1);
 	if (*ret_decoded_data == NULL)
 		return 1;
 	(*ret_decoded_data)[decode_length] = '\0';
@@ -312,13 +317,13 @@ decode_from_base64(char* buffer, unsigned char** ret_decoded_data, size_t* ret_d
  */
 
 void
-encode_SHA(char* token, size_t cred_len, char ** hex_digest)
+encode_SHA(char *token, size_t cred_len, char **hex_digest)
 {
-    unsigned char obuf[SHA_DIGEST_LENGTH] = {'\0'};
-    int i;
+	unsigned char obuf[SHA_DIGEST_LENGTH] = {'\0'};
+	int i;
 
-    SHA1((const unsigned char*)token, cred_len, obuf);
-    for (i = 0; i < SHA_DIGEST_LENGTH; i++) {
-        sprintf((char*) (*hex_digest + (i*2)) , "%02x", obuf[i] );
-    }
+	SHA1((const unsigned char *) token, cred_len, obuf);
+	for (i = 0; i < SHA_DIGEST_LENGTH; i++) {
+		sprintf((char *) (*hex_digest + (i * 2)), "%02x", obuf[i]);
+	}
 }

@@ -37,10 +37,10 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_PBS_SCHED_H
-#define	_PBS_SCHED_H
+#ifndef _PBS_SCHED_H
+#define _PBS_SCHED_H
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -64,9 +64,9 @@ extern "C" {
 #define PBS_SCHED_CYCLE_LEN_DEFAULT 1200
 
 /* Default value of preempt_queue_prio */
-#define PBS_PREEMPT_QUEUE_PRIO_DEFAULT		150
+#define PBS_PREEMPT_QUEUE_PRIO_DEFAULT 150
 
-#define SC_STATUS_LEN 	10
+#define SC_STATUS_LEN 10
 
 /*
  * Attributes for the server's sched object
@@ -98,7 +98,7 @@ typedef struct pbs_sched {
 } pbs_sched;
 
 extern pbs_sched *dflt_scheduler;
-extern	pbs_list_head	svr_allscheds;
+extern pbs_list_head svr_allscheds;
 extern void set_scheduler_flag(int flag, pbs_sched *psched);
 extern int find_assoc_sched_jid(char *jid, pbs_sched **target_sched);
 extern int find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched);
@@ -108,7 +108,6 @@ extern int validate_job_formula(attribute *pattr, void *pobject, int actmode);
 extern pbs_sched *find_sched_from_partition(char *partition);
 extern int recv_sched_cycle_end(int sock);
 extern void handle_deferred_cycle_close();
-
 
 attribute *get_sched_attr(const pbs_sched *psched, int attr_idx);
 char *get_sched_attr_str(const pbs_sched *psched, int attr_idx);
@@ -124,7 +123,7 @@ int is_sched_attr_set(const pbs_sched *psched, int attr_idx);
 void free_sched_attr(pbs_sched *psched, int attr_idx);
 void clear_sched_attr(pbs_sched *psched, int attr_idx);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _PBS_SCHED_H */
+#endif /* _PBS_SCHED_H */

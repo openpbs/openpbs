@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    simulate.c
  *
@@ -119,19 +118,20 @@
  * 		structure to map a function pointer to string name
  * 		for printing of policy change events
  */
-struct policy_change_func_name
-{
+struct policy_change_func_name {
 	event_func_t func;
 	const char *str;
 };
 
+// clang-format off
 static const struct policy_change_func_name policy_change_func_name[] =
-	{
+{
 	{(event_func_t)init_prime_time, "prime time"},
 	{(event_func_t)init_non_prime_time, "non-prime time"},
 	{NULL, NULL}
 };
 
+// clang-format on
 
 /**
  * @brief
@@ -147,14 +147,14 @@ static const struct policy_change_func_name policy_change_func_name[] =
  */
 unsigned int
 simulate_events(status *policy, server_info *sinfo,
-	enum schd_simulate_cmd cmd, void *arg, time_t *sim_time)
+		enum schd_simulate_cmd cmd, void *arg, time_t *sim_time)
 {
-	time_t event_time = 0;	/* time of the event being simulated */
-	time_t cur_sim_time = 0;	/* current time in simulation */
+	time_t event_time = 0;	 /* time of the event being simulated */
+	time_t cur_sim_time = 0; /* current time in simulation */
 	unsigned int ret = 0;
 	event_list *calendar;
 
-	timed_event *event;		/* the timed event to take action on */
+	timed_event *event; /* the timed event to take action on */
 
 	if (sinfo == NULL || sim_time == NULL)
 		return TIMED_ERROR;
@@ -168,7 +168,7 @@ simulate_events(status *policy, server_info *sinfo,
 	if (sinfo->calendar == NULL)
 		return TIMED_NOEVENT;
 
-	if (sinfo->calendar->current_time ==NULL)
+	if (sinfo->calendar->current_time == NULL)
 		return TIMED_ERROR;
 
 	calendar = sinfo->calendar;
@@ -188,7 +188,7 @@ simulate_events(status *policy, server_info *sinfo,
 
 	if (cmd == SIM_NEXT_EVENT) {
 		long t = 1;
-		if(arg != NULL) {
+		if (arg != NULL) {
 			t = *((long *) arg);
 			if (t == 0)
 				t = 1;
@@ -198,8 +198,7 @@ simulate_events(status *policy, server_info *sinfo,
 		 * is now 12:31, the first window is 29m).  The subsequent windows will be the same.
 		 */
 		event_time = (event->event_time + t) / t * t;
-	}
-	else if (cmd == SIM_TIME)
+	} else if (cmd == SIM_TIME)
 		event_time = *((time_t *) arg);
 
 	while (event != NULL && event->event_time <= event_time) {
@@ -250,7 +249,7 @@ is_timed(event_ptr_t *event_ptr)
 	if ((static_cast<resource_resv *>(event_ptr))->start == UNSPECIFIED)
 		return 0;
 
-	if ((static_cast<resource_resv *>(event_ptr))->end  == UNSPECIFIED)
+	if ((static_cast<resource_resv *>(event_ptr))->end == UNSPECIFIED)
 		return 0;
 
 	return 1;
@@ -308,7 +307,7 @@ next_event(server_info *sinfo, int advance)
 
 	if (advance)
 		te = find_next_timed_event(calendar->next_event,
-			IGNORE_DISABLED_EVENTS, ALL_MASK);
+					   IGNORE_DISABLED_EVENTS, ALL_MASK);
 	else
 		te = calendar->next_event;
 
@@ -323,8 +322,8 @@ next_event(server_info *sinfo, int advance)
 	if (!calendar->eol) {
 		if (sinfo->policy->prime_status_end != SCHD_INFINITY) {
 			if (te == NULL ||
-				(*calendar->current_time <= sinfo->policy->prime_status_end &&
-				sinfo->policy->prime_status_end < te->event_time)) {
+			    (*calendar->current_time <= sinfo->policy->prime_status_end &&
+			     sinfo->policy->prime_status_end < te->event_time)) {
 				event_func_t func;
 
 				if (sinfo->policy->is_prime)
@@ -333,7 +332,7 @@ next_event(server_info *sinfo, int advance)
 					func = (event_func_t) init_prime_time;
 
 				pe = create_event(TIMED_POLICY_EVENT, sinfo->policy->prime_status_end,
-					(event_ptr_t*) sinfo->policy, func, NULL);
+						  (event_ptr_t *) sinfo->policy, func, NULL);
 
 				if (pe == NULL)
 					return NULL;
@@ -422,7 +421,7 @@ find_first_timed_event_backwards(timed_event *event, int ignore_disabled, unsign
 	for (e = event; e != NULL; e = e->prev) {
 		if (ignore_disabled && e->disabled)
 			continue;
-		else if ((e->event_type & search_type_mask) ==0)
+		else if ((e->event_type & search_type_mask) == 0)
 			continue;
 		else
 			break;
@@ -538,22 +537,26 @@ find_timed_event(timed_event *te_list, const std::string &name, int ignore_disab
 	return te;
 }
 
-timed_event *find_timed_event(timed_event *te_list, int ignore_disabled, enum timed_event_types event_type, time_t event_time)
+timed_event *
+find_timed_event(timed_event *te_list, int ignore_disabled, enum timed_event_types event_type, time_t event_time)
 {
 	return find_timed_event(te_list, "", ignore_disabled, event_type, event_time);
 }
 
-timed_event *find_timed_event(timed_event *te_list, enum timed_event_types event_type)
+timed_event *
+find_timed_event(timed_event *te_list, enum timed_event_types event_type)
 {
 	return find_timed_event(te_list, "", 0, event_type, 0);
 }
 
-timed_event *find_timed_event(timed_event *te_list, const std::string& name, enum timed_event_types event_type, time_t event_time)
+timed_event *
+find_timed_event(timed_event *te_list, const std::string &name, enum timed_event_types event_type, time_t event_time)
 {
 	return find_timed_event(te_list, name, 0, event_type, event_time);
 }
 
-timed_event *find_timed_event(timed_event *te_list, time_t event_time)
+timed_event *
+find_timed_event(timed_event *te_list, time_t event_time)
 {
 	return find_timed_event(te_list, "", 0, TIMED_NOEVENT, event_time);
 }
@@ -586,21 +589,21 @@ perform_event(status *policy, timed_event *event)
 	timebuf[strlen(timebuf) - 1] = '\0';
 
 	switch (event->event_type) {
-		case TIMED_END_EVENT:	/* event_ptr type: (resource_resv *) */
+		case TIMED_END_EVENT: /* event_ptr type: (resource_resv *) */
 			resresv = static_cast<resource_resv *>(event->event_ptr);
 			update_universe_on_end(policy, resresv, "X", NO_ALLPART);
 
-			sprintf(logbuf, "%s end point", resresv->is_job ? "job":"reservation");
+			sprintf(logbuf, "%s end point", resresv->is_job ? "job" : "reservation");
 			break;
-		case TIMED_RUN_EVENT:	/* event_ptr type: (resource_resv *) */
+		case TIMED_RUN_EVENT: /* event_ptr type: (resource_resv *) */
 			resresv = static_cast<resource_resv *>(event->event_ptr);
 			if (sim_run_update_resresv(policy, resresv, NO_ALLPART) == false) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
-					event->name, "Simulation: Event failed to be run");
+					  event->name, "Simulation: Event failed to be run");
 				ret = 0;
 			} else {
 				sprintf(logbuf, "%s start point",
-					resresv->is_job ? "job": "reservation");
+					resresv->is_job ? "job" : "reservation");
 			}
 			break;
 		case TIMED_POLICY_EVENT:
@@ -620,7 +623,7 @@ perform_event(status *policy, timed_event *event)
 			break;
 		default:
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
-				event->name, "Simulation: Unknown event type");
+				  event->name, "Simulation: Unknown event type");
 			ret = 0;
 	}
 	if (event->event_func != NULL)
@@ -628,7 +631,7 @@ perform_event(status *policy, timed_event *event)
 
 	if (ret)
 		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			event->name, "Simulation: %s [%s]", logbuf, timebuf);
+			   event->name, "Simulation: %s [%s]", logbuf, timebuf);
 	return ret;
 }
 
@@ -680,10 +683,10 @@ exists_resv_event(event_list *calendar, time_t end)
 		return 0;
 
 	for (te = te_list; te != NULL && te->event_time <= end;
-		te = find_next_timed_event(te, 0, TIMED_RUN_EVENT)) {
+	     te = find_next_timed_event(te, 0, TIMED_RUN_EVENT)) {
 		if (te->event_type == TIMED_RUN_EVENT) {
 			resource_resv *resresv = static_cast<resource_resv *>(te->event_ptr);
-			if(resresv->is_resv)
+			if (resresv->is_resv)
 				return 1;
 		}
 	}
@@ -708,11 +711,11 @@ exists_resv_event(event_list *calendar, time_t end)
  *
  */
 time_t
-calc_run_time(const std::string& name, server_info *sinfo, int flags)
+calc_run_time(const std::string &name, server_info *sinfo, int flags)
 {
-	time_t event_time = (time_t) 0;	/* time of the simulated event */
+	time_t event_time = (time_t) 0; /* time of the simulated event */
 	event_list *calendar;		/* calendar we are simulating in */
-	resource_resv *resresv;	/* the resource resv to find star time for */
+	resource_resv *resresv;		/* the resource resv to find star time for */
 	/* the value returned from simulate_events().  Init to TIMED_END_EVENT to
 	 * force the initial check to see if the job can run
 	 */
@@ -743,7 +746,7 @@ calc_run_time(const std::string& name, server_info *sinfo, int flags)
 	}
 
 	err = new_schd_error();
-	if(err == NULL)
+	if (err == NULL)
 		return (time_t) 0;
 
 	do {
@@ -765,7 +768,7 @@ calc_run_time(const std::string& name, server_info *sinfo, int flags)
 			break;
 		}
 #endif /* localmod 030 */
-	} while (nspec_arr.empty() && !(ret & (TIMED_NOEVENT|TIMED_ERROR)));
+	} while (nspec_arr.empty() && !(ret & (TIMED_NOEVENT | TIMED_ERROR)));
 
 #ifdef NAS /* localmod 030 */
 	if (check_for_cycle_interrupt(0) || (ret & TIMED_ERROR)) {
@@ -780,7 +783,7 @@ calc_run_time(const std::string& name, server_info *sinfo, int flags)
 	/* we can't run the job, but there are no timed events left to process */
 	if (nspec_arr.empty() && (ret & TIMED_NOEVENT)) {
 		schdlogerr(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, resresv->name,
-				"Can't find start time estimate", err);
+			   "Can't find start time estimate", err);
 		free_schd_error(err);
 		return 0;
 	}
@@ -796,14 +799,14 @@ calc_run_time(const std::string& name, server_info *sinfo, int flags)
 	resresv->end = event_time + resresv->duration;
 
 	te_start = create_event(TIMED_RUN_EVENT, resresv->start,
-		(event_ptr_t *) resresv, NULL, NULL);
+				(event_ptr_t *) resresv, NULL, NULL);
 	if (te_start == NULL) {
 		free_nspecs(nspec_arr);
 		return -1;
 	}
 
 	te_end = create_event(TIMED_END_EVENT, resresv->end,
-		(event_ptr_t *) resresv, NULL, NULL);
+			      (event_ptr_t *) resresv, NULL, NULL);
 	if (te_end == NULL) {
 		free_nspecs(nspec_arr);
 		free_timed_event(te_start);
@@ -862,14 +865,14 @@ create_event_list(server_info *sinfo)
 timed_event *
 create_events(server_info *sinfo)
 {
-	timed_event	*events = NULL;
-	timed_event	*te = NULL;
-	resource_resv	**all = NULL;
-	int		errflag = 0;
-	int		i = 0;
-	time_t 		end = 0;
-	resource_resv	**all_resresv_copy;
-	int		all_resresv_len;
+	timed_event *events = NULL;
+	timed_event *te = NULL;
+	resource_resv **all = NULL;
+	int errflag = 0;
+	int i = 0;
+	time_t end = 0;
+	resource_resv **all_resresv_copy;
+	int all_resresv_len;
 
 	/* create a temporary copy of all_resresv array which is sorted such that
 	 * the timed events are in the front of the array.
@@ -917,7 +920,7 @@ create_events(server_info *sinfo)
 		node_info *node = sinfo->nodes[i];
 		if (node->is_sleeping) {
 			te = create_event(TIMED_NODE_UP_EVENT, sinfo->server_time + PROVISION_DURATION,
-					(event_ptr_t *) node, (event_func_t) node_up_event, NULL);
+					  (event_ptr_t *) node, (event_func_t) node_up_event, NULL);
 			if (te == NULL) {
 				errflag++;
 				break;
@@ -1003,7 +1006,7 @@ dup_event_list(event_list *oelist, server_info *nsinfo)
 						      oelist->next_event->event_time);
 		if (nelist->next_event == NULL) {
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
-			oelist->next_event->name, "can't find next event in duplicated list");
+				  oelist->next_event->name, "can't find next event in duplicated list");
 			free_event_list(nelist);
 			return NULL;
 		}
@@ -1015,7 +1018,7 @@ dup_event_list(event_list *oelist, server_info *nsinfo)
 					 oelist->first_run_event->event_time);
 		if (nelist->first_run_event == NULL) {
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, oelist->first_run_event->name,
-				"can't find first run event event in duplicated list");
+				  "can't find first run event event in duplicated list");
 			free_event_list(nelist);
 			return NULL;
 		}
@@ -1109,11 +1112,12 @@ dup_timed_event(timed_event *ote, server_info *nsinfo)
  * @return new te_list structure
  */
 te_list *
-new_te_list() {
+new_te_list()
+{
 	te_list *tel;
 	tel = static_cast<te_list *>(malloc(sizeof(te_list)));
 
-	if(tel == NULL) {
+	if (tel == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1131,8 +1135,9 @@ new_te_list() {
  * @return void
  */
 void
-free_te_list(te_list *tel) {
-	if(tel == NULL)
+free_te_list(te_list *tel)
+{
+	if (tel == NULL)
 		return;
 	free_te_list(tel->next);
 	free(tel);
@@ -1150,11 +1155,11 @@ dup_te_list(te_list *ote, timed_event *new_timed_event_list)
 {
 	te_list *nte;
 
-	if(ote == NULL || new_timed_event_list == NULL)
+	if (ote == NULL || new_timed_event_list == NULL)
 		return NULL;
 
 	nte = new_te_list();
-	if(nte == NULL)
+	if (nte == NULL)
 		return NULL;
 
 	nte->event = find_timed_event(new_timed_event_list, ote->event->name, ote->event->event_type, ote->event->event_time);
@@ -1171,7 +1176,8 @@ dup_te_list(te_list *ote, timed_event *new_timed_event_list)
  */
 
 te_list *
-dup_te_lists(te_list *ote, timed_event *new_timed_event_list) {
+dup_te_lists(te_list *ote, timed_event *new_timed_event_list)
+{
 	te_list *nte;
 	te_list *end_te = NULL;
 	te_list *cur;
@@ -1180,13 +1186,13 @@ dup_te_lists(te_list *ote, timed_event *new_timed_event_list) {
 	if (ote == NULL || new_timed_event_list == NULL)
 		return NULL;
 
-	for(cur = ote; cur != NULL; cur = cur->next) {
+	for (cur = ote; cur != NULL; cur = cur->next) {
 		nte = dup_te_list(cur, new_timed_event_list);
 		if (nte == NULL) {
 			free_te_list(nte_head);
 			return NULL;
 		}
-		if(end_te != NULL)
+		if (end_te != NULL)
 			end_te->next = nte;
 		else
 			nte_head = nte;
@@ -1206,23 +1212,24 @@ dup_te_lists(te_list *ote, timed_event *new_timed_event_list) {
  * @retbal 0 failure
  */
 int
-add_te_list(te_list **tel, timed_event *te) {
+add_te_list(te_list **tel, timed_event *te)
+{
 	te_list *cur_te;
 	te_list *prev = NULL;
 	te_list *ntel;
 
-	if(tel == NULL || te == NULL)
+	if (tel == NULL || te == NULL)
 		return 0;
 
-	for(cur_te = *tel; cur_te != NULL && cur_te->event->event_time < te->event_time; prev = cur_te, cur_te = cur_te->next)
+	for (cur_te = *tel; cur_te != NULL && cur_te->event->event_time < te->event_time; prev = cur_te, cur_te = cur_te->next)
 		;
 
 	ntel = new_te_list();
-	if(ntel == NULL)
+	if (ntel == NULL)
 		return 0;
 	ntel->event = te;
 
-	if(prev == NULL) {
+	if (prev == NULL) {
 		ntel->next = *tel;
 		(*tel) = ntel;
 	} else {
@@ -1247,7 +1254,7 @@ remove_te_list(te_list **tel, timed_event *e)
 	te_list *prev_tel;
 	te_list *cur_tel;
 
-	if(tel == NULL || *tel == NULL || e == NULL)
+	if (tel == NULL || *tel == NULL || e == NULL)
 		return 0;
 
 	prev_tel = NULL;
@@ -1256,12 +1263,10 @@ remove_te_list(te_list **tel, timed_event *e)
 	if (prev_tel == NULL) {
 		*tel = cur_tel->next;
 		free(cur_tel);
-	}
-	else if (cur_tel != NULL) {
-		prev_tel -> next = cur_tel -> next;
+	} else if (cur_tel != NULL) {
+		prev_tel->next = cur_tel->next;
 		free(cur_tel);
-	}
-	else
+	} else
 		return 0;
 
 	return 1;
@@ -1281,7 +1286,7 @@ remove_te_list(te_list **tel, timed_event *e)
 event_ptr_t *
 find_event_ptr(timed_event *ote, server_info *nsinfo)
 {
-	resource_resv *oep;	/* old event_ptr in resresv form */
+	resource_resv *oep; /* old event_ptr in resresv form */
 	event_ptr_t *event_ptr = NULL;
 
 	if (ote == NULL || nsinfo == NULL)
@@ -1294,17 +1299,17 @@ find_event_ptr(timed_event *ote, server_info *nsinfo)
 			if (oep->is_resv)
 				event_ptr =
 					find_resource_resv_by_time(nsinfo->all_resresv,
-					oep->name, oep->start);
+								   oep->name, oep->start);
 			else
 				/* In case of jobs there can be only one occurance of job in
 				 * all_resresv list, so no need to search using start time of job
 				 */
 				event_ptr = find_resource_resv_by_indrank(nsinfo->all_resresv,
-					    oep->resresv_ind, oep->rank);
+									  oep->resresv_ind, oep->rank);
 
 			if (event_ptr == NULL) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, ote->name,
-					"Event can't be found in new server to be duplicated.");
+					  "Event can't be found in new server to be duplicated.");
 				event_ptr = NULL;
 			}
 			break;
@@ -1316,11 +1321,11 @@ find_event_ptr(timed_event *ote, server_info *nsinfo)
 		case TIMED_NODE_DOWN_EVENT:
 		case TIMED_NODE_UP_EVENT:
 			event_ptr = find_node_info(nsinfo->nodes,
-				static_cast<node_info*>(ote->event_ptr)->name);
+						   static_cast<node_info *>(ote->event_ptr)->name);
 			break;
 		default:
 			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__,
-				"Unknown event type: %d", (int)ote->event_type);
+				   "Unknown event type: %d", (int) ote->event_type);
 	}
 
 	return event_ptr;
@@ -1499,7 +1504,7 @@ add_timed_event(timed_event *events, timed_event *te)
 		if (eloop->event_time > te->event_time)
 			break;
 		if (eloop->event_time == te->event_time &&
-			te->event_type == TIMED_END_EVENT) {
+		    te->event_type == TIMED_END_EVENT) {
 			break;
 		}
 
@@ -1559,7 +1564,6 @@ delete_event(server_info *sinfo, timed_event *e)
 	free_timed_event(e);
 }
 
-
 /**
  * @brief
  *		create_event - create a timed_event with the passed in arguemtns
@@ -1574,8 +1578,8 @@ delete_event(server_info *sinfo, timed_event *e)
  */
 timed_event *
 create_event(enum timed_event_types event_type,
-	time_t event_time, event_ptr_t *event_ptr,
-	event_func_t event_func, void *event_func_arg)
+	     time_t event_time, event_ptr_t *event_ptr,
+	     event_func_t event_func, void *event_func_arg)
 {
 	timed_event *te;
 
@@ -1631,7 +1635,7 @@ determine_event_name(timed_event *te)
 	switch (te->event_type) {
 		case TIMED_RUN_EVENT:
 		case TIMED_END_EVENT:
-			te->name = static_cast<resource_resv*>(te->event_ptr)->name;
+			te->name = static_cast<resource_resv *>(te->event_ptr)->name;
 			break;
 		case TIMED_POLICY_EVENT:
 			name = policy_change_to_str(te);
@@ -1648,11 +1652,11 @@ determine_event_name(timed_event *te)
 			break;
 		case TIMED_NODE_UP_EVENT:
 		case TIMED_NODE_DOWN_EVENT:
-			te->name = static_cast<node_info*>(te->event_ptr)->name;
+			te->name = static_cast<node_info *>(te->event_ptr)->name;
 			break;
 		default:
 			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
-				__func__, "Unknown event type: %d", (int)te->event_type);
+				   __func__, "Unknown event type: %d", (int) te->event_type);
 			return 0;
 	}
 
@@ -1673,14 +1677,14 @@ determine_event_name(timed_event *te)
  */
 
 int
-dedtime_change(status *policy, void  *arg)
+dedtime_change(status *policy, void *arg)
 {
 	char *event_arg;
 
 	if (policy == NULL || arg == NULL)
 		return 0;
 
-	event_arg = (char *)arg;
+	event_arg = (char *) arg;
 
 	if (strcmp(event_arg, DEDTIME_START) == 0)
 		policy->is_ded_time = 1;
@@ -1688,7 +1692,7 @@ dedtime_change(status *policy, void  *arg)
 		policy->is_ded_time = 0;
 	else {
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
-			__func__, "unknown dedicated time change");
+			  __func__, "unknown dedicated time change");
 		return 0;
 	}
 
@@ -1711,8 +1715,7 @@ add_dedtime_events(event_list *elist, status *policy)
 	if (elist == NULL)
 		return 0;
 
-
-	for (const auto& dt : conf.ded_time) {
+	for (const auto &dt : conf.ded_time) {
 		auto te_start = create_event(TIMED_DED_START_EVENT, dt.from, policy, (event_func_t) dedtime_change, (void *) DEDTIME_START);
 		if (te_start == NULL)
 			return 0;
@@ -1758,9 +1761,9 @@ add_dedtime_events(event_list *elist, status *policy)
  */
 schd_resource *
 simulate_resmin(schd_resource *reslist, time_t end, event_list *calendar,
-	resource_resv **incl_arr, resource_resv *exclude)
+		resource_resv **incl_arr, resource_resv *exclude)
 {
-	static schd_resource *retres = NULL;	/* return pointer */
+	static schd_resource *retres = NULL; /* return pointer */
 
 	schd_resource *cur_res;
 	schd_resource *cur_resmin;
@@ -1796,10 +1799,10 @@ simulate_resmin(schd_resource *reslist, time_t end, event_list *calendar,
 
 	te = get_next_event(calendar);
 	for (te = find_init_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask);
-		te != NULL && (end == 0 || te->event_time < end);
-		te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
+	     te != NULL && (end == 0 || te->event_time < end);
+	     te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
 		auto resresv = static_cast<resource_resv *>(te->event_ptr);
-		if (incl_arr == NULL || find_resource_resv_by_indrank(incl_arr, -1, resresv->rank) !=NULL) {
+		if (incl_arr == NULL || find_resource_resv_by_indrank(incl_arr, -1, resresv->rank) != NULL) {
 			if (resresv != exclude) {
 				for (auto req = resresv->resreq; req != NULL; req = req->next) {
 					if (req->type.is_consumable) {
@@ -1897,18 +1900,18 @@ policy_change_info(server_info *sinfo, resource_resv *resresv)
 	 * handle below.
 	 */
 	if (!conf.prime_exempt_anytime_queues &&
-		(conf.prime_bp + conf.non_prime_bp >= 1))
+	    (conf.prime_bp + conf.non_prime_bp >= 1))
 		return 1;
 
 	if (resresv != NULL) {
-		if (resresv->is_job && resresv->job !=NULL) {
+		if (resresv->is_job && resresv->job != NULL) {
 			if (policy->is_ded_time && resresv->job->queue->is_ded_queue)
 				return 1;
 			if (policy->is_prime == PRIME &&
-				resresv->job->queue->is_prime_queue)
+			    resresv->job->queue->is_prime_queue)
 				return 1;
 			if (policy->is_prime == NON_PRIME &&
-				resresv->job->queue->is_nonprime_queue)
+			    resresv->job->queue->is_nonprime_queue)
 				return 1;
 		}
 
@@ -1916,23 +1919,23 @@ policy_change_info(server_info *sinfo, resource_resv *resresv)
 	}
 
 	if (policy->is_ded_time && sinfo->has_ded_queue) {
-		for (auto qinfo: sinfo->queues) {
+		for (auto qinfo : sinfo->queues) {
 			if (qinfo->is_ded_queue &&
-				qinfo->jobs !=NULL)
+			    qinfo->jobs != NULL)
 				return 1;
 		}
 	}
 	if (policy->is_prime == PRIME && sinfo->has_prime_queue) {
-		for (auto qinfo: sinfo->queues) {
+		for (auto qinfo : sinfo->queues) {
 			if (qinfo->is_prime_queue &&
-				qinfo->jobs !=NULL)
+			    qinfo->jobs != NULL)
 				return 1;
 		}
 	}
 	if (policy->is_prime == NON_PRIME && sinfo->has_nonprime_queue) {
-		for (auto qinfo: sinfo->queues) {
+		for (auto qinfo : sinfo->queues) {
 			if (qinfo->is_nonprime_queue &&
-				qinfo->jobs !=NULL)
+			    qinfo->jobs != NULL)
 				return 1;
 		}
 	}
@@ -1989,7 +1992,7 @@ add_prov_event(event_list *calendar, time_t event_time, node_info *node)
 		return 0;
 
 	te = create_event(TIMED_NODE_UP_EVENT, event_time, (event_ptr_t *) node,
-		(event_func_t) node_up_event, NULL);
+			  (event_func_t) node_up_event, NULL);
 	if (te == NULL)
 		return 0;
 	add_event(calendar, te);
@@ -1998,7 +2001,7 @@ add_prov_event(event_list *calendar, time_t event_time, node_info *node)
 	 */
 	if (node->svr_node != NULL) {
 		te = create_event(TIMED_NODE_UP_EVENT, event_time,
-			(event_ptr_t *) node->svr_node, (event_func_t) node_up_event, NULL);
+				  (event_ptr_t *) node->svr_node, (event_func_t) node_up_event, NULL);
 		if (te == NULL)
 			return 0;
 		add_event(calendar, te);
@@ -2036,7 +2039,7 @@ add_prov_event(event_list *calendar, time_t event_time, node_info *node)
  */
 int
 generic_sim(event_list *calendar, unsigned int event_mask, time_t end, int default_ret,
-	int (*func)(timed_event*, void*, void*), void *arg1, void *arg2)
+	    int (*func)(timed_event *, void *, void *), void *arg1, void *arg2)
 {
 	timed_event *te;
 	int rc = 0;
@@ -2050,8 +2053,8 @@ generic_sim(event_list *calendar, unsigned int event_mask, time_t end, int defau
 	te = get_next_event(calendar);
 
 	for (te = find_init_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask);
-		te != NULL && rc == 0 && (end == 0 || te->event_time < end);
-		te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
+	     te != NULL && rc == 0 && (end == 0 || te->event_time < end);
+	     te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
 		rc = func(te, arg1, arg2);
 	}
 

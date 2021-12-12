@@ -40,6 +40,7 @@
 
 declare -a listofchecks
 listofchecks[0]="checkpep8"
+listofchecks[1]="checkclang"
 
 checkdir=$(readlink -f $(dirname $0))
 errors_fails=0

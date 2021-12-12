@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -45,7 +44,6 @@
 #include "constant.h"
 #include "log.h"
 #include "queue.h"
-
 
 /**
  * @brief	Constructor for the data structure 'queue'
@@ -91,7 +89,6 @@ free_ds_queue(ds_queue *queue)
 		free(queue);
 	}
 }
-
 
 /**
  * @brief	Enqueue an object into the queue

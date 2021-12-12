@@ -66,9 +66,12 @@ pbs_isjobid(char *string)
 	int result;
 
 	i = strspn(string, " "); /* locate first non-blank */
-	if (isdigit(string[i])) result = 1;  /* job_id */
-		else if (isalpha(string[i])) result = 0; /* not a job_id */
-			else result = 0;  /* who knows - probably a syntax error */
+	if (isdigit(string[i]))
+		result = 1; /* job_id */
+	else if (isalpha(string[i]))
+		result = 0; /* not a job_id */
+	else
+		result = 0; /* who knows - probably a syntax error */
 
-				return (result);
+	return (result);
 }

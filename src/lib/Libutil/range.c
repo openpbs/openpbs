@@ -204,7 +204,6 @@ range_count(range *r)
 	return count;
 }
 
-
 /**
  * @brief
  *		range_parse - parse string of ranges delimited by comma
@@ -311,8 +310,7 @@ range_next_value(range *r, int cur_value)
 			if (cur_value == cur->end) {
 				if (cur->next != NULL)
 					ret_val = cur->next->start;
-			}
-			else
+			} else
 				ret_val = cur_value + cur->step;
 		}
 		cur = cur->next;
@@ -373,7 +371,7 @@ range_contains_single(range *r, int val)
 		return 0;
 
 	if (val >= r->start && val <= r->end)
-		if ((val - r->start) % r->step ==0)
+		if ((val - r->start) % r->step == 0)
 			return 1;
 
 	return 0;
@@ -412,7 +410,7 @@ range_remove_value(range **r, int val)
 	cur = *r;
 	while (cur != NULL && !done) {
 		if (cur->start == val && cur->end == val) {
-			if (prev == NULL)  /* we're removing the first range struct in the list */
+			if (prev == NULL) /* we're removing the first range struct in the list */
 				*r = (*r)->next;
 			else
 				prev->next = cur->next;
@@ -431,13 +429,13 @@ range_remove_value(range **r, int val)
 			if ((next_range = new_range(0, 0, 1, 0, NULL)) == NULL)
 				return 0;
 
-			next_range->count = (cur->end - val)/cur->step;
+			next_range->count = (cur->end - val) / cur->step;
 			next_range->step = cur->step;
 			next_range->start = val + cur->step;
 			next_range->end = cur->end;
 			next_range->next = cur->next;
 
-			cur->count = (val - cur->start)/cur->step;
+			cur->count = (val - cur->start) / cur->step;
 			cur->end = val - cur->step;
 			cur->next = next_range;
 			return 1;
@@ -452,7 +450,7 @@ range_remove_value(range **r, int val)
 	if (done) {
 		/* we removed the last value from this section of the range */
 		if (cur->start > cur->end) {
-			if (prev == NULL)   /* we're removing the first range struct in the list */
+			if (prev == NULL) /* we're removing the first range struct in the list */
 				*r = (*r)->next;
 			else
 				prev->next = cur->next;
@@ -482,7 +480,7 @@ range_remove_value(range **r, int val)
 int
 range_add_value(range **r, int val, int range_step)
 {
-	range *cur;			/* current range structure in list */
+	range *cur; /* current range structure in list */
 	range *next_range;
 
 	if (r == NULL)
@@ -507,7 +505,7 @@ range_add_value(range **r, int val, int range_step)
 			return 1;
 		} else {
 			/* Add new range as the first element with same value */
-			range * first_range = NULL;
+			range *first_range = NULL;
 			if ((first_range = new_range(val, val, cur->step, 1, cur)) == NULL) {
 				return 0;
 			}
@@ -518,7 +516,7 @@ range_add_value(range **r, int val, int range_step)
 
 	/* The value that needs to be added is in between the cur and the next sub-ranges  */
 
-	while (cur != NULL && cur->next != NULL ) {
+	while (cur != NULL && cur->next != NULL) {
 
 		next_range = cur->next;
 		if ((val > cur->end) && (val < next_range->start)) {
@@ -545,12 +543,12 @@ range_add_value(range **r, int val, int range_step)
 
 			} else {
 				/* Value falls in this range; add new mid-range with same value */
-				range * mid_range = NULL;
+				range *mid_range = NULL;
 				if ((mid_range = new_range(val, val, cur->step, 1, cur->next)) == NULL) {
 					return 0;
 				}
 				cur->next = mid_range;
- 				return 1;
+				return 1;
 			}
 		}
 		cur = next_range;
@@ -601,13 +599,12 @@ range_intersection(range *r1, range *r2)
 
 	while (cur >= 0) {
 		if (range_contains(r2, cur)) {
-				range_add_value(&intersection, cur, r2->step);
+			range_add_value(&intersection, cur, r2->step);
 		}
 		cur = range_next_value(r1, cur);
 	}
 	return intersection;
 }
-
 
 /**
  * @brief
@@ -727,7 +724,7 @@ range_to_str(range *r)
 		return "";
 
 	if (range_str == NULL) {
-		if ((range_str = malloc(INIT_RANGE_ARR_SIZE+1)) == NULL) {
+		if ((range_str = malloc(INIT_RANGE_ARR_SIZE + 1)) == NULL) {
 			log_err(errno, __func__, RANGE_MEM_ERR_MSG);
 			return "";
 		}
@@ -741,23 +738,21 @@ range_to_str(range *r)
 		else
 			sprintf(numbuf, "%d", cur_r->start);
 
-		if (cur_r->step > 1 && cur_r->count > 1 ) {
+		if (cur_r->step > 1 && cur_r->count > 1) {
 			if (pbs_strcat(&range_str, &size, numbuf) == NULL)
 				return "";
 			sprintf(numbuf, ":%d", cur_r->step);
 			if (pbs_strcat(&range_str, &size, numbuf) == NULL)
 				return "";
-		}
-		else
-			if (pbs_strcat(&range_str, &size, numbuf) == NULL)
-				return "";
+		} else if (pbs_strcat(&range_str, &size, numbuf) == NULL)
+			return "";
 
 		if (pbs_strcat(&range_str, &size, ",") == NULL)
 			return "";
 	}
 	len = strlen(range_str);
-	if (range_str[len-1] == ',')
-		range_str[len-1] = '\0';
+	if (range_str[len - 1] == ',')
+		range_str[len - 1] = '\0';
 
 	return range_str;
 }

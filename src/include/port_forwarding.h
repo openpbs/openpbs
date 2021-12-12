@@ -39,7 +39,7 @@
 
 #ifndef _PORT_FORWARDING_H
 #define _PORT_FORWARDING_H
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -74,8 +74,7 @@ extern "C" {
  * Structure which maintains the relationship between the producer/consumer
  * sockets and also about the length of the data read/written.
  */
-struct pfwdsock
-{
+struct pfwdsock {
 	int sock;
 	int listening;
 	int remotesock;
@@ -86,12 +85,12 @@ struct pfwdsock
 	char buff[PF_BUF_SIZE];
 };
 /*Functions available in port_forwarding.h*/
-void port_forwarder(struct pfwdsock *, int(*connfunc)(char *phost, long pport), char *, int , int inter_read_sock, int (*readfunc)(int), void (*logfunc)(char *));
+void port_forwarder(struct pfwdsock *, int (*connfunc)(char *phost, long pport), char *, int, int inter_read_sock, int (*readfunc)(int), void (*logfunc)(char *));
 int connect_local_xsocket(u_int);
 int x11_connect_display(char *, long);
 int set_nonblocking(int);
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 #endif /* _PORT_FORWARDING_H */

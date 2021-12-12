@@ -37,24 +37,24 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#include	"pbs_config.h"
+#include "pbs_config.h"
 
-#include	<stdlib.h>
-#include	<string.h>
-#include	<stdio.h>
-#include	<errno.h>
-#include	<assert.h>
-#include	"libpbs.h"
-#include	"log.h"
-#include	"server_limits.h"
-#include	"attribute.h"
-#include	"placementsets.h"
-#include	"resource.h"
-#include	"pbs_nodes.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <errno.h>
+#include <assert.h>
+#include "libpbs.h"
+#include "log.h"
+#include "server_limits.h"
+#include "attribute.h"
+#include "placementsets.h"
+#include "resource.h"
+#include "pbs_nodes.h"
 
-#ifdef	DEBUG
-extern void	mom_CPUs_report();
-#endif	/* DEBUG */
+#ifdef DEBUG
+extern void mom_CPUs_report();
+#endif /* DEBUG */
 
 /**
  * @file
@@ -119,11 +119,10 @@ find_vmapent_byID(void *ctx, const char *vnid)
 {
 	mominfo_t *p;
 
-	if (pbs_idx_find(ctx, (void **)&vnid, (void **)&p, NULL) == PBS_IDX_RET_OK)
+	if (pbs_idx_find(ctx, (void **) &vnid, (void **) &p, NULL) == PBS_IDX_RET_OK)
 		return p;
 	return NULL;
 }
-
 
 /**
  * @brief
@@ -141,7 +140,7 @@ find_vmapent_byID(void *ctx, const char *vnid)
 int
 add_vmapent_byID(void *ctx, const char *vnid, void *data)
 {
-	if (pbs_idx_insert(ctx, (void *)vnid, data) != PBS_IDX_RET_OK) {
+	if (pbs_idx_insert(ctx, (void *) vnid, data) != PBS_IDX_RET_OK) {
 		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "Failed to add vnode %s in vnodemap", vnid);
 		return 1;
 	}

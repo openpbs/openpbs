@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /*
  * Place holder for site supplied additions to the array of
  * site job attribute definitions, see job_attr_def.c

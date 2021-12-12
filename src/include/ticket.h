@@ -37,12 +37,11 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_TICKET_H
-#define	_TICKET_H
-#ifdef	__cplusplus
+#ifndef _TICKET_H
+#define _TICKET_H
+#ifdef __cplusplus
 extern "C" {
 #endif
-
 
 /*
  * ticket.h - header file for dealing with security systems such as kerberos.
@@ -50,21 +49,21 @@ extern "C" {
 
 #include <sys/types.h>
 
-#define	PBS_CREDVER		1
-#define	PBS_CREDTYPE_NONE	0
-#define	PBS_CREDTYPE_GRIDPROXY	2 /* Deprecated */
-#define PBS_CREDTYPE_AES	3
+#define PBS_CREDVER 1
+#define PBS_CREDTYPE_NONE 0
+#define PBS_CREDTYPE_GRIDPROXY 2 /* Deprecated */
+#define PBS_CREDTYPE_AES 3
 
-#define	PBS_GC_BATREQ		100
-#define	PBS_GC_CPYFILE		101
-#define	PBS_GC_EXEC		102
+#define PBS_GC_BATREQ 100
+#define PBS_GC_CPYFILE 101
+#define PBS_GC_EXEC 102
 
-#define PBS_CREDNAME_AES	"aes"
+#define PBS_CREDNAME_AES "aes"
 
-extern int encode_to_base64(const unsigned char* buffer, size_t buffer_len, char** ret_encoded_data);
-extern int decode_from_base64(char* buffer, unsigned char** ret_decoded_data, size_t* ret_decoded_len);
+extern int encode_to_base64(const unsigned char *buffer, size_t buffer_len, char **ret_encoded_data);
+extern int decode_from_base64(char *buffer, unsigned char **ret_decoded_data, size_t *ret_decoded_len);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _TICKET_H */
+#endif /* _TICKET_H */

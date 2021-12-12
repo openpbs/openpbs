@@ -199,7 +199,7 @@ static void
 schedexit(void)
 {
 	/* close any open connections to peers */
-	for (auto& pq : conf.peer_queues) {
+	for (auto &pq : conf.peer_queues) {
 		if (pq.peer_sd >= 0) {
 			/* When peering "local", do not disconnect server */
 			if (!pq.remote_server.empty())
@@ -314,8 +314,8 @@ read_config(char *file)
 		const char *name;
 		int (*handler)(const char *);
 	} special[] = {
-	    {"clienthost", addclient},
-	    {NULL, NULL}};
+		{"clienthost", addclient},
+		{NULL, NULL}};
 
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
 	if (chk_file_sec_user(file, 0, 0, S_IWGRP | S_IWOTH, 1, getuid()))
@@ -567,7 +567,7 @@ open_server_conns(void)
 			log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 		break;
 
-unmask_continue:
+	unmask_continue:
 		if (sigprocmask(SIG_SETMASK, &prevsigs, NULL) == -1)
 			log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 
@@ -824,57 +824,57 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 	opterr = 0;
 	while ((c = getopt(argc, argv, "lL:NI:d:p:c:nt:P")) != EOF) {
 		switch (c) {
-		case 'l':
+			case 'l':
 #ifdef _POSIX_MEMLOCK
-			do_mlockall = 1;
+				do_mlockall = 1;
 #else
-			fprintf(stderr, "-l option - mlockall not supported\n");
+				fprintf(stderr, "-l option - mlockall not supported\n");
 #endif /* _POSIX_MEMLOCK */
-			break;
-		case 'L':
-			logfile = optarg;
-			break;
-		case 'N':
-			stalone = 1;
-			break;
-		case 'I':
-			sc_name = optarg;
-			break;
-		case 'd':
-			if (pbs_conf.pbs_home_path != NULL)
-				free(pbs_conf.pbs_home_path);
-			pbs_conf.pbs_home_path = optarg;
-			break;
-		case 'p':
+				break;
+			case 'L':
+				logfile = optarg;
+				break;
+			case 'N':
+				stalone = 1;
+				break;
+			case 'I':
+				sc_name = optarg;
+				break;
+			case 'd':
+				if (pbs_conf.pbs_home_path != NULL)
+					free(pbs_conf.pbs_home_path);
+				pbs_conf.pbs_home_path = optarg;
+				break;
+			case 'p':
 #ifndef DEBUG
-			dbfile = optarg;
+				dbfile = optarg;
 #endif
-			break;
-		case 'c':
-			configfile = optarg;
-			break;
-		case 'n':
-			opt_no_restart = 1;
-			break;
-		case 't':
-			nthreads = strtol(optarg, &endp, 10);
-			if (*endp != '\0') {
-				fprintf(stderr, "%s: bad num threads value\n", optarg);
+				break;
+			case 'c':
+				configfile = optarg;
+				break;
+			case 'n':
+				opt_no_restart = 1;
+				break;
+			case 't':
+				nthreads = strtol(optarg, &endp, 10);
+				if (*endp != '\0') {
+					fprintf(stderr, "%s: bad num threads value\n", optarg);
+					errflg = 1;
+				}
+				if (nthreads < 1) {
+					fprintf(stderr, "%s: bad num threads value (should be in range 1-99999)\n", optarg);
+					errflg = 1;
+				}
+				if (nthreads > num_cores) {
+					fprintf(stderr, "%s: cannot be larger than number of cores %d, using number of cores instead\n",
+						optarg, num_cores);
+					nthreads = num_cores;
+				}
+				break;
+			default:
 				errflg = 1;
-			}
-			if (nthreads < 1) {
-				fprintf(stderr, "%s: bad num threads value (should be in range 1-99999)\n", optarg);
-				errflg = 1;
-			}
-			if (nthreads > num_cores) {
-				fprintf(stderr, "%s: cannot be larger than number of cores %d, using number of cores instead\n",
-					optarg, num_cores);
-				nthreads = num_cores;
-			}
-			break;
-		default:
-			errflg = 1;
-			break;
+				break;
 		}
 	}
 
@@ -994,7 +994,7 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 	act.sa_flags = 0;
 
 	/* remember to block these during critical sections so we don't get confused */
-	for (auto &sig: sigstoblock) {
+	for (auto &sig : sigstoblock) {
 		sigaddset(&allsigs, sig);
 	}
 	act.sa_mask = allsigs;

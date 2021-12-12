@@ -37,42 +37,42 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#include	<pbs_config.h>
+#include <pbs_config.h>
 
-#include	<sys/stat.h>
-#include	<signal.h>
-#include	<sys/utsname.h>
-#include	<limits.h>
-#include	<sys/resource.h>
+#include <sys/stat.h>
+#include <signal.h>
+#include <sys/utsname.h>
+#include <limits.h>
+#include <sys/resource.h>
 
-#include	"pbs_ifl.h"
-#include	"net_connect.h"
-#include	"log.h"
-#include	"job.h"
-#include	"mom_func.h"
-#include	"placementsets.h"
-#include	"tpp.h"
+#include "pbs_ifl.h"
+#include "net_connect.h"
+#include "log.h"
+#include "job.h"
+#include "mom_func.h"
+#include "placementsets.h"
+#include "tpp.h"
 
 extern int do_debug_report;
 extern int termin_child;
 extern int exiting_tasks;
 extern int next_sample_time;
-extern char	*log_file;
-extern char	*path_log;
+extern char *log_file;
+extern char *path_log;
 extern int mom_run_state;
 extern int vnode_additive;
 extern int kill_jobs_on_exit;
 extern vnl_t *vnlp;
 extern char *msg_corelimit;
 extern vnl_t *vnlp_from_hook;
-extern char	*ret_string;
+extern char *ret_string;
 
 extern void debug_report(void);
-extern void	scan_for_exiting(void);
+extern void scan_for_exiting(void);
 extern int read_config(char *);
 extern void cleanup(void);
 extern void initialize(void);
-extern void	mom_vnlp_report(vnl_t *vnl, char *header);
+extern void mom_vnlp_report(vnl_t *vnl, char *header);
 
 /**
  * @brief
@@ -91,12 +91,12 @@ stop_me(int sig)
 {
 	sprintf(log_buffer, "caught signal %d", sig);
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-		LOG_NOTICE, msg_daemonname, log_buffer);
+		  LOG_NOTICE, msg_daemonname, log_buffer);
 
 	switch (sig) {
 		case SIGPIPE:
 		case SIGUSR1:
-#ifdef	SIGINFO
+#ifdef SIGINFO
 		case SIGINFO:
 #endif
 			return;
@@ -127,11 +127,11 @@ finish_loop(time_t waittime)
 		debug_report();
 	if (termin_child) {
 		scan_for_terminated();
-		waittime = 1;	/* want faster time around to next loop */
+		waittime = 1; /* want faster time around to next loop */
 	}
 	if (exiting_tasks) {
 		scan_for_exiting();
-		waittime = 1;	/* want faster time around to next loop */
+		waittime = 1; /* want faster time around to next loop */
 	}
 
 	if (waittime > next_sample_time)
@@ -152,9 +152,10 @@ finish_loop(time_t waittime)
  *
  */
 int
-get_permission(char *perm) {
+get_permission(char *perm)
+{
 	if (strcmp(perm, "write") == 0)
-		return (S_IWGRP|S_IWOTH);
+		return (S_IWGRP | S_IWOTH);
 	return 0;
 }
 
@@ -169,7 +170,8 @@ get_permission(char *perm) {
  */
 
 handler_ret_t
-check_interactive_service() {
+check_interactive_service()
+{
 	return HANDLER_SUCCESS;
 }
 
@@ -185,7 +187,7 @@ char *
 getuname(void)
 {
 	static char *name = NULL;
-	struct utsname	n;
+	struct utsname n;
 
 	if (name == NULL) {
 		if (uname(&n) == -1)
@@ -210,7 +212,7 @@ void
 catch_hup(int sig)
 {
 	sprintf(log_buffer, "caught signal %d", sig);
-	log_event(PBSEVENT_SYSTEM, 0,  LOG_INFO, "catch_hup", log_buffer);
+	log_event(PBSEVENT_SYSTEM, 0, LOG_INFO, "catch_hup", log_buffer);
 	call_hup = HUP_REAL;
 }
 
@@ -232,7 +234,7 @@ process_hup(void)
 	 * inventory needs to be refreshed.
 	 * When real_hup is false, some actions don't need to be done.
 	 */
-	int	real_hup = (call_hup == HUP_REAL);
+	int real_hup = (call_hup == HUP_REAL);
 	int num_var_env;
 
 	call_hup = HUP_CLEAR;
@@ -272,14 +274,14 @@ process_hup(void)
 	cleanup();
 	initialize();
 
-#if	MOM_ALPS /* ALPS needs libjob support */
+#if MOM_ALPS /* ALPS needs libjob support */
 	/*
 	 * This needs to be called after the config file is read.
 	 */
 	ck_acct_facility_present();
-#endif	/* MOM_ALPS */
+#endif /* MOM_ALPS */
 
-	if (!real_hup)		/* no need to go on */
+	if (!real_hup) /* no need to go on */
 		return;
 }
 
@@ -309,7 +311,7 @@ catch_USR2(int sig)
 void
 debug_report(void)
 {
-extern void	mom_CPUs_report(void);
+	extern void mom_CPUs_report(void);
 
 	mom_CPUs_report();
 	mom_vnlp_report(vnlp, NULL);
@@ -346,8 +348,8 @@ void
 usage(char *prog)
 {
 	const char *configusage = "%s -s insert scriptname inputfile\n"
-			"%s -s [ remove | show ] scriptname\n"
-			"%s -s list\n";
+				  "%s -s [ remove | show ] scriptname\n"
+				  "%s -s list\n";
 	fprintf(stderr,
 		"Usage: %s [-C chkdirectory][-d dir][-c configfile][-r|-p][-R port][-M port][-L log][-a alarm][-n nice]\n", prog);
 	fprintf(stderr, "or\n");

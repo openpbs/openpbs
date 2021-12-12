@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /*
  * tracking.h - header file for maintaining job tracking records
  *
@@ -53,15 +51,15 @@
  *	"server_limits.h"
  */
 
-#define PBS_TRACK_MINSIZE   100	/* mininum size of buffer in records */
-#define PBS_SAVE_TRACK_TM   300	/* time interval between saves of track data */
+#define PBS_TRACK_MINSIZE 100 /* mininum size of buffer in records */
+#define PBS_SAVE_TRACK_TM 300 /* time interval between saves of track data */
 
 struct tracking {
-	time_t	 tk_mtime;	/* time this entry modified */
-	int      tk_hopcount;
-	char     tk_jobid[PBS_MAXSVRJOBID+1];
-	char     tk_location[PBS_MAXDEST+1];
-	char     tk_state;
+	time_t tk_mtime; /* time this entry modified */
+	int tk_hopcount;
+	char tk_jobid[PBS_MAXSVRJOBID + 1];
+	char tk_location[PBS_MAXDEST + 1];
+	char tk_state;
 };
 
 extern void track_save(struct work_task *);

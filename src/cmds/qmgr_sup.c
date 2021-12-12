@@ -58,11 +58,10 @@ History *qmgrhist;
 
 extern char prompt[];
 extern char contin[];
-extern char *cur_prompt ;
+extern char *cur_prompt;
 extern const char hist_init_err[];
 extern const char histfile_access_err[];
-extern char qmgr_hist_file[MAXPATHLEN + 1];  /* history file for this user */
-
+extern char qmgr_hist_file[MAXPATHLEN + 1]; /* history file for this user */
 
 /**
  * @brief
@@ -114,11 +113,11 @@ qmgr_list_history(int len)
 	int i = 0;
 	int tot;
 
-	if (len <= 0){
-	  if (len!=0)
-	    printf("Invalid option\n");
-	  return;
-        }
+	if (len <= 0) {
+		if (len != 0)
+			printf("Invalid option\n");
+		return;
+	}
 
 	if (history(qmgrhist, &ev, H_GETSIZE) == -1)
 		return;
@@ -228,7 +227,7 @@ init_qmgr_hist(char *prog)
 
 		if (rc == 1) {
 			snprintf(qmgr_hist_file, MAXPATHLEN, "%s/spool/.pbs_qmgr_history_%s",
-				pbs_conf.pbs_home_path, pw->pw_name);
+				 pbs_conf.pbs_home_path, pw->pw_name);
 			history(qmgrhist, &ev, H_LOAD, qmgr_hist_file);
 			if (history(qmgrhist, &ev, H_SAVE, qmgr_hist_file) == -1)
 				history(qmgrhist, &ev, H_CLEAR);

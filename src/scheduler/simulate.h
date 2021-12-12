@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_SIMULATE_H
-#define	_SIMULATE_H
+#ifndef _SIMULATE_H
+#define _SIMULATE_H
 
 #include "data_types.h"
 #include "constant.h"
@@ -48,7 +48,7 @@
  */
 unsigned int
 simulate_events(status *policy, server_info *sinfo,
-	enum schd_simulate_cmd cmd, void *arg, time_t *sim_time);
+		enum schd_simulate_cmd cmd, void *arg, time_t *sim_time);
 
 /*
  *	is_timed - check if a resresv is a timed event
@@ -189,7 +189,6 @@ int exists_run_event_on_node(node_info *ninf, time_t end);
 /* Checks if a reservation run event exists between now and 'end' */
 int exists_resv_event(event_list *calendar, time_t end);
 
-
 /*
  *      create_events - creates an timed_event list from running jobs
  *                          and confirmed reservations
@@ -292,7 +291,6 @@ void free_event_list(event_list *el);
  */
 timed_event *find_event_by_name(timed_event *events, char *name);
 
-
 /*
  *      add_timed_event - add an event to a sorted list of events
  *
@@ -333,9 +331,8 @@ void delete_event(server_info *sinfo, timed_event *e);
  */
 timed_event *
 create_event(enum timed_event_types event_type,
-	time_t event_time, event_ptr_t *event_ptr,
-	event_func_t event_func, void *event_func_arg);
-
+	     time_t event_time, event_ptr_t *event_ptr,
+	     event_func_t event_func, void *event_func_arg);
 
 /*
  *	calc_run_time - calculate the run time of a job
@@ -343,7 +340,7 @@ create_event(enum timed_event_types event_type,
  *	returns time_t of when the job will run
  *		or -1 on error
  */
-time_t calc_run_time(const std::string& name, server_info *sinfo, int flags);
+time_t calc_run_time(const std::string &name, server_info *sinfo, int flags);
 
 /*
  *
@@ -378,7 +375,7 @@ int determine_event_name(timed_event *te);
  *
  *	\return success 1 or failure/error 0
  */
-int dedtime_change(status *policy, void  *arg);
+int dedtime_change(status *policy, void *arg);
 
 /*
  *	add_dedtime_events - add the dedicated time events from conf
@@ -405,7 +402,7 @@ int add_dedtime_events(event_list *elist, struct status *policy);
  */
 schd_resource *
 simulate_resmin(schd_resource *reslist, time_t end, event_list *calendar,
-	resource_resv **incl_arr, resource_resv *exclude);
+		resource_resv **incl_arr, resource_resv *exclude);
 
 /*
  *
@@ -416,7 +413,6 @@ simulate_resmin(schd_resource *reslist, time_t end, event_list *calendar,
  *	return printable string name of policy change event
  */
 const char *policy_change_to_str(timed_event *te);
-
 
 /*
  * policy_change_info - should we do anything on policy change events
@@ -442,8 +438,7 @@ int add_prov_event(event_list *calendar, time_t event_time, node_info *node);
  */
 int
 generic_sim(event_list *calendar, unsigned int event_mask, time_t end, int default_ret,
-	int (*func)(timed_event*, void*, void*), void *arg1, void *arg2);
-
+	    int (*func)(timed_event *, void *, void *), void *arg1, void *arg2);
 
 te_list *new_te_list();
 
@@ -454,6 +449,5 @@ void free_te_list(te_list *tel);
 
 int add_te_list(te_list **tel, timed_event *te);
 int remove_te_list(te_list **tel, timed_event *e);
-
 
 #endif /* _SIMULATE_H */

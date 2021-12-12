@@ -103,20 +103,19 @@
 #define PBS_V1_COMMON_MODULE_DEFINE_STUB_FUNCS 1
 #include "pbs_v1_module_common.i"
 
-#define MAXBUF	4096
+#define MAXBUF 4096
 #define PYHOME "PYTHONHOME"
 #define PYHOME_EQUAL "PYTHONHOME="
 
 #define HOOK_MODE "--hook"
 
-extern 	char		*vnode_state_to_str(int state_bit);
-extern	char		*vnode_sharing_to_str(enum vnode_sharing vns);
-extern	char		*vnode_ntype_to_str(int type);
+extern char *vnode_state_to_str(int state_bit);
+extern char *vnode_sharing_to_str(enum vnode_sharing vns);
+extern char *vnode_ntype_to_str(int type);
 
-extern 	int		str_to_vnode_state(char *state_str);
-extern 	int		str_to_vnode_ntype(char *ntype_str);
-extern 	enum vnode_sharing str_to_vnode_sharing(char *sharing_str);
-
+extern int str_to_vnode_state(char *state_str);
+extern int str_to_vnode_ntype(char *ntype_str);
+extern enum vnode_sharing str_to_vnode_sharing(char *sharing_str);
 
 /**
  * @brief
@@ -162,25 +161,25 @@ extern 	enum vnode_sharing str_to_vnode_sharing(char *sharing_str);
  */
 int
 pbs_python_populate_svrattrl_from_file(char *input_file,
-	pbs_list_head *default_svrattrl, pbs_list_head *event_svrattrl,
-	pbs_list_head *event_job_svrattrl, pbs_list_head *event_job_o_svrattrl,
-	pbs_list_head *event_resv_svrattrl, pbs_list_head *event_vnode_svrattrl,
-	pbs_list_head *event_vnode_fail_svrattrl,
-	pbs_list_head *job_failed_mom_list_svrattrl,
-	pbs_list_head *job_succeeded_mom_list_svrattrl,
-	pbs_list_head *event_src_queue_svrattrl, pbs_list_head *event_aoe_svrattrl,
-	pbs_list_head *event_argv_svrattrl, pbs_list_head *event_jobs_svrattrl,
-	char *perf_label, char *perf_action)
+				       pbs_list_head *default_svrattrl, pbs_list_head *event_svrattrl,
+				       pbs_list_head *event_job_svrattrl, pbs_list_head *event_job_o_svrattrl,
+				       pbs_list_head *event_resv_svrattrl, pbs_list_head *event_vnode_svrattrl,
+				       pbs_list_head *event_vnode_fail_svrattrl,
+				       pbs_list_head *job_failed_mom_list_svrattrl,
+				       pbs_list_head *job_succeeded_mom_list_svrattrl,
+				       pbs_list_head *event_src_queue_svrattrl, pbs_list_head *event_aoe_svrattrl,
+				       pbs_list_head *event_argv_svrattrl, pbs_list_head *event_jobs_svrattrl,
+				       char *perf_label, char *perf_action)
 {
 
 	char *attr_name;
 	char *name_str;
-	char name_str_buf[STRBUF+1] = {'\0'};
+	char name_str_buf[STRBUF + 1] = {'\0'};
 	char *resc_str;
-	char argv_index[STRBUF+1] = {'\0'};
+	char argv_index[STRBUF + 1] = {'\0'};
 	char *val_str;
 	char *obj_name;
-	int  rc = -1;
+	int rc = -1;
 	char *pc, *pc1, *pc2, *pc3, *pc4;
 	char *in_data = NULL;
 	long int endpos;
@@ -189,21 +188,21 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 	size_t ll;
 	FILE *fp = NULL;
 	char *p;
-	int   vn_obj_len = strlen(EVENT_VNODELIST_OBJECT);
-	int   vn_fail_obj_len = strlen(EVENT_VNODELIST_FAIL_OBJECT);
-	int   job_obj_len = strlen(EVENT_JOBLIST_OBJECT);
-	int   b_triple_quotes = 0;
-	int   e_triple_quotes = 0;
-	char  buf_data[STRBUF];
+	int vn_obj_len = strlen(EVENT_VNODELIST_OBJECT);
+	int vn_fail_obj_len = strlen(EVENT_VNODELIST_FAIL_OBJECT);
+	int job_obj_len = strlen(EVENT_JOBLIST_OBJECT);
+	int b_triple_quotes = 0;
+	int e_triple_quotes = 0;
+	char buf_data[STRBUF];
 
 	if ((default_svrattrl == NULL) || (event_svrattrl == NULL) ||
-		(event_job_svrattrl == NULL) || (event_job_o_svrattrl == NULL) ||
-		(event_resv_svrattrl == NULL) || (event_vnode_svrattrl == NULL) ||
-		(event_src_queue_svrattrl == NULL) || (event_aoe_svrattrl == NULL) ||
-		(event_argv_svrattrl == NULL) || (event_vnode_fail_svrattrl == NULL) ||
-		(job_failed_mom_list_svrattrl == NULL) ||
-		(job_succeeded_mom_list_svrattrl == NULL) ||
-		(event_jobs_svrattrl == NULL)) {
+	    (event_job_svrattrl == NULL) || (event_job_o_svrattrl == NULL) ||
+	    (event_resv_svrattrl == NULL) || (event_vnode_svrattrl == NULL) ||
+	    (event_src_queue_svrattrl == NULL) || (event_aoe_svrattrl == NULL) ||
+	    (event_argv_svrattrl == NULL) || (event_vnode_fail_svrattrl == NULL) ||
+	    (job_failed_mom_list_svrattrl == NULL) ||
+	    (job_succeeded_mom_list_svrattrl == NULL) ||
+	    (event_jobs_svrattrl == NULL)) {
 		log_err(-1, __func__, "Bad input parameter!");
 		rc = -1;
 		goto populate_svrattrl_fail;
@@ -214,7 +213,7 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 
 		if (fp == NULL) {
 			snprintf(log_buffer, sizeof(log_buffer),
-				"failed to open input file %s", input_file);
+				 "failed to open input file %s", input_file);
 			log_err(errno, __func__, log_buffer);
 			rc = -1;
 			goto populate_svrattrl_fail;
@@ -224,23 +223,35 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 	}
 
 	hook_perf_stat_start(perf_label, perf_action, 0);
-	if (default_svrattrl) free_attrlist(default_svrattrl);
-	if (event_svrattrl) free_attrlist(event_svrattrl);
-	if (event_job_svrattrl) free_attrlist(event_job_svrattrl);
-	if (event_job_o_svrattrl) free_attrlist(event_job_o_svrattrl);
-	if (event_resv_svrattrl) free_attrlist(event_resv_svrattrl);
-	if (event_vnode_svrattrl) free_attrlist(event_vnode_svrattrl);
-	if (event_vnode_fail_svrattrl) free_attrlist(event_vnode_fail_svrattrl);
-	if (job_failed_mom_list_svrattrl) free_attrlist(job_failed_mom_list_svrattrl);
-	if (job_succeeded_mom_list_svrattrl) free_attrlist(job_succeeded_mom_list_svrattrl);
-	if (event_src_queue_svrattrl) free_attrlist(event_src_queue_svrattrl);
-	if (event_aoe_svrattrl) free_attrlist(event_aoe_svrattrl);
-	if (event_argv_svrattrl) free_attrlist(event_argv_svrattrl);
-	if (event_jobs_svrattrl) free_attrlist(event_jobs_svrattrl);
-
+	if (default_svrattrl)
+		free_attrlist(default_svrattrl);
+	if (event_svrattrl)
+		free_attrlist(event_svrattrl);
+	if (event_job_svrattrl)
+		free_attrlist(event_job_svrattrl);
+	if (event_job_o_svrattrl)
+		free_attrlist(event_job_o_svrattrl);
+	if (event_resv_svrattrl)
+		free_attrlist(event_resv_svrattrl);
+	if (event_vnode_svrattrl)
+		free_attrlist(event_vnode_svrattrl);
+	if (event_vnode_fail_svrattrl)
+		free_attrlist(event_vnode_fail_svrattrl);
+	if (job_failed_mom_list_svrattrl)
+		free_attrlist(job_failed_mom_list_svrattrl);
+	if (job_succeeded_mom_list_svrattrl)
+		free_attrlist(job_succeeded_mom_list_svrattrl);
+	if (event_src_queue_svrattrl)
+		free_attrlist(event_src_queue_svrattrl);
+	if (event_aoe_svrattrl)
+		free_attrlist(event_aoe_svrattrl);
+	if (event_argv_svrattrl)
+		free_attrlist(event_argv_svrattrl);
+	if (event_jobs_svrattrl)
+		free_attrlist(event_jobs_svrattrl);
 
 	in_data_sz = STRBUF;
-	in_data = (char *)malloc(in_data_sz);
+	in_data = (char *) malloc(in_data_sz);
 	if (in_data == NULL) {
 		log_err(errno, __func__, "malloc failed");
 		rc = -1;
@@ -274,30 +285,30 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 		/* so on Windows, there's a carriage return (\r) line feed (\n), */
 		/* then the linefeed needs to get processed out */
 		if (ll >= 2) {
-			if (in_data[ll-2] == '\r') {
+			if (in_data[ll - 2] == '\r') {
 				/* remove newline */
-				in_data[ll-2] = '\0';
+				in_data[ll - 2] = '\0';
 			}
 		}
 #endif
 		if ((p = strchr(in_data, '=')) != NULL) {
-			b_triple_quotes = starts_with_triple_quotes(p+1);
+			b_triple_quotes = starts_with_triple_quotes(p + 1);
 		}
 
-		if (in_data[ll-1] == '\n') {
+		if (in_data[ll - 1] == '\n') {
 			e_triple_quotes = ends_with_triple_quotes(in_data, 0);
 
 			if (b_triple_quotes && !e_triple_quotes) {
-				int	jj;
+				int jj;
 
 				while (fgets(buf_data, STRBUF, fp) != NULL) {
 					if (pbs_strcat(&in_data, &in_data_sz,
-						buf_data) == NULL) {
+						       buf_data) == NULL) {
 						goto populate_svrattrl_fail;
 					}
 
 					jj = strlen(in_data);
-					if ((in_data[jj-1] != '\n') &&
+					if ((in_data[jj - 1] != '\n') &&
 					    (ftell(fp) != endpos)) {
 						/* get more input for
 						 * current item.
@@ -305,7 +316,7 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 						continue;
 					}
 					e_triple_quotes =
-					   ends_with_triple_quotes(in_data, 0);
+						ends_with_triple_quotes(in_data, 0);
 
 					if (e_triple_quotes) {
 						break;
@@ -313,27 +324,27 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 				}
 
 				if ((!b_triple_quotes && e_triple_quotes) ||
-					(b_triple_quotes && !e_triple_quotes)) {
+				    (b_triple_quotes && !e_triple_quotes)) {
 					snprintf(log_buffer, sizeof(log_buffer),
-						"unmatched triple quotes! Skipping  line %s",
-						in_data);
+						 "unmatched triple quotes! Skipping  line %s",
+						 in_data);
 					log_err(PBSE_INTERNAL, __func__, log_buffer);
 					/* process a new line */
 					in_data[0] = '\0';
 					continue;
 				}
-				in_data[strlen(in_data)-1] = '\0';
+				in_data[strlen(in_data) - 1] = '\0';
 
 			} else {
 				/* remove newline */
-				in_data[ll-1] = '\0';
+				in_data[ll - 1] = '\0';
 			}
 		} else if (ftell(fp) != endpos) { /* continued on next line */
 			/* get more input for current item.  */
 			continue;
 		}
 		data_value = NULL;
-		if ((p=strchr(in_data, '=')) != NULL) {
+		if ((p = strchr(in_data, '=')) != NULL) {
 			int i;
 			*p = '\0';
 			p++;
@@ -347,16 +358,15 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 			}
 			data_value = p;
 			if (e_triple_quotes) {
-				(void)ends_with_triple_quotes(p, 1);
+				(void) ends_with_triple_quotes(p, 1);
 			}
 
 			i = strlen(p);
-			while (--i > 0) {	/* strip trailing blanks */
-				if (!isspace((int)*(p+i)))
+			while (--i > 0) { /* strip trailing blanks */
+				if (!isspace((int) *(p + i)))
 					break;
-				*(p+i) = '\0';
+				*(p + i) = '\0';
 			}
-
 		}
 		obj_name = in_data;
 
@@ -382,7 +392,7 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 			/* now let's if there's anything quoted inside */
 			pc3 = strchr(pc1, '"');
 			if (pc3 != NULL)
-				pc4 = strchr(pc3+1, '"');
+				pc4 = strchr(pc3 + 1, '"');
 			else
 				pc4 = NULL;
 
@@ -415,8 +425,8 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 						/* 000,001,002,003,...,010,011,... */
 						/* respecting natural order. */
 						/* leading zeros added up to a length of 8 */
-						snprintf(argv_index, sizeof(argv_index)-1,
-							"%08d", atoi(resc_str));
+						snprintf(argv_index, sizeof(argv_index) - 1,
+							 "%08d", atoi(resc_str));
 
 						rc = add_to_svrattrl_list_sorted(event_argv_svrattrl, name_str, resc_str, val_str, 0, argv_index);
 					}
@@ -425,7 +435,7 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 						rc = add_to_svrattrl_list(event_svrattrl, name_str, resc_str, val_str, 0, NULL);
 				}
 			} else if (event_job_svrattrl &&
-			(strcmp(obj_name, EVENT_JOB_OBJECT) == 0) ) {
+				   (strcmp(obj_name, EVENT_JOB_OBJECT) == 0)) {
 				if (strcmp(name_str, PY_JOB_FAILED_MOM_LIST) == 0) {
 					if (job_failed_mom_list_svrattrl) {
 						rc = add_to_svrattrl_list(job_failed_mom_list_svrattrl, val_str, NULL, NULL, 0, NULL);
@@ -438,17 +448,17 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 					rc = add_to_svrattrl_list(event_job_svrattrl, name_str, resc_str, val_str, 0, NULL);
 				}
 			} else if (event_job_o_svrattrl &&
-			(strcmp(obj_name, EVENT_JOB_O_OBJECT) == 0)) {
+				   (strcmp(obj_name, EVENT_JOB_O_OBJECT) == 0)) {
 				rc = add_to_svrattrl_list(event_job_o_svrattrl, name_str,
-					resc_str, val_str, 0, NULL);
+							  resc_str, val_str, 0, NULL);
 			} else if (event_resv_svrattrl &&
-			     (strcmp(obj_name, EVENT_RESV_OBJECT) == 0)) {
+				   (strcmp(obj_name, EVENT_RESV_OBJECT) == 0)) {
 				rc = add_to_svrattrl_list(event_resv_svrattrl, name_str,
-					resc_str, val_str, 0, NULL);
+							  resc_str, val_str, 0, NULL);
 			} else if ((event_vnode_fail_svrattrl &&
-				  (strncmp(obj_name, EVENT_VNODELIST_FAIL_OBJECT, vn_fail_obj_len) == 0)) ||
-				  (event_vnode_svrattrl &&
-				  (strncmp(obj_name, EVENT_VNODELIST_OBJECT, vn_obj_len) == 0))) {
+				    (strncmp(obj_name, EVENT_VNODELIST_FAIL_OBJECT, vn_fail_obj_len) == 0)) ||
+				   (event_vnode_svrattrl &&
+				    (strncmp(obj_name, EVENT_VNODELIST_OBJECT, vn_obj_len) == 0))) {
 
 				/* pbs.event().vnode_list_fail[<vnode_name>]\0<attribute name>\0<resource name>\0<value>
 				 * where obj_name = pbs.event().vnode_list_fail[<vnode_name>]
@@ -467,9 +477,9 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 				 *	pbs.event().vnode_list["altix[5]"].<attr>=<val>
 				 * and "altix[5]" is a valid vnode id.
 				 */
-				if (((pc1=strchr(obj_name, '[')) != NULL) &&
-					((pc2=strrchr(obj_name, ']')) != NULL) &&
-					(pc2 > pc1)) {
+				if (((pc1 = strchr(obj_name, '[')) != NULL) &&
+				    ((pc2 = strrchr(obj_name, ']')) != NULL) &&
+				    (pc2 > pc1)) {
 					pc1++; /* <vnode_name> part */
 
 					*pc2 = '.'; /* pbs.event().vnode_list_fail[<vnode_name>. or pbs.event().vnode_list[<vnode_nam.. */
@@ -478,7 +488,7 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 					/* now let's if there's anything quoted inside */
 					pc3 = strchr(pc1, '"');
 					if (pc3 != NULL)
-						pc4 = strchr(pc3+1, '"');
+						pc4 = strchr(pc3 + 1, '"');
 					else
 						pc4 = NULL;
 
@@ -490,24 +500,23 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 						/* as strcpy() does something odd under rhel6/centos if the */
 						/* destination (pc4)  and the source (name_str) are in the same */
 						/* memory area, even though non-overlapping. */
-						strncpy(name_str_buf, name_str, sizeof(name_str_buf)-1);
+						strncpy(name_str_buf, name_str, sizeof(name_str_buf) - 1);
 						strcpy(pc4, name_str_buf); /* <vnode_name>.<attr name> */
 						name_str = pc3;
 					} else {
-						strncpy(name_str_buf, name_str, sizeof(name_str_buf)-1);
+						strncpy(name_str_buf, name_str, sizeof(name_str_buf) - 1);
 						strcpy(pc2, name_str_buf); /* <vnode_name>.<attr name> */
 						name_str = pc1;
 					}
-					attr_name=strrchr(name_str, '.');
+					attr_name = strrchr(name_str, '.');
 					if (attr_name == NULL)
 						attr_name = name_str;
 					else
 						attr_name++;
 
-
 				} else {
 					snprintf(log_buffer, sizeof(log_buffer),
-						"object '%s' does not have a vnode name!", obj_name);
+						 "object '%s' does not have a vnode name!", obj_name);
 					log_err(-1, __func__, log_buffer);
 					/* process a new line */
 					in_data[0] = '\0';
@@ -532,9 +541,9 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 				 *		pbs.event().job_list["5.altix"].<attr>=<val>
 				 * and "5.altix" is a valid job id.
 				 */
-				if (((pc1=strchr(obj_name, '[')) != NULL) &&
-					((pc2=strrchr(obj_name, ']')) != NULL) &&
-					(pc2 > pc1)) {
+				if (((pc1 = strchr(obj_name, '[')) != NULL) &&
+				    ((pc2 = strrchr(obj_name, ']')) != NULL) &&
+				    (pc2 > pc1)) {
 					pc1++; /* <jobid> part */
 
 					*pc2 = '.'; /* pbs.event().job_list[<jobid>. */
@@ -543,7 +552,7 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 					/* now let's if there's anything quoted inside */
 					pc3 = strchr(pc1, '"');
 					if (pc3 != NULL)
-						pc4 = strchr(pc3+1, '"');
+						pc4 = strchr(pc3 + 1, '"');
 					else
 						pc4 = NULL;
 
@@ -555,51 +564,50 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 						/* as strcpy() does something odd under rhel6/centos if the */
 						/* destination (pc4)  and the source (name_str) are in the same */
 						/* memory area, even though non-overlapping. */
-						strncpy(name_str_buf, name_str, sizeof(name_str_buf)-1);
+						strncpy(name_str_buf, name_str, sizeof(name_str_buf) - 1);
 						strcpy(pc4, name_str_buf); /* <jobid>.<attr name> */
 						name_str = pc3;
 					} else {
-						strncpy(name_str_buf, name_str, sizeof(name_str_buf)-1);
+						strncpy(name_str_buf, name_str, sizeof(name_str_buf) - 1);
 						strcpy(pc2, name_str_buf); /* <jobid>.<attr name> */
 						name_str = pc1;
 					}
-					attr_name=strrchr(name_str, '.');
+					attr_name = strrchr(name_str, '.');
 					if (attr_name == NULL)
 						attr_name = name_str;
 					else
 						attr_name++;
 
-
 				} else {
 					snprintf(log_buffer, sizeof(log_buffer),
-						"object '%s' does not have a job name!", obj_name);
+						 "object '%s' does not have a job name!", obj_name);
 					log_err(-1, __func__, log_buffer);
 					/* process a new line */
 					in_data[0] = '\0';
 					continue;
 				}
 				rc = add_to_svrattrl_list_sorted(event_jobs_svrattrl,
-					name_str, resc_str, val_str, 0, NULL);
+								 name_str, resc_str, val_str, 0, NULL);
 			} else if (event_src_queue_svrattrl && (strcmp(obj_name, EVENT_SRC_QUEUE_OBJECT) == 0)) {
 				rc = add_to_svrattrl_list(event_src_queue_svrattrl,
-					name_str, resc_str, val_str, 0, NULL);
+							  name_str, resc_str, val_str, 0, NULL);
 			} else if (event_aoe_svrattrl && (strcmp(obj_name, EVENT_AOE_OBJECT) == 0)) {
 				rc = add_to_svrattrl_list(event_aoe_svrattrl, name_str,
-					resc_str, val_str, 0, NULL);
+							  resc_str, val_str, 0, NULL);
 			} else if ((strcmp(obj_name, PBS_OBJ) == 0) &&
-				(strcmp(name_str, GET_NODE_NAME_FUNC) == 0)) {
+				   (strcmp(name_str, GET_NODE_NAME_FUNC) == 0)) {
 				strncpy(svr_interp_data.local_host_name, val_str,
 					PBS_MAXHOSTNAME);
 				rc = 0;
 			} else {
 				rc = add_to_svrattrl_list(default_svrattrl,
-					name_str, resc_str, val_str, 0, NULL);
+							  name_str, resc_str, val_str, 0, NULL);
 			}
 
 			if (rc == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
-					"failed to add_to_svrattrl_list(%s,%s,%s",
-					name_str, resc_str, (val_str?val_str:""));
+					 "failed to add_to_svrattrl_list(%s,%s,%s",
+					 name_str, resc_str, (val_str ? val_str : ""));
 				log_err(errno, __func__, log_buffer);
 				goto populate_svrattrl_fail;
 			}
@@ -617,17 +625,28 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 	return (0);
 
 populate_svrattrl_fail:
-	if (default_svrattrl) free_attrlist(default_svrattrl);
-	if (event_svrattrl) free_attrlist(event_svrattrl);
-	if (event_job_svrattrl) free_attrlist(event_job_svrattrl);
-	if (event_job_o_svrattrl) free_attrlist(event_job_o_svrattrl);
-	if (event_resv_svrattrl) free_attrlist(event_resv_svrattrl);
-	if (event_vnode_svrattrl) free_attrlist(event_vnode_svrattrl);
-	if (event_vnode_fail_svrattrl) free_attrlist(event_vnode_fail_svrattrl);
-	if (event_src_queue_svrattrl) free_attrlist(event_src_queue_svrattrl);
-	if (event_aoe_svrattrl) free_attrlist(event_aoe_svrattrl);
-	if (event_argv_svrattrl) free_attrlist(event_argv_svrattrl);
-	if (event_jobs_svrattrl) free_attrlist(event_jobs_svrattrl);
+	if (default_svrattrl)
+		free_attrlist(default_svrattrl);
+	if (event_svrattrl)
+		free_attrlist(event_svrattrl);
+	if (event_job_svrattrl)
+		free_attrlist(event_job_svrattrl);
+	if (event_job_o_svrattrl)
+		free_attrlist(event_job_o_svrattrl);
+	if (event_resv_svrattrl)
+		free_attrlist(event_resv_svrattrl);
+	if (event_vnode_svrattrl)
+		free_attrlist(event_vnode_svrattrl);
+	if (event_vnode_fail_svrattrl)
+		free_attrlist(event_vnode_fail_svrattrl);
+	if (event_src_queue_svrattrl)
+		free_attrlist(event_src_queue_svrattrl);
+	if (event_aoe_svrattrl)
+		free_attrlist(event_aoe_svrattrl);
+	if (event_argv_svrattrl)
+		free_attrlist(event_argv_svrattrl);
+	if (event_jobs_svrattrl)
+		free_attrlist(event_jobs_svrattrl);
 
 	if ((fp != NULL) && (fp != stdin))
 		fclose(fp);
@@ -685,53 +704,53 @@ populate_svrattrl_fail:
  */
 int
 pbs_python_populate_server_svrattrl_from_file(char *input_file,
-	pbs_list_head *default_svrattrl,
-	pbs_list_head *server_svrattrl,
-	pbs_list_head *server_jobs_svrattrl,
-	pbs_list_head *server_jobs_ids_svrattrl,
-	pbs_list_head *server_queues_svrattrl,
-	pbs_list_head *server_queues_names_svrattrl,
-	pbs_list_head *server_resvs_svrattrl,
-	pbs_list_head *server_resvs_resvids_svrattrl,
-	pbs_list_head *server_vnodes_svrattrl,
-	pbs_list_head *server_vnodes_names_svrattrl,
-	char *perf_label, char *perf_action)
+					      pbs_list_head *default_svrattrl,
+					      pbs_list_head *server_svrattrl,
+					      pbs_list_head *server_jobs_svrattrl,
+					      pbs_list_head *server_jobs_ids_svrattrl,
+					      pbs_list_head *server_queues_svrattrl,
+					      pbs_list_head *server_queues_names_svrattrl,
+					      pbs_list_head *server_resvs_svrattrl,
+					      pbs_list_head *server_resvs_resvids_svrattrl,
+					      pbs_list_head *server_vnodes_svrattrl,
+					      pbs_list_head *server_vnodes_names_svrattrl,
+					      char *perf_label, char *perf_action)
 {
 
 	char *attr_name;
 	char *name_str;
-	char name_str_buf[STRBUF+1] = {'\0'};
+	char name_str_buf[STRBUF + 1] = {'\0'};
 	char *resc_str;
 	char *val_str;
 	char *obj_name;
 	char *obj_name2;
-	int  rc = -1;
-	int  rc2 = -1;
+	int rc = -1;
+	int rc2 = -1;
 	char *pc, *pc1, *pc2, *pc3, *pc4;
 	char *in_data = NULL;
 	char *tmp_data = NULL;
 	long int curpos;
 	long int endpos;
-	size_t   in_data_sz;
+	size_t in_data_sz;
 	char *data_value;
 	size_t ll;
 	FILE *fp = NULL;
 	char *p, *p2;
-	int   jobs_obj_len = strlen(SERVER_JOB_OBJECT);
-	int   queue_obj_len = strlen(SERVER_QUEUE_OBJECT);
-	int   resv_obj_len = strlen(SERVER_RESV_OBJECT);
-	int   vnode_obj_len = strlen(SERVER_VNODE_OBJECT);
+	int jobs_obj_len = strlen(SERVER_JOB_OBJECT);
+	int queue_obj_len = strlen(SERVER_QUEUE_OBJECT);
+	int resv_obj_len = strlen(SERVER_RESV_OBJECT);
+	int vnode_obj_len = strlen(SERVER_VNODE_OBJECT);
 
 	if ((default_svrattrl == NULL) ||
-		(server_svrattrl == NULL) ||
-		(server_jobs_svrattrl == NULL) ||
-		(server_jobs_ids_svrattrl == NULL) ||
-		(server_queues_svrattrl == NULL) ||
-		(server_queues_names_svrattrl == NULL) ||
-		(server_vnodes_svrattrl  == NULL) ||
-		(server_vnodes_names_svrattrl  == NULL) ||
-		(server_resvs_svrattrl  == NULL) ||
-		(server_resvs_resvids_svrattrl  == NULL)) {
+	    (server_svrattrl == NULL) ||
+	    (server_jobs_svrattrl == NULL) ||
+	    (server_jobs_ids_svrattrl == NULL) ||
+	    (server_queues_svrattrl == NULL) ||
+	    (server_queues_names_svrattrl == NULL) ||
+	    (server_vnodes_svrattrl == NULL) ||
+	    (server_vnodes_names_svrattrl == NULL) ||
+	    (server_resvs_svrattrl == NULL) ||
+	    (server_resvs_resvids_svrattrl == NULL)) {
 		log_err(errno, __func__, "Bad input parameter!");
 		rc = -1;
 		goto populate_server_svrattrl_fail;
@@ -742,7 +761,7 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 
 		if (fp == NULL) {
 			snprintf(log_buffer, sizeof(log_buffer),
-				"failed to open input file %s", input_file);
+				 "failed to open input file %s", input_file);
 			log_err(errno, __func__, log_buffer);
 			rc = -1;
 			goto populate_server_svrattrl_fail;
@@ -795,7 +814,7 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 	}
 
 	in_data_sz = STRBUF;
-	in_data = (char *)malloc(in_data_sz);
+	in_data = (char *) malloc(in_data_sz);
 	if (in_data == NULL) {
 		log_err(errno, __func__, "malloc failed");
 		rc = -1;
@@ -822,18 +841,18 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 		/* so on Windows, there's a carriage return (\r) line feed (\n), */
 		/* then the linefeed needs to get processed out */
 		if (ll >= 2) {
-			if (in_data[ll-2] == '\r') {
+			if (in_data[ll - 2] == '\r') {
 				/* remove newline */
-				in_data[ll-2] = '\0';
+				in_data[ll - 2] = '\0';
 			}
 		}
 #endif
-		if (in_data[ll-1] == '\n') {
+		if (in_data[ll - 1] == '\n') {
 			/* remove newline */
-			in_data[ll-1] = '\0';
+			in_data[ll - 1] = '\0';
 		} else if (ftell(fp) != endpos) { /* continued on next line */
-			in_data_sz = 2*in_data_sz;
-			tmp_data = (char *)realloc(in_data, in_data_sz);
+			in_data_sz = 2 * in_data_sz;
+			tmp_data = (char *) realloc(in_data, in_data_sz);
 			if (tmp_data == NULL) {
 				log_err(errno, __func__, "realloc failed");
 				rc = -1;
@@ -849,7 +868,7 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 		}
 		curpos = ftell(fp);
 		data_value = NULL;
-		if ((p=strchr(in_data, '=')) != NULL) {
+		if ((p = strchr(in_data, '=')) != NULL) {
 			int i;
 			*p = '\0';
 			p++;
@@ -860,12 +879,11 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 			data_value = p;
 			/* and strip off trailing spaces from <data_value> */
 			i = strlen(p);
-			while (--i > 0) {	/* strip trailing blanks */
-				if (!isspace((int)*(p+i)))
+			while (--i > 0) { /* strip trailing blanks */
+				if (!isspace((int) *(p + i)))
 					break;
-				*(p+i) = '\0';
+				*(p + i) = '\0';
 			}
-
 		}
 		obj_name = in_data;
 
@@ -891,7 +909,7 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 			/* now let's if there's anything quoted inside */
 			pc3 = strchr(pc1, '"');
 			if (pc3 != NULL)
-				pc4 = strchr(pc3+1, '"');
+				pc4 = strchr(pc3 + 1, '"');
 			else
 				pc4 = NULL;
 
@@ -912,9 +930,9 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 				}
 				rc2 = 0;
 			} else if (server_jobs_svrattrl &&
-			(strncmp(obj_name, SERVER_JOB_OBJECT,
-				jobs_obj_len) == 0)) {
-				obj_name2 = obj_name+jobs_obj_len;
+				   (strncmp(obj_name, SERVER_JOB_OBJECT,
+					    jobs_obj_len) == 0)) {
+				obj_name2 = obj_name + jobs_obj_len;
 
 				/* pbs.server().job(<jobid>)\0<attribute name>\0<resource name>\0<value>
 				 * where obj_name = pbs.server().job(<jobid>)
@@ -929,9 +947,9 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 				 *		pbs.server().job("23.ricardo").<attr>=<val>
 				 * and "23.ricardo" is a valid job id.
 				 */
-				if (((pc1=strchr(obj_name2, '(')) != NULL) &&
-					((pc2=strchr(obj_name2, ')')) != NULL) &&
-					(pc2 > pc1)) {
+				if (((pc1 = strchr(obj_name2, '(')) != NULL) &&
+				    ((pc2 = strchr(obj_name2, ')')) != NULL) &&
+				    (pc2 > pc1)) {
 					pc1++; /* <jobid> part */
 
 					*pc2 = '.'; /* pbs.server().job(<jobid>. */
@@ -940,7 +958,7 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 					/* now let's if there's anything quoted inside */
 					pc3 = strchr(pc1, '"');
 					if (pc3 != NULL)
-						pc4 = strchr(pc3+1, '"');
+						pc4 = strchr(pc3 + 1, '"');
 					else
 						pc4 = NULL;
 
@@ -952,45 +970,44 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 						/* as strcpy() does something odd under rhel6/centos if the */
 						/* destination (pc4)  and the source (name_str) are in the same */
 						/* memory area, even though non-overlapping. */
-						strncpy(name_str_buf, name_str, sizeof(name_str_buf)-1);
+						strncpy(name_str_buf, name_str, sizeof(name_str_buf) - 1);
 						strcpy(pc4, name_str_buf); /* <jobid>.<attr name> */
 						name_str = pc3;
 					} else {
-						strncpy(name_str_buf, name_str, sizeof(name_str_buf)-1);
+						strncpy(name_str_buf, name_str, sizeof(name_str_buf) - 1);
 						strcpy(pc2, name_str_buf); /* <jobid>.<attr name> */
 						name_str = pc1;
 					}
-					attr_name=strrchr(name_str, '.');
+					attr_name = strrchr(name_str, '.');
 					if (attr_name == NULL)
 						attr_name = name_str;
 					else
 						attr_name++;
 
-
 				} else {
 					snprintf(log_buffer, sizeof(log_buffer),
-						"object '%s' does not have a job id!", obj_name);
+						 "object '%s' does not have a job id!", obj_name);
 					log_err(-1, __func__, log_buffer);
 					continue;
 				}
 				rc = add_to_svrattrl_list_sorted(server_jobs_svrattrl,
-					name_str, resc_str, val_str, 0, NULL);
+								 name_str, resc_str, val_str, 0, NULL);
 
-				if ((p2=strrchr(name_str, '.')) != NULL)
+				if ((p2 = strrchr(name_str, '.')) != NULL)
 					*p2 = '\0'; /* name_str=<jobid> */
 
 				if (!find_svrattrl_list_entry(server_jobs_ids_svrattrl,
-					name_str, NULL))
+							      name_str, NULL))
 					rc2 = add_to_svrattrl_list(server_jobs_ids_svrattrl, name_str, NULL, "", 0, NULL);
 
 				if (p2 != NULL)
 					*p2 = '.'; /* name_str=<jobid>.<attr> */
 
 			} else if (server_vnodes_svrattrl &&
-			(strncmp(obj_name, SERVER_VNODE_OBJECT,
-				vnode_obj_len) == 0)) {
+				   (strncmp(obj_name, SERVER_VNODE_OBJECT,
+					    vnode_obj_len) == 0)) {
 
-				obj_name2 = obj_name+vnode_obj_len;
+				obj_name2 = obj_name + vnode_obj_len;
 				/* pbs.server().vnode(<vnode_name>)\0<attribute name>\0<resource name>\0<value>
 				 * where obj_name = pbs.server().vnode(<vnode_name>)
 				 *       obj_name = (<vnode_name>)
@@ -1003,9 +1020,9 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 				 *		pbs.server().vnode("altix[5]").<attr>=<val>
 				 * and "altix[5]" is a valid vnode id.
 				 */
-				if (((pc1=strchr(obj_name2, '(')) != NULL) &&
-					((pc2=strrchr(obj_name2, ')')) != NULL) &&
-					(pc2 > pc1)) {
+				if (((pc1 = strchr(obj_name2, '(')) != NULL) &&
+				    ((pc2 = strrchr(obj_name2, ')')) != NULL) &&
+				    (pc2 > pc1)) {
 					pc1++; /* <vnode_name> part */
 
 					*pc2 = '.'; /* pbs.server().vnode(<vnode_name>. */
@@ -1014,7 +1031,7 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 					/* now let's if there's anything quoted inside */
 					pc3 = strchr(pc1, '"');
 					if (pc3 != NULL)
-						pc4 = strchr(pc3+1, '"');
+						pc4 = strchr(pc3 + 1, '"');
 					else
 						pc4 = NULL;
 
@@ -1026,45 +1043,44 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 						/* as strcpy() does something odd under rhel6/centos if the */
 						/* destination (pc4)  and the source (name_str) are in the same */
 						/* memory area, even though non-overlapping. */
-						strncpy(name_str_buf, name_str, sizeof(name_str_buf)-1);
+						strncpy(name_str_buf, name_str, sizeof(name_str_buf) - 1);
 						strcpy(pc4, name_str_buf); /* <vnode_name>.<attr name> */
 						name_str = pc3;
 					} else {
-						strncpy(name_str_buf, name_str, sizeof(name_str_buf)-1);
+						strncpy(name_str_buf, name_str, sizeof(name_str_buf) - 1);
 						strcpy(pc2, name_str_buf); /* <vnode_name>.<attr name> */
 						name_str = pc1;
 					}
-					attr_name=strrchr(name_str, '.');
+					attr_name = strrchr(name_str, '.');
 					if (attr_name == NULL)
 						attr_name = name_str;
 					else
 						attr_name++;
 
-
 				} else {
 					snprintf(log_buffer, sizeof(log_buffer),
-						"object '%s' does not have a vnode name!", obj_name);
+						 "object '%s' does not have a vnode name!", obj_name);
 					log_err(-1, __func__, log_buffer);
 					continue;
 				}
 				rc = add_to_svrattrl_list_sorted(server_vnodes_svrattrl,
-					name_str, resc_str,
-					return_internal_value(attr_name, val_str), 0, NULL);
-				if ((p2=strrchr(name_str, '.')) != NULL)
+								 name_str, resc_str,
+								 return_internal_value(attr_name, val_str), 0, NULL);
+				if ((p2 = strrchr(name_str, '.')) != NULL)
 					*p2 = '\0'; /* name_str=<vname> */
 
 				if (!find_svrattrl_list_entry(server_vnodes_names_svrattrl,
-					name_str, NULL))
+							      name_str, NULL))
 					rc2 = add_to_svrattrl_list(server_vnodes_names_svrattrl, name_str, NULL, "", 0, NULL);
 
 				if (p2 != NULL)
 					*p2 = '.'; /* name_str=<vname>.<attr> */
 
 			} else if (server_queues_svrattrl &&
-			(strncmp(obj_name, SERVER_QUEUE_OBJECT,
-				queue_obj_len) == 0)) {
+				   (strncmp(obj_name, SERVER_QUEUE_OBJECT,
+					    queue_obj_len) == 0)) {
 
-				obj_name2 = obj_name+queue_obj_len;
+				obj_name2 = obj_name + queue_obj_len;
 				/* pbs.server().queue(<qname>)\0<attribute name>\0<resource name>\0<value>
 				 * where obj_name = pbs.server().queue(<qname>)
 				 * where obj_name = pbs.server().queue(<qname>)
@@ -1077,9 +1093,9 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 				 *		pbs.server().queue("workq").<attr>=<val>
 				 * and "workq" is a valid queue id.
 				 */
-				if (((pc1=strrchr(obj_name2, '(')) != NULL) &&
-					((pc2=strrchr(obj_name2, ')')) != NULL) &&
-					(pc2 > pc1)) {
+				if (((pc1 = strrchr(obj_name2, '(')) != NULL) &&
+				    ((pc2 = strrchr(obj_name2, ')')) != NULL) &&
+				    (pc2 > pc1)) {
 					pc1++; /* <qname> part */
 
 					*pc2 = '.'; /* pbs.server().queue(<qname>. */
@@ -1088,7 +1104,7 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 					/* now let's if there's anything quoted inside */
 					pc3 = strchr(pc1, '"');
 					if (pc3 != NULL)
-						pc4 = strchr(pc3+1, '"');
+						pc4 = strchr(pc3 + 1, '"');
 					else
 						pc4 = NULL;
 
@@ -1100,43 +1116,42 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 						/* as strcpy() does something odd under rhel6/centos if the */
 						/* destination (pc4)  and the source (name_str) are in the same */
 						/* memory area, even though non-overlapping. */
-						strncpy(name_str_buf, name_str, sizeof(name_str_buf)-1);
+						strncpy(name_str_buf, name_str, sizeof(name_str_buf) - 1);
 						strcpy(pc4, name_str_buf); /* <qname>.<attr name> */
 						name_str = pc3;
 					} else {
-						strncpy(name_str_buf, name_str, sizeof(name_str_buf)-1);
+						strncpy(name_str_buf, name_str, sizeof(name_str_buf) - 1);
 						strcpy(pc2, name_str_buf); /* <qname>.<attr name> */
 						name_str = pc1;
 					}
-					attr_name=strrchr(name_str, '.');
+					attr_name = strrchr(name_str, '.');
 					if (attr_name == NULL)
 						attr_name = name_str;
 					else
 						attr_name++;
 
-
 				} else {
 					snprintf(log_buffer, sizeof(log_buffer),
-						"object '%s' does not have a queue name!", obj_name);
+						 "object '%s' does not have a queue name!", obj_name);
 					log_err(-1, __func__, log_buffer);
 					continue;
 				}
 				rc = add_to_svrattrl_list_sorted(server_queues_svrattrl,
-					name_str, resc_str, val_str, 0, NULL);
-				if ((p2=strrchr(name_str, '.')) != NULL)
+								 name_str, resc_str, val_str, 0, NULL);
+				if ((p2 = strrchr(name_str, '.')) != NULL)
 					*p2 = '\0'; /* name_str=<qname> */
 
 				if (!find_svrattrl_list_entry(server_queues_names_svrattrl,
-					name_str, NULL))
+							      name_str, NULL))
 					rc2 = add_to_svrattrl_list(server_queues_names_svrattrl, name_str, NULL, "", 0, NULL);
 
 				if (p2 != NULL)
 					*p2 = '.'; /* name_str=<qname>.<attr> */
 			} else if (server_resvs_svrattrl &&
-			(strncmp(obj_name, SERVER_RESV_OBJECT,
-				resv_obj_len) == 0)) {
+				   (strncmp(obj_name, SERVER_RESV_OBJECT,
+					    resv_obj_len) == 0)) {
 
-				obj_name2 = obj_name+resv_obj_len;
+				obj_name2 = obj_name + resv_obj_len;
 				/* pbs.server().resv(<resv_name>)\0<attribute name>\0<resource name>\0<value>
 				 * where obj_name = pbs.server().resv(<resv_name>)
 				 * 	 obj_name = (<resv_name>)
@@ -1149,9 +1164,9 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 				 *		pbs.server().resv("R5").<attr>=<val>
 				 * and "R5" is a valid resv id.
 				 */
-				if (((pc1=strrchr(obj_name2, '(')) != NULL) &&
-					((pc2=strrchr(obj_name2, ')')) != NULL) &&
-					(pc2 > pc1)) {
+				if (((pc1 = strrchr(obj_name2, '(')) != NULL) &&
+				    ((pc2 = strrchr(obj_name2, ')')) != NULL) &&
+				    (pc2 > pc1)) {
 					pc1++; /* <resv_name> part */
 
 					*pc2 = '.'; /* pbs.server().resv(<resv_name>. */
@@ -1160,7 +1175,7 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 					/* now let's if there's anything quoted inside */
 					pc3 = strchr(pc1, '"');
 					if (pc3 != NULL)
-						pc4 = strchr(pc3+1, '"');
+						pc4 = strchr(pc3 + 1, '"');
 					else
 						pc4 = NULL;
 
@@ -1172,30 +1187,29 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 						/* as strcpy() does something odd under rhel6/centos if the */
 						/* destination (pc4)  and the source (name_str) are in the same */
 						/* memory area, even though non-overlapping. */
-						strncpy(name_str_buf, name_str, sizeof(name_str_buf)-1);
+						strncpy(name_str_buf, name_str, sizeof(name_str_buf) - 1);
 						strcpy(pc4, name_str_buf); /* <resv_name>.<attr name> */
 						name_str = pc3;
 					} else {
-						strncpy(name_str_buf, name_str, sizeof(name_str_buf)-1);
+						strncpy(name_str_buf, name_str, sizeof(name_str_buf) - 1);
 						strcpy(pc2, name_str_buf); /* <resv_name>.<attr name> */
 						name_str = pc1;
 					}
-					attr_name=strrchr(name_str, '.');
+					attr_name = strrchr(name_str, '.');
 					if (attr_name == NULL)
 						attr_name = name_str;
 					else
 						attr_name++;
 
-
 				} else {
 					snprintf(log_buffer, sizeof(log_buffer),
-						"object '%s' does not have a resv name!", obj_name);
+						 "object '%s' does not have a resv name!", obj_name);
 					log_err(-1, __func__, log_buffer);
 					continue;
 				}
 				rc = add_to_svrattrl_list_sorted(server_resvs_svrattrl,
-					name_str, resc_str, val_str, 0, NULL);
-				if ((p2=strrchr(name_str, '.')) != NULL)
+								 name_str, resc_str, val_str, 0, NULL);
+				if ((p2 = strrchr(name_str, '.')) != NULL)
 					*p2 = '\0'; /* name_str=<qname> */
 
 				if (!find_svrattrl_list_entry(server_resvs_resvids_svrattrl, name_str, NULL))
@@ -1205,22 +1219,22 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 					*p2 = '.'; /* name_str=<qname>.<attr> */
 			} else {
 				rc = add_to_svrattrl_list(default_svrattrl,
-					name_str, resc_str, val_str, 0, NULL);
+							  name_str, resc_str, val_str, 0, NULL);
 				rc2 = 0;
 			}
 
 			if (rc == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
-					"failed to add_to_svrattrl_list(%s,%s,%s)",
-					name_str, resc_str, (val_str?val_str:""));
+					 "failed to add_to_svrattrl_list(%s,%s,%s)",
+					 name_str, resc_str, (val_str ? val_str : ""));
 				log_err(errno, __func__, log_buffer);
 				goto populate_server_svrattrl_fail;
 			}
 
 			if (rc2 == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
-					"failed to add %s to list of names",
-					name_str);
+					 "failed to add %s to list of names",
+					 name_str);
 				log_err(errno, __func__, log_buffer);
 				goto populate_server_svrattrl_fail;
 			}
@@ -1308,9 +1322,8 @@ fprint_str_array(FILE *fp, char *head_str, void **str_array)
 	int i;
 
 	for (i = 0; str_array[i]; i++)
-		fprintf(fp, "%s[%d]=%s\n", head_str, i, (char *)str_array[i]);
+		fprintf(fp, "%s[%d]=%s\n", head_str, i, (char *) str_array[i]);
 }
-
 
 /**
  * @brief
@@ -1328,40 +1341,40 @@ fprint_str_array(FILE *fp, char *head_str, void **str_array)
  * @retval	NULL	: error
  *
  */
-static char	*
+static char *
 argv_list_to_str(pbs_list_head *argv_list)
 {
-	int	i, len;
-	char	*ret_string = NULL;
+	int i, len;
+	char *ret_string = NULL;
 	svrattrl *plist = NULL;
 
 	if (argv_list == NULL)
 		return NULL;
 
-	len=0;
-	i=0;
+	len = 0;
+	i = 0;
 
 	/* calculate the list size */
-	plist = (svrattrl *)GET_NEXT(*argv_list);
+	plist = (svrattrl *) GET_NEXT(*argv_list);
 	while (plist) {
 		if (plist->al_value == NULL) {
 			return NULL;
 		}
 		len += strlen(plist->al_value);
-		len++;	/* for ' ' (space) */
+		len++; /* for ' ' (space) */
 		i++;
-		plist = (svrattrl *)GET_NEXT(plist->al_link);
+		plist = (svrattrl *) GET_NEXT(plist->al_link);
 	}
 
-	len++;	/* for trailing '\0' */
+	len++; /* for trailing '\0' */
 
 	if (len > 1) { /* not an empty list */
-		ret_string = (char *)malloc(len);
+		ret_string = (char *) malloc(len);
 
 		if (ret_string == NULL)
 			return NULL;
-		i=0;
-		plist = (svrattrl *)GET_NEXT(*argv_list);
+		i = 0;
+		plist = (svrattrl *) GET_NEXT(*argv_list);
 		while (plist) {
 			if (i == 0) {
 				strcpy(ret_string, plist->al_value);
@@ -1370,11 +1383,10 @@ argv_list_to_str(pbs_list_head *argv_list)
 				strcat(ret_string, plist->al_value);
 			}
 			i++;
-			plist = (svrattrl *)GET_NEXT(plist->al_link);
+			plist = (svrattrl *) GET_NEXT(plist->al_link);
 		}
 	}
 	return (ret_string);
-
 }
 
 /**
@@ -1393,16 +1405,16 @@ main(int argc, char *argv[], char *envp[])
 {
 #ifndef WIN32
 	char dirname[MAXPATHLEN + 1];
-	int  env_len = 0;
+	int env_len = 0;
 #else
 	char python_cmdline[MAXBUF + 1];
 #endif
 	char **lenvp = NULL;
-	int  	i, rc;
+	int i, rc;
 
 	/* python externs */
-	extern void pbs_python_svr_initialize_interpreter_data(struct python_interpreter_data *interp_data);
-	extern void pbs_python_svr_destroy_interpreter_data(struct python_interpreter_data *interp_data);
+	extern void pbs_python_svr_initialize_interpreter_data(struct python_interpreter_data * interp_data);
+	extern void pbs_python_svr_destroy_interpreter_data(struct python_interpreter_data * interp_data);
 
 	if (set_msgdaemonname(PBS_PYTHON_PROGRAM)) {
 		fprintf(stderr, "Out of memory\n");
@@ -1426,11 +1438,11 @@ main(int argc, char *argv[], char *envp[])
 	}
 
 	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
-			pbs_conf.locallog, pbs_conf.syslogfac,
-			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+		     pbs_conf.locallog, pbs_conf.syslogfac,
+		     pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 
 	/* by default, server_name is what is set in /etc/pbs.conf */
-	(void)strcpy(server_name, pbs_conf.pbs_server_name);
+	(void) strcpy(server_name, pbs_conf.pbs_server_name);
 
 	/* determine the actual server name */
 	pbs_server_name = pbs_default();
@@ -1477,7 +1489,7 @@ main(int argc, char *argv[], char *envp[])
 	/* initialize the pointers in the resource_def array */
 
 	for (i = 0; i < (svr_resc_size - 1); ++i)
-		svr_resc_def[i].rs_next = &svr_resc_def[i+1];
+		svr_resc_def[i].rs_next = &svr_resc_def[i + 1];
 	/* last entry is left with null pointer */
 
 	if ((argv[1] == NULL) || (strcmp(argv[1], HOOK_MODE) != 0)) {
@@ -1500,7 +1512,7 @@ main(int argc, char *argv[], char *envp[])
 		}
 		rc = wsystem(python_cmdline, INVALID_HANDLE_VALUE, NULL);
 #else
-		char in_data[MAXBUF+1];
+		char in_data[MAXBUF + 1];
 		char *largv[3];
 		int ll;
 		char *pc, *pc2;
@@ -1528,7 +1540,6 @@ main(int argc, char *argv[], char *envp[])
 		}
 		lenvp[i] = NULL;
 
-
 		if (argc == 1) {
 			/* If no command line options, just check stdin for input */
 			/* name, which is what mom does. Also, under              */
@@ -1542,9 +1553,9 @@ main(int argc, char *argv[], char *envp[])
 			}
 			ll = strlen(in_data);
 
-			if (in_data[ll-1] == '\n')
+			if (in_data[ll - 1] == '\n')
 				/* remove newline */
-				in_data[ll-1] = '\0';
+				in_data[ll - 1] = '\0';
 
 			pc = strchr(in_data, ';');
 			if (pc) {
@@ -1554,12 +1565,12 @@ main(int argc, char *argv[], char *envp[])
 				largv[1] = pc;
 
 				/* looking for the "cd <homedir>" part */
-				if ((pc=strstr(in_data, "cd"))) { /* found a chdir */
-					pc2 = in_data+2;
+				if ((pc = strstr(in_data, "cd"))) { /* found a chdir */
+					pc2 = in_data + 2;
 					while (isspace(*pc2))
 						pc2++;
 					strncpy(dirname, pc2, MAXPATHLEN);
-					if ((pc=strrchr(dirname, ';')))
+					if ((pc = strrchr(dirname, ';')))
 						*pc = '\0';
 					if (chdir(dirname) == -1) {
 						fprintf(stderr,
@@ -1592,64 +1603,64 @@ main(int argc, char *argv[], char *envp[])
 		free(python_path);
 	} else { /* hook mode */
 
-		char 	**argv2 = NULL;
-		int	argc2;
-		int	argv_len = 0;
-		char    hook_script[MAXPATHLEN + 1] = {'\0'};
-		char	the_input[MAXPATHLEN + 1] = {'\0'};
-		char	the_output[MAXPATHLEN + 1] = {'\0'};
-		char	the_server_output[MAXPATHLEN + 1] = {'\0'};
-		char	the_data[MAXPATHLEN + 1] = {'\0'};
-		char    path_log[MAXPATHLEN + 1] = {'\0'};
-		char    logname[MAXPATHLEN + 1] = {'\0'};
+		char **argv2 = NULL;
+		int argc2;
+		int argv_len = 0;
+		char hook_script[MAXPATHLEN + 1] = {'\0'};
+		char the_input[MAXPATHLEN + 1] = {'\0'};
+		char the_output[MAXPATHLEN + 1] = {'\0'};
+		char the_server_output[MAXPATHLEN + 1] = {'\0'};
+		char the_data[MAXPATHLEN + 1] = {'\0'};
+		char path_log[MAXPATHLEN + 1] = {'\0'};
+		char logname[MAXPATHLEN + 1] = {'\0'};
 
-		char	hook_name[MAXBUF + 1] = {'\0'};
-		char	req_user[PBS_MAXUSER + 1] = {'\0'};
-		char	req_host[PBS_MAXHOSTNAME + 1] = {'\0'};
-		char	hookstr_type[MAXBUF + 1] = {'\0'};
-		char	hookstr_event[MAXBUF + 1] = {'\0'};
-		int	hook_alarm = 0;
-		int	c, j;
-		int	errflg = 0;
+		char hook_name[MAXBUF + 1] = {'\0'};
+		char req_user[PBS_MAXUSER + 1] = {'\0'};
+		char req_host[PBS_MAXHOSTNAME + 1] = {'\0'};
+		char hookstr_type[MAXBUF + 1] = {'\0'};
+		char hookstr_event[MAXBUF + 1] = {'\0'};
+		int hook_alarm = 0;
+		int c, j;
+		int errflg = 0;
 		unsigned int hook_event = 0;
-		struct python_script	*py_script = NULL;
-		pbs_list_head	default_list, event, event_job, event_job_o,
-				event_resv, event_vnode, event_src_queue, event_vnode_fail,
-				event_aoe, event_argv, event_jobs,
-				server, server_jobs, server_jobs_ids,
-				server_queues, server_queues_names,
-				server_resvs, server_resvs_resvids,
-				server_vnodes, server_vnodes_names,
-				job_failed_mom_list, job_succeeded_mom_list;
+		struct python_script *py_script = NULL;
+		pbs_list_head default_list, event, event_job, event_job_o,
+			event_resv, event_vnode, event_src_queue, event_vnode_fail,
+			event_aoe, event_argv, event_jobs,
+			server, server_jobs, server_jobs_ids,
+			server_queues, server_queues_names,
+			server_resvs, server_resvs_resvids,
+			server_vnodes, server_vnodes_names,
+			job_failed_mom_list, job_succeeded_mom_list;
 		svrattrl *svrattrl_e;
-		FILE	 *fp_out = NULL;
-		FILE	 *fp_server_out = NULL;
+		FILE *fp_out = NULL;
+		FILE *fp_server_out = NULL;
 		svrattrl *plist = NULL;
 		struct rq_queuejob rqj;
-		struct rq_manage  rqm;
+		struct rq_manage rqm;
 		struct rq_move rqmv;
 		struct rq_runjob rqrun;
-		char	*rej_msg = NULL;
-		char	*rerunjob_str = NULL;
-		char	*deletejob_str = NULL;
-		char	*new_exec_time_str = NULL;
-		char	*new_hold_types_str = NULL;
-		char	*new_project_str = NULL;
+		char *rej_msg = NULL;
+		char *rerunjob_str = NULL;
+		char *deletejob_str = NULL;
+		char *new_exec_time_str = NULL;
+		char *new_hold_types_str = NULL;
+		char *new_project_str = NULL;
 		hook_input_param_t req_params;
 		hook_output_param_t req_params_out;
-		char	*progname = NULL;
-		char	*progname_orig = NULL;
-		char	*env_str = NULL;
-		char	*env_str_orig = NULL;
-		char	*argv_str_orig = NULL;
-		char	*argv_str = NULL;
-		int	print_progname = 0;
-		int	print_argv = 0;
-		int	print_env = 0;
-		char	*tmp_str = NULL;
-		char	perf_label[MAXBUF];
-		char	perf_action[MAXBUFLEN + 13]; /* Additional 13 byte for description string*/
-		char	*sp;
+		char *progname = NULL;
+		char *progname_orig = NULL;
+		char *env_str = NULL;
+		char *env_str_orig = NULL;
+		char *argv_str_orig = NULL;
+		char *argv_str = NULL;
+		int print_progname = 0;
+		int print_argv = 0;
+		int print_env = 0;
+		char *tmp_str = NULL;
+		char perf_label[MAXBUF];
+		char perf_action[MAXBUFLEN + 13]; /* Additional 13 byte for description string*/
+		char *sp;
 
 		the_input[0] = '\0';
 		the_output[0] = '\0';
@@ -1664,7 +1675,7 @@ main(int argc, char *argv[], char *envp[])
 		logname[0] = '\0';
 		strcpy(path_log, ".");
 
-		if (*(argv+2) == NULL) {
+		if (*(argv + 2) == NULL) {
 			fprintf(stderr, "%s --hook -i <input_file> [-s <data_file>] [-o <output_file>] [-L <path_log>] [-l <logname>] [-r <resourcedef>] [-e <log_event_mask>] [<python_script>]\n", argv[0]);
 			exit(2);
 		}
@@ -1679,9 +1690,9 @@ main(int argc, char *argv[], char *envp[])
 		}
 
 		argc2 = 0;
-		for (i=0, j=0; argv[i] != NULL; i++) {
+		for (i = 0, j = 0; argv[i] != NULL; i++) {
 			if (strncmp(argv[i], HOOK_MODE,
-				sizeof(HOOK_MODE)-1) == 0)
+				    sizeof(HOOK_MODE) - 1) == 0)
 				continue;
 			argv2[j++] = argv[i];
 			argc2++;
@@ -1693,7 +1704,8 @@ main(int argc, char *argv[], char *envp[])
 
 			switch (c) {
 				case 'i':
-					while (isspace((int)*optarg)) optarg++;
+					while (isspace((int) *optarg))
+						optarg++;
 
 					if (optarg[0] == '\0') {
 						fprintf(stderr, "pbs_python: illegal -i value\n");
@@ -1703,7 +1715,8 @@ main(int argc, char *argv[], char *envp[])
 					}
 					break;
 				case 'o':
-					while (isspace((int)*optarg)) optarg++;
+					while (isspace((int) *optarg))
+						optarg++;
 
 					if (optarg[0] == '\0') {
 						fprintf(stderr, "pbs_python: illegal -o value\n");
@@ -1713,7 +1726,8 @@ main(int argc, char *argv[], char *envp[])
 					}
 					break;
 				case 's':
-					while (isspace((int)*optarg)) optarg++;
+					while (isspace((int) *optarg))
+						optarg++;
 
 					if (optarg[0] == '\0') {
 						fprintf(stderr, "pbs_python: illegal -s value\n");
@@ -1724,7 +1738,8 @@ main(int argc, char *argv[], char *envp[])
 					}
 					break;
 				case 'L':
-					while (isspace((int)*optarg)) optarg++;
+					while (isspace((int) *optarg))
+						optarg++;
 
 					if (optarg[0] == '\0') {
 						fprintf(stderr, "pbs_python: illegal -L value\n");
@@ -1734,7 +1749,8 @@ main(int argc, char *argv[], char *envp[])
 					}
 					break;
 				case 'l':
-					while (isspace((int)*optarg)) optarg++;
+					while (isspace((int) *optarg))
+						optarg++;
 
 					if (optarg[0] == '\0') {
 						fprintf(stderr, "pbs_python: illegal -l value\n");
@@ -1744,7 +1760,8 @@ main(int argc, char *argv[], char *envp[])
 					}
 					break;
 				case 'e':
-					while (isspace((int)*optarg)) optarg++;
+					while (isspace((int) *optarg))
+						optarg++;
 
 					if (optarg[0] == '\0') {
 						fprintf(stderr, "pbs_python: illegal -e value\n");
@@ -1753,7 +1770,7 @@ main(int argc, char *argv[], char *envp[])
 						char *bad;
 
 						*log_event_mask = strtol(optarg, &bad, 0);
-						if ((*bad != '\0') && !isspace((int)*bad)) {
+						if ((*bad != '\0') && !isspace((int) *bad)) {
 							fprintf(stderr,
 								"pbs_python: bad -e value %s\n",
 								optarg);
@@ -1762,7 +1779,8 @@ main(int argc, char *argv[], char *envp[])
 					}
 					break;
 				case 'r':
-					while (isspace((int)*optarg)) optarg++;
+					while (isspace((int) *optarg))
+						optarg++;
 
 					if (optarg[0] == '\0') {
 						fprintf(stderr, "pbs_python: illegal -r value\n");
@@ -1783,7 +1801,6 @@ main(int argc, char *argv[], char *envp[])
 				fprintf(stderr, "%s --hook -i <hook_input> [-s <data_file>] [-o <hook_output>] [-L <path_log>] [-l <logname>] [-r <resourcedef>] [-e <log_event_mask>] [<python_script>]\n", argv[0]);
 				exit(2);
 			}
-
 		}
 
 		if (the_input[0] == '\0') {
@@ -1802,9 +1819,9 @@ main(int argc, char *argv[], char *envp[])
 
 		if ((optind < argc2) && (argv2[optind] != NULL)) {
 			strncpy(hook_script, argv2[optind],
-				sizeof(hook_script)-1);
+				sizeof(hook_script) - 1);
 		}
-		if (log_open_main(logname, path_log, 1) != 0) {  /* use given name */
+		if (log_open_main(logname, path_log, 1) != 0) { /* use given name */
 			fprintf(stderr, "pbs_python: Unable to open logfile\n");
 			exit(1);
 		}
@@ -1835,12 +1852,12 @@ main(int argc, char *argv[], char *envp[])
 		CLEAR_HEAD(event_jobs);
 
 		rc = pbs_python_populate_svrattrl_from_file(the_input,
-			&default_list,
-			&event, &event_job, &event_job_o, &event_resv,
-			&event_vnode, &event_vnode_fail, &job_failed_mom_list,
-			&job_succeeded_mom_list, &event_src_queue,
-			&event_aoe, &event_argv, &event_jobs,
-			perf_label, HOOK_PERF_LOAD_INPUT);
+							    &default_list,
+							    &event, &event_job, &event_job_o, &event_resv,
+							    &event_vnode, &event_vnode_fail, &job_failed_mom_list,
+							    &job_succeeded_mom_list, &event_src_queue,
+							    &event_aoe, &event_argv, &event_jobs,
+							    perf_label, HOOK_PERF_LOAD_INPUT);
 		if (rc == -1) {
 			fprintf(stderr, "%s: failed to populate svrattrl \n", argv[0]);
 			exit(2);
@@ -1862,12 +1879,12 @@ main(int argc, char *argv[], char *envp[])
 			pbs_python_unset_server_vnodes_info();
 
 			rc = pbs_python_populate_server_svrattrl_from_file(the_data,
-				&default_list, &server,
-				&server_jobs, &server_jobs_ids,
-				&server_queues, &server_queues_names,
-				&server_resvs, &server_resvs_resvids,
-				&server_vnodes, &server_vnodes_names,
-				the_data, HOOK_PERF_LOAD_DATA);
+									   &default_list, &server,
+									   &server_jobs, &server_jobs_ids,
+									   &server_queues, &server_queues_names,
+									   &server_resvs, &server_resvs_resvids,
+									   &server_vnodes, &server_vnodes_names,
+									   the_data, HOOK_PERF_LOAD_DATA);
 			if (rc == -1) {
 				fprintf(stderr,
 					"%s: failed to populate svrattrl \n",
@@ -1876,28 +1893,28 @@ main(int argc, char *argv[], char *envp[])
 			}
 			pbs_python_set_server_info(&server);
 			pbs_python_set_server_jobs_info(&server_jobs,
-				&server_jobs_ids);
+							&server_jobs_ids);
 			pbs_python_set_server_queues_info(&server_queues,
-				&server_queues_names);
+							  &server_queues_names);
 			pbs_python_set_server_resvs_info(&server_resvs,
-				&server_resvs_resvids);
+							 &server_resvs_resvids);
 			pbs_python_set_server_vnodes_info(&server_vnodes,
-				&server_vnodes_names);
+							  &server_vnodes_names);
 		}
 
-		plist = (svrattrl *)GET_NEXT(event);
+		plist = (svrattrl *) GET_NEXT(event);
 		while (plist) {
 
 			if (strcmp(plist->al_name, "type") == 0) {
 				hook_event =
-				     hookstr_event_toint(plist->al_value);
+					hookstr_event_toint(plist->al_value);
 				sprintf(hookstr_event, "%u", hook_event);
 			} else if (strcmp(plist->al_name, "hook_name") == 0) {
 				strcpy(hook_name, plist->al_value);
 			} else if (strcmp(plist->al_name, "requestor") == 0) {
 				strcpy(req_user, plist->al_value);
 			} else if (strcmp(plist->al_name,
-				"requestor_host") == 0) {
+					  "requestor_host") == 0) {
 				strcpy(req_host, plist->al_value);
 			} else if (strcmp(plist->al_name, "hook_type") == 0) {
 				strcpy(hookstr_type, plist->al_value);
@@ -1905,15 +1922,15 @@ main(int argc, char *argv[], char *envp[])
 				hook_alarm = atoi(plist->al_value);
 			} else if (strcmp(plist->al_name, "debug") == 0) {
 				strncpy(the_server_output, plist->al_value,
-					sizeof(the_server_output)-1);
+					sizeof(the_server_output) - 1);
 				fp_server_out = fopen(the_server_output,
-					"w");
+						      "w");
 				if (fp_server_out == NULL) {
 					log_eventf(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_HOOK, LOG_WARNING,
-						__func__,
-						"warning: error opening debug data file %s",
-						the_server_output);
+						   PBS_EVENTCLASS_HOOK, LOG_WARNING,
+						   __func__,
+						   "warning: error opening debug data file %s",
+						   the_server_output);
 					pbs_python_set_hook_debug_data_fp(NULL);
 					pbs_python_set_hook_debug_data_file("");
 				} else {
@@ -1921,28 +1938,28 @@ main(int argc, char *argv[], char *envp[])
 					pbs_python_set_hook_debug_data_file(the_server_output);
 				}
 			} else if ((strcmp(plist->al_name, HOOKATT_USER) != 0) &&
-				(strcmp(plist->al_name, HOOKATT_FREQ) != 0) &&
-				(strcmp(plist->al_name, PY_EVENT_PARAM_PROGNAME) != 0) &&
-				(strcmp(plist->al_name, PY_EVENT_PARAM_ARGLIST) != 0) &&
-				(strcmp(plist->al_name, PY_EVENT_PARAM_ENV) != 0) &&
-				(strcmp(plist->al_name, PY_EVENT_PARAM_PID) != 0) &&
-				(strcmp(plist->al_name, HOOKATT_FAIL_ACTION) != 0)) {
+				   (strcmp(plist->al_name, HOOKATT_FREQ) != 0) &&
+				   (strcmp(plist->al_name, PY_EVENT_PARAM_PROGNAME) != 0) &&
+				   (strcmp(plist->al_name, PY_EVENT_PARAM_ARGLIST) != 0) &&
+				   (strcmp(plist->al_name, PY_EVENT_PARAM_ENV) != 0) &&
+				   (strcmp(plist->al_name, PY_EVENT_PARAM_PID) != 0) &&
+				   (strcmp(plist->al_name, HOOKATT_FAIL_ACTION) != 0)) {
 				fprintf(stderr, "%s: unknown event attribute '%s'\n", argv[0], plist->al_name);
 				exit(2);
 			}
 
-			plist = (svrattrl *)GET_NEXT(plist->al_link);
+			plist = (svrattrl *) GET_NEXT(plist->al_link);
 		}
 
 		if (req_host[0] == '\0')
 			gethostname(req_host, PBS_MAXHOSTNAME);
-		
+
 		fix_path(logname, 3);
 
 		if ((logname[0] != '\0') && (!is_full_path(logname))) {
-			char	curdir[MAXPATHLEN + 1];
-			char	full_logname[MAXPATHLEN + 1];
-			char	*slash;
+			char curdir[MAXPATHLEN + 1];
+			char full_logname[MAXPATHLEN + 1];
+			char *slash;
 #ifdef WIN32
 			slash = "\\";
 #else
@@ -1983,8 +2000,8 @@ main(int argc, char *argv[], char *envp[])
 			exit(1);
 		}
 
-		(void)pbs_python_ext_alloc_python_script(hook_script,
-			(struct python_script **) &py_script);
+		(void) pbs_python_ext_alloc_python_script(hook_script,
+							  (struct python_script **) &py_script);
 
 		hook_perf_stat_start(perf_label, HOOK_PERF_START_PYTHON, 0);
 		if (pbs_python_ext_start_interpreter(&svr_interp_data) != 0) {
@@ -1997,121 +2014,121 @@ main(int argc, char *argv[], char *envp[])
 
 			case HOOK_EVENT_QUEUEJOB:
 				rqj.rq_jid[0] = '\0';
-				if ((svrattrl_e=find_svrattrl_list_entry(&event_job,
-					"id", NULL)) != NULL) {
-					strcpy((char *)rqj.rq_jid,
-						svrattrl_e->al_value);
+				if ((svrattrl_e = find_svrattrl_list_entry(&event_job,
+									   "id", NULL)) != NULL) {
+					strcpy((char *) rqj.rq_jid,
+					       svrattrl_e->al_value);
 				}
 				rqj.rq_destin[0] = '\0';
-				if ((svrattrl_e=find_svrattrl_list_entry(&event_job,
-					ATTR_queue, NULL)) != NULL) {
-					strcpy((char *)rqj.rq_destin,
-						svrattrl_e->al_value);
+				if ((svrattrl_e = find_svrattrl_list_entry(&event_job,
+									   ATTR_queue, NULL)) != NULL) {
+					strcpy((char *) rqj.rq_destin,
+					       svrattrl_e->al_value);
 				}
 				if (copy_svrattrl_list(&event_job,
-					&rqj.rq_attr) == -1) {
+						       &rqj.rq_attr) == -1) {
 					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
 
-				req_params.rq_job = (struct rq_quejob *)&rqj;
-				req_params.vns_list = (pbs_list_head *)&event_vnode;
+				req_params.rq_job = (struct rq_quejob *) &rqj;
+				req_params.vns_list = (pbs_list_head *) &event_vnode;
 				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_HOOK, LOG_ERR,
-						hook_name,
-						"Encountered an error while setting event");
+						  PBS_EVENTCLASS_HOOK, LOG_ERR,
+						  hook_name,
+						  "Encountered an error while setting event");
 				}
 
 				break;
 			case HOOK_EVENT_MODIFYJOB:
 				rqm.rq_objname[0] = '\0';
-				if ((svrattrl_e=find_svrattrl_list_entry(&event_job,
-					"id", NULL)) != NULL) {
-					strcpy((char *)rqm.rq_objname,
-						svrattrl_e->al_value);
+				if ((svrattrl_e = find_svrattrl_list_entry(&event_job,
+									   "id", NULL)) != NULL) {
+					strcpy((char *) rqm.rq_objname,
+					       svrattrl_e->al_value);
 				}
 				if (copy_svrattrl_list(&event_job,
-					&rqm.rq_attr) == -1) {
+						       &rqm.rq_attr) == -1) {
 					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
 
-				req_params.rq_manage = (struct rq_manage *)&rqm;
+				req_params.rq_manage = (struct rq_manage *) &rqm;
 				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_HOOK, LOG_ERR,
-						hook_name,
-						"Encountered an error while setting event");
+						  PBS_EVENTCLASS_HOOK, LOG_ERR,
+						  hook_name,
+						  "Encountered an error while setting event");
 				}
 
 				break;
 			case HOOK_EVENT_MOVEJOB:
 				rqmv.rq_jid[0] = '\0';
-				if ((svrattrl_e=find_svrattrl_list_entry(&event_job,
-					"id", NULL)) != NULL) {
-					strcpy((char *)rqmv.rq_jid,
-						svrattrl_e->al_value);
+				if ((svrattrl_e = find_svrattrl_list_entry(&event_job,
+									   "id", NULL)) != NULL) {
+					strcpy((char *) rqmv.rq_jid,
+					       svrattrl_e->al_value);
 				}
 
-				req_params.rq_move = (struct rq_move *)&rqmv;
+				req_params.rq_move = (struct rq_move *) &rqmv;
 				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_HOOK, LOG_ERR,
-						hook_name,
-						"Encountered an error while setting event");
+						  PBS_EVENTCLASS_HOOK, LOG_ERR,
+						  hook_name,
+						  "Encountered an error while setting event");
 				}
 
 				break;
 			case HOOK_EVENT_RUNJOB:
 				rqrun.rq_jid[0] = '\0';
-				if ((svrattrl_e=find_svrattrl_list_entry(&event_job,
-					"id", NULL)) != NULL) {
-					strcpy((char *)rqrun.rq_jid,
-						svrattrl_e->al_value);
+				if ((svrattrl_e = find_svrattrl_list_entry(&event_job,
+									   "id", NULL)) != NULL) {
+					strcpy((char *) rqrun.rq_jid,
+					       svrattrl_e->al_value);
 				}
-				req_params.rq_run = (struct rq_runjob *)&rqrun;
+				req_params.rq_run = (struct rq_runjob *) &rqrun;
 
 				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_HOOK, LOG_ERR,
-						hook_name,
-						"Encountered an error while setting event");
+						  PBS_EVENTCLASS_HOOK, LOG_ERR,
+						  hook_name,
+						  "Encountered an error while setting event");
 				}
 
 				break;
 			case HOOK_EVENT_RESVSUB:
 				rqj.rq_jid[0] = '\0';
-				if ((svrattrl_e=find_svrattrl_list_entry(&event_resv,
-					"resvid", NULL)) != NULL) {
-					strcpy((char *)rqj.rq_jid,
-						svrattrl_e->al_value);
+				if ((svrattrl_e = find_svrattrl_list_entry(&event_resv,
+									   "resvid", NULL)) != NULL) {
+					strcpy((char *) rqj.rq_jid,
+					       svrattrl_e->al_value);
 				}
 				if (copy_svrattrl_list(&event_resv,
-					&rqj.rq_attr) == -1) {
+						       &rqj.rq_attr) == -1) {
 					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
-				req_params.rq_job = (struct rq_queuejob *)&rqj;
-				req_params.vns_list = (pbs_list_head *)&event_vnode;
+				req_params.rq_job = (struct rq_queuejob *) &rqj;
+				req_params.vns_list = (pbs_list_head *) &event_vnode;
 				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_HOOK, LOG_ERR,
-						hook_name,
-						"Encountered an error while setting event");
+						  PBS_EVENTCLASS_HOOK, LOG_ERR,
+						  hook_name,
+						  "Encountered an error while setting event");
 				}
 
 				break;
@@ -2125,24 +2142,24 @@ main(int argc, char *argv[], char *envp[])
 			case HOOK_EVENT_EXECJOB_POSTSUSPEND:
 			case HOOK_EVENT_EXECJOB_PRERESUME:
 
-				if ((svrattrl_e=find_svrattrl_list_entry(&event_job,
-					"id", NULL)) != NULL) {
-					strcpy((char *)rqj.rq_jid,
-						svrattrl_e->al_value);
+				if ((svrattrl_e = find_svrattrl_list_entry(&event_job,
+									   "id", NULL)) != NULL) {
+					strcpy((char *) rqj.rq_jid,
+					       svrattrl_e->al_value);
 				}
 				rqj.rq_destin[0] = '\0';
 
 				if (copy_svrattrl_list(&event_job,
-					&rqj.rq_attr) == -1) {
+						       &rqj.rq_attr) == -1) {
 					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
-				req_params.rq_job = (struct rq_queuejob *)&rqj;
-				req_params.vns_list = (pbs_list_head *)&event_vnode;
+				req_params.rq_job = (struct rq_queuejob *) &rqj;
+				req_params.vns_list = (pbs_list_head *) &event_vnode;
 
 				if (hook_event == HOOK_EVENT_EXECJOB_PROLOGUE) {
-					req_params.vns_list_fail = (pbs_list_head *)&event_vnode_fail;
+					req_params.vns_list_fail = (pbs_list_head *) &event_vnode_fail;
 					req_params.failed_mom_list = &job_failed_mom_list;
 					req_params.succeeded_mom_list = &job_succeeded_mom_list;
 				}
@@ -2151,48 +2168,48 @@ main(int argc, char *argv[], char *envp[])
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_HOOK, LOG_ERR,
-						hook_name,
-						"Encountered an error while setting event");
+						  PBS_EVENTCLASS_HOOK, LOG_ERR,
+						  hook_name,
+						  "Encountered an error while setting event");
 				}
 
 				break;
 
 			case HOOK_EVENT_EXECJOB_LAUNCH:
 
-				if ((svrattrl_e=find_svrattrl_list_entry(&event_job,
-					"id", NULL)) != NULL) {
-					strcpy((char *)rqj.rq_jid,
-						svrattrl_e->al_value);
+				if ((svrattrl_e = find_svrattrl_list_entry(&event_job,
+									   "id", NULL)) != NULL) {
+					strcpy((char *) rqj.rq_jid,
+					       svrattrl_e->al_value);
 				}
 				rqj.rq_destin[0] = '\0';
 
 				if (copy_svrattrl_list(&event_job,
-					&rqj.rq_attr) == -1) {
+						       &rqj.rq_attr) == -1) {
 					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
 
-				req_params.rq_job = (struct rq_queuejob *)&rqj;
+				req_params.rq_job = (struct rq_queuejob *) &rqj;
 				req_params.vns_list = &event_vnode;
 				req_params.vns_list_fail = &event_vnode_fail;
 				req_params.failed_mom_list = &job_failed_mom_list;
 				req_params.succeeded_mom_list = &job_succeeded_mom_list;
 
-				if ((svrattrl_e=find_svrattrl_list_entry(&event,
-					PY_EVENT_PARAM_PROGNAME, NULL)) != NULL) {
+				if ((svrattrl_e = find_svrattrl_list_entry(&event,
+									   PY_EVENT_PARAM_PROGNAME, NULL)) != NULL) {
 					req_params.progname = svrattrl_e->al_value;
 					progname_orig = svrattrl_e->al_value;
 				} else {
 					progname_orig = "";
 				}
 
-				req_params.argv_list = (pbs_list_head *)&event_argv;
+				req_params.argv_list = (pbs_list_head *) &event_argv;
 
-				argv_str_orig = argv_list_to_str((pbs_list_head *)&event_argv);
-				if ((svrattrl_e=find_svrattrl_list_entry(&event,
-					PY_EVENT_PARAM_ENV, NULL)) != NULL) {
+				argv_str_orig = argv_list_to_str((pbs_list_head *) &event_argv);
+				if ((svrattrl_e = find_svrattrl_list_entry(&event,
+									   PY_EVENT_PARAM_ENV, NULL)) != NULL) {
 					req_params.env = svrattrl_e->al_value;
 					env_str_orig = svrattrl_e->al_value;
 				} else {
@@ -2203,45 +2220,44 @@ main(int argc, char *argv[], char *envp[])
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK, LOG_ERR,
-						hook_name,
-						"Encountered an error while setting event");
+						  hook_name,
+						  "Encountered an error while setting event");
 				}
 
 				break;
 			case HOOK_EVENT_EXECJOB_ATTACH:
 
-				if ((svrattrl_e=find_svrattrl_list_entry(&event_job,
-					"id", NULL)) != NULL) {
-					strcpy((char *)rqj.rq_jid,
-						svrattrl_e->al_value);
+				if ((svrattrl_e = find_svrattrl_list_entry(&event_job,
+									   "id", NULL)) != NULL) {
+					strcpy((char *) rqj.rq_jid,
+					       svrattrl_e->al_value);
 				}
 				rqj.rq_destin[0] = '\0';
 
 				if (copy_svrattrl_list(&event_job,
-					&rqj.rq_attr) == -1) {
+						       &rqj.rq_attr) == -1) {
 					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
 
-				req_params.rq_job = (struct rq_queuejob *)&rqj;
+				req_params.rq_job = (struct rq_queuejob *) &rqj;
 
-				if ((svrattrl_e=find_svrattrl_list_entry(&event,
-					PY_EVENT_PARAM_PID, NULL)) != NULL) {
+				if ((svrattrl_e = find_svrattrl_list_entry(&event,
+									   PY_EVENT_PARAM_PID, NULL)) != NULL) {
 					req_params.pid = atoi(svrattrl_e->al_value);
 				} else {
 					req_params.pid = -1;
 				}
 
-				req_params.vns_list = (pbs_list_head *)&event_vnode;
-
+				req_params.vns_list = (pbs_list_head *) &event_vnode;
 
 				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK, LOG_ERR,
-						hook_name,
-						"Encountered an error while setting event");
+						  hook_name,
+						  "Encountered an error while setting event");
 				}
 
 				break;
@@ -2255,42 +2271,42 @@ main(int argc, char *argv[], char *envp[])
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_HOOK, LOG_ERR,
-						hook_name,
-						"Encountered an error while setting event");
+						  PBS_EVENTCLASS_HOOK, LOG_ERR,
+						  hook_name,
+						  "Encountered an error while setting event");
 				}
 				break;
 			default:
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK, LOG_ERR,
-					hook_name, "Unexpected event");
+					  hook_name, "Unexpected event");
 				rc = 1;
 				goto pbs_python_end;
 		}
 
 		/* This sets Python event object's hook_name value */
 		rc = pbs_python_event_set_attrval(PY_EVENT_HOOK_NAME,
-			hook_name);
+						  hook_name);
 
 		if (rc == -1) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK,
-				LOG_ERR, hook_name, "Failed to set event 'hook_name'.");
+				  LOG_ERR, hook_name, "Failed to set event 'hook_name'.");
 		}
 
 		rc = pbs_python_event_set_attrval(PY_EVENT_HOOK_TYPE,
-			hookstr_type);
+						  hookstr_type);
 
 		if (rc == -1) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK,
-				LOG_ERR, hook_name, "Failed to set event 'hook_type'.");
+				  LOG_ERR, hook_name, "Failed to set event 'hook_type'.");
 		}
 
 		rc = pbs_python_event_set_attrval(PY_EVENT_TYPE,
-			hookstr_event);
+						  hookstr_event);
 
 		if (rc == -1) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK,
-				LOG_ERR, hook_name,
-				"Failed to set event 'type'.");
+				  LOG_ERR, hook_name,
+				  "Failed to set event 'type'.");
 		}
 
 		pbs_python_set_mode(PY_MODE); /* hook script mode */
@@ -2310,20 +2326,20 @@ main(int argc, char *argv[], char *envp[])
 			}
 			tmp_argv[1] = NULL;
 
-			rc=Py_Main(1, tmp_argv);
+			rc = Py_Main(1, tmp_argv);
 			PyMem_RawFree(tmp_argv[0]);
 		} else {
 			hook_perf_stat_start(perf_label, HOOK_PERF_RUN_CODE, 0);
-			rc=pbs_python_run_code_in_namespace(&svr_interp_data,
-				py_script, 0);
+			rc = pbs_python_run_code_in_namespace(&svr_interp_data,
+							      py_script, 0);
 			hook_perf_stat_stop(perf_label, HOOK_PERF_RUN_CODE, 0);
 		}
 		set_alarm(0, pbs_python_set_interrupt);
 
-		pbs_python_set_mode(C_MODE);  /* PBS C mode - flexible */
+		pbs_python_set_mode(C_MODE); /* PBS C mode - flexible */
 
 		/* Prepare output file */
-		if ((the_output !=  NULL) && (*the_output != '\0')) {
+		if ((the_output != NULL) && (*the_output != '\0')) {
 			fp_out = fopen(the_output, "w");
 
 			if (fp_out == NULL) {
@@ -2335,34 +2351,34 @@ main(int argc, char *argv[], char *envp[])
 		}
 
 		switch (rc) {
-			case -1:	/* internal error */
+			case -1: /* internal error */
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, hook_name,
-					"Internal server error encountered. Skipping hook.");
+					  LOG_ERR, hook_name,
+					  "Internal server error encountered. Skipping hook.");
 				rc = -1; /* should not happen */
 				goto pbs_python_end;
-			case -2:	/* unhandled exception */
+			case -2: /* unhandled exception */
 				pbs_python_event_reject(NULL);
 				pbs_python_event_param_mod_disallow();
 
-				snprintf(log_buffer, LOG_BUF_SIZE-1,
-					"%s hook '%s' encountered an exception, "
-					"request rejected",
-					hook_event_as_string(hook_event), hook_name);
+				snprintf(log_buffer, LOG_BUF_SIZE - 1,
+					 "%s hook '%s' encountered an exception, "
+					 "request rejected",
+					 hook_event_as_string(hook_event), hook_name);
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, hook_name, log_buffer);
+					  LOG_ERR, hook_name, log_buffer);
 				rc = -2; /* should not happen */
 				break;
-			case -3:	/* alarm timeout */
+			case -3: /* alarm timeout */
 				pbs_python_event_reject(NULL);
 				pbs_python_event_param_mod_disallow();
 
-				snprintf(log_buffer, LOG_BUF_SIZE-1,
-					"alarm call while running %s hook '%s', "
-					"request rejected",
-					hook_event_as_string(hook_event), hook_name);
+				snprintf(log_buffer, LOG_BUF_SIZE - 1,
+					 "alarm call while running %s hook '%s', "
+					 "request rejected",
+					 hook_event_as_string(hook_event), hook_name);
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, hook_name, log_buffer);
+					  LOG_ERR, hook_name, log_buffer);
 				rc = -3; /* should not happen */
 				break;
 		}
@@ -2395,11 +2411,11 @@ main(int argc, char *argv[], char *envp[])
 					fprintf(fp_out, "%s=True\n", EVENT_ACCEPT_OBJECT);
 					fprintf(fp_out, "%s=False\n", EVENT_REJECT_OBJECT);
 
-					req_params_out.rq_job = (struct rq_quejob *)&rqj;
+					req_params_out.rq_job = (struct rq_quejob *) &rqj;
 					pbs_python_event_to_request(hook_event, &req_params_out, perf_label, perf_action);
 
 					fprint_svrattrl_list(fp_out, EVENT_JOB_OBJECT,
-						&rqj.rq_attr);
+							     &rqj.rq_attr);
 				}
 				break;
 
@@ -2417,10 +2433,10 @@ main(int argc, char *argv[], char *envp[])
 				} else {
 					fprintf(fp_out, "%s=True\n", EVENT_ACCEPT_OBJECT);
 					fprintf(fp_out, "%s=False\n", EVENT_REJECT_OBJECT);
-					req_params_out.rq_manage = (struct rq_manage *)&rqm;
+					req_params_out.rq_manage = (struct rq_manage *) &rqm;
 					pbs_python_event_to_request(hook_event, &req_params_out, perf_label, perf_action);
 					fprint_svrattrl_list(fp_out, EVENT_JOB_OBJECT,
-						&rqm.rq_attr);
+							     &rqm.rq_attr);
 				}
 				break;
 			case HOOK_EVENT_MOVEJOB:
@@ -2437,10 +2453,10 @@ main(int argc, char *argv[], char *envp[])
 				} else {
 					fprintf(fp_out, "%s=True\n", EVENT_ACCEPT_OBJECT);
 					fprintf(fp_out, "%s=False\n", EVENT_REJECT_OBJECT);
-					req_params_out.rq_move = (struct rq_manage *)&rqmv;
+					req_params_out.rq_move = (struct rq_manage *) &rqmv;
 					pbs_python_event_to_request(hook_event, &req_params_out, perf_label, perf_action);
 					if ((rqmv.rq_destin != NULL) &&
-						(rqmv.rq_destin[0] != '\0'))
+					    (rqmv.rq_destin[0] != '\0'))
 						fprintf(fp_out, "%s.%s=%s\n", EVENT_OBJECT,
 							PY_EVENT_PARAM_SRC_QUEUE, rqmv.rq_destin);
 				}
@@ -2458,24 +2474,24 @@ main(int argc, char *argv[], char *envp[])
 							rej_msg);
 
 					new_exec_time_str =
-			       pbs_python_event_job_getval_hookset(ATTR_a,
-						NULL, 0, NULL, 0);
+						pbs_python_event_job_getval_hookset(ATTR_a,
+										    NULL, 0, NULL, 0);
 
 					if (new_exec_time_str != NULL)
 						fprintf(fp_out, "%s.%s=%s\n", EVENT_JOB_OBJECT,
 							ATTR_a, new_exec_time_str);
 
-					new_hold_types_str  =
-				  pbs_python_event_job_getval_hookset(ATTR_h,
-						NULL, 0, NULL, 0);
+					new_hold_types_str =
+						pbs_python_event_job_getval_hookset(ATTR_h,
+										    NULL, 0, NULL, 0);
 
 					if (new_hold_types_str != NULL)
 						fprintf(fp_out, "%s.%s=%s\n", EVENT_JOB_OBJECT,
 							ATTR_h, new_hold_types_str);
 
 					new_project_str =
-			      pbs_python_event_job_getval_hookset(ATTR_project,
-						NULL, 0, NULL, 0);
+						pbs_python_event_job_getval_hookset(ATTR_project,
+										    NULL, 0, NULL, 0);
 					if (new_project_str != NULL)
 						fprintf(fp_out, "%s.%s=%s\n", EVENT_JOB_OBJECT,
 							ATTR_project, new_project_str);
@@ -2499,10 +2515,10 @@ main(int argc, char *argv[], char *envp[])
 				} else {
 					fprintf(fp_out, "%s=True\n", EVENT_ACCEPT_OBJECT);
 					fprintf(fp_out, "%s=False\n", EVENT_REJECT_OBJECT);
-					req_params_out.rq_job = (struct rq_quejob *)&rqj;
+					req_params_out.rq_job = (struct rq_quejob *) &rqj;
 					pbs_python_event_to_request(hook_event, &req_params_out, perf_label, perf_action);
 					fprint_svrattrl_list(fp_out, EVENT_RESV_OBJECT,
-						&rqj.rq_attr);
+							     &rqj.rq_attr);
 				}
 				break;
 
@@ -2522,9 +2538,9 @@ main(int argc, char *argv[], char *envp[])
 
 					fprintf(fp_out, "%s=True\n", EVENT_REJECT_OBJECT);
 					fprintf(fp_out, "%s=False\n", EVENT_ACCEPT_OBJECT);
-					if (rej_msg != NULL) fprintf(fp_out, "%s=%s\n", EVENT_REJECT_MSG_OBJECT,
-						rej_msg);
-
+					if (rej_msg != NULL)
+						fprintf(fp_out, "%s=%s\n", EVENT_REJECT_MSG_OBJECT,
+							rej_msg);
 
 				} else {
 					fprintf(fp_out, "%s=True\n", EVENT_ACCEPT_OBJECT);
@@ -2550,27 +2566,27 @@ main(int argc, char *argv[], char *envp[])
 					free_attrlist(&event_vnode_fail);
 					CLEAR_HEAD(event_vnode_fail);
 
-					req_params_out.progname = (char **)&progname;
-					req_params_out.argv_list = (pbs_list_head *)&event_argv;
-					req_params_out.env = (char **)&env_str;
-					req_params_out.vns_list = (pbs_list_head *)&event_vnode;
-					req_params_out.vns_list_fail = (pbs_list_head *)&event_vnode_fail;
+					req_params_out.progname = (char **) &progname;
+					req_params_out.argv_list = (pbs_list_head *) &event_argv;
+					req_params_out.env = (char **) &env_str;
+					req_params_out.vns_list = (pbs_list_head *) &event_vnode;
+					req_params_out.vns_list_fail = (pbs_list_head *) &event_vnode_fail;
 				} else if (hook_event == HOOK_EVENT_EXECJOB_PROLOGUE) {
 
 					free_attrlist(&event_vnode_fail);
 					CLEAR_HEAD(event_vnode_fail);
-					req_params_out.vns_list_fail = (pbs_list_head *)&event_vnode_fail;
+					req_params_out.vns_list_fail = (pbs_list_head *) &event_vnode_fail;
 				}
 
-				req_params_out.rq_job = (struct rq_quejob *)&rqj;
-				req_params_out.vns_list = (pbs_list_head *)&event_vnode;
+				req_params_out.rq_job = (struct rq_quejob *) &rqj;
+				req_params_out.vns_list = (pbs_list_head *) &event_vnode;
 				pbs_python_event_to_request(hook_event,
-					&req_params_out, perf_label, perf_action);
+							    &req_params_out, perf_label, perf_action);
 				fprint_svrattrl_list(fp_out, EVENT_JOB_OBJECT,
-					&rqj.rq_attr);
+						     &rqj.rq_attr);
 				fprint_svrattrl_list(fp_out,
-					EVENT_VNODELIST_OBJECT,
-					&event_vnode);
+						     EVENT_VNODELIST_OBJECT,
+						     &event_vnode);
 
 				if (hook_event == HOOK_EVENT_EXECJOB_LAUNCH) {
 					fprint_svrattrl_list(fp_out, EVENT_VNODELIST_FAIL_OBJECT, &event_vnode_fail);
@@ -2580,33 +2596,33 @@ main(int argc, char *argv[], char *envp[])
 					if (strcmp(progname_orig, progname) != 0)
 						print_progname = 1;
 
-					argv_str = argv_list_to_str((pbs_list_head *)&event_argv);
+					argv_str = argv_list_to_str((pbs_list_head *) &event_argv);
 
 					if (((argv_str_orig == NULL) && (argv_str != NULL)) ||
 					    ((argv_str_orig != NULL) && (argv_str == NULL)) ||
 					    ((argv_str_orig != NULL) && (argv_str != NULL) &&
-						(strcmp(argv_str_orig, argv_str) != 0)))
+					     (strcmp(argv_str_orig, argv_str) != 0)))
 						print_argv = 1;
 
 					if (!varlist_same(env_str_orig, env_str))
 						print_env = 1;
 
 					if (print_progname) {
-						snprintf(log_buffer, sizeof(log_buffer), "progname orig: %s",  progname_orig);
+						snprintf(log_buffer, sizeof(log_buffer), "progname orig: %s", progname_orig);
 						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, hook_name, log_buffer);
-						snprintf(log_buffer, sizeof(log_buffer), "progname new: %s",  progname);
+						snprintf(log_buffer, sizeof(log_buffer), "progname new: %s", progname);
 						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, hook_name, log_buffer);
-						}
+					}
 					if (print_argv) {
-						snprintf(log_buffer, sizeof(log_buffer), "argv orig: %s",  argv_str_orig?argv_str_orig:"");
+						snprintf(log_buffer, sizeof(log_buffer), "argv orig: %s", argv_str_orig ? argv_str_orig : "");
 						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, hook_name, log_buffer);
-						snprintf(log_buffer, sizeof(log_buffer), "argv new: %s",  argv_str?argv_str:"");
+						snprintf(log_buffer, sizeof(log_buffer), "argv new: %s", argv_str ? argv_str : "");
 						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, hook_name, log_buffer);
 					}
 					if (print_env) {
-						snprintf(log_buffer, sizeof(log_buffer), "env orig: %s",  env_str_orig);
+						snprintf(log_buffer, sizeof(log_buffer), "env orig: %s", env_str_orig);
 						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, hook_name, log_buffer);
-						snprintf(log_buffer, sizeof(log_buffer), "env new: %s",  env_str);
+						snprintf(log_buffer, sizeof(log_buffer), "env new: %s", env_str);
 						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, hook_name, log_buffer);
 					}
 					free(argv_str_orig);
@@ -2632,14 +2648,14 @@ main(int argc, char *argv[], char *envp[])
 				}
 
 				/* job actions */
-				rerunjob_str = pbs_python_event_job_getval_hookset(\
-					    PY_RERUNJOB_FLAG, NULL, 0, NULL, 0);
+				rerunjob_str = pbs_python_event_job_getval_hookset(
+					PY_RERUNJOB_FLAG, NULL, 0, NULL, 0);
 				if (rerunjob_str != NULL) {
 					fprintf(fp_out, "%s.%s=%s\n", EVENT_JOB_OBJECT,
 						PY_RERUNJOB_FLAG, rerunjob_str);
 				}
-				deletejob_str = pbs_python_event_job_getval_hookset(\
-					   PY_DELETEJOB_FLAG, NULL, 0, NULL, 0);
+				deletejob_str = pbs_python_event_job_getval_hookset(
+					PY_DELETEJOB_FLAG, NULL, 0, NULL, 0);
 				if (deletejob_str != NULL) {
 					fprintf(fp_out, "%s.%s=%s\n", EVENT_JOB_OBJECT,
 						PY_DELETEJOB_FLAG,
@@ -2658,7 +2674,6 @@ main(int argc, char *argv[], char *envp[])
 				} else {
 					fprintf(fp_out, "%s=True\n", EVENT_ACCEPT_OBJECT);
 					fprintf(fp_out, "%s=False\n", EVENT_REJECT_OBJECT);
-
 				}
 				/* show vnode_list changes whether or not accepted or */
 				/*  rejected */
@@ -2666,20 +2681,20 @@ main(int argc, char *argv[], char *envp[])
 				CLEAR_HEAD(event_vnode);
 				free_attrlist(&event_jobs);
 				CLEAR_HEAD(event_jobs);
-				req_params_out.vns_list = (pbs_list_head *)&event_vnode;
+				req_params_out.vns_list = (pbs_list_head *) &event_vnode;
 				if (hook_event == HOOK_EVENT_EXECHOST_PERIODIC) {
 					free_attrlist(&event_jobs);
 					CLEAR_HEAD(event_jobs);
-					req_params_out.jobs_list = (pbs_list_head *)&event_jobs;
+					req_params_out.jobs_list = (pbs_list_head *) &event_jobs;
 				}
 				pbs_python_event_to_request(hook_event,
-					&req_params_out, perf_label, perf_action);
+							    &req_params_out, perf_label, perf_action);
 
 				fprint_svrattrl_list(fp_out, EVENT_VNODELIST_OBJECT,
-					&event_vnode);
+						     &event_vnode);
 				if (hook_event == HOOK_EVENT_EXECHOST_PERIODIC) {
 					fprint_svrattrl_list(fp_out, EVENT_JOBLIST_OBJECT,
-						&event_jobs);
+							     &event_jobs);
 				}
 				break;
 			case HOOK_EVENT_EXECJOB_ATTACH:
@@ -2691,8 +2706,9 @@ main(int argc, char *argv[], char *envp[])
 
 					fprintf(fp_out, "%s=True\n", EVENT_REJECT_OBJECT);
 					fprintf(fp_out, "%s=False\n", EVENT_ACCEPT_OBJECT);
-					if (rej_msg != NULL) fprintf(fp_out, "%s=%s\n", EVENT_REJECT_MSG_OBJECT,
-						rej_msg);
+					if (rej_msg != NULL)
+						fprintf(fp_out, "%s=%s\n", EVENT_REJECT_MSG_OBJECT,
+							rej_msg);
 					break;
 				}
 				fprintf(fp_out, "%s=True\n", EVENT_ACCEPT_OBJECT);
@@ -2700,10 +2716,10 @@ main(int argc, char *argv[], char *envp[])
 				break;
 			default:
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK, LOG_ERR,
-					hook_name, "event_to_request: Unexpected event");
+					  hook_name, "event_to_request: Unexpected event");
 				rc = 1;
 		}
-pbs_python_end:
+	pbs_python_end:
 		if (pbs_python_get_reboot_host_flag() == TRUE) {
 			char *reboot_cmd;
 

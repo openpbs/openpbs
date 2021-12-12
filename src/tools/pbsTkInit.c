@@ -49,20 +49,19 @@
  * 	pbsTcl_Init()
  * 	main()
  */
-#include	"pbs_config.h"
-#include	"pbs_version.h"
+#include "pbs_config.h"
+#include "pbs_version.h"
 
-#include	"tcl.h"
-#include	"tk.h"
-#include	<string.h>
-#include	<stdlib.h>
-#include	"rm.h"
-#include	"pbs_ifl.h"
-#include	"pbs_internal.h"
-#include	"log.h"
+#include "tcl.h"
+#include "tk.h"
+#include <string.h>
+#include <stdlib.h>
+#include "rm.h"
+#include "pbs_ifl.h"
+#include "pbs_internal.h"
+#include "log.h"
 
-
-extern	void	add_cmds(Tcl_Interp *interp);
+extern void add_cmds(Tcl_Interp *interp);
 
 /**
  * @brief
@@ -82,7 +81,7 @@ pbsTcl_Init(Tcl_Interp *interp)
 	if (Tk_Init(interp) == TCL_ERROR)
 		return TCL_ERROR;
 	Tcl_StaticPackage(interp, "Tk", Tk_Init, Tk_SafeInit);
-#if	TCLX
+#if TCLX
 	if (Tclx_Init(interp) == TCL_ERROR)
 		return TCL_ERROR;
 	if (Tkx_Init(interp) == TCL_ERROR)
@@ -109,7 +108,7 @@ int
 main(int argc, char *argv[])
 {
 
-	char	tbuf_env[256];
+	char tbuf_env[256];
 
 	/*the real deal or just pbs_version and exit?*/
 
@@ -119,8 +118,8 @@ main(int argc, char *argv[])
 	pbs_loadconf(0);
 
 	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
-			pbs_conf.locallog, pbs_conf.syslogfac,
-			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+		     pbs_conf.locallog, pbs_conf.syslogfac,
+		     pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 
 	if (!getenv("TCL_LIBRARY")) {
 		if (pbs_conf.pbs_exec_path) {
@@ -128,7 +127,6 @@ main(int argc, char *argv[])
 			setenv("TCL_LIBRARY", tbuf_env, 1);
 		}
 	}
-
 
 	if (!getenv("TK_LIBRARY")) {
 		if (pbs_conf.pbs_exec_path) {

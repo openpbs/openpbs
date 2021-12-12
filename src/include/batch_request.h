@@ -123,7 +123,7 @@ struct rq_management {
 /* ModifyVnode - used for node state changes */
 struct rq_modifyvnode {
 	struct pbsnode *rq_vnode_o; /* old/previous vnode state */
-	struct pbsnode *rq_vnode; /* new/current vnode state */
+	struct pbsnode *rq_vnode;   /* new/current vnode state */
 };
 
 /* HoldJob -  plus preference flag */
@@ -235,19 +235,19 @@ struct rq_defschrpy {
 
 #define STDJOBFILE 1
 #define JOBCKPFILE 2
-#define STAGEFILE  3
+#define STAGEFILE 3
 
-#define STAGE_DIR_IN  0
+#define STAGE_DIR_IN 0
 #define STAGE_DIR_OUT 1
 
 #define STAGE_DIRECTION 1 /* mask for setting/extracting direction of file copy from rq_dir */
-#define STAGE_JOBDIR    2 /* mask for setting/extracting "sandbox" mode flag from rq_dir */
+#define STAGE_JOBDIR 2	  /* mask for setting/extracting "sandbox" mode flag from rq_dir */
 
 struct rq_cpyfile {
 	char rq_jobid[PBS_MAXSVRJOBID + 1]; /* used in Copy & Delete */
-	char rq_owner[PBS_MAXUSER + 1];     /* used in Copy only	   */
-	char rq_user[PBS_MAXUSER + 1];      /* used in Copy & Delete */
-	char rq_group[PBS_MAXGRPN + 1];     /* used in Copy only     */
+	char rq_owner[PBS_MAXUSER + 1];	    /* used in Copy only	   */
+	char rq_user[PBS_MAXUSER + 1];	    /* used in Copy & Delete */
+	char rq_group[PBS_MAXGRPN + 1];	    /* used in Copy only     */
 	int rq_dir;			    /* direction and sandbox flags: used in Copy & Delete */
 	pbs_list_head rq_pair;		    /* list of rqfpair,  used in Copy & Delete */
 };
@@ -255,7 +255,7 @@ struct rq_cpyfile {
 struct rq_cpyfile_cred {
 	struct rq_cpyfile rq_copyfile; /* copy/delete info */
 	int rq_credtype;	       /* cred type */
-	size_t rq_credlen;	     /* credential length bytes */
+	size_t rq_credlen;	       /* credential length bytes */
 	char *rq_pcred;		       /* encrpyted credential */
 };
 
@@ -270,9 +270,9 @@ struct rq_cred {
 
 struct rqfpair {
 	pbs_list_link fp_link;
-	int fp_flag;    /* 1 for std[out|err] 2 for stageout */
+	int fp_flag;	/* 1 for std[out|err] 2 for stageout */
 	char *fp_local; /* used in Copy & Delete */
-	char *fp_rmt;   /* used in Copy only     */
+	char *fp_rmt;	/* used in Copy only     */
 };
 
 struct rq_register_sched {
@@ -284,24 +284,24 @@ struct rq_register_sched {
  * so here is the union ...
  */
 struct batch_request {
-	pbs_list_link rq_link;			/* linkage of all requests */
-	struct batch_request *rq_parentbr;	/* parent request for job array request */
-	int rq_refct;				/* reference count - child requests */
-	int rq_type;				/* type of request */
-	int rq_perm;				/* access permissions for the user */
-	int rq_fromsvr;				/* true if request from another server */
-	int rq_conn;				/* socket connection to client/server */
-	int rq_orgconn;				/* original socket if relayed to MOM */
-	int rq_extsz;				/* size of "extension" data */
-	long rq_time;				/* time batch request created */
-	char rq_user[PBS_MAXUSER + 1];		/* user name request is from */
-	char rq_host[PBS_MAXHOSTNAME + 1];	/* name of host sending request */
-	void *rq_extra;				/* optional ptr to extra info */
-	char *rq_extend;			/* request "extension" data */
-	int prot;				/* PROT_TCP or PROT_TPP */
-	int tpp_ack;				/* send acks for this tpp stream? */
-	char *tppcmd_msgid;			/* msg id for tpp commands */
-	struct batch_reply rq_reply;		/* the reply area for this request */
+	pbs_list_link rq_link;		   /* linkage of all requests */
+	struct batch_request *rq_parentbr; /* parent request for job array request */
+	int rq_refct;			   /* reference count - child requests */
+	int rq_type;			   /* type of request */
+	int rq_perm;			   /* access permissions for the user */
+	int rq_fromsvr;			   /* true if request from another server */
+	int rq_conn;			   /* socket connection to client/server */
+	int rq_orgconn;			   /* original socket if relayed to MOM */
+	int rq_extsz;			   /* size of "extension" data */
+	long rq_time;			   /* time batch request created */
+	char rq_user[PBS_MAXUSER + 1];	   /* user name request is from */
+	char rq_host[PBS_MAXHOSTNAME + 1]; /* name of host sending request */
+	void *rq_extra;			   /* optional ptr to extra info */
+	char *rq_extend;		   /* request "extension" data */
+	int prot;			   /* PROT_TCP or PROT_TPP */
+	int tpp_ack;			   /* send acks for this tpp stream? */
+	char *tppcmd_msgid;		   /* msg id for tpp commands */
+	struct batch_reply rq_reply;	   /* the reply area for this request */
 	union indep_request {
 		struct rq_register_sched rq_register_sched;
 		struct rq_auth rq_auth;

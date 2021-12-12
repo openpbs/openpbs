@@ -132,7 +132,7 @@ extern int confirm_resv_locally(resc_resv *, struct batch_request *, char *);
 extern int set_select_and_place(int, void *, attribute *);
 extern int make_schedselect(attribute *, resource *, pbs_queue *, attribute *);
 extern long long get_next_svr_sequence_id(void);
-extern int compare_obj_hash(void *, int , void *);
+extern int compare_obj_hash(void *, int, void *);
 extern void panic_stop_db();
 extern void free_db_attr_list(pbs_db_attr_list_t *);
 extern bool delete_pending_arrayjobs(struct batch_request *);
@@ -266,24 +266,24 @@ extern void set_last_used_time_node(void *, int);
 
 #endif /* _BATCH_REQUEST_H */
 
-#ifdef	_ATTRIBUTE_H
-extern int   check_que_enable(attribute *, void *, int);
-extern int   set_queue_type(attribute *, void *, int);
-extern int   chk_characteristic(struct pbsnode *pnode, int *pneed_todo);
-extern int   is_valid_str_resource(attribute *pattr, void *pobject, int actmode);
-extern int   setup_arrayjob_attrs(attribute *, void *, int);
-extern int   deflt_chunk_action(attribute *pattr, void *pobj, int mode);
-extern int   action_svr_iteration(attribute *pattr, void *pobj, int mode);
-extern void  update_node_rassn(attribute *, enum batch_op);
-extern void  update_job_node_rassn(job *, attribute *, enum batch_op);
-extern int   cvt_nodespec_to_select(char *, char **, size_t *, attribute *);
-extern int   is_valid_resource(attribute *pattr, void *pobject, int actmode);
-extern int   queuestart_action(attribute *pattr, void *pobject, int actmode);
-extern int   alter_eligibletime(attribute *pattr, void *pobject, int actmode);
-extern int   set_chunk_sum(attribute  *pselectattr, attribute *pattr);
-extern int   update_resources_rel(job *, attribute *, enum batch_op);
-extern int   keepfiles_action(attribute *pattr, void *pobject, int actmode);
-extern int   removefiles_action(attribute *pattr, void *pobject, int actmode);
+#ifdef _ATTRIBUTE_H
+extern int check_que_enable(attribute *, void *, int);
+extern int set_queue_type(attribute *, void *, int);
+extern int chk_characteristic(struct pbsnode *pnode, int *pneed_todo);
+extern int is_valid_str_resource(attribute *pattr, void *pobject, int actmode);
+extern int setup_arrayjob_attrs(attribute *, void *, int);
+extern int deflt_chunk_action(attribute *pattr, void *pobj, int mode);
+extern int action_svr_iteration(attribute *pattr, void *pobj, int mode);
+extern void update_node_rassn(attribute *, enum batch_op);
+extern void update_job_node_rassn(job *, attribute *, enum batch_op);
+extern int cvt_nodespec_to_select(char *, char **, size_t *, attribute *);
+extern int is_valid_resource(attribute *pattr, void *pobject, int actmode);
+extern int queuestart_action(attribute *pattr, void *pobject, int actmode);
+extern int alter_eligibletime(attribute *pattr, void *pobject, int actmode);
+extern int set_chunk_sum(attribute *pselectattr, attribute *pattr);
+extern int update_resources_rel(job *, attribute *, enum batch_op);
+extern int keepfiles_action(attribute *pattr, void *pobject, int actmode);
+extern int removefiles_action(attribute *pattr, void *pobject, int actmode);
 
 /* Functions below exposed as they are now accessed by the Python hooks */
 extern void update_state_ct(attribute *, int *, attribute_def *attr_def);
@@ -362,11 +362,11 @@ struct deferred_request {
  */
 #ifdef STAT_CNTL
 struct select_list {
-	struct select_list *sl_next;	/* ptr to next in list   */
-	enum batch_op sl_op;		/* comparison operator   */
-	attribute_def *sl_def;		/* ptr to attr definition, for at_comp */
-	int sl_atindx;			/* index into attribute_def, for type */
-	attribute sl_attr;		/* the attribute (value) */
+	struct select_list *sl_next; /* ptr to next in list   */
+	enum batch_op sl_op;	     /* comparison operator   */
+	attribute_def *sl_def;	     /* ptr to attr definition, for at_comp */
+	int sl_atindx;		     /* index into attribute_def, for type */
+	attribute sl_attr;	     /* the attribute (value) */
 };
 
 /* used in req_stat_job */

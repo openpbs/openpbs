@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    node_partition.c
  *
@@ -203,7 +202,7 @@ dup_node_partition_array(node_partition **onp_arr, server_info *nsinfo)
 	for (i = 0; onp_arr[i] != NULL; i++)
 		;
 
-	if ((nnp_arr = static_cast<node_partition **>(malloc((i+1) * sizeof(node_partition *)))) == NULL) {
+	if ((nnp_arr = static_cast<node_partition **>(malloc((i + 1) * sizeof(node_partition *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -264,7 +263,7 @@ dup_node_partition(node_partition *onp, server_info *nsinfo)
 
 	/* validity check */
 	if (onp->name == NULL || onp->res_val == NULL ||
-		nnp->res == NULL || nnp->ninfo_arr == NULL) {
+	    nnp->res == NULL || nnp->ninfo_arr == NULL) {
 		free_node_partition(nnp);
 		return NULL;
 	}
@@ -389,9 +388,9 @@ create_node_partitions(status *policy, node_info **nodes, const std::vector<std:
 
 	schd_resource *tmpres;
 
-	int val_i;		/* index of placement set resource value */
-	int node_i;		/* index into nodes array */
-	int np_i;		/* index into node partition array we are creating */
+	int val_i;  /* index of placement set resource value */
+	int node_i; /* index into nodes array */
+	int np_i;   /* index into node partition array we are creating */
 
 	static schd_resource *unset_res = NULL;
 
@@ -447,7 +446,7 @@ create_node_partitions(status *policy, node_info **nodes, const std::vector<std:
 					if (np == NULL) {
 						if (np_i >= np_arr_size) {
 							tmp_arr = static_cast<node_partition **>(realloc(np_arr,
-								(np_arr_size * 2 + 1) * sizeof(node_partition *)));
+													 (np_arr_size * 2 + 1) * sizeof(node_partition *)));
 							if (tmp_arr == NULL) {
 								log_err(errno, __func__, MEM_ERR_MSG);
 								free_node_partition_array(np_arr);
@@ -475,13 +474,11 @@ create_node_partitions(status *policy, node_info **nodes, const std::vector<std:
 
 							np_i++;
 							np_arr[np_i] = NULL;
-						}
-						else {
+						} else {
 							free_node_partition_array(np_arr);
 							return NULL;
 						}
-					}
-					else {
+					} else {
 						np->tot_nodes++;
 						if (nodes[node_i]->is_free)
 							np->free_nodes++;
@@ -493,7 +490,6 @@ create_node_partitions(status *policy, node_info **nodes, const std::vector<std:
 			 */
 		}
 	}
-
 
 	/* now that we have a list of node partitions and number of nodes in each
 	 * lets allocate a node array and fill it
@@ -514,8 +510,7 @@ create_node_partitions(status *policy, node_info **nodes, const std::vector<std:
 
 		np_arr[np_i]->ninfo_arr[0] = NULL;
 
-		for (node_i = 0; nodes[node_i] != NULL &&
-			i < np_arr[np_i]->tot_nodes; node_i++) {
+		for (node_i = 0; nodes[node_i] != NULL && i < np_arr[np_i]->tot_nodes; node_i++) {
 			if (nodes[node_i]->is_stale)
 				continue;
 
@@ -574,7 +569,8 @@ create_node_partitions(status *policy, node_info **nodes, const std::vector<std:
  *  @param[in] ninfo - the node of the job/resv
  */
 void
-update_buckets_for_node(node_bucket **bkts, node_info *ninfo) {
+update_buckets_for_node(node_bucket **bkts, node_info *ninfo)
+{
 	int i;
 
 	if (bkts == NULL || ninfo == NULL)
@@ -592,7 +588,7 @@ update_buckets_for_node(node_bucket **bkts, node_info *ninfo) {
 			} else if (pbs_bitmap_get_bit(bkts[i]->busy_later_pool->truth, node_ind)) {
 				pbs_bitmap_bit_off(bkts[i]->busy_later_pool->truth, node_ind);
 				bkts[i]->busy_later_pool->truth_ct--;
-			}  else if (pbs_bitmap_get_bit(bkts[i]->busy_pool->truth, node_ind)) {
+			} else if (pbs_bitmap_get_bit(bkts[i]->busy_pool->truth, node_ind)) {
 				pbs_bitmap_bit_off(bkts[i]->busy_pool->truth, node_ind);
 				bkts[i]->busy_pool->truth_ct--;
 			}
@@ -622,7 +618,8 @@ update_buckets_for_node(node_bucket **bkts, node_info *ninfo) {
  *  @param[in] ninfo_arr - the nodes of the job/resv
  */
 void
-update_buckets_for_node_array(node_bucket **bkts, node_info **ninfo_arr) {
+update_buckets_for_node_array(node_bucket **bkts, node_info **ninfo_arr)
+{
 	int i;
 
 	if (bkts == NULL || ninfo_arr == NULL)
@@ -668,7 +665,6 @@ node_partition_update_array(status *policy, node_partition **nodepart)
 	return rc;
 }
 
-
 /**
  * @brief
  * 		update the meta data about a node partition
@@ -703,8 +699,7 @@ node_partition_update(status *policy, node_partition *np)
 				res->avail = 0;
 			}
 		}
-	}
-	else
+	} else
 		arl_flags |= ADD_UNSET_BOOLS_FALSE;
 
 	np->free_nodes = 0;
@@ -718,7 +713,7 @@ node_partition_update(status *policy, node_partition *np)
 
 		if (np->res == NULL)
 			np->res = dup_selective_resource_list(np->ninfo_arr[i]->res,
-				policy->resdef_to_check, arl_flags);
+							      policy->resdef_to_check, arl_flags);
 		else if (!add_resource_list(policy, np->res, np->ninfo_arr[i]->res, arl_flags)) {
 			rc = 0;
 			break;
@@ -728,7 +723,7 @@ node_partition_update(status *policy, node_partition *np)
 	if (!policy->node_sort->empty() && conf.node_sort_unused) {
 		/* Resort the nodes in the partition so that selection works correctly. */
 		qsort(np->ninfo_arr, np->tot_nodes, sizeof(node_info *),
-			multi_node_sort);
+		      multi_node_sort);
 	}
 
 	return rc;
@@ -740,16 +735,17 @@ node_partition_update(status *policy, node_partition *np)
  *
  * @return	new np_cache object
  */
-np_cache::np_cache() {
+np_cache::np_cache()
+{
 	ninfo_arr = NULL;
 	nodepart = NULL;
 	num_parts = UNSPECIFIED;
 }
 // overloaded
-np_cache::np_cache(node_info **rninfo_arr, const std::vector<std::string>& rresnames, node_partition **rnodepart, int rnum_parts) : 
-	ninfo_arr(rninfo_arr), resnames(rresnames), nodepart(rnodepart), num_parts(rnum_parts) { }
+np_cache::np_cache(node_info **rninfo_arr, const std::vector<std::string> &rresnames, node_partition **rnodepart, int rnum_parts) : ninfo_arr(rninfo_arr), resnames(rresnames), nodepart(rnodepart), num_parts(rnum_parts) {}
 // Destructor
-np_cache::~np_cache() {
+np_cache::~np_cache()
+{
 	if (nodepart != NULL)
 		free_node_partition_array(nodepart);
 
@@ -793,14 +789,14 @@ free_np_cache_array(std::vector<np_cache *> &npc_arr)
  */
 np_cache *
 find_np_cache(const std::vector<np_cache *> &npc_arr,
-	const std::vector<std::string> &resnames, node_info **ninfo_arr)
+	      const std::vector<std::string> &resnames, node_info **ninfo_arr)
 {
 	if (npc_arr.empty() || resnames.empty() || ninfo_arr == NULL)
 		return NULL;
 
 	for (auto elem : npc_arr) {
 		if (elem->ninfo_arr == ninfo_arr &&
-			match_string_array(elem->resnames, resnames) == SA_FULL_MATCH)
+		    match_string_array(elem->resnames, resnames) == SA_FULL_MATCH)
 			return elem;
 	}
 
@@ -830,8 +826,8 @@ find_np_cache(const std::vector<np_cache *> &npc_arr,
  */
 np_cache *
 find_alloc_np_cache(status *policy, std::vector<np_cache *> &pnpc_arr,
-	const std::vector<std::string> &resnames, node_info **ninfo_arr,
-	int (*sort_func)(const void *, const void *))
+		    const std::vector<std::string> &resnames, node_info **ninfo_arr,
+		    int (*sort_func)(const void *, const void *))
 {
 	node_partition **nodepart = NULL;
 	int num_parts;
@@ -857,12 +853,11 @@ find_alloc_np_cache(status *policy, std::vector<np_cache *> &pnpc_arr,
 			try {
 				npc = new np_cache(ninfo_arr, resnames, nodepart, num_parts);
 				pnpc_arr.push_back(npc);
-			} catch(std::bad_alloc &e) {
+			} catch (std::bad_alloc &e) {
 				free_node_partition_array(nodepart);
 				error = 1;
 			}
-		}
-		else
+		} else
 			error = 1;
 	}
 
@@ -892,7 +887,7 @@ find_alloc_np_cache(status *policy, std::vector<np_cache *> &pnpc_arr,
  */
 int
 resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resresv,
-	unsigned int flags, schd_error *err)
+			 unsigned int flags, schd_error *err)
 {
 	int i;
 	schd_error *prev_err = NULL;
@@ -902,11 +897,10 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 	selspec *spec = NULL;
 	place *pl = NULL;
 
-
 	if (policy == NULL || np == NULL || resresv == NULL || err == NULL)
 		return -1;
 
-	pass_flags = flags|UNSET_RES_ZERO;
+	pass_flags = flags | UNSET_RES_ZERO;
 
 	/* Check 1: Based on the flag check if there are any nodes available or if
 	 * they are free.
@@ -943,7 +937,7 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 		int nodect;
 		enum sched_error_code error_code;
 		enum schd_err_status status_code;
-		if ( (flags & COMPARE_TOTAL) ) {
+		if ((flags & COMPARE_TOTAL)) {
 			nodect = np->tot_nodes;
 			error_code = NO_TOTAL_NODES;
 			status_code = NEVER_RUN;
@@ -975,8 +969,8 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 	else
 		req = resresv->resreq;
 	if (check_avail_resources(np->res, req,
-				pass_flags, policy->resdef_to_check_rassn_select,
-				INSUFFICIENT_RESOURCE, err) == 0) {
+				  pass_flags, policy->resdef_to_check_rassn_select,
+				  INSUFFICIENT_RESOURCE, err) == 0) {
 		if ((flags & RETURN_ALL_ERR)) {
 			can_fit = 0;
 			for (; err->next != NULL; err = err->next)
@@ -1002,8 +996,8 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 	get_resresv_spec(resresv, &spec, &pl);
 	for (i = 0; spec->chunks[i] != NULL; i++) {
 		if (check_avail_resources(np->res, spec->chunks[i]->req,
-					pass_flags | CHECK_ALL_BOOLS, policy->resdef_to_check,
-					INSUFFICIENT_RESOURCE, err) == 0) {
+					  pass_flags | CHECK_ALL_BOOLS, policy->resdef_to_check,
+					  INSUFFICIENT_RESOURCE, err) == 0) {
 			if ((flags & RETURN_ALL_ERR)) {
 				can_fit = 0;
 				for (; err->next != NULL; err = err->next)
@@ -1016,7 +1010,7 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 		}
 	}
 	if ((flags & RETURN_ALL_ERR)) {
-		if(prev_err != NULL) {
+		if (prev_err != NULL) {
 			prev_err->next = NULL;
 			free(err);
 		}
@@ -1061,7 +1055,7 @@ create_specific_nodepart(status *policy, const char *name, node_info **nodes, in
 	np->res_val = string_dup("none");
 	np->rank = get_sched_rank();
 
-	np->ninfo_arr = static_cast<node_info **>(malloc((cnt + 1) * sizeof(node_info*)));
+	np->ninfo_arr = static_cast<node_info **>(malloc((cnt + 1) * sizeof(node_info *)));
 	if (np->ninfo_arr == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		free_node_partition(np);
@@ -1083,11 +1077,8 @@ create_specific_nodepart(status *policy, const char *name, node_info **nodes, in
 			np->ninfo_arr[j] = nodes[i];
 			j++;
 		}
-
 	}
 	np->tot_nodes = j;
-
-
 
 	np->ninfo_arr[np->tot_nodes] = NULL;
 
@@ -1098,7 +1089,6 @@ create_specific_nodepart(status *policy, const char *name, node_info **nodes, in
 
 	return np;
 }
-
 
 /**
  * @brief
@@ -1121,7 +1111,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 		const std::vector<std::string> resstr{"host"};
 		int num;
 		sinfo->hostsets = create_node_partitions(policy, sinfo->nodes,
-			resstr, sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST, &num);
+							 resstr, sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST, &num);
 		if (sinfo->hostsets != NULL) {
 			sinfo->num_hostsets = num;
 			for (int i = 0; sinfo->nodes[i] != NULL; i++) {
@@ -1133,34 +1123,31 @@ create_placement_sets(status *policy, server_info *sinfo)
 					snprintf(hostbuf, sizeof(hostbuf), "host=%s", hostres->str_avail[0]);
 					sinfo->nodes[i]->hostset =
 						find_node_partition(sinfo->hostsets, hostbuf);
-				}
-				else {
+				} else {
 					snprintf(hostbuf, sizeof(hostbuf), "host=\"\"");
 					sinfo->nodes[i]->hostset =
 						find_node_partition(sinfo->hostsets, hostbuf);
 				}
 			}
-		}
-		else {
+		} else {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "",
-				"Failed to create host sets for server");
+				  "Failed to create host sets for server");
 			is_success = false;
 		}
 	}
 
 	if (sinfo->node_group_enable && !sinfo->node_group_key.empty()) {
 		sinfo->nodepart = create_node_partitions(policy, sinfo->unassoc_nodes,
-			sinfo->node_group_key,
-			sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST,
-			&sinfo->num_parts);
+							 sinfo->node_group_key,
+							 sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST,
+							 &sinfo->num_parts);
 
 		if (sinfo->nodepart != NULL) {
 			qsort(sinfo->nodepart, sinfo->num_parts,
-				sizeof(node_partition *), cmp_placement_sets);
-		}
-		else {
+			      sizeof(node_partition *), cmp_placement_sets);
+		} else {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "",
-				"Failed to create node partitions for server");
+				  "Failed to create node partitions for server");
 			is_success = false;
 		}
 	}
@@ -1185,15 +1172,14 @@ create_placement_sets(status *policy, server_info *sinfo)
 				ngkey = sinfo->node_group_key;
 
 			qinfo->nodepart = create_node_partitions(policy, ngroup_nodes,
-				ngkey, sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST,
-				&(qinfo->num_parts));
+								 ngkey, sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST,
+								 &(qinfo->num_parts));
 			if (qinfo->nodepart != NULL) {
 				qsort(qinfo->nodepart, qinfo->num_parts,
-					sizeof(node_partition *), cmp_placement_sets);
-			}
-			else {
+				      sizeof(node_partition *), cmp_placement_sets);
+			} else {
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_QUEUE, LOG_DEBUG, qinfo->name,
-					"Failed to create node partitions for queue.");
+					  "Failed to create node partitions for queue.");
 				is_success = false;
 			}
 		}
@@ -1252,7 +1238,7 @@ update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 	if (sinfo == NULL)
 		return;
 
-	if(sinfo->allpart == NULL)
+	if (sinfo->allpart == NULL)
 		return;
 
 	if (sinfo->node_group_enable && !sinfo->node_group_key.empty())
@@ -1265,7 +1251,7 @@ update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 			node_partition_update_array(policy, qinfo->nodepart);
 
 		if ((flags & NO_ALLPART) == 0) {
-			if(qinfo->allpart != NULL && qinfo->allpart->res == NULL)
+			if (qinfo->allpart != NULL && qinfo->allpart->res == NULL)
 				node_partition_update(policy, qinfo->allpart);
 		}
 	}

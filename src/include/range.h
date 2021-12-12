@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #ifndef _RANGE_H
 #define _RANGE_H
 
@@ -53,8 +52,7 @@ enum range_step_type {
 	ENABLE_SUBRANGE_STEPPING
 };
 
-typedef struct range
-{
+typedef struct range {
 	int start;
 	int end;
 	int step;

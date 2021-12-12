@@ -37,9 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	__TPP_H
+#ifndef __TPP_H
 #define __TPP_H
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -48,37 +48,37 @@ extern "C" {
 #include "pbs_internal.h"
 #include "auth.h"
 
-#if defined (PBS_HAVE_DEVPOLL)
+#if defined(PBS_HAVE_DEVPOLL)
 #define PBS_USE_DEVPOLL
-#elif defined (PBS_HAVE_EPOLL)
+#elif defined(PBS_HAVE_EPOLL)
 #define PBS_USE_EPOLL
-#elif defined (PBS_HAVE_POLLSET)
-#define  PBS_USE_POLLSET
-#elif defined (HAVE_POLL)
+#elif defined(PBS_HAVE_POLLSET)
+#define PBS_USE_POLLSET
+#elif defined(HAVE_POLL)
 #define PBS_USE_POLL
-#elif defined (HAVE_SELECT)
+#elif defined(HAVE_SELECT)
 #define PBS_USE_SELECT
 #endif
 
-#if defined (PBS_USE_EPOLL)
+#if defined(PBS_USE_EPOLL)
 
 #include <sys/epoll.h>
 
-#elif defined (PBS_USE_POLL)
+#elif defined(PBS_USE_POLL)
 
 #include <poll.h>
 
-#elif defined (PBS_USE_SELECT)
+#elif defined(PBS_USE_SELECT)
 
 #if defined(FD_SET_IN_SYS_SELECT_H)
 #include <sys/select.h>
 #endif
 
-#elif defined (PBS_USE_DEVPOLL)
+#elif defined(PBS_USE_DEVPOLL)
 
 #include <sys/devpoll.h>
 
-#elif defined (PBS_USE_POLLSET)
+#elif defined(PBS_USE_POLLSET)
 
 #include <sys/poll.h>
 #include <sys/pollset.h>
@@ -89,31 +89,31 @@ extern "C" {
 /*
  * Default number of RPP packets to check every server iteration
  */
-#define RPP_MAX_PKT_CHECK_DEFAULT	64
+#define RPP_MAX_PKT_CHECK_DEFAULT 64
 
 /* TPP specific definitions and structures */
 #define TPP_DEF_ROUTER_PORT 17001
 #define TPP_MAXOPENFD 8192 /* limit for pbs_comm max open files */
 
 /* tpp node types, leaf and router */
-#define TPP_LEAF_NODE           1  /* leaf node that does not care about TPP_CTL_LEAVE messages from other leaves */
-#define TPP_LEAF_NODE_LISTEN    2  /* leaf node that wants to be notified of TPP_CTL_LEAVE messages from other leaves */
-#define TPP_ROUTER_NODE         3  /* router */
-#define TPP_AUTH_NODE           4  /* authenticated, but yet unknown node type till a join happens */
+#define TPP_LEAF_NODE 1	       /* leaf node that does not care about TPP_CTL_LEAVE messages from other leaves */
+#define TPP_LEAF_NODE_LISTEN 2 /* leaf node that wants to be notified of TPP_CTL_LEAVE messages from other leaves */
+#define TPP_ROUTER_NODE 3      /* router */
+#define TPP_AUTH_NODE 4	       /* authenticated, but yet unknown node type till a join happens */
 
-extern	int	tpp_fd;
+extern int tpp_fd;
 struct tpp_config {
-	int    node_type; /* leaf, proxy */
-	char   **routers; /* other proxy names (and backups) to connect to */
-	int    numthreads;
-	char   *node_name; /* list of comma separated node names */
-	int    compress;
-	int    tcp_keepalive; /* use keepalive? */
-	int    tcp_keep_idle;
-	int    tcp_keep_intvl;
-	int    tcp_keep_probes;
-	int    tcp_user_timeout;
-	int    buf_limit_per_conn; /* buffer limit per physical connection */
+	int node_type;	/* leaf, proxy */
+	char **routers; /* other proxy names (and backups) to connect to */
+	int numthreads;
+	char *node_name; /* list of comma separated node names */
+	int compress;
+	int tcp_keepalive; /* use keepalive? */
+	int tcp_keep_idle;
+	int tcp_keep_intvl;
+	int tcp_keep_probes;
+	int tcp_user_timeout;
+	int buf_limit_per_conn; /* buffer limit per physical connection */
 	pbs_auth_config_t *auth_config;
 	char **supported_auth_methods;
 };
@@ -148,7 +148,7 @@ extern int tpp_mcast_close(int);
 /**********************************************************************/
 /* em related definitions (external version) */
 /**********************************************************************/
-#if defined (PBS_USE_POLL)
+#if defined(PBS_USE_POLL)
 
 typedef struct {
 	int fd;
@@ -158,36 +158,36 @@ typedef struct {
 #define EM_GET_FD(ev, i) ev[i].fd
 #define EM_GET_EVENT(ev, i) ev[i].events
 
-#define EM_IN	POLLIN
-#define EM_OUT	POLLOUT
-#define EM_HUP	POLLHUP
-#define EM_ERR	POLLERR
+#define EM_IN POLLIN
+#define EM_OUT POLLOUT
+#define EM_HUP POLLHUP
+#define EM_ERR POLLERR
 
-#elif defined (PBS_USE_EPOLL)
+#elif defined(PBS_USE_EPOLL)
 
 typedef struct epoll_event em_event_t;
 
 #define EM_GET_FD(ev, i) ev[i].data.fd
 #define EM_GET_EVENT(ev, i) ev[i].events
 
-#define EM_IN	EPOLLIN
-#define EM_OUT	EPOLLOUT
-#define EM_HUP	EPOLLHUP
-#define EM_ERR	EPOLLERR
+#define EM_IN EPOLLIN
+#define EM_OUT EPOLLOUT
+#define EM_HUP EPOLLHUP
+#define EM_ERR EPOLLERR
 
-#elif defined (PBS_USE_POLLSET)
+#elif defined(PBS_USE_POLLSET)
 
 typedef struct pollfd em_event_t;
 
 #define EM_GET_FD(ev, i) ev[i].fd
 #define EM_GET_EVENT(ev, i) ev[i].revents
 
-#define EM_IN	POLLIN
-#define EM_OUT	POLLOUT
-#define EM_HUP	POLLHUP
-#define EM_ERR	POLLERR
+#define EM_IN POLLIN
+#define EM_OUT POLLOUT
+#define EM_HUP POLLHUP
+#define EM_ERR POLLERR
 
-#elif defined (PBS_USE_SELECT)
+#elif defined(PBS_USE_SELECT)
 
 typedef struct {
 	int fd;
@@ -197,22 +197,22 @@ typedef struct {
 #define EM_GET_FD(ev, i) ev[i].fd
 #define EM_GET_EVENT(ev, i) ev[i].events
 
-#define EM_IN	0x001
-#define EM_OUT	0x002
-#define EM_HUP	0x004
-#define EM_ERR	0x008
+#define EM_IN 0x001
+#define EM_OUT 0x002
+#define EM_HUP 0x004
+#define EM_ERR 0x008
 
-#elif defined (PBS_USE_DEVPOLL)
+#elif defined(PBS_USE_DEVPOLL)
 
 typedef struct pollfd em_event_t;
 
 #define EM_GET_FD(ev, i) ev[i].fd
 #define EM_GET_EVENT(ev, i) ev[i].revents
 
-#define EM_IN	POLLIN
-#define EM_OUT	POLLOUT
-#define EM_HUP	POLLHUP
-#define EM_ERR	POLLERR
+#define EM_IN POLLIN
+#define EM_OUT POLLOUT
+#define EM_HUP POLLHUP
+#define EM_ERR POLLERR
 
 #endif
 
@@ -234,7 +234,7 @@ int tpp_em_wait_win(void *, em_event_t **, int);
 
 extern char *get_all_ips(char *, char *, size_t);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _TPP_H */
+#endif /* _TPP_H */

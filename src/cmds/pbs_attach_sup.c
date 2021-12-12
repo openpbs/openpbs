@@ -92,16 +92,16 @@ usage(char *id)
 void
 attach(int use_cmd, int newsid, int port, int doparent, pid_t pid, char *jobid, char *host, int argc, char *argv[])
 {
-	char		*cookie = NULL;
-	tm_task_id	tid;
-	int             rc = 0;
+	char *cookie = NULL;
+	tm_task_id tid;
+	int rc = 0;
 
 	if (newsid) {
 		if ((pid = fork()) == -1) {
 			perror("pbs_attach: fork");
 			exit(1);
-		} else if (pid > 0) {	/* parent */
-			int	status;
+		} else if (pid > 0) { /* parent */
+			int status;
 
 			if (wait(&status) == -1) {
 				perror("pbs_attach: wait");
@@ -151,14 +151,14 @@ attach(int use_cmd, int newsid, int port, int doparent, pid_t pid, char *jobid, 
 		 ** installations of MPICH will not call setsid() and escape
 		 ** the new task.
 		 */
-		(void)setenv("MPICH_PROCESS_GROUP", "no", 1);
+		(void) setenv("MPICH_PROCESS_GROUP", "no", 1);
 
 		argv += optind;
 		argc -= optind;
 
 		execvp(argv[0], argv);
 		perror(argv[0]);
-		exit(255);	/* not reached */
+		exit(255); /* not reached */
 	}
 	exit(0);
 }

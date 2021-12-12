@@ -89,8 +89,9 @@ new_bucket_bitpool()
 
 /* bucket_bitpool destructor */
 void
-free_bucket_bitpool(bucket_bitpool *bp) {
-	if(bp == NULL)
+free_bucket_bitpool(bucket_bitpool *bp)
+{
+	if (bp == NULL)
 		return;
 
 	pbs_bitmap_free(bp->truth);
@@ -101,7 +102,8 @@ free_bucket_bitpool(bucket_bitpool *bp) {
 
 /* bucket_bitpool copy constructor */
 bucket_bitpool *
-dup_bucket_bitpool(bucket_bitpool *obp) {
+dup_bucket_bitpool(bucket_bitpool *obp)
+{
 	bucket_bitpool *nbp;
 
 	nbp = new_bucket_bitpool();
@@ -123,7 +125,8 @@ dup_bucket_bitpool(bucket_bitpool *obp) {
 
 /* node_bucket constructor */
 node_bucket *
-new_node_bucket(int new_pools) {
+new_node_bucket(int new_pools)
+{
 	node_bucket *nb;
 
 	nb = static_cast<node_bucket *>(calloc(1, sizeof(node_bucket)));
@@ -171,7 +174,8 @@ new_node_bucket(int new_pools) {
 
 /* node_bucket copy constructor */
 node_bucket *
-dup_node_bucket(node_bucket *onb, server_info *nsinfo) {
+dup_node_bucket(node_bucket *onb, server_info *nsinfo)
+{
 	node_bucket *nnb;
 
 	nnb = new_node_bucket(0);
@@ -216,7 +220,8 @@ dup_node_bucket(node_bucket *onb, server_info *nsinfo) {
 
 /* node_bucket array copy constructor */
 node_bucket **
-dup_node_bucket_array(node_bucket **old, server_info *nsinfo) {
+dup_node_bucket_array(node_bucket **old, server_info *nsinfo)
+{
 	node_bucket **nnb;
 	int i;
 	if (old == NULL)
@@ -243,8 +248,9 @@ dup_node_bucket_array(node_bucket **old, server_info *nsinfo) {
 
 /* node_bucket destructor */
 void
-free_node_bucket(node_bucket *nb) {
-	if(nb == NULL)
+free_node_bucket(node_bucket *nb)
+{
+	if (nb == NULL)
 		return;
 
 	free_bucket_bitpool(nb->busy_pool);
@@ -261,7 +267,8 @@ free_node_bucket(node_bucket *nb) {
 
 /* node bucket array destructor */
 void
-free_node_bucket_array(node_bucket **buckets) {
+free_node_bucket_array(node_bucket **buckets)
+{
 	int i;
 
 	if (buckets == NULL)
@@ -275,11 +282,12 @@ free_node_bucket_array(node_bucket **buckets) {
 
 /* node_bucket_count constructor */
 node_bucket_count *
-new_node_bucket_count() {
+new_node_bucket_count()
+{
 	node_bucket_count *nbc;
 
 	nbc = static_cast<node_bucket_count *>(malloc(sizeof(node_bucket_count)));
-	if(nbc == NULL) {
+	if (nbc == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -290,19 +298,22 @@ new_node_bucket_count() {
 }
 
 void
-free_node_bucket_count(node_bucket_count *nbc) {
-	if(nbc == NULL)
+free_node_bucket_count(node_bucket_count *nbc)
+{
+	if (nbc == NULL)
 		return;
 
 	free(nbc);
 }
 
-void free_node_bucket_count_array(node_bucket_count **nbc_array) {
+void
+free_node_bucket_count_array(node_bucket_count **nbc_array)
+{
 	int i;
-	if(nbc_array == NULL)
+	if (nbc_array == NULL)
 		return;
 
-	for(i = 0; nbc_array[i] != NULL; i++)
+	for (i = 0; nbc_array[i] != NULL; i++)
 		free_node_bucket_count(nbc_array[i]);
 
 	free(nbc_array);
@@ -319,14 +330,15 @@ void free_node_bucket_count_array(node_bucket_count **nbc_array) {
  * @retval -1 if not found or on error
  */
 int
-find_node_bucket_ind(node_bucket **buckets, schd_resource *rl, queue_info *qinfo, int priority) {
+find_node_bucket_ind(node_bucket **buckets, schd_resource *rl, queue_info *qinfo, int priority)
+{
 	int i;
 	if (buckets == NULL || rl == NULL)
 		return -1;
 
 	for (i = 0; buckets[i] != NULL; i++) {
 		if (buckets[i]->queue == qinfo && buckets[i]->priority == priority &&
-				compare_resource_avail_list(buckets[i]->res_spec, rl))
+		    compare_resource_avail_list(buckets[i]->res_spec, rl))
 			return i;
 	}
 	return -1;
@@ -339,11 +351,13 @@ find_node_bucket_ind(node_bucket **buckets, schd_resource *rl, queue_info *qinfo
  * @retval name of bucket
  * @retval NULL - error
  */
-char *create_node_bucket_name(status *policy, node_bucket *nb) {
+char *
+create_node_bucket_name(status *policy, node_bucket *nb)
+{
 	char *name;
 	int len;
 
-	if(policy == NULL || nb == NULL)
+	if (policy == NULL || nb == NULL)
 		return NULL;
 
 	name = create_resource_signature(nb->res_spec, policy->resdef_to_check_no_hostvnode, ADD_ALL_BOOL);
@@ -377,7 +391,6 @@ char *create_node_bucket_name(status *policy, node_bucket *nb) {
 	}
 
 	return name;
-
 }
 
 /**
@@ -393,7 +406,8 @@ char *create_node_bucket_name(status *policy, node_bucket *nb) {
  * @retval NULL on error
  */
 node_bucket **
-create_node_buckets(status *policy, node_info **nodes, std::vector<queue_info *> &queues, unsigned int flags) {
+create_node_buckets(status *policy, node_info **nodes, std::vector<queue_info *> &queues, unsigned int flags)
+{
 	int i;
 	int j = 0;
 	node_bucket **buckets = NULL;
@@ -410,7 +424,6 @@ create_node_buckets(status *policy, node_info **nodes, std::vector<queue_info *>
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
-
 
 	for (i = 0; i < node_ct; i++) {
 		node_bucket *nb = NULL;
@@ -433,7 +446,6 @@ create_node_buckets(status *policy, node_info **nodes, std::vector<queue_info *>
 		}
 		if (bkt_ind != -1)
 			nb = buckets[bkt_ind];
-
 
 		if (nb == NULL) { /* no bucket found, need to add one*/
 			schd_resource *cur_res;
@@ -461,7 +473,6 @@ create_node_buckets(status *policy, node_info **nodes, std::vector<queue_info *>
 				if (cur_res->type.is_consumable)
 					cur_res->assigned = 0;
 
-
 			buckets[j]->busy_later_pool->truth_ct = 0;
 			buckets[j]->free_pool->truth_ct = 0;
 			buckets[j]->busy_pool->truth_ct = 0;
@@ -485,8 +496,7 @@ create_node_buckets(status *policy, node_info **nodes, std::vector<queue_info *>
 			if (nodes[i]->node_events != NULL) {
 				pbs_bitmap_bit_on(nb->busy_later_pool->truth, node_ind);
 				nb->busy_later_pool->truth_ct++;
-			}
-			else {
+			} else {
 				pbs_bitmap_bit_on(nb->free_pool->truth, node_ind);
 				nb->free_pool->truth_ct++;
 			}
@@ -508,14 +518,14 @@ create_node_buckets(status *policy, node_info **nodes, std::vector<queue_info *>
 		log_err(errno, __func__, MEM_ERR_MSG);
 		free_node_bucket_array(buckets);
 		return NULL;
-
 	}
 	return buckets;
 }
 
 /* chunk_map constructor */
 chunk_map *
-new_chunk_map() {
+new_chunk_map()
+{
 	chunk_map *cmap;
 	cmap = static_cast<chunk_map *>(malloc(sizeof(chunk_map)));
 	if (cmap == NULL) {
@@ -536,7 +546,8 @@ new_chunk_map() {
 
 /* chunk_map destructor */
 void
-free_chunk_map(chunk_map *cmap) {
+free_chunk_map(chunk_map *cmap)
+{
 	if (cmap == NULL)
 		return;
 
@@ -547,7 +558,8 @@ free_chunk_map(chunk_map *cmap) {
 
 /* chunk_map array destructor */
 void
-free_chunk_map_array(chunk_map **cmap_arr) {
+free_chunk_map_array(chunk_map **cmap_arr)
+{
 	int i;
 	if (cmap_arr == NULL)
 		return;
@@ -566,7 +578,8 @@ free_chunk_map_array(chunk_map **cmap_arr) {
  * @return nothing
  */
 void
-log_chunk_map_array(resource_resv *resresv, chunk_map **cmap) {
+log_chunk_map_array(resource_resv *resresv, chunk_map **cmap)
+{
 	int i;
 	int j;
 
@@ -587,18 +600,18 @@ log_chunk_map_array(resource_resv *resresv, chunk_map **cmap) {
 		}
 		if (total_chunks < cmap[i]->chk->num_chunks)
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
-				"Found %d out of %d chunks needed", total_chunks, cmap[i]->chk->num_chunks);
+				   "Found %d out of %d chunks needed", total_chunks, cmap[i]->chk->num_chunks);
 	}
 }
-
 
 /**
  * @brief set working buckets = truth buckets
  * @param[in,out] nb - node bucket to set
  */
 void
-set_working_bucket_to_truth(node_bucket *nb) {
-	if(nb == NULL)
+set_working_bucket_to_truth(node_bucket *nb)
+{
+	if (nb == NULL)
 		return;
 	if (nb->busy_pool == NULL || nb->busy_later_pool == NULL || nb->free_pool == NULL)
 		return;
@@ -661,14 +674,13 @@ bucket_match(chunk_map **cmap, resource_resv *resresv, schd_error *err)
 			node_bucket *bkt = cmap[i]->bkt_cnts[j]->bkt;
 			int chunks_added = 0;
 
-
 			for (k = pbs_bitmap_first_on_bit(bkt->busy_later_pool->working);
 			     num_chunks_needed > chunks_added && k >= 0;
 			     k = pbs_bitmap_next_on_bit(bkt->busy_later_pool->working, k)) {
 				clear_schd_error(err);
 				if (resresv->aoename != NULL) {
 					if (sinfo->unordered_nodes[k]->current_aoe == NULL ||
-					   strcmp(sinfo->unordered_nodes[k]->current_aoe, resresv->aoename) != 0)
+					    strcmp(sinfo->unordered_nodes[k]->current_aoe, resresv->aoename) != 0)
 						if (is_provisionable(sinfo->unordered_nodes[k], resresv, err) == NOT_PROVISIONABLE) {
 							continue;
 						}
@@ -681,7 +693,6 @@ bucket_match(chunk_map **cmap, resource_resv *resresv, schd_error *err)
 					pbs_bitmap_bit_on(cmap[i]->node_bits, k);
 					chunks_added += cmap[i]->bkt_cnts[j]->chunk_count;
 				}
-
 			}
 
 			for (k = pbs_bitmap_first_on_bit(bkt->free_pool->working);
@@ -690,7 +701,7 @@ bucket_match(chunk_map **cmap, resource_resv *resresv, schd_error *err)
 				clear_schd_error(err);
 				if (resresv->aoename != NULL) {
 					if (sinfo->unordered_nodes[k]->current_aoe == NULL ||
-					   strcmp(sinfo->unordered_nodes[k]->current_aoe, resresv->aoename) != 0)
+					    strcmp(sinfo->unordered_nodes[k]->current_aoe, resresv->aoename) != 0)
 						if (is_provisionable(sinfo->unordered_nodes[k], resresv, err) == NOT_PROVISIONABLE) {
 							continue;
 						}
@@ -845,7 +856,7 @@ bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv)
 			/* Allocate the chunks.  For all but the final chunk, we need to allocate cnt chunks,
 			 * For the final chunk, we might allocate less.
 			 */
-			for( ; cnt > 0 && chunks_needed > 0; cnt--, chunks_needed--, n++) {
+			for (; cnt > 0 && chunks_needed > 0; cnt--, chunks_needed--, n++) {
 				auto ns = chunk_to_nspec(policy, cb_map[i]->chk, sinfo->unordered_nodes[j], resresv->aoename);
 				if (ns == NULL) {
 					free_nspecs(ns_arr);
@@ -854,7 +865,6 @@ bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv)
 				ns_arr.push_back(ns);
 			}
 		}
-
 	}
 
 	return ns_arr;
@@ -867,7 +877,9 @@ bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv)
  * @retval 1 if the job should use the bucket algorithm
  * @retval 0 if not
  */
-int job_should_use_buckets(resource_resv *resresv) {
+int
+job_should_use_buckets(resource_resv *resresv)
+{
 
 	if (resresv == NULL)
 		return 0;
@@ -886,7 +898,7 @@ int job_should_use_buckets(resource_resv *resresv) {
 
 	/* Jobs in reservations use the standard path */
 	if (resresv->job != NULL) {
-		if(resresv->job->resv != NULL)
+		if (resresv->job->resv != NULL)
 			return 0;
 	}
 
@@ -905,7 +917,7 @@ int job_should_use_buckets(resource_resv *resresv) {
 		return 0;
 
 	/* Job's requesting specific hosts or vnodes use the standard path */
-	const auto& defs = resresv->select->defs;
+	const auto &defs = resresv->select->defs;
 	if (defs.find(allres["host"]) != defs.end())
 		return 0;
 	if (defs.find(allres["vnode"]) != defs.end())
@@ -915,7 +927,6 @@ int job_should_use_buckets(resource_resv *resresv) {
 		return 0;
 
 	return 1;
-
 }
 
 /*
@@ -997,9 +1008,8 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 					if (resresv->place_spec->scatter || resresv->place_spec->vscatter)
 						c = 1;
 
-
 					cb_map[i]->bkt_cnts[b] = new_node_bucket_count();
-					if(cb_map[i]->bkt_cnts[b] == NULL) {
+					if (cb_map[i]->bkt_cnts[b] == NULL) {
 						free_chunk_map_array(cb_map);
 						set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 						return NULL;
@@ -1016,7 +1026,7 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 		}
 
 		/* No buckets match or not enough nodes in the buckets: the job can't run */
-		if(b == 0 || total < cb_map[i]->chk->num_chunks)
+		if (b == 0 || total < cb_map[i]->chk->num_chunks)
 			can_run = 0;
 	}
 	cb_map[i] = NULL;
@@ -1030,7 +1040,6 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 		free_chunk_map_array(cb_map);
 		return NULL;
 	}
-
 
 	return cb_map;
 }
@@ -1098,7 +1107,7 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 		for (i = 0; nodepart[i] != NULL; i++) {
 			std::vector<nspec *> nspecs;
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
-				"Evaluating placement set: %s", nodepart[i]->name);
+				   "Evaluating placement set: %s", nodepart[i]->name);
 
 			clear_schd_error(err);
 			nspecs = map_buckets(policy, nodepart[i]->bkts, resresv, err);
@@ -1115,8 +1124,7 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 			if (sc_attrs.do_not_span_psets) {
 				set_schd_error_codes(err, NEVER_RUN, CANT_SPAN_PSET);
 				return {};
-			}
-			else {
+			} else {
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Request won't fit into any placement sets, will use all nodes");
 				return map_buckets(policy, sinfo->buckets, resresv, err);
 			}

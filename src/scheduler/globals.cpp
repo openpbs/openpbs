@@ -50,10 +50,6 @@
 #include "data_types.h"
 #include "queue.h"
 
-
-
-
-
 /**
  * @file    globals.c
  *
@@ -73,29 +69,26 @@
 
 const struct sort_conv sort_convert[] =
 	{
-	{"shortest_job_first", "cput", ASC},
-	{"longest_job_first", "cput", DESC},
-	{"smallest_memory_first", "mem", ASC},
-	{"largest_memory_first", "mem", DESC},
-	{"high_priority_first", SORT_PRIORITY, DESC},
-	{"low_priority_first", SORT_PRIORITY, ASC},
-	{"large_walltime_first", "walltime", DESC},
-	{"short_walltime_first", "walltime", ASC},
-	{"fair_share", SORT_FAIR_SHARE, ASC},
-	{"preempt_priority", SORT_PREEMPT, DESC},
-	{NULL, NULL, NO_SORT_ORDER}
-};
-
+		{"shortest_job_first", "cput", ASC},
+		{"longest_job_first", "cput", DESC},
+		{"smallest_memory_first", "mem", ASC},
+		{"largest_memory_first", "mem", DESC},
+		{"high_priority_first", SORT_PRIORITY, DESC},
+		{"low_priority_first", SORT_PRIORITY, ASC},
+		{"large_walltime_first", "walltime", DESC},
+		{"short_walltime_first", "walltime", ASC},
+		{"fair_share", SORT_FAIR_SHARE, ASC},
+		{"preempt_priority", SORT_PREEMPT, DESC},
+		{NULL, NULL, NO_SORT_ORDER}};
 
 /*
  * 	smp_cluster_info - used to convert parse values into enum
  */
 const struct enum_conv smp_cluster_info[] =
 	{
-	{ SMP_NODE_PACK, "pack" },
-	{ SMP_ROUND_ROBIN, "round_robin" },
-	{ HIGH_SMP_DIST, "" }
-};
+		{SMP_NODE_PACK, "pack"},
+		{SMP_ROUND_ROBIN, "round_robin"},
+		{HIGH_SMP_DIST, ""}};
 
 /*
  *	prempt_prio_info - used to convert parse values into enum values
@@ -104,34 +97,32 @@ const struct enum_conv smp_cluster_info[] =
  */
 const struct enum_conv preempt_prio_info[] =
 	{
-	{ PREEMPT_NORMAL, "normal_jobs" },
-	{ PREEMPT_OVER_FS_LIMIT, "fairshare" },
-	{ PREEMPT_OVER_QUEUE_LIMIT, "queue_softlimits" },
-	{ PREEMPT_OVER_SERVER_LIMIT, "server_softlimits" },
-	{ PREEMPT_EXPRESS, "express_queue" },
-	{ PREEMPT_ERR, "" },			/* no corresponding config file value */
-	{ PREEMPT_HIGH, "" }
-};
+		{PREEMPT_NORMAL, "normal_jobs"},
+		{PREEMPT_OVER_FS_LIMIT, "fairshare"},
+		{PREEMPT_OVER_QUEUE_LIMIT, "queue_softlimits"},
+		{PREEMPT_OVER_SERVER_LIMIT, "server_softlimits"},
+		{PREEMPT_EXPRESS, "express_queue"},
+		{PREEMPT_ERR, ""}, /* no corresponding config file value */
+		{PREEMPT_HIGH, ""}};
 
 /* Well known resources: If these aren't queried, we return an error.
  * Any resource you want to directly index into allres should be in this list
  */
-const std::vector<std::string> well_known_res
-	{
-		"cput",
-		"mem",
-		"walltime",
-		"soft_walltime",
-		"ncpus",
-		"arch",
-		"host",
-		"vnode",
-		"aoe",
-		"eoe",
-		"min_walltime",
-		"max_walltime",
-		"preempt_targets",
-	};
+const std::vector<std::string> well_known_res{
+	"cput",
+	"mem",
+	"walltime",
+	"soft_walltime",
+	"ncpus",
+	"arch",
+	"host",
+	"vnode",
+	"aoe",
+	"eoe",
+	"min_walltime",
+	"max_walltime",
+	"preempt_targets",
+};
 
 struct config conf;
 struct status cstat;
@@ -177,7 +168,7 @@ char *cmp_aoename = NULL;
 const char *sc_name = NULL;
 char *logfile = NULL;
 
-unsigned int preempt_normal;			/* preempt priority of normal_jobs */
+unsigned int preempt_normal; /* preempt priority of normal_jobs */
 
 char path_log[_POSIX_PATH_MAX];
 int dflt_sched = 0;

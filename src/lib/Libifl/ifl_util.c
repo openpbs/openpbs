@@ -88,4 +88,3 @@ PBS_get_server(const char *server_id_in, char *server_name_out, unsigned int *po
 
 	return server_name_out;
 }
-

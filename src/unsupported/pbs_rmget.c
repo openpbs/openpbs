@@ -55,7 +55,7 @@ int
 main(int argc, char *argv[])
 {
 	int i;
-	char mom_name[PBS_MAXHOSTNAME+1];
+	char mom_name[PBS_MAXHOSTNAME + 1];
 	int mom_port = 0;
 	int c, rc;
 	int mom_sd;
@@ -67,7 +67,7 @@ main(int argc, char *argv[])
 	if (initsocketlib())
 		return 1;
 
-	if (gethostname(mom_name, (sizeof(mom_name) - 1)) < 0  )
+	if (gethostname(mom_name, (sizeof(mom_name) - 1)) < 0)
 		mom_name[0] = '\0';
 
 	while ((c = getopt(argc, argv, "m:p:")) != EOF) {
@@ -89,7 +89,7 @@ main(int argc, char *argv[])
 		return 1;
 	}
 
-	if(set_msgdaemonname("pbs_rmget")) {
+	if (set_msgdaemonname("pbs_rmget")) {
 		fprintf(stderr, "Out of memory\n");
 		return 1;
 	}
@@ -101,11 +101,11 @@ main(int argc, char *argv[])
 	}
 
 	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
-			pbs_conf.locallog, pbs_conf.syslogfac,
-			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+		     pbs_conf.locallog, pbs_conf.syslogfac,
+		     pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 
 	if (!pbs_conf.pbs_leaf_name) {
-		char my_hostname[PBS_MAXHOSTNAME+1];
+		char my_hostname[PBS_MAXHOSTNAME + 1];
 		if (gethostname(my_hostname, (sizeof(my_hostname) - 1)) < 0) {
 			fprintf(stderr, "Failed to get hostname\n");
 			return -1;

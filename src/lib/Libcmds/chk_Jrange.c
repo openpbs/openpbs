@@ -71,10 +71,10 @@ chk_Jrange(char *arg)
 	long step;
 
 	pc = arg;
-	if (!isdigit((int)*pc))
-		return (1);		/* no a positive number */
-	s  = arg;
-	while (*pc && isdigit((int)*pc))
+	if (!isdigit((int) *pc))
+		return (1); /* no a positive number */
+	s = arg;
+	while (*pc && isdigit((int) *pc))
 		++pc;
 	if (*pc != '-') {
 		return (1);
@@ -85,10 +85,10 @@ chk_Jrange(char *arg)
 	if (start == LONG_MAX)
 		return 2;
 	s = ++pc;
-	if (!isdigit((int)*pc)) {
+	if (!isdigit((int) *pc)) {
 		return (1);
 	}
-	while (*pc && isdigit((int)*pc))
+	while (*pc && isdigit((int) *pc))
 		++pc;
 	if ((*pc != '\0') && (*pc != ':')) {
 		return (1);
@@ -101,7 +101,7 @@ chk_Jrange(char *arg)
 
 	if (*pc++ == ':') {
 		s = pc;
-		while (*pc && isdigit((int)*pc))
+		while (*pc && isdigit((int) *pc))
 			++pc;
 		if (*pc != '\0') {
 			return (1);

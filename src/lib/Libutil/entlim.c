@@ -65,7 +65,7 @@ entlim_initialize_ctx(void)
 		free(pctx);
 		return NULL;
 	}
-	return (void *)pctx;
+	return (void *) pctx;
 }
 
 /**
@@ -86,7 +86,7 @@ entlim_get(const char *keystr, void *ctx)
 {
 	void *rtn;
 
-	if (pbs_idx_find(((entlim_ctx *)ctx)->idx, (void **)&keystr, &rtn, NULL) == PBS_IDX_RET_OK)
+	if (pbs_idx_find(((entlim_ctx *) ctx)->idx, (void **) &keystr, &rtn, NULL) == PBS_IDX_RET_OK)
 		return rtn;
 	return NULL;
 }
@@ -106,7 +106,7 @@ entlim_get(const char *keystr, void *ctx)
 int
 entlim_add(const char *keystr, const void *recptr, void *ctx)
 {
-	if (pbs_idx_insert(((entlim_ctx *)ctx)->idx, (void *)keystr, (void *)recptr) == PBS_IDX_RET_OK)
+	if (pbs_idx_insert(((entlim_ctx *) ctx)->idx, (void *) keystr, (void *) recptr) == PBS_IDX_RET_OK)
 		return 0;
 	return -1;
 }
@@ -131,15 +131,15 @@ int
 entlim_replace(const char *keystr, void *recptr, void *ctx, void fr_leaf(void *))
 {
 	void *olddata;
-	entlim_ctx *pctx = (entlim_ctx *)ctx;
+	entlim_ctx *pctx = (entlim_ctx *) ctx;
 
-	if (pbs_idx_insert(pctx->idx, (void *)keystr, recptr) == PBS_IDX_RET_OK)
+	if (pbs_idx_insert(pctx->idx, (void *) keystr, recptr) == PBS_IDX_RET_OK)
 		return 0;
 	else {
-		if (pbs_idx_find(pctx->idx, (void **)&keystr, &olddata, NULL) == PBS_IDX_RET_OK) {
-			if (pbs_idx_delete(pctx->idx, (void *)keystr) == PBS_IDX_RET_OK) {
+		if (pbs_idx_find(pctx->idx, (void **) &keystr, &olddata, NULL) == PBS_IDX_RET_OK) {
+			if (pbs_idx_delete(pctx->idx, (void *) keystr) == PBS_IDX_RET_OK) {
 				fr_leaf(olddata);
-				if (pbs_idx_insert(pctx->idx, (void *)keystr, recptr) == PBS_IDX_RET_OK)
+				if (pbs_idx_insert(pctx->idx, (void *) keystr, recptr) == PBS_IDX_RET_OK)
 					return 0;
 			}
 		}
@@ -166,8 +166,8 @@ entlim_delete(const char *keystr, void *ctx, void free_leaf(void *))
 {
 	void *prec;
 
-	if (pbs_idx_find(((entlim_ctx *)ctx)->idx, (void **)&keystr, &prec, NULL) == PBS_IDX_RET_OK) {
-		if (pbs_idx_delete(((entlim_ctx *)ctx)->idx, (void *)keystr) == PBS_IDX_RET_OK) {
+	if (pbs_idx_find(((entlim_ctx *) ctx)->idx, (void **) &keystr, &prec, NULL) == PBS_IDX_RET_OK) {
+		if (pbs_idx_delete(((entlim_ctx *) ctx)->idx, (void *) keystr) == PBS_IDX_RET_OK) {
 			free_leaf(prec);
 			return 0;
 		}
@@ -194,7 +194,7 @@ void *
 entlim_get_next(void *ctx, void **key)
 {
 
-	entlim_ctx *pctx = (entlim_ctx *)ctx;
+	entlim_ctx *pctx = (entlim_ctx *) ctx;
 	void *data;
 
 	if (pctx == NULL || pctx->idx == NULL)
@@ -210,7 +210,7 @@ entlim_get_next(void *ctx, void **key)
 	}
 
 	if (pbs_idx_find(pctx->idx, key, &data, &pctx->idx_ctx) == PBS_IDX_RET_OK)
-			return data;
+		return data;
 
 	pbs_idx_free_ctx(pctx->idx_ctx);
 	pctx->idx_ctx = NULL;
@@ -235,7 +235,7 @@ int
 entlim_free_ctx(void *ctx, void free_leaf(void *))
 {
 	void *leaf;
-	entlim_ctx *pctx = (entlim_ctx *)ctx;
+	entlim_ctx *pctx = (entlim_ctx *) ctx;
 
 	if (pctx->idx_ctx != NULL)
 		pbs_idx_free_ctx(pctx->idx_ctx);
@@ -266,8 +266,8 @@ static char *
 entlim_mk_keystr(enum lim_keytypes kt, const char *entity, const char *resc)
 {
 	size_t keylen;
-	char  *pkey;
-	char   ktyl;
+	char *pkey;
+	char ktyl;
 
 	if (kt == LIM_USER)
 		ktyl = 'u';
@@ -278,12 +278,12 @@ entlim_mk_keystr(enum lim_keytypes kt, const char *entity, const char *resc)
 	else if (kt == LIM_OVERALL)
 		ktyl = 'o';
 	else
-		return NULL; 	/* invalid entity key type */
+		return NULL; /* invalid entity key type */
 
 	keylen = 2 + strlen(entity);
 	if (resc)
 		keylen += 1 + strlen(resc);
-	pkey = malloc(keylen+1);
+	pkey = malloc(keylen + 1);
 
 	if (pkey) {
 		if (resc)
@@ -330,7 +330,6 @@ entlim_mk_reskey(enum lim_keytypes kt, const char *entity, const char *resc)
 	return entlim_mk_keystr(kt, entity, resc);
 }
 
-
 /**
  * @brief
  * 	entlim_entity_from_key - obtain the entity name from a key
@@ -347,16 +346,16 @@ int
 entlim_entity_from_key(char *key, char *rtnname, size_t ln)
 {
 	char *pc;
-	int   sz = 0;
+	int sz = 0;
 
 	pc = key + 2;
 	while (*pc && (*pc != ';')) {
 		++sz;
 		++pc;
 	}
-	if ((size_t)sz < ln) {
-		(void)strncpy(rtnname, key + 2, sz);
-		*(rtnname+sz) = '\0';
+	if ((size_t) sz < ln) {
+		(void) strncpy(rtnname, key + 2, sz);
+		*(rtnname + sz) = '\0';
 		return 0;
 	}
 	return -1;
@@ -382,7 +381,7 @@ entlim_resc_from_key(char *key, char *rtnresc, size_t ln)
 {
 	char *pc;
 
-	pc = strchr(key, (int)';');
+	pc = strchr(key, (int) ';');
 	if (pc) {
 		if (strlen(++pc) < ln) {
 			strcpy(rtnresc, pc);

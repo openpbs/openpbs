@@ -140,7 +140,7 @@ add_to_unlicensed_node_list(struct pbsnode *pnode)
 void
 remove_from_unlicensed_node_list(struct pbsnode *pnode)
 {
-	if(!(pnode->nd_svrflags & NODE_UNLICENSED))
+	if (!(pnode->nd_svrflags & NODE_UNLICENSED))
 		return;
 
 	pnode->nd_svrflags &= ~NODE_UNLICENSED;
@@ -206,14 +206,14 @@ distribute_licenseinfo(mominfo_t *pmom, int lic_count)
 void
 propagate_licenses_to_vnodes(mominfo_t *pmom)
 {
-	struct pbsnode	*ptmp =	/* pointer to natural vnode */
+	struct pbsnode *ptmp = /* pointer to natural vnode */
 		((mom_svrinfo_t *) pmom->mi_data)->msr_children[0];
 	resource_def *prdefvntype;
-	resource *prc;		/* vntype resource pointer */
+	resource *prc; /* vntype resource pointer */
 	struct array_strings *as;
-	pbsnode *pfrom_Lic; /* source License pointer */
-	attribute *pfrom_RA;	/* source ResourceAvail pointer */
-	int node_index_start;	/* where we begin looking for socket licenses */
+	pbsnode *pfrom_Lic;   /* source License pointer */
+	attribute *pfrom_RA;  /* source ResourceAvail pointer */
+	int node_index_start; /* where we begin looking for socket licenses */
 	int i;
 	int lic_count;
 
@@ -232,8 +232,8 @@ propagate_licenses_to_vnodes(mominfo_t *pmom)
  	 */
 	pfrom_RA = get_nattr(ptmp, ND_ATR_ResourceAvail);
 	if (((pfrom_RA->at_flags & ATR_VFLAG_SET) != 0) &&
-		((prc = find_resc_entry(pfrom_RA, prdefvntype)) != NULL) &&
-		((prc->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+	    ((prc = find_resc_entry(pfrom_RA, prdefvntype)) != NULL) &&
+	    ((prc->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
 		/*
  		 * Node has a ResourceAvail vntype entry;  see whether it
  		 * contains CRAY_LOGIN.
@@ -253,7 +253,7 @@ propagate_licenses_to_vnodes(mominfo_t *pmom)
  	 * licenses;  if not, no work to do.
  	 */
 	for (i = node_index_start, pfrom_Lic = NULL, lic_count = 0;
-		i < ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds; i++) {
+	     i < ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds; i++) {
 		pbsnode *n = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
 
 		if (is_nattr_set(n, ND_ATR_LicenseInfo))
@@ -275,12 +275,12 @@ propagate_licenses_to_vnodes(mominfo_t *pmom)
  	 * ND_ATR_License attribute.
  	 */
 	for (i = node_index_start;
-		i < ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds; i++) {
+	     i < ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds; i++) {
 		pbsnode *n = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
 		set_nattr_c_slim(n, ND_ATR_License, ND_LIC_TYPE_locked, SET);
 		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE,
-			LOG_DEBUG, pmom->mi_host, "ND_ATR_License copied from %s to %s",
-			pfrom_Lic->nd_name, n->nd_name);
+			   LOG_DEBUG, pmom->mi_host, "ND_ATR_License copied from %s to %s",
+			   pfrom_Lic->nd_name, n->nd_name);
 	}
 }
 
@@ -347,7 +347,7 @@ check_license_expiry(struct work_task *wt)
 		struct tm *plt;
 
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-			msg_daemonname, warn_str);
+			  msg_daemonname, warn_str);
 
 		plt = localtime(&time_now);
 		if (plt && (plt->tm_yday != licensing_control.expiry_warning_email_yday)) {
@@ -387,7 +387,7 @@ get_licenses(int lic_count)
 			"%d licenses could not be checked out from pbs_license_info=%s",
 			lic_count, pbs_licensing_location);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_NOTICE, msg_daemonname, log_buffer);
+			  LOG_NOTICE, msg_daemonname, log_buffer);
 		license_counts.licenses_local = 0;
 		license_counts.licenses_used = 0;
 		licensing_control.licenses_checked_out = 0;
@@ -396,7 +396,7 @@ get_licenses(int lic_count)
 			"%d licenses checked out from pbs_license_info=%s",
 			lic_count, pbs_licensing_location);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_NOTICE, msg_daemonname, log_buffer);
+			  LOG_NOTICE, msg_daemonname, log_buffer);
 
 		licensing_control.licenses_checked_out = lic_count;
 		licensing_control.licenses_checkout_time = time_now;
@@ -609,8 +609,8 @@ init_licensing(struct work_task *ptask)
 
 	if (init_licensing_task && (init_licensing_task != ptask)) {
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_INFO, msg_daemonname,
-			"skipping a init licensing task");
+			  LOG_INFO, msg_daemonname,
+			  "skipping a init licensing task");
 		return;
 	}
 
@@ -653,7 +653,7 @@ init_licensing(struct work_task *ptask)
 		return;
 	}
 	for (i = 0; i < svr_totnodes; i++) {
-	 	clear_node_lic_attrs(pbsndlist[i], 0);
+		clear_node_lic_attrs(pbsndlist[i], 0);
 		if (is_nattr_set(pbsndlist[i], ND_ATR_LicenseInfo)) {
 			licensing_control.licenses_total_needed += get_nattr_long(pbsndlist[i], ND_ATR_LicenseInfo);
 		} else {
@@ -704,7 +704,7 @@ validate_sign(char *sign, struct pbsnode *pnode)
 	switch (ret) {
 		case -3:
 			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE,
-				LOG_NOTICE, pnode->nd_name, "Invalid signature");
+				  LOG_NOTICE, pnode->nd_name, "Invalid signature");
 			return PBSE_LICENSEINV;
 		case -2:
 			return PBSE_BADTSPEC;
@@ -712,9 +712,9 @@ validate_sign(char *sign, struct pbsnode *pnode)
 			return PBSE_BADNDATVAL;
 		case 0:
 			snprintf(log_buffer, sizeof(log_buffer),
-					"Signature is valid till:%ld", expiry);
+				 "Signature is valid till:%ld", expiry);
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-						LOG_DEBUG, pnode->nd_name, log_buffer);
+				  LOG_DEBUG, pnode->nd_name, log_buffer);
 			if (is_nattr_set(pnode, ND_ATR_License) && get_nattr_c(pnode, ND_ATR_License) == ND_LIC_TYPE_locked) {
 				return_licenses(get_nattr_long(pnode, ND_ATR_LicenseInfo));
 				clear_nattr(pnode, ND_ATR_License);
@@ -724,9 +724,9 @@ validate_sign(char *sign, struct pbsnode *pnode)
 			break;
 		case 1:
 			snprintf(log_buffer, sizeof(log_buffer),
-			"Signature is valid, but it has expired at:%ld", expiry);
+				 "Signature is valid, but it has expired at:%ld", expiry);
 			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE,
-						LOG_DEBUG, pnode->nd_name, log_buffer);
+				  LOG_DEBUG, pnode->nd_name, log_buffer);
 			return PBSE_NONE;
 	}
 	return PBSE_NONE;
@@ -751,7 +751,7 @@ check_sign(pbsnode *pnode, attribute *new)
 	int err = PBSE_NONE;
 
 	prdef = find_resc_def(svr_resc_def, ND_RESC_LicSignature);
-	presc = find_resc_entry((attribute *)new, prdef);
+	presc = find_resc_entry((attribute *) new, prdef);
 	if (presc && (presc->rs_value.at_flags & ATR_VFLAG_MODIFY)) {
 		if ((err = validate_sign(presc->rs_value.at_val.at_str, pnode)) != PBSE_NONE)
 			return (err);
@@ -818,7 +818,8 @@ release_node_lic(void *pobj)
  *
  * @return	void
  */
-void unset_signature(void *pobj, char *rs_name)
+void
+unset_signature(void *pobj, char *rs_name)
 {
 	struct pbsnode *pnode = pobj;
 
@@ -846,7 +847,7 @@ void
 unlicense_nodes(void)
 {
 	int i;
-	pbsnode	*np;
+	pbsnode *np;
 	int first = 1;
 	static char msg_node_unlicensed[] = "%s attribute reset on one or more nodes";
 
@@ -861,7 +862,7 @@ unlicense_nodes(void)
 				sprintf(log_buffer, msg_node_unlicensed,
 					ATTR_NODE_License);
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
-					LOG_ERR, msg_daemonname, log_buffer);
+					  LOG_ERR, msg_daemonname, log_buffer);
 			}
 		}
 	}
@@ -877,10 +878,10 @@ void
 return_lingering_licenses(struct work_task *ptask)
 {
 	if ((licensing_control.licenses_checked_out > licensing_control.licenses_min) &&
-		(license_counts.licenses_local > 0))
+	    (license_counts.licenses_local > 0))
 		get_licenses(licensing_control.licenses_min);
 
 	licenses_linger_time_task = set_task(WORK_Timed,
-		time_now + licensing_control.licenses_linger_time,
-		return_lingering_licenses, NULL);
+					     time_now + licensing_control.licenses_linger_time,
+					     return_lingering_licenses, NULL);
 }

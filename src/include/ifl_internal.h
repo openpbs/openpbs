@@ -37,11 +37,10 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #ifndef _IFL_INTERNAL_H
-#define	_IFL_INTERNAL_H
+#define _IFL_INTERNAL_H
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -50,7 +49,7 @@ extern "C" {
 
 /* Used for non blocking connect */
 #define NOBLK_FLAG "NOBLK"
-#define NOBLK_TOUT	2
+#define NOBLK_TOUT 2
 
 /* IFL functions */
 int __pbs_asyrunjob(int, const char *, const char *, const char *);
@@ -127,7 +126,7 @@ struct batch_status *__pbs_statresv(int, const char *, struct attrl *, const cha
 
 struct batch_status *__pbs_stathook(int, const char *, struct attrl *, const char *);
 
-struct ecl_attribute_errors * __pbs_get_attributes_in_error(int);
+struct ecl_attribute_errors *__pbs_get_attributes_in_error(int);
 
 char *__pbs_submit(int, struct attropl *, const char *, const char *, const char *);
 
@@ -145,8 +144,8 @@ preempt_job_info *__pbs_preempt_jobs(int, char **);
 
 int __pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* _IFL_INTERNAL_H */
+#endif /* _IFL_INTERNAL_H */

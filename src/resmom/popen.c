@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /*
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -98,7 +97,7 @@ static struct pid {
 	struct pid *next;
 	FILE *fp;
 	pid_t pid;
-} *pidlist;
+} * pidlist;
 
 /**
  * @brief
@@ -116,11 +115,11 @@ static struct pid {
 FILE *
 pbs_popen(const char *command, const char *type)
 {
-	struct pid	*cur;
-	FILE		*iop;
-	int		pdes[2], pid, twoway;
-	char		*argv[4];
-	struct pid	*p;
+	struct pid *cur;
+	FILE *iop;
+	int pdes[2], pid, twoway;
+	char *argv[4];
+	struct pid *p;
 
 	/*
 	 * Lite2 introduced two-way popen() pipes using socketpair().
@@ -129,7 +128,7 @@ pbs_popen(const char *command, const char *type)
 	if (strchr(type, '+')) {
 		twoway = 1;
 		type = "r+";
-	} else  {
+	} else {
 		twoway = 0;
 		if ((*type != 'r' && *type != 'w') || type[1])
 			return NULL;
@@ -139,24 +138,24 @@ pbs_popen(const char *command, const char *type)
 
 	if ((cur = malloc(sizeof(struct pid))) == NULL) {
 		log_err(errno, __func__, "Could not allocate memory for new file descriptor");
-		(void)close(pdes[0]);
-		(void)close(pdes[1]);
+		(void) close(pdes[0]);
+		(void) close(pdes[1]);
 		return NULL;
 	}
 
 	argv[0] = "sh";
 	argv[1] = "-c";
-	argv[2] = (char *)command;
+	argv[2] = (char *) command;
 	argv[3] = NULL;
 
 	switch (pid = fork_me(-1)) {
-		case -1:			/* Error. */
-			(void)close(pdes[0]);
-			(void)close(pdes[1]);
+		case -1: /* Error. */
+			(void) close(pdes[0]);
+			(void) close(pdes[1]);
 			free(cur);
 			return NULL;
 			/* NOTREACHED */
-		case 0:				/* Child. */
+		case 0: /* Child. */
 			/* create a new session */
 			if (setsid() == -1)
 				_exit(127);
@@ -170,23 +169,23 @@ pbs_popen(const char *command, const char *type)
 				 * the compiler is free to corrupt all the local
 				 * variables.
 				 */
-				(void)close(pdes[0]);
+				(void) close(pdes[0]);
 				if (pdes[1] != STDOUT_FILENO) {
-					(void)dup2(pdes[1], STDOUT_FILENO);
-					(void)close(pdes[1]);
+					(void) dup2(pdes[1], STDOUT_FILENO);
+					(void) close(pdes[1]);
 					if (twoway)
-						(void)dup2(STDOUT_FILENO, STDIN_FILENO);
+						(void) dup2(STDOUT_FILENO, STDIN_FILENO);
 				} else if (twoway && (pdes[1] != STDIN_FILENO))
-					(void)dup2(pdes[1], STDIN_FILENO);
+					(void) dup2(pdes[1], STDIN_FILENO);
 			} else {
 				if (pdes[0] != STDIN_FILENO) {
-					(void)dup2(pdes[0], STDIN_FILENO);
-					(void)close(pdes[0]);
+					(void) dup2(pdes[0], STDIN_FILENO);
+					(void) close(pdes[0]);
 				}
-				(void)close(pdes[1]);
+				(void) close(pdes[1]);
 			}
 			for (p = pidlist; p; p = p->next) {
-				(void)close(fileno(p->fp));
+				(void) close(fileno(p->fp));
 			}
 			execve("/bin/sh", argv, environ);
 			_exit(127);
@@ -196,15 +195,15 @@ pbs_popen(const char *command, const char *type)
 	/* Parent; assume fdopen can't fail. */
 	if (*type == 'r') {
 		iop = fdopen(pdes[0], type);
-		(void)close(pdes[1]);
+		(void) close(pdes[1]);
 	} else {
 		iop = fdopen(pdes[1], type);
-		(void)close(pdes[0]);
+		(void) close(pdes[0]);
 	}
 
 	/* Link into list of file descriptors. */
 	cur->fp = iop;
-	cur->pid =  pid;
+	cur->pid = pid;
 	cur->next = pidlist;
 	pidlist = cur;
 
@@ -227,7 +226,7 @@ int
 pbs_pkill(FILE *iop, int sig)
 {
 	register struct pid *cur;
-	int	ret;
+	int ret;
 
 	/* Find the appropriate file pointer. */
 	for (cur = pidlist; cur; cur = cur->next) {
@@ -258,9 +257,9 @@ pbs_pkill(FILE *iop, int sig)
 int
 pbs_pclose(FILE *iop)
 {
-	register struct pid	*cur, *last;
-	int			pstat;
-	pid_t			pid;
+	register struct pid *cur, *last;
+	int pstat;
+	pid_t pid;
 
 	/* Find the appropriate file pointer. */
 	for (last = NULL, cur = pidlist; cur; last = cur, cur = cur->next) {
@@ -270,8 +269,8 @@ pbs_pclose(FILE *iop)
 	if (cur == NULL)
 		return (-1);
 
-	(void)fclose(iop);
-	(void)kill_session(cur->pid, SIGKILL, 0);
+	(void) fclose(iop);
+	(void) kill_session(cur->pid, SIGKILL, 0);
 
 	do {
 		pid = waitpid(cur->pid, &pstat, 0);

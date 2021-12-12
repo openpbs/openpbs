@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    server_info.c
  *
@@ -149,9 +148,7 @@
 #include "site_code.h"
 #endif
 
-
 extern char **environ;
-
 
 /**
  *	@brief
@@ -177,10 +174,10 @@ extern char **environ;
 server_info *
 query_server(status *pol, int pbs_sd)
 {
-	struct batch_status *server;	/* info about the server */
-	struct batch_status *bs_resvs;	/* batch status of the reservations */
-	server_info *sinfo;		/* scheduler internal form of server info */
-	int num_express_queues = 0;	/* number of express queues */
+	struct batch_status *server;   /* info about the server */
+	struct batch_status *bs_resvs; /* batch status of the reservations */
+	server_info *sinfo;	       /* scheduler internal form of server info */
+	int num_express_queues = 0;    /* number of express queues */
 	status *policy;
 	int job_arrays_associated = FALSE;
 	int i;
@@ -211,7 +208,7 @@ query_server(status *pol, int pbs_sd)
 	/* We dup'd the policy structure for the cycle */
 	policy = sinfo->policy;
 
-	if(query_server_dyn_res(sinfo) == -1) {
+	if (query_server_dyn_res(sinfo) == -1) {
 		pbs_statfree(server);
 		sinfo->fstree = NULL;
 		delete sinfo;
@@ -246,7 +243,7 @@ query_server(status *pol, int pbs_sd)
 	/* sort the nodes before we filter them down to more useful lists */
 	if (!policy->node_sort->empty())
 		qsort(sinfo->nodes, sinfo->num_nodes, sizeof(node_info *),
-			multi_node_sort);
+		      multi_node_sort);
 
 	/* get the queues */
 	sinfo->queues = query_queues(policy, pbs_sd, sinfo);
@@ -276,7 +273,6 @@ query_server(status *pol, int pbs_sd)
 
 	if (num_express_queues > 1)
 		sinfo->has_mult_express = 1;
-
 
 	/* sort the queues before we collect the jobs list (i.e. set_jobs())
 	 * in the case we don't sort the jobs and don't have by_queue turned on
@@ -316,10 +312,10 @@ query_server(status *pol, int pbs_sd)
 
 	/* create res_to_check arrays based on current jobs/resvs */
 	policy->resdef_to_check = collect_resources_from_requests(sinfo->all_resresv);
-	for (const auto& rd : policy->resdef_to_check) {
+	for (const auto &rd : policy->resdef_to_check) {
 		if (!(rd == allres["host"] || rd == allres["vnode"]))
 			policy->resdef_to_check_no_hostvnode.insert(rd);
-		
+
 		if (rd->flags & ATR_DFLAG_RASSN)
 			policy->resdef_to_check_rassn.insert(rd);
 
@@ -464,11 +460,11 @@ query_server(status *pol, int pbs_sd)
 server_info *
 query_server_info(status *pol, struct batch_status *server)
 {
-	struct attrl *attrp;	/* linked list of attributes */
-	server_info *sinfo;	/* internal scheduler structure for server info */
-	schd_resource *resp;	/* a resource to help create the resource list */
-	sch_resource_t count;	/* used to convert string -> integer */
-	char *endp;		/* used with strtol() */
+	struct attrl *attrp;  /* linked list of attributes */
+	server_info *sinfo;   /* internal scheduler structure for server info */
+	schd_resource *resp;  /* a resource to help create the resource list */
+	sch_resource_t count; /* used to convert string -> integer */
+	char *endp;	      /* used with strtol() */
 	status *policy;
 
 	if (pol == NULL || server == NULL)
@@ -494,31 +490,31 @@ query_server_info(status *pol, struct batch_status *server)
 	while (attrp != NULL) {
 		if (is_reslimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RES, sinfo->liminfo);
-			if(strstr(attrp->value, "u:") != NULL)
+			if (strstr(attrp->value, "u:") != NULL)
 				sinfo->has_user_limit = 1;
-			if(strstr(attrp->value, "g:") != NULL)
+			if (strstr(attrp->value, "g:") != NULL)
 				sinfo->has_grp_limit = 1;
-			if(strstr(attrp->value, "p:") != NULL)
+			if (strstr(attrp->value, "p:") != NULL)
 				sinfo->has_proj_limit = 1;
-			if(strstr(attrp->value, "o:") != NULL)
+			if (strstr(attrp->value, "o:") != NULL)
 				sinfo->has_all_limit = 1;
 		} else if (is_runlimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RUN, sinfo->liminfo);
-			if(strstr(attrp->value, "u:") != NULL)
+			if (strstr(attrp->value, "u:") != NULL)
 				sinfo->has_user_limit = 1;
-			if(strstr(attrp->value, "g:") != NULL)
+			if (strstr(attrp->value, "g:") != NULL)
 				sinfo->has_grp_limit = 1;
-			if(strstr(attrp->value, "p:") != NULL)
+			if (strstr(attrp->value, "p:") != NULL)
 				sinfo->has_proj_limit = 1;
-			if(strstr(attrp->value, "o:") != NULL)
+			if (strstr(attrp->value, "o:") != NULL)
 				sinfo->has_all_limit = 1;
 		} else if (is_oldlimattr(attrp)) {
 			const char *limname = convert_oldlim_to_new(attrp);
 			(void) lim_setlimits(attrp, LIM_OLD, sinfo->liminfo);
 
-			if(strstr(limname, "u:") != NULL)
+			if (strstr(limname, "u:") != NULL)
 				sinfo->has_user_limit = 1;
-			if(strstr(limname, "g:") != NULL)
+			if (strstr(limname, "g:") != NULL)
 				sinfo->has_grp_limit = 1;
 			/* no need to check for project limits because there were no old style project limits */
 		} else if (!strcmp(attrp->name, ATTR_NodeGroupEnable)) {
@@ -528,12 +524,12 @@ query_server_info(status *pol, struct batch_status *server)
 				sinfo->node_group_enable = 0;
 		} else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
 			sinfo->node_group_key = break_comma_list(std::string(attrp->value));
-		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {	/* Deprecated */
+		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) { /* Deprecated */
 			sinfo->job_sort_formula = read_formula();
 			if (policy->sort_by->size() > 1) /* 0 is the formula itself */
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-					"Job sorting formula and job_sort_key are incompatible.  "
-					"The job sorting formula will be used.");
+					  "Job sorting formula and job_sort_key are incompatible.  "
+					  "The job sorting formula will be used.");
 
 		} else if (!strcmp(attrp->name, ATTR_rescavail)) { /* resources_available*/
 			resp = find_alloc_resource_by_str(sinfo->res, attrp->resource);
@@ -578,14 +574,14 @@ query_server_info(status *pol, struct batch_status *server)
 				sinfo->policy->backfill_depth = count;
 			if (count == 0)
 				sinfo->policy->backfill = 0;
-		} else if(!strcmp(attrp->name, ATTR_restrict_res_to_release_on_suspend)) {
+		} else if (!strcmp(attrp->name, ATTR_restrict_res_to_release_on_suspend)) {
 			char **resl;
 			resl = break_comma_list(attrp->value);
-			if(resl != NULL) {
+			if (resl != NULL) {
 				policy->rel_on_susp = resstr_to_resdef(resl);
 				free_string_array(resl);
 			}
-		} else if(!strcmp(attrp->name, ATTR_has_runjob_hook)) {
+		} else if (!strcmp(attrp->name, ATTR_has_runjob_hook)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				sinfo->has_runjob_hook = 1;
 			else
@@ -633,17 +629,16 @@ query_server_dyn_res(server_info *sinfo)
 {
 	int k;
 	int pipe_err;
-	char res_zero[] = "0";	/* dynamic res failure implies resource <-0 */
-	schd_resource *res;		/* used for updating node resources */
-	FILE *fp;			/* for popen() for res_assn */
+	char res_zero[] = "0"; /* dynamic res failure implies resource <-0 */
+	schd_resource *res;    /* used for updating node resources */
+	FILE *fp;	       /* for popen() for res_assn */
 
-
-	for (const auto& dr : conf.dynamic_res) {
+	for (const auto &dr : conf.dynamic_res) {
 		res = find_alloc_resource_by_str(sinfo->res, dr.res);
 		if (res != NULL) {
 			fd_set set;
 			sigset_t allsigs;
-			pid_t pid = 0;			/* pid of child */
+			pid_t pid = 0; /* pid of child */
 			int pdes[2];
 			char buf[256]; /* buffer for reading from pipe */
 			k = 0;
@@ -654,51 +649,51 @@ query_server_dyn_res(server_info *sinfo)
 
 			pipe_err = errno = 0;
 
-			/* Make sure file does not have open permissions */
-			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-				int err;
-				err = tmp_file_sec_user(const_cast<char *>(dr.script_name.c_str()), 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
-				if (err != 0) {
-					log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
-						"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
-						dr.script_name.c_str(), res->name, err);
-					set_resource(res, res_zero, RF_AVAIL);
-					continue;
-				}
-			#endif
+/* Make sure file does not have open permissions */
+#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+			int err;
+			err = tmp_file_sec_user(const_cast<char *>(dr.script_name.c_str()), 0, 1, S_IWGRP | S_IWOTH, 1, getuid());
+			if (err != 0) {
+				log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
+					   "error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
+					   dr.script_name.c_str(), res->name, err);
+				set_resource(res, res_zero, RF_AVAIL);
+				continue;
+			}
+#endif
 
 			if (pipe(pdes) < 0) {
 				pipe_err = errno;
 			}
 			if (!pipe_err) {
-				switch(pid = fork()) {
-				case -1:	/* error */
-					close(pdes[0]);
-					close(pdes[1]);
-					pipe_err = errno;
-					break;
-				case 0:		/* child */
-					close(pdes[0]);
-					if (pdes[1] != STDOUT_FILENO) {
-						dup2(pdes[1], STDOUT_FILENO);
+				switch (pid = fork()) {
+					case -1: /* error */
+						close(pdes[0]);
 						close(pdes[1]);
-					}
-					setpgid(0, 0);
-					if (sigemptyset(&allsigs) == -1) {
-						log_err(errno, __func__, "sigemptyset failed");
-					}
-					if (sigprocmask(SIG_SETMASK, &allsigs, NULL) == -1) {	/* unblock all signals */
-						log_err(errno, __func__, "sigprocmask(UNBLOCK)");
-					}
+						pipe_err = errno;
+						break;
+					case 0: /* child */
+						close(pdes[0]);
+						if (pdes[1] != STDOUT_FILENO) {
+							dup2(pdes[1], STDOUT_FILENO);
+							close(pdes[1]);
+						}
+						setpgid(0, 0);
+						if (sigemptyset(&allsigs) == -1) {
+							log_err(errno, __func__, "sigemptyset failed");
+						}
+						if (sigprocmask(SIG_SETMASK, &allsigs, NULL) == -1) { /* unblock all signals */
+							log_err(errno, __func__, "sigprocmask(UNBLOCK)");
+						}
 
-					char *argv[4];
-					argv[0] = const_cast<char *>("/bin/sh");
-					argv[1] = const_cast<char *>("-c");
-					argv[2] = const_cast<char *>(dr.command_line.c_str());
-					argv[3] = NULL;
+						char *argv[4];
+						argv[0] = const_cast<char *>("/bin/sh");
+						argv[1] = const_cast<char *>("-c");
+						argv[2] = const_cast<char *>(dr.command_line.c_str());
+						argv[3] = NULL;
 
-					execve("/bin/sh", argv, environ);
-					_exit(127);
+						execve("/bin/sh", argv, environ);
+						_exit(127);
 				}
 			}
 
@@ -717,10 +712,10 @@ query_server_dyn_res(server_info *sinfo)
 				}
 				if (ret == -1) {
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-					"Select() failed for script %s", dr.command_line.c_str());
+						   "Select() failed for script %s", dr.command_line.c_str());
 				} else if (ret == 0) {
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-					"Program %s timed out", dr.command_line.c_str());
+						   "Program %s timed out", dr.command_line.c_str());
 				}
 				if (pid > 0) {
 					close(pdes[1]);
@@ -733,7 +728,7 @@ query_server_dyn_res(server_info *sinfo)
 							pipe_err = errno;
 						} else
 							k = strlen(buf);
-						
+
 						fclose(fp);
 					} else
 						close(pdes[0]);
@@ -750,23 +745,23 @@ query_server_dyn_res(server_info *sinfo)
 				}
 				if (set_resource(res, buf, RF_AVAIL) == 0) {
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-						"Script %s returned bad output", dr.command_line.c_str());
+						   "Script %s returned bad output", dr.command_line.c_str());
 					(void) set_resource(res, res_zero, RF_AVAIL);
 				}
 			} else {
 				if (pipe_err != 0)
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-						"Can't pipe to program %s: %s", dr.command_line.c_str(), strerror(pipe_err));
+						   "Can't pipe to program %s: %s", dr.command_line.c_str(), strerror(pipe_err));
 				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-					"Setting resource %s to 0", res->name);
+					   "Setting resource %s to 0", res->name);
 				(void) set_resource(res, res_zero, RF_AVAIL);
 			}
 			if (res->type.is_non_consumable)
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-					"%s = %s", dr.command_line.c_str(), res_to_str(res, RF_AVAIL));
+					   "%s = %s", dr.command_line.c_str(), res_to_str(res, RF_AVAIL));
 			else
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-					"%s = %s (\"%s\")", dr.command_line.c_str(), res_to_str(res, RF_AVAIL), buf);
+					   "%s = %s (\"%s\")", dr.command_line.c_str(), res_to_str(res, RF_AVAIL), buf);
 
 			if (pid > 0) {
 				kill(-pid, SIGTERM);
@@ -800,8 +795,8 @@ query_server_dyn_res(server_info *sinfo)
 schd_resource *
 find_alloc_resource(schd_resource *resplist, resdef *def)
 {
-	schd_resource *resp;		/* used to search through list of resources */
-	schd_resource *prev = NULL;	/* the previous resources in the list */
+	schd_resource *resp;	    /* used to search through list of resources */
+	schd_resource *prev = NULL; /* the previous resources in the list */
 
 	if (def == NULL)
 		return NULL;
@@ -841,14 +836,14 @@ find_alloc_resource(schd_resource *resplist, resdef *def)
 schd_resource *
 find_alloc_resource_by_str(schd_resource *resplist, const char *name)
 {
-	schd_resource *resp;		/* used to search through list of resources */
-	schd_resource *prev = NULL;	/* the previous resources in the list */
+	schd_resource *resp;	    /* used to search through list of resources */
+	schd_resource *prev = NULL; /* the previous resources in the list */
 
 	if (name == NULL)
 		return NULL;
 
 	for (resp = resplist; resp != NULL && strcmp(resp->name, name);
-		resp = resp->next) {
+	     resp = resp->next) {
 		prev = resp;
 	}
 
@@ -862,7 +857,8 @@ find_alloc_resource_by_str(schd_resource *resplist, const char *name)
 
 	return resp;
 }
-schd_resource *find_alloc_resource_by_str(schd_resource *resplist, const std::string& name)
+schd_resource *
+find_alloc_resource_by_str(schd_resource *resplist, const std::string &name)
 {
 	return find_alloc_resource_by_str(resplist, name.c_str());
 }
@@ -882,7 +878,7 @@ schd_resource *find_alloc_resource_by_str(schd_resource *resplist, const std::st
 schd_resource *
 find_resource_by_str(schd_resource *reslist, const char *name)
 {
-	schd_resource *resp;	/* used to search through list of resources */
+	schd_resource *resp; /* used to search through list of resources */
 
 	if (reslist == NULL || name == NULL)
 		return NULL;
@@ -896,7 +892,7 @@ find_resource_by_str(schd_resource *reslist, const char *name)
 }
 
 schd_resource *
-find_resource_by_str(schd_resource *reslist, const std::string& name)
+find_resource_by_str(schd_resource *reslist, const std::string &name)
 {
 	return find_resource_by_str(reslist, name.c_str());
 }
@@ -936,7 +932,7 @@ find_resource(schd_resource *reslist, resdef *def)
 void
 server_info::free_server_psets()
 {
-	for (auto& spset : svr_to_psets) {
+	for (auto &spset : svr_to_psets) {
 		free_node_partition(spset.second);
 	}
 	svr_to_psets.clear();
@@ -951,9 +947,9 @@ server_info::free_server_psets()
  * @return nothing
  */
 void
-server_info::dup_server_psets(const std::unordered_map<std::string, node_partition*>& spsets)
+server_info::dup_server_psets(const std::unordered_map<std::string, node_partition *> &spsets)
 {
-	for (const auto& spset : spsets) {
+	for (const auto &spset : spsets) {
 		svr_to_psets[spset.first] = dup_node_partition(spset.second, this);
 		if (svr_to_psets[spset.first] == NULL) {
 			free_server_psets();
@@ -1012,7 +1008,7 @@ server_info::free_server_info()
 	free_resresv_set_array(equiv_classes);
 	free_node_bucket_array(buckets);
 
-	if(unordered_nodes != NULL)
+	if (unordered_nodes != NULL)
 		free(unordered_nodes);
 
 	free_resource_list(res);
@@ -1095,7 +1091,8 @@ free_resource(schd_resource *resp)
 }
 
 // Init function
-void server_info::init_server_info()
+void
+server_info::init_server_info()
 {
 
 	has_soft_limit = false;
@@ -1153,11 +1150,10 @@ void server_info::init_server_info()
 	/* localmod 034 */
 	share_head = NULL;
 #endif
-
 }
 
 // Constructor
-server_info::server_info(const char *sname): name(sname)
+server_info::server_info(const char *sname) : name(sname)
 {
 	init_server_info();
 	liminfo = lim_alloc_liminfo();
@@ -1181,7 +1177,7 @@ server_info::~server_info()
 schd_resource *
 new_resource()
 {
-	schd_resource *resp;		/* the new resource */
+	schd_resource *resp; /* the new resource */
 
 	if ((resp = static_cast<schd_resource *>(calloc(1, sizeof(schd_resource)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -1227,7 +1223,7 @@ create_resource(const char *name, const char *value, enum resource_fields field)
 	if (name == NULL)
 		return NULL;
 
-	if(value == NULL && field != RF_NONE)
+	if (value == NULL && field != RF_NONE)
 		return NULL;
 
 	rdef = find_resdef(name);
@@ -1247,7 +1243,7 @@ create_resource(const char *name, const char *value, enum resource_fields field)
 		}
 	} else {
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name,
-			"Resource definition does not exist, resource may be invalid");
+			  "Resource definition does not exist, resource may be invalid");
 		return NULL;
 	}
 
@@ -1277,7 +1273,7 @@ modify_resource_list(schd_resource *res_list, resource_req *req_list, int type)
 	if (res_list == NULL || req_list == NULL)
 		return 0;
 
-	for(cur_req = req_list; cur_req != NULL; cur_req = cur_req->next) {
+	for (cur_req = req_list; cur_req != NULL; cur_req = cur_req->next) {
 		if (cur_req->type.is_consumable) {
 			cur_res = find_resource(res_list, cur_req->def);
 			if (cur_res == NULL && type == SCHD_INCR) {
@@ -1292,7 +1288,7 @@ modify_resource_list(schd_resource *res_list, resource_req *req_list, int type)
 				if (type == SCHD_INCR)
 					cur_res->assigned += cur_req->amount;
 				else if (type == SCHD_DECR)
-					    cur_res->assigned -= cur_req->amount;
+					cur_res->assigned -= cur_req->amount;
 			}
 		}
 	}
@@ -1336,7 +1332,7 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 		if ((flags & NO_UPDATE_NON_CONSUMABLE) && cur_r2->def->type.is_non_consumable)
 			continue;
 		if ((flags & USE_RESOURCE_LIST)) {
-			const auto& rtc = policy->resdef_to_check;
+			const auto &rtc = policy->resdef_to_check;
 			if (rtc.find(cur_r2->def) == rtc.end() && !cur_r2->type.is_boolean)
 				continue;
 		}
@@ -1344,7 +1340,7 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 		cur_r1 = find_resource(r1, cur_r2->def);
 		if (cur_r1 == NULL) { /* resource in r2 which is not in r1 */
 			if (!(flags & NO_UPDATE_NON_CONSUMABLE) || cur_r2->type.is_consumable) {
-				if(end_r1 == NULL)
+				if (end_r1 == NULL)
 					for (end_r1 = r1; end_r1->next != NULL; end_r1 = end_r1->next)
 						;
 				end_r1->next = dup_resource(cur_r2);
@@ -1372,7 +1368,7 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 					else
 						add_resource_str_arr(cur_r1, cur_r2->str_avail, 0);
 				} else if (cur_r1->type.is_boolean)
-					(void)add_resource_bool(cur_r1, cur_r2);
+					(void) add_resource_bool(cur_r1, cur_r2);
 			}
 		}
 	}
@@ -1419,7 +1415,7 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
  */
 void
 add_resource_value(sch_resource_t *val1, sch_resource_t *val2,
-	sch_resource_t initial_val)
+		   sch_resource_t initial_val)
 {
 	if (val1 == NULL || val2 == NULL)
 		return;
@@ -1535,7 +1531,7 @@ add_resource_bool(schd_resource *r1, schd_resource *r2)
  */
 void
 update_server_on_run(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *resresv, char * job_state)
+		     queue_info *qinfo, resource_resv *resresv, char *job_state)
 {
 	if (sinfo == NULL || resresv == NULL)
 		return;
@@ -1546,7 +1542,6 @@ update_server_on_run(status *policy, server_info *sinfo,
 		if (qinfo == NULL)
 			return;
 	}
-
 
 	/*
 	 * Update the server level resources
@@ -1584,22 +1579,22 @@ update_server_on_run(status *policy, server_info *sinfo,
 		/* sort the nodes before we filter them down to more useful lists */
 		if (!cstat.node_sort->empty() && conf.node_sort_unused) {
 			if (resresv->job->resv != NULL &&
-				resresv->job->resv->resv != NULL) {
+			    resresv->job->resv->resv != NULL) {
 				node_info **resv_nodes;
 				int num_resv_nodes;
 
 				resv_nodes = resresv->job->resv->resv->resv_nodes;
 				num_resv_nodes = count_array(resv_nodes);
 				qsort(resv_nodes, num_resv_nodes, sizeof(node_info *),
-					multi_node_sort);
+				      multi_node_sort);
 			} else {
 				qsort(sinfo->nodes, sinfo->num_nodes, sizeof(node_info *),
-					multi_node_sort);
+				      multi_node_sort);
 
 				if (sinfo->nodes != sinfo->unassoc_nodes) {
 					auto num_unassoc = count_array(sinfo->unassoc_nodes);
 					qsort(sinfo->unassoc_nodes, num_unassoc, sizeof(node_info *),
-						multi_node_sort);
+					      multi_node_sort);
 				}
 			}
 		}
@@ -1609,7 +1604,6 @@ update_server_on_run(status *policy, server_info *sinfo,
 		 */
 		free_np_cache_array(sinfo->npc_arr);
 
-
 		/* a new job has been run, update running jobs array */
 		sinfo->running_jobs = add_resresv_to_array(sinfo->running_jobs, resresv, NO_FLAGS);
 	}
@@ -1618,7 +1612,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 		if (resresv->is_job) {
 			counts *cts; /* used in updating project/group/user counts */
 
-			update_total_counts(sinfo, NULL , resresv, SERVER);
+			update_total_counts(sinfo, NULL, resresv, SERVER);
 
 			cts = find_alloc_counts(sinfo->group_counts, resresv->group);
 			update_counts_on_run(cts, resresv->resreq);
@@ -1658,9 +1652,9 @@ update_server_on_run(status *policy, server_info *sinfo,
  */
 void
 update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
-	resource_resv *resresv, const char *job_state)
+		     resource_resv *resresv, const char *job_state)
 {
-	if (sinfo == NULL ||  resresv == NULL)
+	if (sinfo == NULL || resresv == NULL)
 		return;
 	if (resresv->is_job) {
 		if (resresv->job == NULL)
@@ -1700,7 +1694,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 
 				if (res->assigned < 0) {
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-						"%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
+						   "%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
 					res->assigned = 0;
 				}
 			}
@@ -1716,7 +1710,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		if (resresv->is_job && resresv->job->is_running) {
-			counts *cts;			/* update user/group/project counts */
+			counts *cts; /* update user/group/project counts */
 
 			update_total_counts_on_end(sinfo, NULL, resresv, SERVER);
 			cts = find_counts(sinfo->group_counts, resresv->group);
@@ -1738,7 +1732,6 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 
 			if (cts != NULL)
 				update_counts_on_end(cts, resresv->resreq);
-
 		}
 	}
 }
@@ -1758,9 +1751,9 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 int
 copy_server_arrays(server_info *nsinfo, const server_info *osinfo)
 {
-	resource_resv **job_arr;	/* used in copying jobs to job array */
-	resource_resv **all_arr;	/* used in copying jobs to job/resv array */
-	resource_resv **resresv_arr;	/* used as source array to copy */
+	resource_resv **job_arr;     /* used in copying jobs to job array */
+	resource_resv **all_arr;     /* used in copying jobs to job/resv array */
+	resource_resv **resresv_arr; /* used as source array to copy */
 	int i = 0;
 	int j = 0;
 
@@ -1773,7 +1766,7 @@ copy_server_arrays(server_info *nsinfo, const server_info *osinfo)
 	}
 
 	if ((all_arr = static_cast<resource_resv **>(calloc((osinfo->sc.total + osinfo->num_resvs + 1),
-						 sizeof(resource_resv *)))) == NULL) {
+							    sizeof(resource_resv *)))) == NULL) {
 		free(job_arr);
 		log_err(errno, __func__, "Error allocating memory");
 		return 0;
@@ -1816,9 +1809,9 @@ copy_server_arrays(server_info *nsinfo, const server_info *osinfo)
 int
 create_server_arrays(server_info *sinfo)
 {
-	resource_resv **job_arr;	/* used in copying jobs to job array */
-	resource_resv **all_arr;	/* used in copying jobs to job/resv array */
-	resource_resv **resresv_arr;	/* used as source array to copy */
+	resource_resv **job_arr;     /* used in copying jobs to job array */
+	resource_resv **all_arr;     /* used in copying jobs to job/resv array */
+	resource_resv **resresv_arr; /* used as source array to copy */
 	int i = 0, j;
 
 	if ((job_arr = static_cast<resource_resv **>(malloc(sizeof(resource_resv *) * (sinfo->sc.total + 1)))) == NULL) {
@@ -1827,7 +1820,7 @@ create_server_arrays(server_info *sinfo)
 	}
 
 	if ((all_arr = static_cast<resource_resv **>(malloc(sizeof(resource_resv *) *
-		(sinfo->sc.total + sinfo->num_resvs + 1)))) == NULL) {
+							    (sinfo->sc.total + sinfo->num_resvs + 1)))) == NULL) {
 		free(job_arr);
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
@@ -1959,7 +1952,7 @@ int
 check_running_job_in_reservation(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL && job->job->resv != NULL &&
-		(check_job_running(job, arg) == 1))
+	    (check_job_running(job, arg) == 1))
 		return 1;
 
 	return 0;
@@ -1980,7 +1973,7 @@ int
 check_running_job_not_in_reservation(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL && job->job->resv == NULL &&
-		(check_job_running(job, arg) == 1))
+	    (check_job_running(job, arg) == 1))
 		return 1;
 
 	return 0;
@@ -2106,17 +2099,17 @@ server_info::server_info(const server_info &osinfo)
 
 	running_jobs =
 		resource_resv_filter(jobs, sc.total,
-		check_run_job, NULL, FILTER_FULL);
+				     check_run_job, NULL, FILTER_FULL);
 
 	exiting_jobs =
 		resource_resv_filter(jobs, sc.total,
-		check_exit_job, NULL, 0);
+				     check_exit_job, NULL, 0);
 
 	num_preempted = osinfo.num_preempted;
 
 	if (osinfo.qrun_job != NULL)
 		qrun_job = find_resource_resv(jobs,
-			osinfo.qrun_job->name);
+					      osinfo.qrun_job->name);
 
 	for (int i = 0; i < NUM_PPRIO; i++)
 		preempt_count[i] = osinfo.preempt_count[i];
@@ -2181,7 +2174,7 @@ server_info::server_info(const server_info &osinfo)
 
 	for (int i = 0; running_jobs[i] != NULL; i++) {
 		if ((running_jobs[i]->job->is_subjob) &&
-			(associate_array_parent(running_jobs[i], this) == 1)) {
+		    (associate_array_parent(running_jobs[i], this) == 1)) {
 			free_server_info();
 			throw sched_exception("Unable to associate running subjob with parent", SCHD_ERROR);
 		}
@@ -2245,7 +2238,7 @@ dup_resource_list(schd_resource *res)
  * @par MT-Safe:	no
  */
 schd_resource *
-dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef *>& deflist, unsigned flags)
+dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef *> &deflist, unsigned flags)
 {
 	schd_resource *pres;
 	schd_resource *nres;
@@ -2254,7 +2247,7 @@ dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef *>& de
 
 	for (pres = res; pres != NULL; pres = pres->next) {
 		if (((flags & ADD_ALL_BOOL) && pres->type.is_boolean) ||
-			deflist.find(pres->def) != deflist.end()) {
+		    deflist.find(pres->def) != deflist.end()) {
 			nres = dup_resource(pres);
 			if (nres == NULL) {
 				free_resource_list(head);
@@ -2275,7 +2268,7 @@ dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef *>& de
 	}
 	/* add on any booleans which are unset (i.e.,  false) */
 	if (flags & ADD_UNSET_BOOLS_FALSE) {
-		for (const auto& br : boolres) {
+		for (const auto &br : boolres) {
 			if (find_resource(res, br) == NULL) {
 				nres = create_resource(br->name.c_str(), ATR_FALSE, RF_AVAIL);
 				if (nres == NULL) {
@@ -2358,7 +2351,6 @@ dup_resource(schd_resource *res)
 	if (nres->def != NULL)
 		nres->name = nres->def->name.c_str();
 
-
 	if (res->indirect_vnode_name != NULL)
 		nres->indirect_vnode_name = string_dup(res->indirect_vnode_name);
 
@@ -2418,7 +2410,8 @@ counts::counts(const counts &rcount) : name(rcount.name)
 }
 
 // count assignment operator
-counts& counts::operator=(const counts &rcount)
+counts &
+counts::operator=(const counts &rcount)
 {
 	this->name = rcount.name;
 	this->running = rcount.running;
@@ -2458,7 +2451,8 @@ free_counts_list(counts_umap &ctslist)
  *
  * @return	new counts_umap
  */
-counts_umap dup_counts_umap(const counts_umap &omap)
+counts_umap
+dup_counts_umap(const counts_umap &omap)
 {
 	counts_umap nmap;
 	for (auto &iter : omap)
@@ -2528,8 +2522,8 @@ find_alloc_counts(counts_umap &ctslist, const std::string &name)
 void
 update_counts_on_run(counts *cts, resource_req *resreq)
 {
-	resource_count *ctsreq;			/* rescts to update */
-	resource_req *req;			/* current in resreq */
+	resource_count *ctsreq; /* rescts to update */
+	resource_req *req;	/* current in resreq */
 
 	if (cts == NULL)
 		return;
@@ -2575,7 +2569,7 @@ update_counts_on_end(counts *cts, resource_req *resreq)
 
 	cts->running--;
 
-	for(auto req = resreq; req != NULL; req = req->next) {
+	for (auto req = resreq; req != NULL; req = req->next) {
 		auto ctsreq = find_resource_count(cts->rescts, req->def);
 		if (ctsreq != NULL)
 			ctsreq->amount -= req->amount;
@@ -2649,11 +2643,11 @@ counts_max(counts_umap &cmax, counts_umap &ncounts)
 		return;
 	}
 
-	for (const auto& cur: ncounts)
+	for (const auto &cur : ncounts)
 		set_counts_max(cmax, cur.second);
 }
 
-// overloaded 
+// overloaded
 void
 counts_max(counts_umap &cmax, counts *ncounts)
 {
@@ -2661,8 +2655,8 @@ counts_max(counts_umap &cmax, counts *ncounts)
 		return;
 
 	if (cmax.size() == 0) {
-	    cmax[ncounts->name] = new counts(*ncounts);
-	    return;
+		cmax[ncounts->name] = new counts(*ncounts);
+		return;
 	}
 	set_counts_max(cmax, ncounts);
 	return;
@@ -2689,7 +2683,6 @@ update_universe_on_end(status *policy, resource_resv *resresv, const char *job_s
 	server_info *sinfo = NULL;
 	queue_info *qinfo = NULL;
 
-
 	if (resresv == NULL)
 		return;
 
@@ -2705,7 +2698,7 @@ update_universe_on_end(status *policy, resource_resv *resresv, const char *job_s
 		qinfo = resresv->job->queue;
 		if (resresv->job != NULL && resresv->execselect != NULL) {
 			int need_metadata_update = 0;
-			for (const auto& sdef : resresv->execselect->defs) {
+			for (const auto &sdef : resresv->execselect->defs) {
 				const auto &rdc = policy->resdef_to_check;
 				if (rdc.find(sdef) == rdc.end()) {
 					policy->resdef_to_check.insert(sdef);
@@ -2734,7 +2727,6 @@ update_universe_on_end(status *policy, resource_resv *resresv, const char *job_s
 		for (int i = 0; resresv->ninfo_arr[i] != NULL; i++)
 			update_node_on_end(resresv->ninfo_arr[i], resresv, job_state);
 	}
-
 
 	update_server_on_end(policy, sinfo, qinfo, resresv, job_state);
 
@@ -3068,30 +3060,29 @@ find_indirect_resource(schd_resource *res, node_info **nodes)
 
 	cur_res = res;
 
-	for (i = 0; i < max && cur_res != NULL &&
-		cur_res->indirect_vnode_name != NULL && !error; i++) {
+	for (i = 0; i < max && cur_res != NULL && cur_res->indirect_vnode_name != NULL && !error; i++) {
 		auto ninfo = find_node_info(nodes, cur_res->indirect_vnode_name);
 		if (ninfo != NULL) {
 			cur_res = find_resource(ninfo->res, cur_res->def);
 			if (cur_res == NULL) {
 				error = 1;
 				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
-						"Resource %s is indirect, and does not exist on indirect node %s",
-						res->name, ninfo->name.c_str());
+					   "Resource %s is indirect, and does not exist on indirect node %s",
+					   res->name, ninfo->name.c_str());
 			}
 		} else {
 			error = 1;
 			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
-				"Resource %s is indirect but points to node %s, which was not found",
-				res->name, cur_res->indirect_vnode_name);
+				   "Resource %s is indirect but points to node %s, which was not found",
+				   res->name, cur_res->indirect_vnode_name);
 			cur_res = NULL;
 		}
 	}
 	if (i == max) {
 		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
-			"Attempted %d indirection lookups for resource %s=@%s-- "
-			"looks like a cycle, bailing out",
-			max, cur_res->name, cur_res->indirect_vnode_name);
+			   "Attempted %d indirection lookups for resource %s=@%s-- "
+			   "looks like a cycle, bailing out",
+			   max, cur_res->name, cur_res->indirect_vnode_name);
 		return NULL;
 	}
 
@@ -3170,7 +3161,7 @@ update_preemption_priority(server_info *sinfo, resource_resv *resresv)
 	if (cstat.preempting && resresv->is_job) {
 		if (sinfo->has_soft_limit || resresv->job->queue->has_soft_limit) {
 			for (int i = 0; sinfo->jobs[i] != NULL; i++) {
-				if (sinfo->jobs[i]->job !=NULL) {
+				if (sinfo->jobs[i]->job != NULL) {
 					int usrlim = resresv->job->queue->has_user_limit || sinfo->has_user_limit;
 					int grplim = resresv->job->queue->has_grp_limit || sinfo->has_grp_limit;
 					int projlim = resresv->job->queue->has_proj_limit || sinfo->has_proj_limit;
@@ -3178,7 +3169,7 @@ update_preemption_priority(server_info *sinfo, resource_resv *resresv)
 					    (grplim && (resresv->group == sinfo->jobs[i]->group)) ||
 					    (projlim && (resresv->project == sinfo->jobs[i]->project)))
 						set_preempt_prio(sinfo->jobs[i],
-							sinfo->jobs[i]->job->queue, sinfo);
+								 sinfo->jobs[i]->job->queue, sinfo);
 				}
 			}
 
@@ -3186,8 +3177,7 @@ update_preemption_priority(server_info *sinfo, resource_resv *resresv)
 			memset(sinfo->preempt_count, 0, NUM_PPRIO * sizeof(int));
 			for (int i = 0; sinfo->running_jobs[i] != NULL; i++)
 				if (!sinfo->running_jobs[i]->job->can_not_preempt)
-					sinfo->
-					preempt_count[preempt_level(sinfo->running_jobs[i]->job->preempt)]++;
+					sinfo->preempt_count[preempt_level(sinfo->running_jobs[i]->job->preempt)]++;
 		}
 	}
 }
@@ -3213,7 +3203,7 @@ read_formula(void)
 
 	if ((fp = fopen(FORMULA_FILENAME, "r")) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, __func__,
-			"Can not open file to read job_sort_formula.  Please reset formula with qmgr.");
+			  "Can not open file to read job_sort_formula.  Please reset formula with qmgr.");
 		return NULL;
 	}
 
@@ -3231,7 +3221,7 @@ read_formula(void)
 	while (fgets(buf, RF_BUFSIZE, fp) != NULL) {
 		auto len = strlen(form) + strlen(buf);
 		if (len > bufsize) {
-			tmp = static_cast<char *>(realloc(form, len*2 + 1));
+			tmp = static_cast<char *>(realloc(form, len * 2 + 1));
 			if (tmp == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
 				free(form);
@@ -3286,7 +3276,7 @@ dup_status(status *ost)
  * @return	void
  */
 void
-free_queue_list(queue_info *** queue_list)
+free_queue_list(queue_info ***queue_list)
 {
 	int i;
 
@@ -3316,7 +3306,7 @@ free_queue_list(queue_info *** queue_list)
  */
 void
 create_total_counts(server_info *sinfo, queue_info *qinfo,
-	resource_resv *resresv, int mode)
+		    resource_resv *resresv, int mode)
 {
 	if (mode == SERVER || mode == ALL) {
 		if (sinfo->total_group_counts.size() == 0) {
@@ -3388,18 +3378,18 @@ create_total_counts(server_info *sinfo, queue_info *qinfo,
  *
  */
 void
-update_total_counts(server_info *si, queue_info* qi,
-	resource_resv *rr, int mode)
+update_total_counts(server_info *si, queue_info *qi,
+		    resource_resv *rr, int mode)
 {
 	create_total_counts(si, qi, rr, mode);
 	if (((mode == SERVER) || (mode == ALL)) &&
-		((si != NULL) && si->has_hard_limit)) {
+	    ((si != NULL) && si->has_hard_limit)) {
 		update_counts_on_run(find_alloc_counts(si->total_group_counts, rr->group), rr->resreq);
 		update_counts_on_run(find_alloc_counts(si->total_project_counts, rr->project), rr->resreq);
 		update_counts_on_run(find_alloc_counts(si->total_alljobcounts, PBS_ALL_ENTITY), rr->resreq);
 		update_counts_on_run(find_alloc_counts(si->total_user_counts, rr->user), rr->resreq);
 	} else if (((mode == QUEUE) || (mode == ALL)) &&
-		((qi != NULL) && qi->has_hard_limit)) {
+		   ((qi != NULL) && qi->has_hard_limit)) {
 		update_counts_on_run(find_alloc_counts(qi->total_group_counts, rr->group), rr->resreq);
 		update_counts_on_run(find_alloc_counts(qi->total_project_counts, rr->project), rr->resreq);
 		update_counts_on_run(find_alloc_counts(qi->total_alljobcounts, PBS_ALL_ENTITY), rr->resreq);
@@ -3422,18 +3412,18 @@ update_total_counts(server_info *si, queue_info* qi,
  *
  */
 void
-update_total_counts_on_end(server_info *si, queue_info* qi,
-	resource_resv *rr, int mode)
+update_total_counts_on_end(server_info *si, queue_info *qi,
+			   resource_resv *rr, int mode)
 {
 	create_total_counts(si, qi, rr, mode);
 	if (((mode == SERVER) || (mode == ALL)) &&
-		((si != NULL) && si->has_hard_limit)) {
+	    ((si != NULL) && si->has_hard_limit)) {
 		update_counts_on_end(find_alloc_counts(si->total_group_counts, rr->group), rr->resreq);
 		update_counts_on_end(find_alloc_counts(si->total_project_counts, rr->project), rr->resreq);
 		update_counts_on_end(find_alloc_counts(si->total_alljobcounts, PBS_ALL_ENTITY), rr->resreq);
 		update_counts_on_end(find_alloc_counts(si->total_user_counts, rr->user), rr->resreq);
 	} else if (((mode == QUEUE) || (mode == ALL)) &&
-		((qi != NULL) &&  qi->has_hard_limit)) {
+		   ((qi != NULL) && qi->has_hard_limit)) {
 		update_counts_on_end(find_alloc_counts(qi->total_group_counts, rr->group), rr->resreq);
 		update_counts_on_end(find_alloc_counts(qi->total_project_counts, rr->project), rr->resreq);
 		update_counts_on_end(find_alloc_counts(qi->total_alljobcounts, PBS_ALL_ENTITY), rr->resreq);
@@ -3455,7 +3445,6 @@ get_sched_rank()
 	return cstat.order;
 }
 
-
 /**
  * @brief
  * 		add_queue_to_list - This function alligns all queues according to
@@ -3469,22 +3458,22 @@ get_sched_rank()
  * @retval	0	: If failed to add qinfo to queue_list.
  */
 int
-add_queue_to_list(queue_info **** qlhead, queue_info * qinfo)
+add_queue_to_list(queue_info ****qlhead, queue_info *qinfo)
 {
 	int queue_list_size = 0;
-	void * temp = NULL;
+	void *temp = NULL;
 	queue_info ***temp_list = NULL;
 	queue_info ***list_head;
 
 	if (qlhead == NULL)
-	    return 0;
+		return 0;
 
 	list_head = *qlhead;
 	queue_list_size = count_array(list_head);
 
 	temp_list = find_queue_list_by_priority(list_head, qinfo->priority);
 	if (temp_list == NULL) {
-		temp = realloc(list_head, (queue_list_size + 2) * sizeof(queue_info**));
+		temp = realloc(list_head, (queue_list_size + 2) * sizeof(queue_info **));
 		if (temp == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return 0;
@@ -3515,7 +3504,8 @@ add_queue_to_list(queue_info **** qlhead, queue_info * qinfo)
  * @retval	NULL	: when function is not able to find the array.
  *
  */
-struct queue_info ***find_queue_list_by_priority(queue_info *** list_head, int priority)
+struct queue_info ***
+find_queue_list_by_priority(queue_info ***list_head, int priority)
 {
 	int i;
 	if (list_head == NULL)
@@ -3525,7 +3515,6 @@ struct queue_info ***find_queue_list_by_priority(queue_info *** list_head, int p
 			return (&list_head[i]);
 	}
 	return NULL;
-
 }
 
 /**
@@ -3540,10 +3529,11 @@ struct queue_info ***find_queue_list_by_priority(queue_info *** list_head, int p
  * @retval	NULL	: when realloc fails.
  *           			pointer to appended list.
  */
-struct queue_info **append_to_queue_list(queue_info ***list, queue_info *add)
+struct queue_info **
+append_to_queue_list(queue_info ***list, queue_info *add)
 {
 	int count = 0;
-	queue_info ** temp = NULL;
+	queue_info **temp = NULL;
 
 	if ((list == NULL) || (add == NULL))
 		return NULL;
@@ -3552,12 +3542,12 @@ struct queue_info **append_to_queue_list(queue_info ***list, queue_info *add)
 	/* count contains number of elements in list (excluding NULL). we add 2 to add the NULL
 	 * back in, plus our new element.
 	 */
-	temp = (queue_info**) realloc(*list, (count + 2) * sizeof(queue_info*));
+	temp = (queue_info **) realloc(*list, (count + 2) * sizeof(queue_info *));
 	if (temp == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
-	temp[count]  = add;
+	temp[count] = add;
 	temp[count + 1] = NULL;
 	*list = temp;
 	return (*list);
@@ -3572,12 +3562,12 @@ struct queue_info **append_to_queue_list(queue_info ***list, queue_info *add)
 void
 add_req_list_to_assn(schd_resource *reslist, resource_req *reqlist)
 {
-	if(reslist == NULL || reqlist == NULL)
+	if (reslist == NULL || reqlist == NULL)
 		return;
 
-	for(auto req = reqlist; req != NULL; req = req->next) {
+	for (auto req = reqlist; req != NULL; req = req->next) {
 		auto r = find_resource(reslist, req->def);
-		if(r != NULL && r->type.is_consumable)
+		if (r != NULL && r->type.is_consumable)
 			r->assigned += req->amount;
 	}
 }
@@ -3596,11 +3586,11 @@ create_resource_assn_for_node(node_info *ninfo)
 	schd_resource *ncpus_res = NULL;
 	int i;
 
-	if(ninfo == NULL)
+	if (ninfo == NULL)
 		return 0;
 
 	for (r = ninfo->res; r != NULL; r = r->next)
-		if(r->type.is_consumable) {
+		if (r->type.is_consumable) {
 			r->assigned = 0;
 			if (r->def == allres["ncpus"])
 				ncpus_res = r;
@@ -3611,7 +3601,7 @@ create_resource_assn_for_node(node_info *ninfo)
 		for (i = 0; ninfo->job_arr[i] != NULL; i++) {
 			/* ignore jobs in reservations.  The resources will be accounted for with the reservation itself.  */
 			if (ninfo->job_arr[i]->job != NULL && ninfo->job_arr[i]->job->resv == NULL) {
-				for (auto& n : ninfo->job_arr[i]->nspec_arr) {
+				for (auto &n : ninfo->job_arr[i]->nspec_arr) {
 					if (n->ninfo->rank == ninfo->rank)
 						add_req_list_to_assn(ninfo->res, n->resreq);
 				}
@@ -3622,7 +3612,7 @@ create_resource_assn_for_node(node_info *ninfo)
 	/* Next up, account for running reservations.  Running reservations consume all resources on the node when they start.  */
 	if (ninfo->run_resvs_arr != NULL) {
 		for (i = 0; ninfo->run_resvs_arr[i] != NULL; i++) {
-			for (auto& n : ninfo->run_resvs_arr[i]->nspec_arr) {
+			for (auto &n : ninfo->run_resvs_arr[i]->nspec_arr) {
 				if (n->ninfo->rank == ninfo->rank)
 					add_req_list_to_assn(ninfo->res, n->resreq);
 			}
@@ -3675,14 +3665,15 @@ create_resource_assn_for_node(node_info *ninfo)
  * @retval 0 if not equal
  */
 int
-compare_resource_avail(schd_resource *r1, schd_resource *r2) {
+compare_resource_avail(schd_resource *r1, schd_resource *r2)
+{
 	if (r1 == NULL && r2 == NULL)
 		return 1;
 	if (r1 == NULL || r2 == NULL)
 		return 0;
 
 	if (r1->def->type.is_string) {
-		if(match_string_array(r1->str_avail, r2->str_avail) == SA_FULL_MATCH)
+		if (match_string_array(r1->str_avail, r2->str_avail) == SA_FULL_MATCH)
 			return 1;
 		else
 			return 0;
@@ -3700,7 +3691,8 @@ compare_resource_avail(schd_resource *r1, schd_resource *r2) {
  * @retval 0 if not equal
  */
 int
-compare_resource_avail_list(schd_resource *r1, schd_resource *r2) {
+compare_resource_avail_list(schd_resource *r1, schd_resource *r2)
+{
 	schd_resource *cur;
 
 	if (r1 == NULL && r2 == NULL)
@@ -3712,8 +3704,8 @@ compare_resource_avail_list(schd_resource *r1, schd_resource *r2) {
 		schd_resource *res;
 
 		res = find_resource(r2, cur->def);
-		if(res != NULL) {
-			if(compare_resource_avail(cur, res) == 0)
+		if (res != NULL) {
+			if (compare_resource_avail(cur, res) == 0)
 				return 0;
 		} else if (cur->type.is_boolean) { /* Unset boolean == False */
 			if (cur->avail != 0)
@@ -3747,7 +3739,7 @@ dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes)
 	ct1 = count_array(nnodes);
 	ct2 = count_array(old_unordered_nodes);
 
-	if(ct1 != ct2)
+	if (ct1 != ct2)
 		return NULL;
 
 	new_unordered_nodes = static_cast<node_info **>(calloc((ct1 + 1), sizeof(node_info *)));
