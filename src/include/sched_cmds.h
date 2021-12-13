@@ -55,26 +55,25 @@ struct sched_cmd {
 };
 
 /* server to scheduler commands: */
-enum svr_sched_cmd
-{
+enum svr_sched_cmd {
 	SCH_SCHEDULE_NULL,
-	SCH_SCHEDULE_NEW,	/* New job queued or eligible	*/
-	SCH_SCHEDULE_TERM,	/* Running job terminated	*/
-	SCH_SCHEDULE_TIME,	/* Scheduler interval reached	*/
-	SCH_SCHEDULE_RECYC,	/* Not currently used		*/
-	SCH_SCHEDULE_CMD,	/* Schedule on command 		*/
+	SCH_SCHEDULE_NEW,   /* New job queued or eligible	*/
+	SCH_SCHEDULE_TERM,  /* Running job terminated	*/
+	SCH_SCHEDULE_TIME,  /* Scheduler interval reached	*/
+	SCH_SCHEDULE_RECYC, /* Not currently used		*/
+	SCH_SCHEDULE_CMD,   /* Schedule on command 		*/
 	SCH_CONFIGURE,
 	SCH_QUIT,
 	SCH_RULESET,
-	SCH_SCHEDULE_FIRST,	/* First schedule after server starts */
-	SCH_SCHEDULE_JOBRESV,	/* Arrival of an existing reservation time */
-	SCH_SCHEDULE_AJOB,	/* run one, named job */
-	SCH_SCHEDULE_STARTQ,	/* Stopped queue started */
-	SCH_SCHEDULE_MVLOCAL,	/* Job moved to local queue */
-	SCH_SCHEDULE_ETE_ON,	/* eligible_time_enable is turned ON */
-	SCH_SCHEDULE_RESV_RECONFIRM,	/* Reconfirm a reservation */
-	SCH_SCHEDULE_RESTART_CYCLE, 	/* Restart a scheduling cycle */
-	SCH_CMD_HIGH	/* This has to be the last command always. Any new command can be inserted above if required */
+	SCH_SCHEDULE_FIRST,	     /* First schedule after server starts */
+	SCH_SCHEDULE_JOBRESV,	     /* Arrival of an existing reservation time */
+	SCH_SCHEDULE_AJOB,	     /* run one, named job */
+	SCH_SCHEDULE_STARTQ,	     /* Stopped queue started */
+	SCH_SCHEDULE_MVLOCAL,	     /* Job moved to local queue */
+	SCH_SCHEDULE_ETE_ON,	     /* eligible_time_enable is turned ON */
+	SCH_SCHEDULE_RESV_RECONFIRM, /* Reconfirm a reservation */
+	SCH_SCHEDULE_RESTART_CYCLE,  /* Restart a scheduling cycle */
+	SCH_CMD_HIGH		     /* This has to be the last command always. Any new command can be inserted above if required */
 };
 
 int schedule(int sd, const sched_cmd *cmd);

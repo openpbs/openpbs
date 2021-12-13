@@ -924,7 +924,7 @@ find_resresv_amount(resource_resv *resresv, const std::string &res, resdef *def)
 #ifdef NAS
 	/* localmod 034 */
 	else if (res == SORT_ALLOC)
-		return (sch_resource_t)(100.0 * site_get_share(resresv));
+		return (sch_resource_t) (100.0 * site_get_share(resresv));
 	/* localmod 039 */
 	else if (res == SORT_QPRI && resresv->job->queue != NULL)
 		return (sch_resource_t) resresv->job->queue->priority;

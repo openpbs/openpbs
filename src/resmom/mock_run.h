@@ -37,10 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-#ifndef	_MOCK_RUN_H
-#define	_MOCK_RUN_H
-#ifdef	__cplusplus
+#ifndef _MOCK_RUN_H
+#define _MOCK_RUN_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -59,7 +58,7 @@ int mock_run_mom_set_use(job *pjob);
 
 void mock_run_job_purge(job *pjob);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 #endif /* _MOCK_RUN_H */

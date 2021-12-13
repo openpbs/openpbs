@@ -37,12 +37,11 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_WORK_TASK_H
-#define	_WORK_TASK_H
-#ifdef	__cplusplus
+#ifndef _WORK_TASK_H
+#define _WORK_TASK_H
+#ifdef __cplusplus
 extern "C" {
 #endif
-
 
 /*
  * Server Work Tasks
@@ -56,39 +55,39 @@ extern "C" {
  */
 
 enum work_type {
-	WORK_Immed,		/* immediate action: see state */
-	WORK_Interleave,	/* immediate action: but allow other work to interleave */
-	WORK_Timed,		/* action at certain time */
-	WORK_Deferred_Child,	/* On Death of a Child */
-	WORK_Deferred_Reply,	/* On reply to an outgoing service request */
-	WORK_Deferred_Local,	/* On reply to a local service request */
-	WORK_Deferred_Other,	/* various other events */
+	WORK_Immed,	     /* immediate action: see state */
+	WORK_Interleave,     /* immediate action: but allow other work to interleave */
+	WORK_Timed,	     /* action at certain time */
+	WORK_Deferred_Child, /* On Death of a Child */
+	WORK_Deferred_Reply, /* On reply to an outgoing service request */
+	WORK_Deferred_Local, /* On reply to a local service request */
+	WORK_Deferred_Other, /* various other events */
 
-	WORK_Deferred_Cmp,	/* Never set directly, used to indicate that */
+	WORK_Deferred_Cmp, /* Never set directly, used to indicate that */
 	/* a WORK_Deferred_Child is ready            */
-	WORK_Deferred_cmd      /* used by TPP for deferred
+	WORK_Deferred_cmd /* used by TPP for deferred
 	                        * reply but without a preq attached
 	                        */
 };
 
 enum wtask_delete_option {
-    DELETE_ONE,
-    DELETE_ALL
+	DELETE_ONE,
+	DELETE_ALL
 };
 
-struct work_task  {
-	pbs_list_link	 wt_linkevent;	/* link to event type work list */
-	pbs_list_link	 wt_linkobj;	/* link to others of same object */
-	pbs_list_link	 wt_linkobj2;   /* link to another set of similarity */
-	long		 wt_event;	/* event id: time, pid, socket, ... */
-	char		*wt_event2;	/* if replies on the same handle, then additional distinction */
-	enum work_type	 wt_type;	/* type of event */
-	void		(*wt_func)(struct work_task *);	/* function to perform task */
-	void		*wt_parm1;	/* obj pointer for use by func */
-	void		*wt_parm2;	/* optional pointer for use by func */
-	void		*wt_parm3;	/* used to store reply for deferred cmds TPP */
-	int		 wt_aux;	/* optional info: e.g. child status */
-	int		 wt_aux2;	/* optional info 2: e.g. *real* child pid (windows), tpp msgid etc */
+struct work_task {
+	pbs_list_link wt_linkevent;	     /* link to event type work list */
+	pbs_list_link wt_linkobj;	     /* link to others of same object */
+	pbs_list_link wt_linkobj2;	     /* link to another set of similarity */
+	long wt_event;			     /* event id: time, pid, socket, ... */
+	char *wt_event2;		     /* if replies on the same handle, then additional distinction */
+	enum work_type wt_type;		     /* type of event */
+	void (*wt_func)(struct work_task *); /* function to perform task */
+	void *wt_parm1;			     /* obj pointer for use by func */
+	void *wt_parm2;			     /* optional pointer for use by func */
+	void *wt_parm3;			     /* used to store reply for deferred cmds TPP */
+	int wt_aux;			     /* optional info: e.g. child status */
+	int wt_aux2;			     /* optional info 2: e.g. *real* child pid (windows), tpp msgid etc */
 };
 
 extern struct work_task *set_task(enum work_type, long event, void (*func)(), void *param);
@@ -97,11 +96,11 @@ extern void clear_task(struct work_task *ptask);
 extern void dispatch_task(struct work_task *);
 extern void delete_task(struct work_task *);
 extern void delete_task_by_parm1_func(void *parm1, void (*func)(struct work_task *), enum wtask_delete_option option);
-extern int  has_task_by_parm1(void *parm1);
+extern int has_task_by_parm1(void *parm1);
 extern time_t default_next_task(void);
 extern struct work_task *find_work_task(enum work_type, void *, void *);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _WORK_TASK_H */
+#endif /* _WORK_TASK_H */

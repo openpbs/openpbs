@@ -37,12 +37,11 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_BITFIELD_H
-#define	_BITFIELD_H
-#ifdef	__cplusplus
+#ifndef _BITFIELD_H
+#define _BITFIELD_H
+#ifdef __cplusplus
 extern "C" {
 #endif
-
 
 /*
  * Definition of interface for dealing with arbitrarily large numbers of
@@ -124,83 +123,79 @@ extern "C" {
 
 /* The size of bitfields being used.  Default to 256 bits. */
 #ifndef BITFIELD_SIZE
-#define	BITFIELD_SIZE		256
-#endif	/* !BITFIELD_SIZE */
+#define BITFIELD_SIZE 256
+#endif /* !BITFIELD_SIZE */
 
 #include <assert.h>
-#define BITFIELD_BPW		((int)(sizeof(unsigned long long) * 8))
+#define BITFIELD_BPW ((int) (sizeof(unsigned long long) * 8))
 
-#define BITFIELD_SHIFT(bit)	((bit) / BITFIELD_BPW)
-#define BITFIELD_OFFSET(bit)	((bit) & (BITFIELD_BPW - 1))
-#define	BITFIELD_WORDS		(BITFIELD_SHIFT(BITFIELD_SIZE))
+#define BITFIELD_SHIFT(bit) ((bit) / BITFIELD_BPW)
+#define BITFIELD_OFFSET(bit) ((bit) & (BITFIELD_BPW - 1))
+#define BITFIELD_WORDS (BITFIELD_SHIFT(BITFIELD_SIZE))
 
 typedef struct bitfield {
 	unsigned long long _bits[BITFIELD_WORDS];
 } Bitfield;
 
-#define	INLINE	__inline
+#define INLINE __inline
 
 /* Word-oriented operations on bitfields */
-#define BITFIELD_WORD(p,ndx) \
-	(( (ndx) >= 0 && (ndx) < BITFIELD_WORDS ) ? (p)->_bits[ndx] : 0ULL)
+#define BITFIELD_WORD(p, ndx) \
+	(((ndx) >= 0 && (ndx) < BITFIELD_WORDS) ? (p)->_bits[ndx] : 0ULL)
 
-#define BITFIELD_SET_WORD(p,ndx,word) { 		\
-	if ( (ndx) >= 0 && (ndx) < BITFIELD_WORDS ) 	\
-		(p)->_bits[ndx] = word; 		\
-}
+#define BITFIELD_SET_WORD(p, ndx, word)                   \
+	{                                                 \
+		if ((ndx) >= 0 && (ndx) < BITFIELD_WORDS) \
+			(p)->_bits[ndx] = word;           \
+	}
 
 /* Operate on least significant bit of a bitfield. */
 
-#define	BITFIELD_LSB_ISONE(p) \
-    ((p)->_bits[0] & 1ULL)
+#define BITFIELD_LSB_ISONE(p) \
+	((p)->_bits[0] & 1ULL)
 
-#define	BITFIELD_SET_LSB(p) \
-    ((p)->_bits[0] |= 1ULL)
+#define BITFIELD_SET_LSB(p) \
+	((p)->_bits[0] |= 1ULL)
 
-#define	BITFIELD_CLR_LSB(p) \
-    ((p)->_bits[0] &= ~(1ULL))
-
+#define BITFIELD_CLR_LSB(p) \
+	((p)->_bits[0] &= ~(1ULL))
 
 /* Operate on most significant bit of a bitfield. */
 
 #define BITFIELD_MSB_ISONE(p) \
-    ((p)->_bits[BITFIELD_SHIFT(BITFIELD_SIZE-1)] & (1ULL << (BITFIELD_BPW-1)))
+	((p)->_bits[BITFIELD_SHIFT(BITFIELD_SIZE - 1)] & (1ULL << (BITFIELD_BPW - 1)))
 
 #define BITFIELD_SET_MSB(p) \
-    ((p)->_bits[BITFIELD_SHIFT(BITFIELD_SIZE-1)] |= (1ULL << (BITFIELD_BPW-1)))
+	((p)->_bits[BITFIELD_SHIFT(BITFIELD_SIZE - 1)] |= (1ULL << (BITFIELD_BPW - 1)))
 
 #define BITFIELD_CLR_MSB(p) \
-    ((p)->_bits[BITFIELD_SHIFT(BITFIELD_SIZE-1)] &= ~(1ULL << (BITFIELD_BPW-1)))
-
+	((p)->_bits[BITFIELD_SHIFT(BITFIELD_SIZE - 1)] &= ~(1ULL << (BITFIELD_BPW - 1)))
 
 /* Operate on arbitrary bits within the bitfield. */
 
-#define BITFIELD_SETB(p,bit)	(((bit) >= 0 && (bit) < BITFIELD_SIZE) ? \
-    (p)->_bits[BITFIELD_SHIFT(bit)] |= (1ULL << BITFIELD_OFFSET(bit)) : 0)
+#define BITFIELD_SETB(p, bit) (((bit) >= 0 && (bit) < BITFIELD_SIZE) ? (p)->_bits[BITFIELD_SHIFT(bit)] |= (1ULL << BITFIELD_OFFSET(bit)) : 0)
 
-#define BITFIELD_CLRB(p,bit)	(((bit) >= 0 && (bit) < BITFIELD_SIZE) ? \
-    (p)->_bits[BITFIELD_SHIFT(bit)] &= ~(1ULL << BITFIELD_OFFSET(bit)) : 0)
+#define BITFIELD_CLRB(p, bit) (((bit) >= 0 && (bit) < BITFIELD_SIZE) ? (p)->_bits[BITFIELD_SHIFT(bit)] &= ~(1ULL << BITFIELD_OFFSET(bit)) : 0)
 
-#define BITFIELD_TSTB(p,bit)	(((bit) >= 0 && (bit) < BITFIELD_SIZE) ? \
-    ((p)->_bits[BITFIELD_SHIFT(bit)] & (1ULL << BITFIELD_OFFSET(bit))) : 0)
-
+#define BITFIELD_TSTB(p, bit) (((bit) >= 0 && (bit) < BITFIELD_SIZE) ? ((p)->_bits[BITFIELD_SHIFT(bit)] & (1ULL << BITFIELD_OFFSET(bit))) : 0)
 
 /* Clear or set all the bits in the bitfield. */
 
-#define BITFIELD_CLRALL(p)	{					\
-	int w;								\
-	assert(p != NULL);						\
-	for (w = 0; w < BITFIELD_WORDS; w++)				\
-		(p)->_bits[w] = 0ULL;					\
-}
+#define BITFIELD_CLRALL(p)                           \
+	{                                            \
+		int w;                               \
+		assert(p != NULL);                   \
+		for (w = 0; w < BITFIELD_WORDS; w++) \
+			(p)->_bits[w] = 0ULL;        \
+	}
 
-#define BITFIELD_SETALL(p)	{					\
-	int w;								\
-	assert(p != NULL);						\
-	for (w = 0; w < BITFIELD_WORDS; w++)				\
-		(p)->_bits[w] = ~(0ULL);				\
-}
-
+#define BITFIELD_SETALL(p)                           \
+	{                                            \
+		int w;                               \
+		assert(p != NULL);                   \
+		for (w = 0; w < BITFIELD_WORDS; w++) \
+			(p)->_bits[w] = ~(0ULL);     \
+	}
 
 /* Comparison functions for two bitfield. */
 
@@ -275,7 +270,7 @@ BITFIELD_LS_ONE(Bitfield *p)
 		return (-1);
 
 	/* Slide a single bit left, looking for the non-zero bit. */
-	for (x = 1ULL; !(n & x); bit ++)
+	for (x = 1ULL; !(n & x); bit++)
 		x <<= 1;
 
 	return (bit);
@@ -331,7 +326,6 @@ BITFIELD_NOTEQ(Bitfield *p, Bitfield *q)
 			return 1;
 	return 0;
 }
-
 
 /* Logical manipulation functions for applying one bitfield to another. */
 
@@ -417,7 +411,6 @@ BITFIELD_ORNOTM(Bitfield *p, Bitfield *q)
 	return 0;
 }
 
-
 /* Logical shift left and shift right for bitfield. */
 
 INLINE int
@@ -445,11 +438,11 @@ BITFIELD_SHIFTR(Bitfield *p)
 		lower = p->_bits[w] & 1ULL;
 		p->_bits[w] >>= 1;
 		p->_bits[w - 1] >>= 1;
-		p->_bits[w - 1] |= (lower ?(1ULL << (BITFIELD_BPW - 1)) : 0);
+		p->_bits[w - 1] |= (lower ? (1ULL << (BITFIELD_BPW - 1)) : 0);
 	}
 	return 0;
 }
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _BITFIELD_H */
+#endif /* _BITFIELD_H */

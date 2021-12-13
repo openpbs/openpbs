@@ -37,12 +37,11 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_NODE_PARTITION_H
+#ifndef _NODE_PARTITION_H
 #define _NODE_PARTITION_H
 
 #include "data_types.h"
 #include <pbs_ifl.h>
-
 
 /*
  *
@@ -182,7 +181,7 @@ void free_np_cache(np_cache *npc);
  */
 np_cache *
 find_np_cache(np_cache **npc_arr,
-	const std::vector<std::string> &resnames, node_info **ninfo_arr);
+	      const std::vector<std::string> &resnames, node_info **ninfo_arr);
 /*
  *	find_alloc_np_cache - find a np_cache by the array of resource names
  *			      and nodes which created it.  If the np_cache
@@ -190,8 +189,8 @@ find_np_cache(np_cache **npc_arr,
  */
 np_cache *
 find_alloc_np_cache(status *policy, std::vector<np_cache *> &pnpc_arr,
-	const std::vector<std::string> &resnames, node_info **ninfo_arr,
-	int (*sort_func)(const void *, const void *));
+		    const std::vector<std::string> &resnames, node_info **ninfo_arr,
+		    int (*sort_func)(const void *, const void *));
 
 /*
  * do an inital check to see if a resresv can fit into a node partition
@@ -204,7 +203,7 @@ int resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *
  *				   nodes, rather than from a placement
  *				   set resource=value
  */
-node_partition *create_specific_nodepart(status *policy, const char *name, node_info **nodes, int flags );
+node_partition *create_specific_nodepart(status *policy, const char *name, node_info **nodes, int flags);
 /* create the placement sets for the server and queues */
 bool create_placement_sets(status *policy, server_info *sinfo);
 
@@ -225,4 +224,4 @@ void update_buckets_for_node(node_bucket **bkts, node_info *ninfo);
  */
 void update_buckets_for_node_array(node_bucket **bkts, node_info **ninfo_arr);
 
-#endif	/* _NODE_PARTITION_H */
+#endif /* _NODE_PARTITION_H */

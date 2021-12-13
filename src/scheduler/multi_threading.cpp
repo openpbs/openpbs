@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #include <pbs_config.h>
 
 #include <stdio.h>
@@ -96,7 +95,7 @@ kill_threads(void)
 	int i;
 
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
-				"", "Killing worker threads");
+		  "", "Killing worker threads");
 
 	threads_die = 1;
 	pthread_mutex_lock(&work_lock);
@@ -144,12 +143,12 @@ init_multi_threading(int nthreads)
 	threads_die = 0;
 	if (pthread_cond_init(&work_cond, NULL) != 0) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
-				"pthread_cond_init failed");
+			  "pthread_cond_init failed");
 		return 0;
 	}
 	if (pthread_cond_init(&result_cond, NULL) != 0) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
-				"pthread_cond_init failed");
+			  "pthread_cond_init failed");
 		return 0;
 	}
 
@@ -176,7 +175,7 @@ init_multi_threading(int nthreads)
 	}
 
 	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
-			"", "Launching %d worker threads", num_threads);
+		   "", "Launching %d worker threads", num_threads);
 
 	threads = static_cast<pthread_t *>(malloc(num_threads * sizeof(pthread_t)));
 	if (threads == NULL) {
@@ -235,7 +234,7 @@ worker(void *tid)
 	char buf[1024];
 
 	pthread_setspecific(th_id_key, tid);
-	ntid = *(int *)tid;
+	ntid = *(int *) tid;
 
 	/* Add HUP to the list of signals to block, if we ever unblock this, we'll need to modify 'restart()' to handle MT */
 	sigemptyset(&set);
@@ -243,7 +242,7 @@ worker(void *tid)
 
 	if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
-				"pthread_sigmask failed");
+			  "pthread_sigmask failed");
 		pthread_exit(NULL);
 	}
 
@@ -259,44 +258,44 @@ worker(void *tid)
 		/* find out what task we need to do */
 		if (work != NULL) {
 			switch (work->task_type) {
-			case TS_IS_ND_ELIGIBLE:
-				snprintf(buf, sizeof(buf), "Thread %d calling check_node_eligibility_chunk()", ntid);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				check_node_eligibility_chunk(static_cast<th_data_nd_eligible *>(work->thread_data));
-				break;
-			case TS_DUP_ND_INFO:
-				snprintf(buf, sizeof(buf), "Thread %d calling dup_node_info_chunk()", ntid);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				dup_node_info_chunk(static_cast<th_data_dup_nd_info *>(work->thread_data));
-				break;
-			case TS_QUERY_ND_INFO:
-				snprintf(buf, sizeof(buf), "Thread %d calling query_node_info_chunk()", ntid);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				query_node_info_chunk(static_cast<th_data_query_ninfo *>(work->thread_data));
-				break;
-			case TS_FREE_ND_INFO:
-				snprintf(buf, sizeof(buf), "Thread %d calling free_node_info_chunk()", ntid);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				free_node_info_chunk(static_cast<th_data_free_ninfo *>(work->thread_data));
-				break;
-			case TS_DUP_RESRESV:
-				snprintf(buf, sizeof(buf), "Thread %d calling dup_resource_resv_array_chunk()", ntid);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				dup_resource_resv_array_chunk(static_cast<th_data_dup_resresv *>(work->thread_data));
-				break;
-			case TS_QUERY_JOB_INFO:
-				snprintf(buf, sizeof(buf), "Thread %d calling query_jobs_chunk()", ntid);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				query_jobs_chunk(static_cast<th_data_query_jinfo *>(work->thread_data));
-				break;
-			case TS_FREE_RESRESV:
-				snprintf(buf, sizeof(buf), "Thread %d calling free_resource_resv_array_chunk()", ntid);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
-				free_resource_resv_array_chunk(static_cast<th_data_free_resresv *>(work->thread_data));
-				break;
-			default:
-				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
-						"Invalid task type passed to worker thread");
+				case TS_IS_ND_ELIGIBLE:
+					snprintf(buf, sizeof(buf), "Thread %d calling check_node_eligibility_chunk()", ntid);
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
+					check_node_eligibility_chunk(static_cast<th_data_nd_eligible *>(work->thread_data));
+					break;
+				case TS_DUP_ND_INFO:
+					snprintf(buf, sizeof(buf), "Thread %d calling dup_node_info_chunk()", ntid);
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
+					dup_node_info_chunk(static_cast<th_data_dup_nd_info *>(work->thread_data));
+					break;
+				case TS_QUERY_ND_INFO:
+					snprintf(buf, sizeof(buf), "Thread %d calling query_node_info_chunk()", ntid);
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
+					query_node_info_chunk(static_cast<th_data_query_ninfo *>(work->thread_data));
+					break;
+				case TS_FREE_ND_INFO:
+					snprintf(buf, sizeof(buf), "Thread %d calling free_node_info_chunk()", ntid);
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
+					free_node_info_chunk(static_cast<th_data_free_ninfo *>(work->thread_data));
+					break;
+				case TS_DUP_RESRESV:
+					snprintf(buf, sizeof(buf), "Thread %d calling dup_resource_resv_array_chunk()", ntid);
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
+					dup_resource_resv_array_chunk(static_cast<th_data_dup_resresv *>(work->thread_data));
+					break;
+				case TS_QUERY_JOB_INFO:
+					snprintf(buf, sizeof(buf), "Thread %d calling query_jobs_chunk()", ntid);
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
+					query_jobs_chunk(static_cast<th_data_query_jinfo *>(work->thread_data));
+					break;
+				case TS_FREE_RESRESV:
+					snprintf(buf, sizeof(buf), "Thread %d calling free_resource_resv_array_chunk()", ntid);
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, buf);
+					free_resource_resv_array_chunk(static_cast<th_data_free_resresv *>(work->thread_data));
+					break;
+				default:
+					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
+						  "Invalid task type passed to worker thread");
 			}
 
 			/* Post results */

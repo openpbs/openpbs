@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /*
  * Place holder for site supplied additions to the array of
  * site queue attribute definitions, see server/queue_attr_def.c
@@ -60,27 +58,25 @@
  */
 #ifdef NAS
 /* localmod 046 */
-	{	ATTR_maxstarve,
-		decode_time,
-		encode_time,
-		set_l,
-		comp_l,
-		free_null,
-		NULL_FUNC,
-		NO_USER_SET,
-		ATR_TYPE_LONG,
-		PARENT_TYPE_QUE_EXC
-	},
-/* localmod 034 */
-	{	ATTR_maxborrow,
-		decode_time,
-		encode_time,
-		set_l,
-		comp_l,
-		free_null,
-		NULL_FUNC,
-		NO_USER_SET,
-		ATR_TYPE_LONG,
-		PARENT_TYPE_QUE_EXC
-	},
+{ATTR_maxstarve,
+ decode_time,
+ encode_time,
+ set_l,
+ comp_l,
+ free_null,
+ NULL_FUNC,
+ NO_USER_SET,
+ ATR_TYPE_LONG,
+ PARENT_TYPE_QUE_EXC},
+	/* localmod 034 */
+	{ATTR_maxborrow,
+	 decode_time,
+	 encode_time,
+	 set_l,
+	 comp_l,
+	 free_null,
+	 NULL_FUNC,
+	 NO_USER_SET,
+	 ATR_TYPE_LONG,
+	 PARENT_TYPE_QUE_EXC},
 #endif

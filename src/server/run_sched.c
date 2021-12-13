@@ -132,7 +132,7 @@ find_assoc_sched_jid(char *jid, pbs_sched **target_sched)
 
 	t = is_job_array(jid);
 	if ((t == IS_ARRAY_NO) || (t == IS_ARRAY_ArrayJob))
-		pj = find_job(jid);		/* regular or ArrayJob itself */
+		pj = find_job(jid); /* regular or ArrayJob itself */
 	else
 		pj = find_arrayparent(jid); /* subjob(s) */
 
@@ -169,9 +169,9 @@ find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched)
 			*target_sched = dflt_scheduler;
 			return 1;
 		}
-		for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+		for (psched = (pbs_sched *) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
 			if (is_sched_attr_set(psched, SCHED_ATR_partition)) {
-				if(!strcmp(get_sched_attr_str(psched, SCHED_ATR_partition), partition)) {
+				if (!strcmp(get_sched_attr_str(psched, SCHED_ATR_partition), partition)) {
 					*target_sched = psched;
 					return 1;
 				}
@@ -182,7 +182,6 @@ find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched)
 		return 1;
 	}
 	return 0;
-
 }
 
 /**
@@ -255,7 +254,7 @@ recv_sched_cycle_end(int sock)
 		return 0;
 
 	DIS_tcp_funcs();
-	(void)disrsi(sock, &rc); /* read end cycle marker and ignore as we don't need its value */
+	(void) disrsi(sock, &rc); /* read end cycle marker and ignore as we don't need its value */
 	psched->sc_cycle_started = 0;
 
 	if (rc != 0)
@@ -323,7 +322,7 @@ schedule_jobs(pbs_sched *psched)
 	int s;
 	static int first_time = 1;
 	struct deferred_request *pdefr;
-	char  *jid = NULL;
+	char *jid = NULL;
 
 	if (psched == NULL)
 		return -1;
@@ -337,7 +336,7 @@ schedule_jobs(pbs_sched *psched)
 
 		/* are there any qrun requests from manager/operator */
 		/* which haven't been sent,  they take priority      */
-		pdefr = (struct deferred_request *)GET_NEXT(svr_deferred_req);
+		pdefr = (struct deferred_request *) GET_NEXT(svr_deferred_req);
 		while (pdefr) {
 			if (pdefr->dr_sent == 0) {
 				s = is_job_array(pdefr->dr_id);
@@ -348,7 +347,7 @@ schedule_jobs(pbs_sched *psched)
 						break;
 					}
 				} else if ((s == IS_ARRAY_Single) ||
-					(s == IS_ARRAY_Range)) {
+					   (s == IS_ARRAY_Range)) {
 					if (find_arrayparent(pdefr->dr_id) != NULL) {
 						jid = pdefr->dr_id;
 						cmd = SCH_SCHEDULE_AJOB;
@@ -356,14 +355,14 @@ schedule_jobs(pbs_sched *psched)
 					}
 				}
 			}
-			pdefr = (struct deferred_request *)GET_NEXT(pdefr->dr_link);
+			pdefr = (struct deferred_request *) GET_NEXT(pdefr->dr_link);
 		}
 
 		if (!send_sched_cmd(psched, cmd, jid)) {
 			set_sched_state(psched, SC_DOWN);
 			return -1;
 		} else if (pdefr != NULL)
-			pdefr->dr_sent = 1;   /* mark entry as sent to sched */
+			pdefr->dr_sent = 1; /* mark entry as sent to sched */
 
 		psched->svr_do_schedule = SCH_SCHEDULE_NULL;
 		set_sched_state(psched, SC_SCHEDULING);
@@ -380,13 +379,12 @@ schedule_jobs(pbs_sched *psched)
 					target_sched->svr_do_schedule = SCH_SCHEDULE_AJOB;
 				break;
 			}
-			pdefr = (struct deferred_request *)GET_NEXT(pdefr->dr_link);
+			pdefr = (struct deferred_request *) GET_NEXT(pdefr->dr_link);
 		}
 
 		return (0);
 	} else
-		return (1);	/* scheduler was busy */
-
+		return (1); /* scheduler was busy */
 }
 
 /**
@@ -452,9 +450,9 @@ am_jobs_add(job *pjob)
 		/* Need to expand the array, increase by 4 slots */
 		job **tmp = realloc(am_jobs.am_array, sizeof(job *) * (am_jobs.am_max + 4));
 		if (tmp == NULL)
-			return;	/* cannot increase array, so be it */
+			return; /* cannot increase array, so be it */
 		am_jobs.am_array = tmp;
-		am_jobs.am_max  += 4;
+		am_jobs.am_max += 4;
 	}
 	*(am_jobs.am_array + am_jobs.am_used++) = pjob;
 }
@@ -474,8 +472,8 @@ int
 was_job_alteredmoved(job *pjob)
 {
 	int i;
-	for (i=0; i<am_jobs.am_used; ++i) {
-		if (*(am_jobs.am_array+i) == pjob)
+	for (i = 0; i < am_jobs.am_used; ++i) {
+		if (*(am_jobs.am_array + i) == pjob)
 			return 1;
 	}
 	return 0;
@@ -499,10 +497,10 @@ set_scheduler_flag(int flag, pbs_sched *psched)
 		single_sched = 1;
 	else {
 		single_sched = 0;
-		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
+		psched = (pbs_sched *) GET_NEXT(svr_allscheds);
 	}
 
-	for (; psched ; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+	for (; psched; psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
 		/* high priority commands:
 		 * Note: A) usually SCH_QUIT is sent directly and not via here
 		 *       B) if we ever add a 3rd high prio command, we can lose them
@@ -512,13 +510,11 @@ set_scheduler_flag(int flag, pbs_sched *psched)
 				return; /* keep only SCH_QUIT */
 
 			psched->svr_do_sched_high = flag;
-		}
-		else
+		} else
 			psched->svr_do_schedule = flag;
 		if (single_sched)
 			break;
 	}
-
 }
 
 /**

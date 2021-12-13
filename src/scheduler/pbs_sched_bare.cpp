@@ -182,54 +182,54 @@ static int
 schedule_bare(int sd, const sched_cmd *cmd)
 {
 	switch (cmd->cmd) {
-	case SCH_SCHEDULE_NULL:
-	case SCH_RULESET:
-		/* ignore and end cycle */
-		break;
+		case SCH_SCHEDULE_NULL:
+		case SCH_RULESET:
+			/* ignore and end cycle */
+			break;
 
-	case SCH_SCHEDULE_FIRST:
-		/*
+		case SCH_SCHEDULE_FIRST:
+			/*
 		 * on the first cycle after the server restarts custom resources
 		 * may have been added.  Dump what we have so we'll requery them.
 		 */
-		update_resource_defs(sd);
+			update_resource_defs(sd);
 
-		/* Get config from the qmgr sched object */
-		if (!set_validate_sched_attrs(sd))
-			return 0;
+			/* Get config from the qmgr sched object */
+			if (!set_validate_sched_attrs(sd))
+				return 0;
 
-	case SCH_SCHEDULE_NEW:
-	case SCH_SCHEDULE_TERM:
-	case SCH_SCHEDULE_CMD:
-	case SCH_SCHEDULE_TIME:
-	case SCH_SCHEDULE_JOBRESV:
-	case SCH_SCHEDULE_STARTQ:
-	case SCH_SCHEDULE_MVLOCAL:
-	case SCH_SCHEDULE_ETE_ON:
-	case SCH_SCHEDULE_RESV_RECONFIRM:
-		return scheduling_cycle_bare(sd, cmd);
-	case SCH_SCHEDULE_AJOB:
-		return scheduling_cycle_bare(sd, cmd);
-	case SCH_CONFIGURE:
-		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
-			  "reconfigure", "Scheduler is reconfiguring");
-		update_resource_defs(sd);
+		case SCH_SCHEDULE_NEW:
+		case SCH_SCHEDULE_TERM:
+		case SCH_SCHEDULE_CMD:
+		case SCH_SCHEDULE_TIME:
+		case SCH_SCHEDULE_JOBRESV:
+		case SCH_SCHEDULE_STARTQ:
+		case SCH_SCHEDULE_MVLOCAL:
+		case SCH_SCHEDULE_ETE_ON:
+		case SCH_SCHEDULE_RESV_RECONFIRM:
+			return scheduling_cycle_bare(sd, cmd);
+		case SCH_SCHEDULE_AJOB:
+			return scheduling_cycle_bare(sd, cmd);
+		case SCH_CONFIGURE:
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
+				  "reconfigure", "Scheduler is reconfiguring");
+			update_resource_defs(sd);
 
-		/* Get config from sched_priv/ files */
-		if (schedinit(-1) != 0)
-			return 0;
+			/* Get config from sched_priv/ files */
+			if (schedinit(-1) != 0)
+				return 0;
 
-		/* Get config from the qmgr sched object */
-		if (!set_validate_sched_attrs(sd))
-			return 0;
-		break;
-	case SCH_QUIT:
+			/* Get config from the qmgr sched object */
+			if (!set_validate_sched_attrs(sd))
+				return 0;
+			break;
+		case SCH_QUIT:
 #ifdef PYTHON
-		Py_Finalize();
+			Py_Finalize();
 #endif
-		return 1; /* have the scheduler exit nicely */
-	default:
-		return 0;
+			return 1; /* have the scheduler exit nicely */
+		default:
+			return 0;
 	}
 	return 0;
 }

@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_NODE_INFO_H
-#define	_NODE_INFO_H
+#ifndef _NODE_INFO_H
+#define _NODE_INFO_H
 
 #include "data_types.h"
 #include <pbs_ifl.h>
@@ -87,8 +87,7 @@ int add_node_state(node_info *ninfo, const char *state);
  */
 node_info **
 node_filter(node_info **nodes, int size,
-	int (*filter_func)(node_info*, void*), void *arg, int flags);
-
+	    int (*filter_func)(node_info *, void *), void *arg, int flags);
 
 /*
  *      is_node_timeshared - check if a node is timeshared
@@ -98,7 +97,7 @@ int is_node_timeshared(node_info *node, void *arg);
 /*
  *      find_node_info - find a node in the node array
  */
-node_info *find_node_info(node_info **ninfo_arr, const std::string& nodename);
+node_info *find_node_info(node_info **ninfo_arr, const std::string &nodename);
 
 /*
  *      dup_node_info - duplicate a node by creating a new one and coping all
@@ -129,7 +128,6 @@ int collect_resvs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, i
  *      is_node_eligible - is this node eligible to run the job
  */
 int is_node_eligible(resource_resv *job, node_info *ninfo, char *reason);
-
 
 /*
  *      find_eligible_nodes - find the eligible node in an array of nodes
@@ -166,12 +164,12 @@ void update_node_on_end(node_info *ninfo, resource_resv *resresv, const char *jo
  *                            This means we have to use the names from the
  *                            first array and find them in the second array
  */
-node_info **copy_node_ptr_array(node_info  **oarr, node_info  **narr);
+node_info **copy_node_ptr_array(node_info **oarr, node_info **narr);
 
 /*
  *      create_execvnode - create an execvnode to run a multi-node job
  */
-char *create_execvnode(std::vector<nspec *>& ns_arr);
+char *create_execvnode(std::vector<nspec *> &ns_arr);
 
 /*
  *      parse_execvnode - parse an execvnode into an nspec array
@@ -181,7 +179,7 @@ std::vector<nspec *> parse_execvnode(char *execvnode, server_info *sinfo, selspe
 /*
  *      dup_nspecs - duplicate an array of nspecs
  */
-std::vector<nspec *>dup_nspecs(const std::vector<nspec *>& onspecs, node_info **ninfo_arr, selspec *sel);
+std::vector<nspec *> dup_nspecs(const std::vector<nspec *> &onspecs, node_info **ninfo_arr, selspec *sel);
 
 /* find a chunk by a sequence number */
 chunk *find_chunk_by_seq_num(chunk **chunks, int seq_num);
@@ -189,12 +187,12 @@ chunk *find_chunk_by_seq_num(chunk **chunks, int seq_num);
 /*
  *      free_nspecs - free a nspec array
  */
-void free_nspecs(std::vector<nspec *>& nspec_arr);
+void free_nspecs(std::vector<nspec *> &nspec_arr);
 
 /*
  *      find_nspec - find an nspec in an array
  */
-nspec *find_nspec(std::vector<nspec *>& nspec_arr, node_info *ninfo);
+nspec *find_nspec(std::vector<nspec *> &nspec_arr, node_info *ninfo);
 
 /*
  *      update_nodes_for_resvs - take a node array and make resource effects
@@ -203,8 +201,7 @@ nspec *find_nspec(std::vector<nspec *>& nspec_arr, node_info *ninfo);
  */
 int
 update_nodes_for_resvs(node_info **ninfo_arr, server_info *sinfo,
-	resource_resv *job);
-
+		       resource_resv *job);
 
 /*
  *      dup_node_info - duplicate a node by creating a new one and coping all
@@ -215,7 +212,7 @@ node_info *dup_node_info(node_info *onode, server_info *nsinfo, unsigned int fla
 /*
  *      find_nspec_by_name - find an nspec in an array by nodename
  */
-nspec *find_nspec_by_rank(std::vector<nspec *>& nspec_arr, int rank);
+nspec *find_nspec_by_rank(std::vector<nspec *> &nspec_arr, int rank);
 
 /* find node by unique rank and return index into ninfo_arr */
 int find_node_ind(node_info **ninfo_arr, int rank);
@@ -261,7 +258,7 @@ int compare_place(place *pl1, place *pl2);
  *	returns requested resource list (& number of chunks in numchunks)
  *		NULL on error or invalid spec
  */
-selspec *parse_selspec(const std::string& sspec);
+selspec *parse_selspec(const std::string &sspec);
 
 /* compare two selspecs to see if they are equal*/
 int compare_selspec(selspec *s1, selspec *s2);
@@ -270,7 +267,7 @@ int compare_selspec(selspec *s1, selspec *s2);
  *	combine_nspec_array - find and combine any nspec's for the same node
  *				in an nspec array
  */
-std::vector<nspec *> combine_nspec_array(const std::vector<nspec *>& nspec_arr);
+std::vector<nspec *> combine_nspec_array(const std::vector<nspec *> &nspec_arr);
 
 /*
  *	eval_selspec - eval a select spec to see if it is satisifable
@@ -291,9 +288,9 @@ std::vector<nspec *> combine_nspec_array(const std::vector<nspec *>& nspec_arr);
  */
 bool
 eval_selspec(status *policy, selspec *spec, place *placespec,
-	node_info **ninfo_arr, node_partition **nodepart,
-	resource_resv *resresv, unsigned int flags,
-	std::vector<nspec *>& nspec_arr, schd_error *err);
+	     node_info **ninfo_arr, node_partition **nodepart,
+	     resource_resv *resresv, unsigned int flags,
+	     std::vector<nspec *> &nspec_arr, schd_error *err);
 
 /*
  *
@@ -313,7 +310,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
  */
 bool
 eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
-	resource_resv *resresv, unsigned int flags, std::vector<nspec *>& nspec_arr, schd_error *err);
+	       resource_resv *resresv, unsigned int flags, std::vector<nspec *> &nspec_arr, schd_error *err);
 /*
  *	eval_complex_selspec - handle a complex (plus'd) select spec
  *
@@ -330,7 +327,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
  */
 bool
 eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
-	resource_resv *resresv, unsigned int flags, std::vector<nspec *>& nspec_arr, schd_error *err);
+		     resource_resv *resresv, unsigned int flags, std::vector<nspec *> &nspec_arr, schd_error *err);
 
 /*
  * 	eval_simple_selspec - eval a non-plused select spec for satasifiability
@@ -348,18 +345,18 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
  */
 bool
 eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
-	place *pl, resource_resv *resresv, unsigned int flags,
-	std::vector<nspec *>& nspec_arr, schd_error *err);
+		    place *pl, resource_resv *resresv, unsigned int flags,
+		    std::vector<nspec *> &nspec_arr, schd_error *err);
 
 /* evaluate one node to see if it is eligible at the job/resv level */
 bool
 is_vnode_eligible(node_info *node, resource_resv *resresv,
-	struct place *pl, schd_error *err);
+		  struct place *pl, schd_error *err);
 
 /* check if a vnode is eligible for a chunk */
 bool
 is_vnode_eligible_chunk(resource_req *specreq, node_info *node,
-		resource_resv *resresv, schd_error *err);
+			resource_resv *resresv, schd_error *err);
 
 /*
  *	resources_avail_on_vnode - check to see if there are enough
@@ -380,8 +377,8 @@ is_vnode_eligible_chunk(resource_req *specreq, node_info *node,
  */
 bool
 resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
-	place *pl, resource_resv *resresv, unsigned int flags,
-	nspec *ns, schd_error *err);
+			 place *pl, resource_resv *resresv, unsigned int flags,
+			 nspec *ns, schd_error *err);
 
 /*
  *	check_resources_for_node - check to see how many chunks can fit on a
@@ -399,14 +396,14 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
  */
 long long
 check_resources_for_node(resource_req *resreq, node_info *ninfo,
-	resource_resv *resresv, schd_error *err);
+			 resource_resv *resresv, schd_error *err);
 
 /*
  *	create_node_array_from_nspec - create a node_info array by copying the
  *				       ninfo pointers out of a nspec array
  *	returns new node_info array or NULL on error
  */
-node_info **create_node_array_from_nspec(std::vector<nspec *>& nspec_arr);
+node_info **create_node_array_from_nspec(std::vector<nspec *> &nspec_arr);
 
 /*
  *	reorder_nodes - reorder nodes for smp_cluster_dist or
@@ -454,7 +451,7 @@ int is_exclhost(place *pl, enum vnode_sharing sharing);
  *	returns 1 on success
  *		0 on error -- nsa will be modified
  */
-int alloc_rest_nodepart(std::vector<nspec*>& nsa, node_info **ninfo_arr);
+int alloc_rest_nodepart(std::vector<nspec *> &nsa, node_info **ninfo_arr);
 
 /*
  *	can_fit_on_vnode - see if a chunk fit on one vnode in node list
@@ -465,7 +462,7 @@ int alloc_rest_nodepart(std::vector<nspec*>& nsa, node_info **ninfo_arr);
  *	returns 1: chunk can fit in 1 vnode
  *		0: chunk can not fit / error
  */
-int can_fit_on_vnode(resource_req *req,  node_info **ninfo_arr);
+int can_fit_on_vnode(resource_req *req, node_info **ninfo_arr);
 
 /*
  *      is_eoe_avail_on_vnode - it first finds if eoe is available in node's
@@ -550,7 +547,7 @@ int node_in_partition(node_info *ninfo, char *partition);
 /* add a node to a node array*/
 node_info **add_node_to_array(node_info **ninfo_arr, node_info *node);
 
-bool add_event_to_nodes(timed_event *te, std::vector<nspec *>& nspecs);
+bool add_event_to_nodes(timed_event *te, std::vector<nspec *> &nspecs);
 
 int add_node_events(timed_event *te, void *arg1, void *arg2);
 
@@ -560,4 +557,4 @@ struct batch_status *send_statvnode(int virtual_fd, char *id, struct attrl *attr
  * Find a node by its hostname
  */
 node_info *find_node_by_host(node_info **ninfo_arr, char *host);
-#endif	/* _NODE_INFO_H */
+#endif /* _NODE_INFO_H */

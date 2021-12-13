@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    prime.c
  *
@@ -76,7 +75,6 @@
 #include "prime.h"
 #include "misc.h"
 
-
 /**
  * @brief
  * 		return the status of primetime
@@ -90,10 +88,11 @@
  * @par NOTE: Holidays are considered non-prime
  *
  */
-enum prime_time is_prime_time(time_t date)
+enum prime_time
+is_prime_time(time_t date)
 {
-	enum prime_time ret = PRIME;		/* return code */
-	struct tm  *tmptr;			/* current time in a struct tm */
+	enum prime_time ret = PRIME; /* return code */
+	struct tm *tmptr;	     /* current time in a struct tm */
 
 	tmptr = localtime(&date);
 
@@ -145,14 +144,15 @@ enum prime_time is_prime_time(time_t date)
  * @return	PRIME if it is in primetime
  * @retval	NON_PRIME	: if not
  */
-enum prime_time check_prime(enum days d, struct tm *t)
+enum prime_time
+check_prime(enum days d, struct tm *t)
 {
-	enum prime_time prime = NON_PRIME;		/* return code */
+	enum prime_time prime = NON_PRIME; /* return code */
 
 	/* Nonprime, prime, and current Times are transformed into military time for easier comparison */
-	int npt = conf.prime[d][NON_PRIME].hour*100+conf.prime[d][NON_PRIME].min;
-	int pt = conf.prime[d][PRIME].hour*100+conf.prime[d][PRIME].min;
-	int ct = (t->tm_hour)*100+(t->tm_min);
+	int npt = conf.prime[d][NON_PRIME].hour * 100 + conf.prime[d][NON_PRIME].min;
+	int pt = conf.prime[d][PRIME].hour * 100 + conf.prime[d][PRIME].min;
+	int ct = (t->tm_hour) * 100 + (t->tm_min);
 
 	/* Case 1: all primetime today */
 	if (conf.prime[d][PRIME].all)
@@ -178,7 +178,8 @@ enum prime_time check_prime(enum days d, struct tm *t)
 	else if (npt > pt) {
 		if (pt <= ct && ct < npt)
 			prime = PRIME;
-		else prime = NON_PRIME;
+		else
+			prime = NON_PRIME;
 	}
 	/*  case 6 is when NON_PRIME starts before PRIME
 	 *          0000 -------NP----P----------2400
@@ -188,7 +189,8 @@ enum prime_time check_prime(enum days d, struct tm *t)
 	else if (npt < pt) {
 		if (npt <= ct && ct < pt)
 			prime = NON_PRIME;
-		else prime = PRIME;
+		else
+			prime = PRIME;
 	}
 	/* Catchall case is NON_PRIME */
 	else
@@ -218,8 +220,7 @@ is_holiday(long date)
 	if (date > 366) {
 		tmptr = localtime((time_t *) &date);
 		jdate = tmptr->tm_yday + 1;
-	}
-	else
+	} else
 		jdate = date;
 
 	return std::find(conf.holidays.begin(), conf.holidays.end(), jdate) != conf.holidays.end();
@@ -239,9 +240,7 @@ handle_missing_prime_info(void)
 	int d;
 
 	for (d = SUNDAY; d < HIGH_DAY; d++) {
-		if (conf.prime[d][PRIME].all + conf.prime[d][PRIME].none
-				+ conf.prime[d][PRIME].hour + conf.prime[d][PRIME].min
-				+ conf.prime[d][NON_PRIME].hour + conf.prime[d][NON_PRIME].min == 0) {
+		if (conf.prime[d][PRIME].all + conf.prime[d][PRIME].none + conf.prime[d][PRIME].hour + conf.prime[d][PRIME].min + conf.prime[d][NON_PRIME].hour + conf.prime[d][NON_PRIME].min == 0) {
 			conf.prime[d][PRIME].all = TRUE;
 			conf.prime[d][PRIME].none = FALSE;
 			conf.prime[d][PRIME].hour = static_cast<unsigned int>(UNSPECIFIED);
@@ -267,27 +266,27 @@ handle_missing_prime_info(void)
 int
 parse_holidays(const char *fname)
 {
-	FILE *fp;		/* file pointer to holidays file */
-	char buf[256];	/* buffer to read lines of the file into */
-	char *config_name;	/* the first word of the line */
-	char *tok;		/* used with strtok() to parse the rest of the line */
-	char *endp;		/* used with strtol() */
-	int num;		/* used to convert string -> integer */
-	char error = 0;	/* boolean: is there an error ? */
-	int linenum = 0;	/* the current line number */
+	FILE *fp;	   /* file pointer to holidays file */
+	char buf[256];	   /* buffer to read lines of the file into */
+	char *config_name; /* the first word of the line */
+	char *tok;	   /* used with strtok() to parse the rest of the line */
+	char *endp;	   /* used with strtol() */
+	int num;	   /* used to convert string -> integer */
+	char error = 0;	   /* boolean: is there an error ? */
+	int linenum = 0;   /* the current line number */
 
 	if ((fp = fopen(fname, "r")) == NULL) {
 		sprintf(log_buffer, "Error opening file %s", fname);
 		log_err(errno, "parse_holidays", log_buffer);
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE,
-			"Warning: cannot open holidays file; assuming 24hr primetime");
+			  "Warning: cannot open holidays file; assuming 24hr primetime");
 		return 0;
 	}
 
 	while (fgets(buf, 256, fp) != NULL) {
 		linenum++;
-		if (buf[strlen(buf)-1] == '\n')
-			buf[strlen(buf)-1] = '\0';
+		if (buf[strlen(buf) - 1] == '\n')
+			buf[strlen(buf) - 1] = '\0';
 		if (!skip_line(buf)) {
 			config_name = strtok(buf, "	 ");
 
@@ -375,7 +374,7 @@ parse_holidays(const char *fname)
 						error = 1;
 					else if (load_day(THURSDAY, NON_PRIME, tok) < 0)
 						error = 1;
-					else  if (load_day(FRIDAY, NON_PRIME, tok) < 0)
+					else if (load_day(FRIDAY, NON_PRIME, tok) < 0)
 						error = 1;
 				}
 			}
@@ -448,16 +447,15 @@ parse_holidays(const char *fname)
 			 *  Julian date	Calendar date	holiday name
 			 *    1		Jan 1		New Year's Day
 			 */
-			else  {
+			else {
 				num = strtol(config_name, &endp, 10);
 				conf.holidays.push_back(num);
 			}
 
 			if (error) {
 				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
-					"Error on line %d, line started with: %s", linenum, config_name);
+					   "Error on line %d, line started with: %s", linenum, config_name);
 			}
-
 		}
 		error = 0;
 	}
@@ -470,7 +468,6 @@ parse_holidays(const char *fname)
 	fclose(fp);
 	return 0;
 }
-
 
 /**
  * @brief
@@ -492,7 +489,7 @@ load_day(enum days d, enum prime_time pr, const char *tok)
 		if (!strcmp(tok, "all") || !strcmp(tok, "ALL")) {
 			if (pr == NON_PRIME && conf.prime[d][PRIME].all == TRUE) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE,
-						"Warning: both prime & non-prime starts are 'all'; assuming 24hr primetime");
+					  "Warning: both prime & non-prime starts are 'all'; assuming 24hr primetime");
 				return 0;
 			}
 			conf.prime[d][pr].all = TRUE;
@@ -502,7 +499,7 @@ load_day(enum days d, enum prime_time pr, const char *tok)
 		} else if (!strcmp(tok, "none") || !strcmp(tok, "NONE")) {
 			if (pr == NON_PRIME && conf.prime[d][PRIME].none == TRUE) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE,
-						"Warning: both prime & non-prime starts are 'none'; assuming 24hr primetime");
+					  "Warning: both prime & non-prime starts are 'none'; assuming 24hr primetime");
 				return load_day(d, PRIME, "all");
 			}
 			conf.prime[d][pr].all = FALSE;
@@ -518,16 +515,13 @@ load_day(enum days d, enum prime_time pr, const char *tok)
 				auto hours = num / 100;
 				conf.prime[d][pr].hour = hours;
 				conf.prime[d][pr].min = mins;
-			}
-			else
+			} else
 				return -1;
 		}
-	}
-	else
+	} else
 		return -1;
 	return 0;
 }
-
 
 /**
  * @brief
@@ -542,8 +536,7 @@ load_day(enum days d, enum prime_time pr, const char *tok)
  * @retval	SCHD_INFINITY	-	if the current prime status never ends
  */
 static time_t
-end_prime_status_rec(time_t start, time_t date,
-	enum prime_time prime_status)
+end_prime_status_rec(time_t start, time_t date, enum prime_time prime_status)
 {
 	struct tm *tmptr;
 	enum days day;
@@ -586,45 +579,37 @@ end_prime_status_rec(time_t start, time_t date,
 		/* We are currently in primetime. */
 		/* If there is no non-primetime scheduled today, recurse into tomorrow. */
 		if (conf.prime[day][NON_PRIME].none)
-			return end_prime_status_rec(start, date + time_left_today(tmptr),
-				prime_status);
+			return end_prime_status_rec(start, date + time_left_today(tmptr), prime_status);
 		/* If there is no non-primetime left today, recurse into tomorrow. */
 		if (conf.prime[day][NON_PRIME].hour < static_cast<unsigned int>(tmptr->tm_hour))
-			return end_prime_status_rec(start, date + time_left_today(tmptr),
-				prime_status);
+			return end_prime_status_rec(start, date + time_left_today(tmptr), prime_status);
 		if (conf.prime[day][NON_PRIME].hour == static_cast<unsigned int>(tmptr->tm_hour) &&
-			conf.prime[day][NON_PRIME].min < static_cast<unsigned int>(tmptr->tm_min))
-			return end_prime_status_rec(start, date + time_left_today(tmptr),
-				prime_status);
+		    conf.prime[day][NON_PRIME].min < static_cast<unsigned int>(tmptr->tm_min))
+			return end_prime_status_rec(start, date + time_left_today(tmptr), prime_status);
 		/* Non-primetime started at the beginning of the day, return it. */
 		if (conf.prime[day][NON_PRIME].all || is_holiday(tmptr->tm_yday + 1))
 			return date;
 		/* Non-primetime will start later today, return the scheduled time. */
-		return date + (conf.prime[day][NON_PRIME].hour - tmptr->tm_hour) * 3600
-		+ (static_cast<int>(conf.prime[day][NON_PRIME].min) - tmptr->tm_min) * 60
-		- tmptr->tm_sec;
-	}
-	else {
+		return date + (conf.prime[day][NON_PRIME].hour - tmptr->tm_hour) * 3600 + (static_cast<int>(conf.prime[day][NON_PRIME].min) - tmptr->tm_min) * 60 - tmptr->tm_sec;
+	} else {
 		/* We are currently in non-primetime. */
 		/* If there is no primetime scheduled today, recurse into tomorrow. */
 		if (conf.prime[day][PRIME].none || is_holiday(tmptr->tm_yday + 1))
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
-				prime_status);
+						    prime_status);
 		/* If there is no primetime left today, recurse into tomorrow. */
 		if (conf.prime[day][PRIME].hour < static_cast<unsigned int>(tmptr->tm_hour))
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
-				prime_status);
+						    prime_status);
 		if (conf.prime[day][PRIME].hour == static_cast<unsigned int>(tmptr->tm_hour) &&
-			conf.prime[day][PRIME].min < static_cast<unsigned int>(tmptr->tm_min))
+		    conf.prime[day][PRIME].min < static_cast<unsigned int>(tmptr->tm_min))
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
-				prime_status);
+						    prime_status);
 		/* Primetime started at the beginning of the day, return it. */
 		if (conf.prime[day][PRIME].all)
 			return date;
 		/* Primetime will start later today, return the scheduled time. */
-		return date + (conf.prime[day][PRIME].hour - tmptr->tm_hour) * 3600
-		+ (static_cast<int>(conf.prime[day][PRIME].min) - tmptr->tm_min) * 60
-		- tmptr->tm_sec;
+		return date + (conf.prime[day][PRIME].hour - tmptr->tm_hour) * 3600 + (static_cast<int>(conf.prime[day][PRIME].min) - tmptr->tm_min) * 60 - tmptr->tm_sec;
 	}
 }
 

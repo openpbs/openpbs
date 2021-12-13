@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_LOG_H
-#define	_LOG_H
+#ifndef _LOG_H
+#define _LOG_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,16 +50,16 @@ extern "C" {
 #else
 /* normally found in syslog.h, need to be defined for calls, but */
 /* will be ingnored in pbs_log.c				 */
-#define	LOG_EMERG	0
-#define	LOG_ALERT	1
-#define	LOG_CRIT	2
-#define	LOG_ERR		3
-#define	LOG_WARNING	4
-#define	LOG_NOTICE	5
-#define	LOG_INFO	6
-#define	LOG_DEBUG	7
-#define	LOG_AUTH	8
-#endif	/* SYSLOG */
+#define LOG_EMERG 0
+#define LOG_ALERT 1
+#define LOG_CRIT 2
+#define LOG_ERR 3
+#define LOG_WARNING 4
+#define LOG_NOTICE 5
+#define LOG_INFO 6
+#define LOG_DEBUG 7
+#define LOG_AUTH 8
+#endif /* SYSLOG */
 
 #include <sys/stat.h>
 
@@ -81,9 +81,9 @@ extern "C" {
 /*
  ** Set up a debug print macro.
  */
-#define	sys_printf(...)	syslog(LOG_NOTICE, __VA_ARGS__);
-#ifdef	DEBUG
-#define	DBPRT(x)	printf x;
+#define sys_printf(...) syslog(LOG_NOTICE, __VA_ARGS__);
+#ifdef DEBUG
+#define DBPRT(x) printf x;
 #endif
 #ifdef DBPRT_LOG
 #include <stdlib.h>
@@ -91,20 +91,20 @@ extern "C" {
 #include "libutil.h"
 #define STRIP_PARENS(...) __VA_ARGS__
 #undef DBPRT
-#define	DBPRT(x) \
-	if (will_log_event(PBSEVENT_DEBUGPRT)) { \
-		char * msg_; \
-		int msg_len_; \
-		int save_errno_ = errno; \
-		msg_len_ = pbs_asprintf(&msg_, STRIP_PARENS x); \
-		if (msg_len_ >= 0) { \
-			if (msg_len_ > 0 && msg_[msg_len_ - 1] == '\n') { \
-				msg_[msg_len_ - 1] = '\0'; \
-			} \
+#define DBPRT(x)                                                                     \
+	if (will_log_event(PBSEVENT_DEBUGPRT)) {                                     \
+		char *msg_;                                                          \
+		int msg_len_;                                                        \
+		int save_errno_ = errno;                                             \
+		msg_len_ = pbs_asprintf(&msg_, STRIP_PARENS x);                      \
+		if (msg_len_ >= 0) {                                                 \
+			if (msg_len_ > 0 && msg_[msg_len_ - 1] == '\n') {            \
+				msg_[msg_len_ - 1] = '\0';                           \
+			}                                                            \
 			log_record(PBSEVENT_DEBUGPRT, 0, LOG_DEBUG, __func__, msg_); \
-			free(msg_); \
-		} \
-		errno = save_errno_; \
+			free(msg_);                                                  \
+		}                                                                    \
+		errno = save_errno_;                                                 \
 	}
 #endif
 #ifndef DBPRT
@@ -143,73 +143,69 @@ extern void do_log_eventf(int eventtype, int objclass, int sev, const char *objn
 extern void log_eventf(int eventtype, int objclass, int sev, const char *objname, const char *fmt, ...);
 extern int will_log_event(int type);
 extern void log_suspect_file(const char *func, const char *text, const char *file, struct stat *sb);
-extern int  log_open(char *name, char *directory);
-extern int  log_open_main(char *name, char *directory, int silent);
+extern int log_open(char *name, char *directory);
+extern int log_open_main(char *name, char *directory, int silent);
 extern void log_record(int type, int objclass, int severity, const char *objname, const char *text);
 extern char log_buffer[LOG_BUF_SIZE];
 extern int log_level_2_etype(int level);
 
-extern int  chk_path_sec(char *path, int dir, int sticky, int bad, int);
-extern int  chk_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath);
-extern int  chk_file_sec_user(char *path, int isdir, int sticky, int disallow, int fullpath, int uid);
-extern int  tmp_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath);
-extern int  tmp_file_sec_user(char *path, int isdir, int sticky, int disallow, int fullpath, int uid);
+extern int chk_path_sec(char *path, int dir, int sticky, int bad, int);
+extern int chk_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath);
+extern int chk_file_sec_user(char *path, int isdir, int sticky, int disallow, int fullpath, int uid);
+extern int tmp_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath);
+extern int tmp_file_sec_user(char *path, int isdir, int sticky, int disallow, int fullpath, int uid);
 
 #ifdef WIN32
-extern int  chk_file_sec2(char *path, int isdir, int sticky,
-	int disallow, int fullpath, char *owner);
+extern int chk_file_sec2(char *path, int isdir, int sticky,
+			 int disallow, int fullpath, char *owner);
 #endif
 extern char *get_script_name(char *input);
 
-extern int  setup_env(char *filename);
+extern int setup_env(char *filename);
 extern void log_supported_auth_methods(char **supported_auth_methods);
 
 /* Event types */
 
-#define PBSEVENT_ERROR		0x0001		/* internal errors */
-#define PBSEVENT_SYSTEM		0x0002		/* system (server) events */
-#define PBSEVENT_ADMIN		0x0004		/* admin events */
-#define PBSEVENT_JOB		0x0008		/* job related events */
-#define PBSEVENT_JOB_USAGE	0x0010		/* End of Job accounting */
-#define PBSEVENT_SECURITY	0x0020		/* security violation events */
-#define PBSEVENT_SCHED		0x0040		/* scheduler events */
-#define PBSEVENT_DEBUG		0x0080		/* common debug messages */
-#define PBSEVENT_DEBUG2		0x0100		/* less needed debug messages */
-#define PBSEVENT_RESV		0x0200		/* reservation related msgs */
-#define PBSEVENT_DEBUG3		0x0400		/* less needed debug messages */
-#define PBSEVENT_DEBUG4		0x0800		/* rarely needed debugging */
+#define PBSEVENT_ERROR 0x0001	  /* internal errors */
+#define PBSEVENT_SYSTEM 0x0002	  /* system (server) events */
+#define PBSEVENT_ADMIN 0x0004	  /* admin events */
+#define PBSEVENT_JOB 0x0008	  /* job related events */
+#define PBSEVENT_JOB_USAGE 0x0010 /* End of Job accounting */
+#define PBSEVENT_SECURITY 0x0020  /* security violation events */
+#define PBSEVENT_SCHED 0x0040	  /* scheduler events */
+#define PBSEVENT_DEBUG 0x0080	  /* common debug messages */
+#define PBSEVENT_DEBUG2 0x0100	  /* less needed debug messages */
+#define PBSEVENT_RESV 0x0200	  /* reservation related msgs */
+#define PBSEVENT_DEBUG3 0x0400	  /* less needed debug messages */
+#define PBSEVENT_DEBUG4 0x0800	  /* rarely needed debugging */
 #ifndef PBSEVENT_DEBUGPRT
-#define PBSEVENT_DEBUGPRT	0x1000		/* messages from the DBPRT macro */
+#define PBSEVENT_DEBUGPRT 0x1000 /* messages from the DBPRT macro */
 #endif
-#define PBSEVENT_FORCE		0x8000		/* set to force a message */
-#define SVR_LOG_DFLT		PBSEVENT_ERROR | PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_JOB \
-				| PBSEVENT_JOB_USAGE | PBSEVENT_SECURITY | PBSEVENT_SCHED \
-				| PBSEVENT_DEBUG | PBSEVENT_DEBUG2
-#define SCHED_LOG_DFLT		PBSEVENT_ERROR | PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_JOB | PBSEVENT_JOB_USAGE \
-				| PBSEVENT_SECURITY | PBSEVENT_SCHED | PBSEVENT_DEBUG | PBSEVENT_RESV
+#define PBSEVENT_FORCE 0x8000 /* set to force a message */
+#define SVR_LOG_DFLT PBSEVENT_ERROR | PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_JOB | PBSEVENT_JOB_USAGE | PBSEVENT_SECURITY | PBSEVENT_SCHED | PBSEVENT_DEBUG | PBSEVENT_DEBUG2
+#define SCHED_LOG_DFLT PBSEVENT_ERROR | PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_JOB | PBSEVENT_JOB_USAGE | PBSEVENT_SECURITY | PBSEVENT_SCHED | PBSEVENT_DEBUG | PBSEVENT_RESV
 
 /* Event Object Classes, see array class_names[] in ../lib/Liblog/pbs_log.c */
 
-#define PBS_EVENTCLASS_SERVER	1	/* The server itself */
-#define PBS_EVENTCLASS_QUEUE	2	/* Queues */
-#define PBS_EVENTCLASS_JOB	3	/* Jobs	 */
-#define PBS_EVENTCLASS_REQUEST	4	/* Batch Requests */
-#define PBS_EVENTCLASS_FILE	5	/* A Job related File */
-#define PBS_EVENTCLASS_ACCT	6	/* Accounting info */
-#define PBS_EVENTCLASS_NODE	7	/* Nodes */
-#define PBS_EVENTCLASS_RESV	8	/* Reservations */
-#define PBS_EVENTCLASS_SCHED	9	/* Scheduler */
-#define PBS_EVENTCLASS_HOOK	10	/* Hook	 */
-#define PBS_EVENTCLASS_RESC	11	/* Resource */
-#define PBS_EVENTCLASS_TPP 	12	/* TPP */
+#define PBS_EVENTCLASS_SERVER 1	 /* The server itself */
+#define PBS_EVENTCLASS_QUEUE 2	 /* Queues */
+#define PBS_EVENTCLASS_JOB 3	 /* Jobs	 */
+#define PBS_EVENTCLASS_REQUEST 4 /* Batch Requests */
+#define PBS_EVENTCLASS_FILE 5	 /* A Job related File */
+#define PBS_EVENTCLASS_ACCT 6	 /* Accounting info */
+#define PBS_EVENTCLASS_NODE 7	 /* Nodes */
+#define PBS_EVENTCLASS_RESV 8	 /* Reservations */
+#define PBS_EVENTCLASS_SCHED 9	 /* Scheduler */
+#define PBS_EVENTCLASS_HOOK 10	 /* Hook	 */
+#define PBS_EVENTCLASS_RESC 11	 /* Resource */
+#define PBS_EVENTCLASS_TPP 12	 /* TPP */
 
 /* Logging Masks */
 
-#define PBSEVENT_MASK	0x01ff
+#define PBSEVENT_MASK 0x01ff
 
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif /* _LOG_H */

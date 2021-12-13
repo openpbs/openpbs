@@ -43,29 +43,29 @@
  **	these resources.
  */
 
-static char	*cput		(struct rm_attribute *attrib);
+static char *cput(struct rm_attribute *attrib);
 #ifndef WIN32
-static char	*mem		(struct rm_attribute *attrib);
-static char	*sessions	(struct rm_attribute *attrib);
-static char	*pids		(struct rm_attribute *attrib);
-static char	*nsessions	(struct rm_attribute *attrib);
-static char	*nusers		(struct rm_attribute *attrib);
+static char *mem(struct rm_attribute *attrib);
+static char *sessions(struct rm_attribute *attrib);
+static char *pids(struct rm_attribute *attrib);
+static char *nsessions(struct rm_attribute *attrib);
+static char *nusers(struct rm_attribute *attrib);
 #endif
-static char	*size		(struct rm_attribute *attrib);
-extern char	*idletime	(struct rm_attribute *attrib);
+static char *size(struct rm_attribute *attrib);
+extern char *idletime(struct rm_attribute *attrib);
 
-extern char	*nullproc	(struct rm_attribute *attrib);
+extern char *nullproc(struct rm_attribute *attrib);
 
-struct  config  standard_config[] = {
-	{ "cput",	{ cput } },
-#ifndef	WIN32
-	{ "mem",	{ mem } },
-	{ "sessions",	{ sessions } },
-	{ "pids",	{ pids } },
-	{ "nsessions",	{ nsessions } },
-	{ "nusers",	{ nusers } },
+struct config standard_config[] = {
+	{"cput", {cput}},
+#ifndef WIN32
+	{"mem", {mem}},
+	{"sessions", {sessions}},
+	{"pids", {pids}},
+	{"nsessions", {nsessions}},
+	{"nusers", {nusers}},
 #endif
-	{ "size",	{ size } },
-	{ "idletime",	{ idletime } },
-	{ NULL,		{ nullproc } },
+	{"size", {size}},
+	{"idletime", {idletime}},
+	{NULL, {nullproc}},
 };

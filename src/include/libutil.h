@@ -39,10 +39,9 @@
 
 #ifndef _HAVE_LIB_UTIL_H
 #define _HAVE_LIB_UTIL_H
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
-
 
 #include <time.h>
 #include <stdio.h>
@@ -129,7 +128,6 @@ int get_execvnodes_count(char *);
 /* Free the memory allocated to an unrolled string */
 void free_execvnode_seq(char **ptr);
 
-
 /* pbs_ical specific */
 
 /* Define the location of ical zoneinfo directory
@@ -174,8 +172,7 @@ void set_ical_zoneinfo(char *path);
 /*
  * values for the vnode 'sharing' attribute
  */
-enum vnode_sharing
-{
+enum vnode_sharing {
 	VNS_UNSET,
 	VNS_DFLT_SHARED,
 	VNS_DFLT_EXCL,
@@ -242,25 +239,22 @@ int ends_with_triple_quotes(char *str, int strip_quotes);
 
 /* Special symbols for copy_file_internal() */
 
-#define COPY_FILE_BAD_INPUT	1
-#define COPY_FILE_BAD_SOURCE	2
-#define COPY_FILE_BAD_DEST	3
-#define	COPY_FILE_BAD_WRITE	4
+#define COPY_FILE_BAD_INPUT 1
+#define COPY_FILE_BAD_SOURCE 2
+#define COPY_FILE_BAD_DEST 3
+#define COPY_FILE_BAD_WRITE 4
 
-
-#define LOCK_RETRY_DEFAULT	2
+#define LOCK_RETRY_DEFAULT 2
 int
 lock_file(int fd, int op, char *filename, int lock_retry,
-	char *err_msg, size_t err_msg_len);
+	  char *err_msg, size_t err_msg_len);
 
 /* RSHD/RCP related */
 /* Size of the buffer used in communication with rshd deamon */
 #define RCP_BUFFER_SIZE 65536
 
-
 #define MAXBUFLEN 1024
 #define BUFFER_GROWTH_RATE 2
-
 
 /*
  *      break_comma_list - break apart a comma delimited string into an array
@@ -316,7 +310,7 @@ char *get_mem_info(void);
  * 	convert_duration_to_str - Convert a duration to HH:MM:SS format string
  *
  */
-void convert_duration_to_str(time_t duration, char* buf, int bufsize);
+void convert_duration_to_str(time_t duration, char *buf, int bufsize);
 
 /**
  * deduce the preemption ordering to be used for a job
@@ -360,9 +354,9 @@ extern int init_mutex_attr_recursive(void *attr);
 #else
 #define DECLDIR __declspec(dllimport)
 #endif
-DECLDIR void encode_SHA(char*, size_t, char **);
+DECLDIR void encode_SHA(char *, size_t, char **);
 #else
-void encode_SHA(char*, size_t, char **);
+void encode_SHA(char *, size_t, char **);
 #endif
 
 void set_proc_limits(char *, int);
@@ -370,7 +364,7 @@ int get_index_from_jid(char *jid);
 char *get_range_from_jid(char *jid);
 char *create_subjob_id(char *parent_jid, int sjidx);
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 #endif

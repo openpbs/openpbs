@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    check.c
  *
@@ -102,7 +101,6 @@
 #include "buckets.h"
 #include "pbs_bitmap.h"
 
-
 /**
  *
  * @brief
@@ -123,7 +121,7 @@
 enum sched_error_code
 is_ok_to_run_queue(status *policy, queue_info *qinfo)
 {
-	enum sched_error_code rc = SE_NONE;			/* Return Code */
+	enum sched_error_code rc = SE_NONE; /* Return Code */
 
 	if (!qinfo->is_exec)
 		return QUEUE_NOT_EXEC;
@@ -165,12 +163,12 @@ is_ok_to_run_queue(status *policy, queue_info *qinfo)
 sch_resource_t
 time_to_ded_boundary(status *policy, resource_resv *njob)
 {
-	sch_resource_t 		min_time_left = UNSPECIFIED;
-	sch_resource_t 		end = UNSPECIFIED;
-	sch_resource_t 		min_end = UNSPECIFIED;
+	sch_resource_t min_time_left = UNSPECIFIED;
+	sch_resource_t end = UNSPECIFIED;
+	sch_resource_t min_end = UNSPECIFIED;
 
 	if (njob == NULL || policy == NULL)
-		return -3;/* error */
+		return -3; /* error */
 
 	sch_resource_t duration = njob->duration;
 	timegap ded_time = find_next_dedtime(njob->server->server_time);
@@ -180,15 +178,13 @@ time_to_ded_boundary(status *policy, resource_resv *njob)
 	if (!ded) {
 		sch_resource_t start = UNSPECIFIED;
 
-		if (njob->start == UNSPECIFIED && njob->end ==UNSPECIFIED) {
+		if (njob->start == UNSPECIFIED && njob->end == UNSPECIFIED) {
 			start = njob->server->server_time;
 			min_end = start + min_time_left;
 			end = start + time_left;
-		}
-		else if (njob->start == UNSPECIFIED || njob->end ==UNSPECIFIED) {
-			return -3;/* error */
-		}
-		else {
+		} else if (njob->start == UNSPECIFIED || njob->end == UNSPECIFIED) {
+			return -3; /* error */
+		} else {
 			start = njob->start;
 			end = njob->end;
 			min_end = njob->start + njob->min_duration;
@@ -217,7 +213,7 @@ time_to_ded_boundary(status *policy, resource_resv *njob)
 			else
 				duration = ded_time.from - start;
 		}
-	} else /* Dedicated time */  {
+	} else /* Dedicated time */ {
 		min_end = njob->server->server_time + min_time_left;
 		end = njob->server->server_time + time_left;
 		/* See if job's minimum duration can be completed without hitting
@@ -257,7 +253,7 @@ time_to_prime_boundary(status *policy, resource_resv *njob)
 	sch_resource_t duration = UNSPECIFIED;
 
 	if (njob == NULL || policy == NULL)
-		return -3;/* error */
+		return -3; /* error */
 
 	duration = njob->duration;
 	/* If backfill_prime is not set to true or if prime status never ends return full duration of the job */
@@ -303,7 +299,7 @@ time_to_prime_boundary(status *policy, resource_resv *njob)
  */
 std::vector<nspec *>
 shrink_to_boundary(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
+		   queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
 	std::vector<nspec *> ns_arr;
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
@@ -311,7 +307,7 @@ shrink_to_boundary(status *policy, server_info *sinfo,
 	/* No need to shrink the job to prime/dedicated boundary,
 	 * if it is not hitting */
 	if (err->error_code == CROSS_PRIME_BOUNDARY ||
-		err->error_code == CROSS_DED_TIME_BOUNDRY) {
+	    err->error_code == CROSS_DED_TIME_BOUNDRY) {
 		auto orig_duration = njob->duration;
 		auto time_to_dedboundary = time_to_ded_boundary(policy, njob);
 		if (time_to_dedboundary == UNSPECIFIED)
@@ -331,7 +327,7 @@ shrink_to_boundary(status *policy, server_info *sinfo,
 			char timebuf[TIMEBUF_SIZE];
 			convert_duration_to_str(njob->duration, timebuf, TIMEBUF_SIZE);
 			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name,
-				"Considering shrinking job to duration=%s, due to a prime/dedicated time conflict", timebuf);
+				   "Considering shrinking job to duration=%s, due to a prime/dedicated time conflict", timebuf);
 		}
 	}
 	return ns_arr;
@@ -359,7 +355,7 @@ shrink_to_boundary(status *policy, server_info *sinfo,
  **/
 std::vector<nspec *>
 shrink_to_minwt(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
+		queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
 		return {};
@@ -443,9 +439,9 @@ shrink_to_minwt(status *policy, server_info *sinfo,
  */
 std::vector<nspec *>
 shrink_to_run_event(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
+		    queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
-	std::vector<nspec*> ns_arr;
+	std::vector<nspec *> ns_arr;
 	timed_event *te = NULL;
 	timed_event *initial_event = NULL;
 	timed_event *farthest_event = NULL;
@@ -464,8 +460,8 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 	if (te != NULL)
 		initial_event = te->prev;
 	for (te = find_init_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask);
-		te != NULL && te->event_time < end_time;
-		te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
+	     te != NULL && te->event_time < end_time;
+	     te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
 		farthest_event = te;
 	}
 	clear_schd_error(err);
@@ -481,9 +477,8 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 
 		/* Now, go backwards in the events list */
 		for (te = farthest_event; retry_count != 0;
-			te = find_prev_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
-			if (te == NULL)
-			{
+		     te = find_prev_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
+			if (te == NULL) {
 				/* If we've reached the end of the list, we're done */
 				if (last_skipped_event == NULL)
 					break;
@@ -491,7 +486,7 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 				last_skipped_event = NULL;
 				/* No events left, this is the last time through the loop */
 				retry_count = 1;
-			/* If we have reached the front of event list or if the event is falling before min end time, break. */
+				/* If we have reached the front of event list or if the event is falling before min end time, break. */
 			} else if (te == initial_event || te->event_time < min_end_time)
 				break;
 			/* If no events in this segment, then try last skipped event of the previous segment
@@ -508,7 +503,7 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 			/* break if success */
 			if (!ns_arr.empty())
 				break;
-			last_skipped_event = NULL;/* This event does not get skipped */
+			last_skipped_event = NULL; /* This event does not get skipped */
 			last_tried_event_time = te->event_time;
 			/* Shrink end_time to the next segment */
 			end_time = min_end_time + (njob->duration - njob->min_duration) * (retry_count - 1) / retry_count;
@@ -517,12 +512,12 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 	}
 	if (!ns_arr.empty() && njob->duration == njob->min_duration)
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name,
-			"Considering shrinking job to it's minimum walltime");
+			  "Considering shrinking job to it's minimum walltime");
 	else if (!ns_arr.empty() && orig_duration > njob->duration) {
 		char timebuf[TIMEBUF_SIZE];
 		convert_duration_to_str(njob->duration, timebuf, TIMEBUF_SIZE);
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name,
-			"Considering shrinking job to duration=%s, due to a reservation/top job conflict", timebuf);
+			   "Considering shrinking job to duration=%s, due to a reservation/top job conflict", timebuf);
 	}
 	return ns_arr;
 }
@@ -549,9 +544,9 @@ shrink_to_run_event(status *policy, server_info *sinfo,
  **/
 std::vector<nspec *>
 shrink_job_algorithm(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
+		     queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
-	std::vector<nspec *> ns_arr;		/* node solution for job */
+	std::vector<nspec *> ns_arr; /* node solution for job */
 	time_t transient_duration;
 
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
@@ -560,7 +555,7 @@ shrink_job_algorithm(status *policy, server_info *sinfo,
 	 * and see if dedicated/prime conflict was found, if yes, try shrinking to boundary
 	 */
 	if (err->error_code == CROSS_PRIME_BOUNDARY ||
-		err->error_code == CROSS_DED_TIME_BOUNDRY) {
+	    err->error_code == CROSS_DED_TIME_BOUNDRY) {
 		/* Return ns_arr on success */
 		/* err will be cleared inside shrink_to_boundary if min walltime is not hitting the
 		 * prime/dedicated boundary. If min walltime is still hitting prime/dedicated
@@ -578,8 +573,8 @@ shrink_job_algorithm(status *policy, server_info *sinfo,
 	 */
 	transient_duration = njob->duration;
 	if (ns_arr.empty() &&
-		err->error_code != CROSS_PRIME_BOUNDARY &&
-		err->error_code != CROSS_DED_TIME_BOUNDRY) {
+	    err->error_code != CROSS_PRIME_BOUNDARY &&
+	    err->error_code != CROSS_DED_TIME_BOUNDRY) {
 		/* Try with lesser time durations */
 		/* Clear any scheduling errors we got during earlier shrink attempts. */
 		clear_schd_error(err);
@@ -622,9 +617,9 @@ shrink_job_algorithm(status *policy, server_info *sinfo,
  */
 std::vector<nspec *>
 is_ok_to_run_STF(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err,
-	std::vector<nspec *>(*shrink_heuristic)(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err))
+		 queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err,
+		 std::vector<nspec *> (*shrink_heuristic)(status *policy, server_info *sinfo,
+							  queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err))
 {
 	std::vector<nspec *> ns_arr; /* node solution for job */
 	sch_resource_t orig_duration;
@@ -641,8 +636,8 @@ is_ok_to_run_STF(status *policy, server_info *sinfo,
 		return ns_arr;
 
 	if (err->error_code == DED_TIME ||
-		err->error_code == PRIME_ONLY ||
-		err->error_code == NONPRIME_ONLY)
+	    err->error_code == PRIME_ONLY ||
+	    err->error_code == NONPRIME_ONLY)
 		return {};
 	/* Apply the shrink heuristic  and try running the job after shrinking it */
 	ns_arr = shrink_heuristic(policy, sinfo, qinfo, njob, flags, err);
@@ -693,15 +688,15 @@ is_ok_to_run_STF(status *policy, server_info *sinfo,
  */
 std::vector<nspec *>
 is_ok_to_run(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *perr)
+	     queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *perr)
 {
-	enum sched_error_code rc = SE_NONE;			/* Return Code */
-	schd_resource	*res = NULL;		/* resource list to check */
-	int		endtime = 0;		/* end time of job if started now */
-	node_partition	*allpart = NULL;	/* all partition to use (queue's or servers) */
-	schd_error	*prev_err = NULL;
-	schd_error	*err;
-	resource_req	*resreq = NULL;
+	enum sched_error_code rc = SE_NONE; /* Return Code */
+	schd_resource *res = NULL;	    /* resource list to check */
+	int endtime = 0;		    /* end time of job if started now */
+	node_partition *allpart = NULL;	    /* all partition to use (queue's or servers) */
+	schd_error *prev_err = NULL;
+	schd_error *err;
+	resource_req *resreq = NULL;
 
 	if (sinfo == NULL || resresv == NULL || perr == NULL)
 		return {};
@@ -711,10 +706,10 @@ is_ok_to_run(status *policy, server_info *sinfo,
 
 	err = perr;
 
-	if(resresv->is_job && sinfo->equiv_classes != NULL &&
-	   !(flags & (IGNORE_EQUIV_CLASS | RETURN_ALL_ERR)) &&
-	   resresv->ec_index != UNSPECIFIED &&
-	   sinfo->equiv_classes[resresv->ec_index]->can_not_run) {
+	if (resresv->is_job && sinfo->equiv_classes != NULL &&
+	    !(flags & (IGNORE_EQUIV_CLASS | RETURN_ALL_ERR)) &&
+	    resresv->ec_index != UNSPECIFIED &&
+	    sinfo->equiv_classes[resresv->ec_index]->can_not_run) {
 		copy_schd_error(err, sinfo->equiv_classes[resresv->ec_index]->err);
 		return {};
 	}
@@ -781,7 +776,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 	if (flags & NO_ALLPART)
 		allpart = NULL;
 	else if (resresv->is_job && resresv->job != NULL &&
-			resresv->job->resv != NULL)
+		 resresv->job->resv != NULL)
 		allpart = NULL;
 	else if (qinfo != NULL && qinfo->has_nodes)
 		allpart = qinfo->allpart;
@@ -793,12 +788,12 @@ is_ok_to_run(status *policy, server_info *sinfo,
 			schd_error *toterr;
 			toterr = new_schd_error();
 			if (toterr == NULL) {
-				if(err != perr)
+				if (err != perr)
 					free_schd_error(err);
 				return {};
 			}
 			/* We can't fit now, lets see if we can ever fit */
-			if (resresv_can_fit_nodepart(policy, allpart, resresv, flags|COMPARE_TOTAL, toterr) == 0) {
+			if (resresv_can_fit_nodepart(policy, allpart, resresv, flags | COMPARE_TOTAL, toterr) == 0) {
 				move_schd_error(err, toterr);
 				err->status_code = NEVER_RUN;
 			}
@@ -818,100 +813,98 @@ is_ok_to_run(status *policy, server_info *sinfo,
 	if (sinfo->qrun_job == NULL) {
 #ifdef NAS_HWY149 /* localmod 033 */
 		if (resresv->job == NULL || resresv->job->priority != NAS_HWY149)
-#endif /* localmod 033 */
+#endif		  /* localmod 033 */
 #ifdef NAS_HWY101 /* localmod 032 */
-		if (resresv->job == NULL || resresv->job->priority != NAS_HWY101)
+			if (resresv->job == NULL || resresv->job->priority != NAS_HWY101)
 #endif /* localmod 032 */
-		if (resresv->is_job) {
-			if ((rc = static_cast<sched_error_code>(check_limits(sinfo, qinfo, resresv, err, flags | CHECK_LIMIT)))) {
+				if (resresv->is_job) {
+					if ((rc = static_cast<sched_error_code>(check_limits(sinfo, qinfo, resresv, err, flags | CHECK_LIMIT)))) {
 
-				add_err(&prev_err, err);
-				if (rc == SCHD_ERROR)
-					return {};
-				if (!(flags & RETURN_ALL_ERR))
-					return {};
-				err = new_schd_error();
-				if (err == NULL)
-					return {};
+						add_err(&prev_err, err);
+						if (rc == SCHD_ERROR)
+							return {};
+						if (!(flags & RETURN_ALL_ERR))
+							return {};
+						err = new_schd_error();
+						if (err == NULL)
+							return {};
+					}
+					/* check for max_run_subjobs limits only when its not a qrun job */
+					if (resresv->job->is_array && (resresv->job->max_run_subjobs != UNSPECIFIED) &&
+					    (resresv->job->running_subjobs >= resresv->job->max_run_subjobs)) {
+						set_schd_error_codes(err, NOT_RUN, MAX_RUN_SUBJOBS);
+						add_err(&prev_err, err);
 
-			}
-			/* check for max_run_subjobs limits only when its not a qrun job */
-			if (resresv->job->is_array && (resresv->job->max_run_subjobs != UNSPECIFIED) &&
-			   (resresv->job->running_subjobs >= resresv->job->max_run_subjobs)) {
-				set_schd_error_codes(err, NOT_RUN, MAX_RUN_SUBJOBS);
-				add_err(&prev_err, err);
+						if (!(flags & RETURN_ALL_ERR))
+							return {};
+						else {
+							err = new_schd_error();
+							if (err == NULL)
+								return {};
+						}
+					}
 
-				if (!(flags & RETURN_ALL_ERR))
-					return {};
-				else {
-					err = new_schd_error();
-					if (err == NULL)
-						return {};
-				}
-			}
+					if (check_prime_boundary(policy, resresv, err) != SE_NONE) {
+						/* err is set inside check_prime_boundary() */
+						add_err(&prev_err, err);
+						if (!(flags & RETURN_ALL_ERR))
+							return {};
 
-			if (check_prime_boundary(policy, resresv, err) != SE_NONE) {
-				/* err is set inside check_prime_boundary() */
-				add_err(&prev_err, err);
-				if (!(flags & RETURN_ALL_ERR))
-					return {};
+						err = new_schd_error();
+						if (err == NULL)
+							return {};
+					}
 
-				err = new_schd_error();
-				if (err == NULL)
-					return {};
+					if ((rc = check_ded_time_queue(qinfo))) {
+						set_schd_error_codes(err, NOT_RUN, rc);
+						add_err(&prev_err, err);
+						if (!(flags & RETURN_ALL_ERR))
+							return {};
 
-			}
+						err = new_schd_error();
+						if (err == NULL)
+							return {};
+					}
 
-			if ((rc = check_ded_time_queue(qinfo))) {
-				set_schd_error_codes(err, NOT_RUN, rc);
-				add_err(&prev_err, err);
-				if (!(flags & RETURN_ALL_ERR))
-					return {};
+					if ((rc = check_prime_queue(policy, qinfo))) {
+						set_schd_error_codes(err, NOT_RUN, rc);
+						add_err(&prev_err, err);
+						if (!(flags & RETURN_ALL_ERR))
+							return {};
 
-				err = new_schd_error();
-				if (err == NULL)
-					return {};
-			}
+						err = new_schd_error();
+						if (err == NULL)
+							return {};
+					}
 
-			if ((rc = check_prime_queue(policy, qinfo))) {
-				set_schd_error_codes(err, NOT_RUN, rc);
-				add_err(&prev_err, err);
-				if (!(flags & RETURN_ALL_ERR))
-					return {};
+					if ((rc = check_nonprime_queue(policy, qinfo))) {
+						enum schd_err_status scode;
+						if (policy->prime_status_end == SCHD_INFINITY) /* only primetime and we're in a non-prime queue*/
+							scode = NEVER_RUN;
+						else
+							scode = NOT_RUN;
+						set_schd_error_codes(err, scode, rc);
+						add_err(&prev_err, err);
+						if (!(flags & RETURN_ALL_ERR))
+							return {};
 
-				err = new_schd_error();
-				if (err == NULL)
-					return {};
-			}
-
-			if ((rc = check_nonprime_queue(policy, qinfo))) {
-				enum schd_err_status scode;
-				if(policy->prime_status_end == SCHD_INFINITY) /* only primetime and we're in a non-prime queue*/
-					scode = NEVER_RUN;
-				else
-					scode = NOT_RUN;
-				set_schd_error_codes(err, scode, rc);
-				add_err(&prev_err, err);
-				if (!(flags & RETURN_ALL_ERR))
-					return {};
-
-				err = new_schd_error();
-				if (err == NULL)
-					return {};
-			}
+						err = new_schd_error();
+						if (err == NULL)
+							return {};
+					}
 #ifdef NAS /* localmod 034 */
-				if ((rc = site_check_cpu_share(sinfo, policy, resresv))) {
-					set_schd_error_codes(err, NOT_RUN, rc);
-					add_err(&prev_err, err);
-					if (!(flags & RETURN_ALL_ERR))
-						return NULL;
+					if ((rc = site_check_cpu_share(sinfo, policy, resresv))) {
+						set_schd_error_codes(err, NOT_RUN, rc);
+						add_err(&prev_err, err);
+						if (!(flags & RETURN_ALL_ERR))
+							return NULL;
 
-					err = new_schd_error();
-					if (err == NULL)
-						return NULL;
+						err = new_schd_error();
+						if (err == NULL)
+							return NULL;
 					}
 #endif /* localmod 034 */
-		}
+				}
 	}
 	if (resresv->is_job || (resresv->is_resv && !conf.resv_conf_ignore)) {
 		if ((rc = check_ded_time_boundary(resresv))) {
@@ -934,7 +927,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		if (qinfo->qres != NULL) {
 			if (resresv->job->resv == NULL) {
 				res = simulate_resmin(qinfo->qres, endtime, sinfo->calendar,
-						qinfo->jobs, resresv);
+						      qinfo->jobs, resresv);
 			} else
 #ifdef NAS /* localmod 036 */
 			{
@@ -968,18 +961,18 @@ is_ok_to_run(status *policy, server_info *sinfo,
 			else
 				resreq = resresv->resreq;
 			if (check_avail_resources(res, resreq,
-					flags, policy->resdef_to_check, INSUFFICIENT_QUEUE_RESOURCE, err) == 0) {
+						  flags, policy->resdef_to_check, INSUFFICIENT_QUEUE_RESOURCE, err) == 0) {
 				struct schd_error *toterr;
 				toterr = new_schd_error();
-				if(toterr == NULL) {
-					if(err != perr)
+				if (toterr == NULL) {
+					if (err != perr)
 						free_schd_error(err);
 					return {};
 				}
 				/* We can't fit now, lets see if we can ever fit */
 				if (check_avail_resources(res, resreq,
-						flags|COMPARE_TOTAL, policy->resdef_to_check, INSUFFICIENT_QUEUE_RESOURCE, toterr) == 0) {
-					move_schd_error(err , toterr);
+							  flags | COMPARE_TOTAL, policy->resdef_to_check, INSUFFICIENT_QUEUE_RESOURCE, toterr) == 0) {
+					move_schd_error(err, toterr);
 					err->status_code = NEVER_RUN;
 				}
 
@@ -988,7 +981,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				clear_schd_error(err);
 
 				if (!(flags & RETURN_ALL_ERR)) {
-					if(err != perr)
+					if (err != perr)
 						free_schd_error(err);
 					return {};
 				}
@@ -1002,14 +995,14 @@ is_ok_to_run(status *policy, server_info *sinfo,
 	 */
 	if (sinfo->res != NULL) {
 		if (resresv->is_resv ||
-				(resresv->is_job && resresv->job != NULL && resresv->job->resv == NULL)) {
+		    (resresv->is_job && resresv->job != NULL && resresv->job->resv == NULL)) {
 			res = simulate_resmin(sinfo->res, endtime, sinfo->calendar, NULL, resresv);
 			if ((resresv->job != NULL) && (resresv->job->resreq_rel != NULL))
 				resreq = resresv->job->resreq_rel;
 			else
 				resreq = resresv->resreq;
 			if (check_avail_resources(res, resreq, flags,
-					policy->resdef_to_check, INSUFFICIENT_SERVER_RESOURCE, err) == 0) {
+						  policy->resdef_to_check, INSUFFICIENT_SERVER_RESOURCE, err) == 0) {
 				struct schd_error *toterr;
 				toterr = new_schd_error();
 				if (toterr == NULL) {
@@ -1019,8 +1012,8 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				}
 				/* We can't fit now, lets see if we can ever fit */
 				if (check_avail_resources(res, resreq,
-						flags | COMPARE_TOTAL, policy->resdef_to_check,
-						INSUFFICIENT_SERVER_RESOURCE, toterr) == 0) {
+							  flags | COMPARE_TOTAL, policy->resdef_to_check,
+							  INSUFFICIENT_SERVER_RESOURCE, toterr) == 0) {
 					toterr->status_code = NEVER_RUN;
 					move_schd_error(err, toterr);
 				}
@@ -1040,7 +1033,6 @@ is_ok_to_run(status *policy, server_info *sinfo,
 
 	auto ns_arr = check_nodes(policy, sinfo, qinfo, resresv, flags, err);
 
-
 	if (err->error_code != SUCCESS)
 		add_err(&prev_err, err);
 
@@ -1051,7 +1043,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 	 * didn't end up using it.  We have to check against perr, so we don't
 	 * free the caller's memory.
 	 */
-	else if(err != perr)
+	else if (err != perr)
 		free_schd_error(err);
 
 	return ns_arr;
@@ -1229,8 +1221,8 @@ match_resource(schd_resource *res, resource_req *resreq, unsigned int flags, enu
  */
 long long
 check_avail_resources(schd_resource *reslist, resource_req *reqlist,
-	unsigned int flags, std::unordered_set<resdef *>& checklist,
-	enum sched_error_code fail_code, schd_error *perr)
+		      unsigned int flags, std::unordered_set<resdef *> &checklist,
+		      enum sched_error_code fail_code, schd_error *perr)
 {
 	long long num_chunk = SCHD_INFINITY;
 
@@ -1249,7 +1241,7 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 
 	for (resource_req *resreq = reqlist; resreq != NULL; resreq = resreq->next) {
 		if (((flags & CHECK_ALL_BOOLS) && resreq->type.is_boolean) ||
-			(checklist.find(resreq->def) != checklist.end())) {
+		    (checklist.find(resreq->def) != checklist.end())) {
 
 			schd_resource *res = find_check_resource(reslist, resreq, flags);
 			if (res == NULL)
@@ -1360,7 +1352,7 @@ dynamic_avail(schd_resource *res)
 {
 	if (res->avail == SCHD_INFINITY_RES)
 		return SCHD_INFINITY_RES;
-	else if ((res->avail - res->assigned) <=0)
+	else if ((res->avail - res->assigned) <= 0)
 		return 0;
 	else
 		return res->avail - res->assigned;
@@ -1432,8 +1424,7 @@ check_ded_time_boundary(resource_resv *resresv)
 	if (!ded) {
 		if (dedtime_conflict(resresv)) /* has conflict or has no duration */
 			return CROSS_DED_TIME_BOUNDRY;
-	}
-	else {
+	} else {
 		auto time_left = calc_time_left(resresv, 0);
 		auto finish_time = resresv->server->server_time + time_left;
 
@@ -1464,13 +1455,12 @@ dedtime_conflict(resource_resv *resresv)
 	if (resresv == NULL)
 		return -1;
 
-	if (resresv->start == UNSPECIFIED && resresv->end ==UNSPECIFIED) {
+	if (resresv->start == UNSPECIFIED && resresv->end == UNSPECIFIED) {
 		auto duration = calc_time_left(resresv, 0);
 
 		start = resresv->server->server_time;
 		end = start + duration;
-	}
-	else if (resresv->start == UNSPECIFIED || resresv->end ==UNSPECIFIED)
+	} else if (resresv->start == UNSPECIFIED || resresv->end == UNSPECIFIED)
 		return -1;
 	else {
 		start = resresv->start;
@@ -1522,8 +1512,9 @@ dedtime_conflict(resource_resv *resresv)
 
  */
 std::vector<nspec *>
-check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err) {
-	std::vector<nspec *>ns_arr;
+check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err)
+{
+	std::vector<nspec *> ns_arr;
 
 	if (sinfo->pset_metadata_stale)
 		update_all_nodepart(policy, sinfo, (flags & NO_ALLPART));
@@ -1636,8 +1627,7 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 		 */
 		if (resresv->node_set == NULL) {
 			resresv->node_set = create_node_array_from_str(
-				qinfo->num_nodes > 0 ? qinfo->nodes :
-				sinfo->unassoc_nodes,
+				qinfo->num_nodes > 0 ? qinfo->nodes : sinfo->unassoc_nodes,
 				resresv->node_set_str);
 		}
 		ninfo_arr = resresv->node_set;
@@ -1649,7 +1639,7 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 	 * If it doesn't exist, we'll create it and add it to the cache
 	 */
 	if (resresv->place_spec->group != NULL) {
-		std::vector<std::string> grouparr {resresv->place_spec->group};
+		std::vector<std::string> grouparr{resresv->place_spec->group};
 		npc = find_alloc_np_cache(policy, sinfo->npc_arr, grouparr, ninfo_arr, cmp_placement_sets);
 		if (npc != NULL)
 			nodepart = npc->nodepart;
@@ -1694,7 +1684,7 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 enum sched_error_code
 check_ded_time_queue(queue_info *qinfo)
 {
-	enum sched_error_code rc = SE_NONE;		/* return code */
+	enum sched_error_code rc = SE_NONE; /* return code */
 
 	if (qinfo == NULL || qinfo->server == NULL)
 		return SCHD_ERROR;
@@ -1704,8 +1694,7 @@ check_ded_time_queue(queue_info *qinfo)
 			rc = SE_NONE;
 		else
 			rc = DED_TIME;
-	}
-	else {
+	} else {
 		if (qinfo->is_ded_queue)
 			rc = DED_TIME;
 		else
@@ -1788,7 +1777,7 @@ check_nonprime_queue(status *policy, queue_info *qinfo)
  *
  */
 enum sched_error_code
-check_prime_boundary(status *policy, resource_resv  *resresv, struct schd_error *err)
+check_prime_boundary(status *policy, resource_resv *resresv, struct schd_error *err)
 {
 
 	if (resresv == NULL || policy == NULL) {
@@ -1802,8 +1791,8 @@ check_prime_boundary(status *policy, resource_resv  *resresv, struct schd_error 
 	 */
 	if (resresv->is_job) {
 		if (conf.prime_exempt_anytime_queues &&
-			!resresv->job->queue->is_nonprime_queue &&
-			!resresv->job->queue->is_prime_queue)
+		    !resresv->job->queue->is_nonprime_queue &&
+		    !resresv->job->queue->is_prime_queue)
 			return SE_NONE;
 	}
 
@@ -1825,7 +1814,7 @@ check_prime_boundary(status *policy, resource_resv  *resresv, struct schd_error 
 		}
 
 		if (resresv->server->server_time + time_left >
-			policy->prime_status_end + policy->prime_spill) {
+		    policy->prime_status_end + policy->prime_spill) {
 			set_schd_error_codes(err, NOT_RUN, CROSS_PRIME_BOUNDARY);
 			set_schd_error_arg(err, ARG1, policy->is_prime ? NONPRIMESTR : PRIMESTR);
 			return CROSS_PRIME_BOUNDARY;
@@ -1855,8 +1844,7 @@ false_res()
 			res->type.is_boolean = 1;
 			res->orig_str_avail = string_dup(ATR_FALSE);
 			res->avail = 0;
-		}
-		else
+		} else
 			return NULL;
 	}
 
@@ -1883,12 +1871,11 @@ unset_str_res()
 
 	if (res == NULL) {
 		res = new_resource();
-		if ((res->str_avail = static_cast<char **>(malloc(sizeof(char*) * 2))) !=NULL) {
+		if ((res->str_avail = static_cast<char **>(malloc(sizeof(char *) * 2))) != NULL) {
 			if (res->str_avail != NULL) {
 				res->str_avail[0] = string_dup("");
 				res->str_avail[1] = NULL;
-			}
-			else {
+			} else {
 				log_err(errno, __func__, MEM_ERR_MSG);
 				free_resource(res);
 				return NULL;
@@ -1897,8 +1884,7 @@ unset_str_res()
 			res->type.is_string = 1;
 			res->orig_str_avail = string_dup("");
 			res->avail = 0;
-		}
-		else
+		} else
 			return NULL;
 	}
 
@@ -1927,8 +1913,7 @@ zero_res()
 			res->type.is_num = 1;
 			res->orig_str_avail = string_dup("0");
 			res->avail = 0;
-		}
-		else
+		} else
 			return NULL;
 	}
 
@@ -1948,7 +1933,8 @@ zero_res()
  * @par MT-Safe: No
  * @return void
  */
-void get_resresv_spec(resource_resv *resresv, selspec **spec, place **pl)
+void
+get_resresv_spec(resource_resv *resresv, selspec **spec, place **pl)
 {
 	static place place_spec;
 	if (resresv->is_job && resresv->job != NULL) {

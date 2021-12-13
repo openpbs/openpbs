@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
 /*
  * list of site defined server attribute names which qmgr should
  * include in its "print server" output

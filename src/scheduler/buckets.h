@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #ifndef _BUCKETS_H
 #define _BUCKETS_H
 
@@ -67,7 +66,7 @@ char *create_node_bucket_name(status *policy, node_bucket *nb);
 /* match job's request to buckets and allocate */
 int bucket_match(chunk_map **cmap, resource_resv *resresv, schd_error *err);
 /* convert chunk_map->node_bits into nspec array */
-std::vector<nspec *>bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv);
+std::vector<nspec *> bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv);
 
 /* can a job completely fit on a node before it is busy */
 int node_can_fit_job_time(int node_ind, resource_resv *resresv);
@@ -92,12 +91,11 @@ int job_should_use_buckets(resource_resv *resresv);
 /* Log a summary of a chunk_map array */
 void log_chunk_map_array(resource_resv *resresv, chunk_map **cmap);
 
-
 /* Check to see if a job can run on nodes via the node_bucket codepath */
-std::vector<nspec *>check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, schd_error *err);
-std::vector<nspec *>map_buckets(status *policy, node_bucket **bkts, resource_resv *resresv, schd_error *err);
+std::vector<nspec *> check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, schd_error *err);
+std::vector<nspec *> map_buckets(status *policy, node_bucket **bkts, resource_resv *resresv, schd_error *err);
 
 /* map job to buckets that can satisfy */
 chunk_map **find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resresv, schd_error *err);
 
-#endif	/* _BUCKETS_H */
+#endif /* _BUCKETS_H */

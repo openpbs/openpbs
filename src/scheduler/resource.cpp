@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    resource.c
  *
@@ -83,8 +82,6 @@
 #include "parse.h"
 #include "fifo.h"
 
-
-
 /**
  * @brief
  * 		query a pbs server for the resources it knows about and fill in the global unordered_map
@@ -96,9 +93,9 @@
 std::unordered_map<std::string, resdef *>
 query_resources(int pbs_sd)
 {
-	struct batch_status *bs;		/* queried resources from server */
-	struct batch_status *cur_bs;		/* used to iterate over resources */
-	struct attrl *attrp;			/* iterate over resource fields */
+	struct batch_status *bs;     /* queried resources from server */
+	struct batch_status *cur_bs; /* used to iterate over resources */
+	struct attrl *attrp;	     /* iterate over resource fields */
 	std::unordered_map<std::string, resdef *> tmpres;
 
 	if ((bs = send_statrsc(pbs_sd, NULL, NULL, const_cast<char *>("p"))) == NULL) {
@@ -107,7 +104,7 @@ query_resources(int pbs_sd)
 			errmsg = "";
 
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_REQUEST, LOG_INFO, "pbs_statrsc",
-			"pbs_statrsc failed: %s (%d)", errmsg, pbs_errno);
+			   "pbs_statrsc failed: %s (%d)", errmsg, pbs_errno);
 		return {};
 	}
 
@@ -117,7 +114,7 @@ query_resources(int pbs_sd)
 
 		for (attrp = cur_bs->attribs; attrp != NULL; attrp = attrp->next) {
 			char *endp;
-			
+
 			if (!strcmp(attrp->name, ATTR_RESC_TYPE)) {
 				int num = strtol(attrp->value, &endp, 10);
 				rtype = conv_rsc_type(num);
@@ -134,9 +131,9 @@ query_resources(int pbs_sd)
 	 *      This is to allow us to directly index into the allres umap.
 	 *      Do not directly index into the allres umap for non-well known resources.  Use find_resdef()
 	 */
-	for (const auto& r : well_known_res) {
+	for (const auto &r : well_known_res) {
 		if (tmpres.find(r) == tmpres.end()) {
-			for (auto& d : tmpres)
+			for (auto &d : tmpres)
 				delete d.second;
 			return {};
 		}
@@ -201,7 +198,7 @@ conv_rsc_type(int type)
  * @retval NULL if not found
  */
 resdef *
-find_resdef(const std::string& name)
+find_resdef(const std::string &name)
 {
 	auto f = allres.find(name);
 	if (f == allres.end())
@@ -229,8 +226,7 @@ is_res_avail_set(schd_resource *res)
 	if (res->type.is_string) {
 		if (res->str_avail != NULL && res->str_avail[0] != NULL)
 			return 1;
-	}
-	else if (res->avail != SCHD_INFINITY_RES)
+	} else if (res->avail != SCHD_INFINITY_RES)
 		return 1;
 
 	return 0;
@@ -283,7 +279,7 @@ add_resource_sig(char **sig, int *sig_size, schd_resource *res)
  * @par	it is the responsibility of the caller to free string returned
  */
 char *
-create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& resources, unsigned int flags)
+create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *> &resources, unsigned int flags)
 {
 	char *sig = NULL;
 	int sig_size = 0;
@@ -299,7 +295,7 @@ create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& 
 	sig_size = 1024;
 	sig[0] = '\0';
 
-	for (const auto& r : resources) {
+	for (const auto &r : resources) {
 		res = find_resource(reslist, r);
 		if (res != NULL) {
 			if (res->indirect_res != NULL) {
@@ -316,7 +312,7 @@ create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& 
 	}
 
 	if ((flags & ADD_ALL_BOOL)) {
-		for (const auto& br : boolres) {
+		for (const auto &br : boolres) {
 			if (resources.find(br) == resources.end()) {
 				res = find_resource(reslist, br);
 				if (res != NULL) {
@@ -335,8 +331,6 @@ create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& 
 
 	return sig;
 }
-
-
 
 /**
  * @brief update allres and sub-containers of resource definitions.  This is called
@@ -378,13 +372,13 @@ update_resource_defs(int pbs_sd)
 		}
 	}
 
-	for (auto& d : allres)
+	for (auto &d : allres)
 		delete d.second;
 
 	allres = tmpres;
 
 	consres.clear();
-	for (const auto& def : allres) {
+	for (const auto &def : allres) {
 		if (def.second->type.is_consumable)
 			consres.insert(def.second);
 	}
@@ -416,11 +410,11 @@ update_resource_defs(int pbs_sd)
  * @retval	NULL	: on error
  */
 std::unordered_set<resdef *>
-resstr_to_resdef(const std::unordered_set<std::string>& resstr)
+resstr_to_resdef(const std::unordered_set<std::string> &resstr)
 {
 	std::unordered_set<resdef *> defs;
 
-	for (const auto& str : resstr) {
+	for (const auto &str : resstr) {
 		auto def = find_resdef(str);
 		if (def != NULL)
 			defs.insert(def);
@@ -433,7 +427,7 @@ resstr_to_resdef(const std::unordered_set<std::string>& resstr)
 }
 
 std::unordered_set<resdef *>
-resstr_to_resdef(const char * const* resstr)
+resstr_to_resdef(const char *const *resstr)
 {
 	std::unordered_set<resdef *> defs;
 
@@ -506,7 +500,8 @@ collect_resources_from_requests(resource_resv **resresv_arr)
  * 
  * @return nothing
  */
-void update_single_sort_def(std::vector<sort_info>& siv, int obj, const char *prefix)
+void
+update_single_sort_def(std::vector<sort_info> &siv, int obj, const char *prefix)
 {
 	for (auto &si : siv) {
 		auto f = allres.find(si.res_name);
@@ -514,7 +509,7 @@ void update_single_sort_def(std::vector<sort_info>& siv, int obj, const char *pr
 			si.def = NULL;
 		else if (f == allres.end()) {
 			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, CONFIG_FILE,
-				"%s sorting resource %s is not a valid resource", prefix, si.res_name.c_str());
+				   "%s sorting resource %s is not a valid resource", prefix, si.res_name.c_str());
 			si.def = NULL;
 		} else
 			si.def = f->second;
@@ -530,7 +525,8 @@ void update_single_sort_def(std::vector<sort_info>& siv, int obj, const char *pr
  *
  * @param[in]	op	-	update(non-zero) or clear definitions(0)
  */
-void update_sorting_defs(void)
+void
+update_sorting_defs(void)
 {
 	update_single_sort_def(conf.prime_node_sort, SOBJ_NODE, "prime node");
 	update_single_sort_def(conf.non_prime_node_sort, SOBJ_NODE, "Non-prime node");

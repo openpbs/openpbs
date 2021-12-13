@@ -56,9 +56,9 @@
 static void
 strip_trailing_white(char *pw)
 {
-	while (isspace((int)*pw))
+	while (isspace((int) *pw))
 		--pw;
-	*(pw+1) = '\0';
+	*(pw + 1) = '\0';
 	return;
 }
 
@@ -78,10 +78,10 @@ strip_trailing_white(char *pw)
 char *
 parse_comma_string_r(char **start)
 {
-	char	    *pc;
-	char	    *rv;
+	char *pc;
+	char *rv;
 
-	char	    *back;
+	char *back;
 
 	if ((start == NULL) || (*start == NULL))
 		return NULL;
@@ -89,14 +89,14 @@ parse_comma_string_r(char **start)
 	pc = *start;
 
 	if (*pc == '\0')
-		return NULL;	/* already at end, no strings */
+		return NULL; /* already at end, no strings */
 
 	/* skip over leading white space */
 
-	while ((*pc != '\n') && isspace((int)*pc) && *pc)
+	while ((*pc != '\n') && isspace((int) *pc) && *pc)
 		pc++;
 
-	rv = pc;		/* the start point which will be returned */
+	rv = pc; /* the start point which will be returned */
 
 	/* go find comma or end of line */
 
@@ -106,17 +106,17 @@ parse_comma_string_r(char **start)
 		++pc;
 	}
 	back = pc;
-	while (isspace((int)*--back))	/* strip trailing spaces */
+	while (isspace((int) *--back)) /* strip trailing spaces */
 		*back = '\0';
 
 	if (*pc)
-		*pc++ = '\0';	/* if not end, terminate this and adv past */
+		*pc++ = '\0'; /* if not end, terminate this and adv past */
 	*start = pc;
 
 	return (rv);
 }
 
-static char pbs_all[]     = PBS_ALL_ENTITY;
+static char pbs_all[] = PBS_ALL_ENTITY;
 
 /**
  * @brief
@@ -177,14 +177,14 @@ entlim_parse_one(char *str, enum lim_keytypes *etype, char **etenty, char **enti
 	pc = str;
 
 	/* search for open bracket */
-	while (isspace((int)*pc))
+	while (isspace((int) *pc))
 		++pc;
 	if (*pc != '[')
-		return (str - pc - 1);	/* negative of offset into string */
+		return (str - pc - 1); /* negative of offset into string */
 
 	++pc;
 	/* skip whitespace till entity type letter */
-	while (isspace((int)*pc))
+	while (isspace((int) *pc))
 		++pc;
 	if (*pc == 'u')
 		*etype = LIM_USER;
@@ -195,7 +195,7 @@ entlim_parse_one(char *str, enum lim_keytypes *etype, char **etenty, char **enti
 	else if (*pc == 'o')
 		*etype = LIM_OVERALL;
 	else
-		return (str - pc -1);
+		return (str - pc - 1);
 	*etenty = pc;
 
 	/* next must be the colon */
@@ -204,7 +204,7 @@ entlim_parse_one(char *str, enum lim_keytypes *etype, char **etenty, char **enti
 	++pc;
 
 	/* next must be start of entity's name */
-	if ((*pc == '\0') || isspace((int)*pc))
+	if ((*pc == '\0') || isspace((int) *pc))
 		return (str - pc - 1);
 	*entity = pc;
 
@@ -215,23 +215,23 @@ entlim_parse_one(char *str, enum lim_keytypes *etype, char **etenty, char **enti
 	if ((*pc == '"') || (*pc == '\'')) {
 		/* entity name is quoted,  look for matchng quote */
 		char match = *pc;
-		*entity = ++pc;	/* incr past the quote character */
+		*entity = ++pc; /* incr past the quote character */
 
 		while (*pc && *pc != match)
 			++pc;
 		if (*pc == '\0')
-			return (str - pc - 1);	/* no closing quote */
+			return (str - pc - 1); /* no closing quote */
 		/* set to null, ending the name */
 		*pc = '\0';
-		pendname = pc;	/* mark reached end of name (close quote) */
+		pendname = pc; /* mark reached end of name (close quote) */
 	}
 
 	/* skip to equal sign  or closing bracket */
 	++pc;
 	while (*pc && (*pc != '=') && (*pc != ']')) {
-		if (isspace((int)*pc)) {
+		if (isspace((int) *pc)) {
 			*pc = '\0';
-			pendname = pc;	/* mark end of name (whitespace) */
+			pendname = pc; /* mark end of name (whitespace) */
 		} else if (pendname != NULL) {
 			/* non-white space and already saw end of name, error */
 			return (str - pc - 1);
@@ -244,8 +244,8 @@ entlim_parse_one(char *str, enum lim_keytypes *etype, char **etenty, char **enti
 		*pc = '\0';
 		/* check name for validity */
 		if (etlim_validate_name(*etype, *entity) == -1)
-			return (str - ((*entity)+2) - 1);
-		*val = NULL;	/* no value */
+			return (str - ((*entity) + 2) - 1);
+		*val = NULL; /* no value */
 		return 0;
 	} else if (*pc == '\0') {
 		/* error; no ']' nor '=' */
@@ -255,27 +255,27 @@ entlim_parse_one(char *str, enum lim_keytypes *etype, char **etenty, char **enti
 	/* hit the '=', value must follow */
 
 	*pc = '\0';
-	strip_trailing_white(pc-1);
+	strip_trailing_white(pc - 1);
 
 	/* check name for validity */
 	if (etlim_validate_name(*etype, *entity) == -1)
-		return (str - ((*entity)+2) - 1);
+		return (str - ((*entity) + 2) - 1);
 
 	++pc;
 	/* skip white till start of value */
 	while (isspace(*pc))
 		++pc;
 	if (*pc == '\0')
-		return (str - pc - 1);	/* error, no value after = */
+		return (str - pc - 1); /* error, no value after = */
 	else if (*pc == '-')
-		return (str - pc - 1);	/* error, negative value */
+		return (str - pc - 1); /* error, negative value */
 	*val = pc;
 
 	/* skip to closing bracket */
 	++pc;
-	while (*pc && (*pc != ']') && (! isspace(*pc)))
+	while (*pc && (*pc != ']') && (!isspace(*pc)))
 		++pc;
-	while (isspace(*pc))	/* skip trailing white */
+	while (isspace(*pc)) /* skip trailing white */
 		++pc;
 
 	if (*pc != ']')
@@ -309,22 +309,22 @@ entlim_parse_one(char *str, enum lim_keytypes *etype, char **etenty, char **enti
  */
 int
 entlim_parse(char *str, char *resc, void *ctx,
-	int (*addfunc)(void *ctx, enum lim_keytypes kt, char *fulent,
-	char *entity, char *resc, char *value))
+	     int (*addfunc)(void *ctx, enum lim_keytypes kt, char *fulent,
+			    char *entity, char *resc, char *value))
 {
-	enum lim_keytypes  etype;
+	enum lim_keytypes etype;
 	char *ett;
 	char *entity;
 	char *ntoken;
 	char *val;
 	char *pcs;
-	int   rc;
+	int rc;
 
 	ntoken = str;
 	while ((pcs = parse_comma_string_r(&ntoken)) != NULL) {
 		rc = entlim_parse_one(pcs, &etype, &ett, &entity, &val);
-		if (rc < 0)	/* syntax error, rc is offset in ntoken */
-			return (str - pcs) + rc;	/* adjust for str */
+		if (rc < 0)			 /* syntax error, rc is offset in ntoken */
+			return (str - pcs) + rc; /* adjust for str */
 		if (addfunc) {
 			if ((rc = addfunc(ctx, etype, ett, entity, resc, val)) != 0)
 				if (rc != 0)
@@ -334,10 +334,9 @@ entlim_parse(char *str, char *resc, void *ctx,
 	return 0;
 }
 
-
 #ifdef ENTLIM_STANDALONE_TEST
 
-static int   badonly = 0;
+static int badonly = 0;
 
 /**
  * @brief
@@ -363,13 +362,13 @@ dummyadd(void *ctx, enum lim_keytypes kt, char *fent, char *entity, char *resc, 
 main(int argc, char *argv[])
 {
 	char *cstr;
-	char  input[256];
-	char  etl;
+	char input[256];
+	char etl;
 	char *etname, *val;
 	char *pcs;
-	int   rc;
-	int   i;
-	int   goodonly = 0;
+	int rc;
+	int i;
+	int goodonly = 0;
 
 	while ((i = getopt(argc, argv, "bg")) != EOF) {
 		switch (i) {
@@ -416,4 +415,4 @@ main(int argc, char *argv[])
 	}
 	return 0;
 }
-#endif	/* ENTITY_STANDALONE_TEST */
+#endif /* ENTITY_STANDALONE_TEST */

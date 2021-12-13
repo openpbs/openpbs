@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #include <stdio.h>
 
 #include "pbs_ifl.h"
@@ -80,12 +79,12 @@ struct batch_status *(*pfn_pbs_statnode)(int, const char *, struct attrl *, cons
 struct batch_status *(*pfn_pbs_statvnode)(int, const char *, struct attrl *, const char *) = __pbs_statvnode;
 struct batch_status *(*pfn_pbs_statresv)(int, const char *, struct attrl *, const char *) = __pbs_statresv;
 struct batch_status *(*pfn_pbs_stathook)(int, const char *, struct attrl *, const char *) = __pbs_stathook;
-struct ecl_attribute_errors * (*pfn_pbs_get_attributes_in_error)(int) = __pbs_get_attributes_in_error;
+struct ecl_attribute_errors *(*pfn_pbs_get_attributes_in_error)(int) = __pbs_get_attributes_in_error;
 char *(*pfn_pbs_submit)(int, struct attropl *, const char *, const char *, const char *) = __pbs_submit;
 char *(*pfn_pbs_submit_resv)(int, struct attropl *, const char *) = __pbs_submit_resv;
 char *(*pfn_pbs_modify_resv)(int, const char *, struct attropl *, const char *) = __pbs_modify_resv;
 int (*pfn_pbs_delresv)(int, const char *, const char *) = __pbs_delresv;
 int (*pfn_pbs_relnodesjob)(int, const char *, const char *, const char *) = __pbs_relnodesjob;
 int (*pfn_pbs_terminate)(int, int, const char *) = __pbs_terminate;
-preempt_job_info *(*pfn_pbs_preempt_jobs)(int, char**) = __pbs_preempt_jobs;
+preempt_job_info *(*pfn_pbs_preempt_jobs)(int, char **) = __pbs_preempt_jobs;
 int (*pfn_pbs_register_sched)(const char *, int, int) = __pbs_register_sched;

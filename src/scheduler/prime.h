@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_PRIME_H
-#define	_PRIME_H
+#ifndef _PRIME_H
+#define _PRIME_H
 
 #include "time.h"
 
@@ -47,9 +47,9 @@
  *			  The macro will calculate the time between x and
  *			  23:59:59 and then add 1 to make it 00:00:00
  */
-#define time_left_today(x) ( (23 - ((x) -> tm_hour)) * 3600 + \
-			     (59 - ((x) -> tm_min)) * 60 + \
-			     (59 - ((x) -> tm_sec)) + 1)
+#define time_left_today(x) ((23 - ((x)->tm_hour)) * 3600 + \
+			    (59 - ((x)->tm_min)) * 60 +    \
+			    (59 - ((x)->tm_sec)) + 1)
 
 /*
  *      is_prime_time - will return true if it is currently prime_time
@@ -83,7 +83,6 @@ int parse_holidays(const char *fname);
  */
 int init_prime_time(struct status *, char *);
 
-
 /*
  *      init_non_prime_time - do any initializations that need to happen at
  *                            the beginning of non prime time
@@ -106,5 +105,4 @@ int init_non_prime_time(struct status *, char *);
  */
 time_t end_prime_status(time_t date);
 
-
-#endif	/* _PRIME_H */
+#endif /* _PRIME_H */

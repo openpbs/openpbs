@@ -63,7 +63,6 @@
  *
  */
 
-
 int
 main(int argc, char *argv[])
 {
@@ -76,7 +75,6 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-
 	/* if argv[1] is -1, loop with sleep 1 indefinitely */
 	if (strcmp(argv[1], "-1") == 0)
 		forever = 1;
@@ -87,5 +85,4 @@ main(int argc, char *argv[])
 		sleep(1);
 
 	return 0;
-
 }

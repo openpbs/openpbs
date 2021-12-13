@@ -66,7 +66,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /* OPENBSD ORIGINAL: lib/libc/string/strsep.c */
 /**
  * @file	strsep.c

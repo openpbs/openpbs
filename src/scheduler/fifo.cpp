@@ -989,7 +989,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			/* If this job couldn't run, the mark the equiv class so the rest of the jobs are discarded quickly.*/
 			if (sinfo->equiv_classes != NULL && njob->ec_index != UNSPECIFIED) {
 				resresv_set *ec = sinfo->equiv_classes[njob->ec_index];
-				if (rc != RUN_FAILURE &&  !ec->can_not_run) {
+				if (rc != RUN_FAILURE && !ec->can_not_run) {
 					ec->can_not_run = 1;
 					ec->err = dup_schd_error(err);
 				}
@@ -1220,7 +1220,7 @@ move_peer_job(resource_resv *rr)
  * 
  */
 bool
-run_job(status *policy, int pbs_sd, resource_resv *rr, std::vector<nspec *>& ns_arr, schd_error *err)
+run_job(status *policy, int pbs_sd, resource_resv *rr, std::vector<nspec *> &ns_arr, schd_error *err)
 {
 	bool ret = true;
 	int pbsrc = 0; /* Return code from IFL call, 0 success, 1 failure */

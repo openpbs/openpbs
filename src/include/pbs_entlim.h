@@ -59,25 +59,25 @@ enum lim_keytypes {
 };
 
 #define PBS_GENERIC_ENTITY "PBS_GENERIC"
-#define PBS_ALL_ENTITY	   "PBS_ALL"
-#define ETLIM_INVALIDCHAR  "/[]\";:|<>+,?*"
+#define PBS_ALL_ENTITY "PBS_ALL"
+#define ETLIM_INVALIDCHAR "/[]\";:|<>+,?*"
 
 /* Flags used for account_entity_limit_usages() */
-#define ETLIM_ACC_CT	 1 << 0 /* flag for set_entity_ct_sum_ */
-#define ETLIM_ACC_RES	 1 << 1 /* flag for set_entity_resc_sum_ */
+#define ETLIM_ACC_CT 1 << 0	/* flag for set_entity_ct_sum_ */
+#define ETLIM_ACC_RES 1 << 1	/* flag for set_entity_resc_sum_ */
 #define ETLIM_ACC_QUEUED 1 << 2 /* flag for set_entity_-_sum_max */
-#define ETLIM_ACC_MAX	 1 << 3 /* flag for set_entity_-_sum_queued */
+#define ETLIM_ACC_MAX 1 << 3	/* flag for set_entity_-_sum_queued */
 
-#define ETLIM_ACC_CT_QUEUED  (ETLIM_ACC_CT | ETLIM_ACC_QUEUED)	/* set_entity_ct_sum_queued */
-#define ETLIM_ACC_CT_MAX     (ETLIM_ACC_CT | ETLIM_ACC_MAX)	/* set_entity_ct_sum_max */
+#define ETLIM_ACC_CT_QUEUED (ETLIM_ACC_CT | ETLIM_ACC_QUEUED)	/* set_entity_ct_sum_queued */
+#define ETLIM_ACC_CT_MAX (ETLIM_ACC_CT | ETLIM_ACC_MAX)		/* set_entity_ct_sum_max */
 #define ETLIM_ACC_RES_QUEUED (ETLIM_ACC_RES | ETLIM_ACC_QUEUED) /* set_entity_resc_sum_queued */
-#define ETLIM_ACC_RES_MAX    (ETLIM_ACC_RES | ETLIM_ACC_MAX)	/* set_entity_resc_sum_max */
+#define ETLIM_ACC_RES_MAX (ETLIM_ACC_RES | ETLIM_ACC_MAX)	/* set_entity_resc_sum_max */
 
-#define ETLIM_ACC_ALL_RES    (ETLIM_ACC_QUEUED | ETLIM_ACC_MAX | ETLIM_ACC_RES)		       /* set_entity_resc_sum_* */
-#define ETLIM_ACC_ALL_CT     (ETLIM_ACC_QUEUED | ETLIM_ACC_MAX | ETLIM_ACC_CT)		       /* set_entity_ct_sum_* */
-#define ETLIM_ACC_ALL_MAX    (ETLIM_ACC_CT | ETLIM_ACC_RES | ETLIM_ACC_MAX)		       /* set_entity_*_sum_max */
-#define ETLIM_ACC_ALL_QUEUED (ETLIM_ACC_CT | ETLIM_ACC_RES | ETLIM_ACC_QUEUED)		       /* set_entity_*_sum_queued */
-#define ETLIM_ACC_ALL	     (ETLIM_ACC_CT | ETLIM_ACC_RES | ETLIM_ACC_QUEUED | ETLIM_ACC_MAX) /* for all 4 set_entity_* */
+#define ETLIM_ACC_ALL_RES (ETLIM_ACC_QUEUED | ETLIM_ACC_MAX | ETLIM_ACC_RES)		/* set_entity_resc_sum_* */
+#define ETLIM_ACC_ALL_CT (ETLIM_ACC_QUEUED | ETLIM_ACC_MAX | ETLIM_ACC_CT)		/* set_entity_ct_sum_* */
+#define ETLIM_ACC_ALL_MAX (ETLIM_ACC_CT | ETLIM_ACC_RES | ETLIM_ACC_MAX)		/* set_entity_*_sum_max */
+#define ETLIM_ACC_ALL_QUEUED (ETLIM_ACC_CT | ETLIM_ACC_RES | ETLIM_ACC_QUEUED)		/* set_entity_*_sum_queued */
+#define ETLIM_ACC_ALL (ETLIM_ACC_CT | ETLIM_ACC_RES | ETLIM_ACC_QUEUED | ETLIM_ACC_MAX) /* for all 4 set_entity_* */
 
 void *entlim_initialize_ctx(void);
 

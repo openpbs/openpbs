@@ -37,9 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_PBS_LICENSE_H
-#define	_PBS_LICENSE_H
-#ifdef	__cplusplus
+#ifndef _PBS_LICENSE_H
+#define _PBS_LICENSE_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -47,34 +47,34 @@ extern "C" {
 #include "work_task.h"
 /* Node license types */
 
-#define ND_LIC_TYPE_locked	'l'
-#define ND_LIC_TYPE_cloud	'c'
-#define ND_LIC_locked_str	"l"
-#define ND_LIC_cloud_str	"c"
+#define ND_LIC_TYPE_locked 'l'
+#define ND_LIC_TYPE_cloud 'c'
+#define ND_LIC_locked_str "l"
+#define ND_LIC_cloud_str "c"
 
 typedef struct {
-	long licenses_min;		/* minimum no.of licenses to be kept handy 		*/
-	long licenses_max;		/* maximum licenses that can be used			*/
-	long licenses_linger_time;	/* time for which unused licenses can be kept		*/
-	long licenses_checked_out;	/* licenses that are  checked out			*/
-	long licenses_checkout_time;	/* time at which licenses were checked out		*/
-	long licenses_total_needed;	/* licenses needed to license all nodes in the complex	*/
-	int expiry_warning_email_yday;	/* expiry warning email sent on this day of the year	*/
+	long licenses_min;	       /* minimum no.of licenses to be kept handy 		*/
+	long licenses_max;	       /* maximum licenses that can be used			*/
+	long licenses_linger_time;     /* time for which unused licenses can be kept		*/
+	long licenses_checked_out;     /* licenses that are  checked out			*/
+	long licenses_checkout_time;   /* time at which licenses were checked out		*/
+	long licenses_total_needed;    /* licenses needed to license all nodes in the complex	*/
+	int expiry_warning_email_yday; /* expiry warning email sent on this day of the year	*/
 } pbs_licensing_control;
 
 typedef struct {
-	int lu_max_hr;		/* max number of licenses used in the hour  */
-	int lu_max_day;		/* max number of licenses used in the day   */
-	int lu_max_month;	/* max number of licenses used in the month */
-	int lu_max_forever;	/* max number of licenses used so far	    */
-	int lu_day;		/* which day of month			    */
-	int lu_month;		/* which month				    */
+	int lu_max_hr;	    /* max number of licenses used in the hour  */
+	int lu_max_day;	    /* max number of licenses used in the day   */
+	int lu_max_month;   /* max number of licenses used in the month */
+	int lu_max_forever; /* max number of licenses used so far	    */
+	int lu_day;	    /* which day of month			    */
+	int lu_month;	    /* which month				    */
 } pbs_licenses_high_use;
 
 typedef struct {
-	long licenses_global;		/* licenses available at pbs_license_info   */
-	long licenses_local;		/* licenses that are checked out but unused */
-	long licenses_used;		/* licenses in use			    */
+	long licenses_global; /* licenses available at pbs_license_info   */
+	long licenses_local;  /* licenses that are checked out but unused */
+	long licenses_used;   /* licenses in use			    */
 	pbs_licenses_high_use licenses_high_use;
 
 } pbs_license_counts;
@@ -86,15 +86,13 @@ enum node_topology_type {
 };
 typedef enum node_topology_type ntt_t;
 
-
 extern pbs_list_head unlicensed_nodes_list;
 
-#define PBS_MIN_LICENSING_LICENSES	0
-#define PBS_MAX_LICENSING_LICENSES	INT_MAX
-#define PBS_LIC_LINGER_TIME		31536000 /* keep extra licenses 1 year by default */
-#define PBS_LICENSE_LOCATION		\
-	 (pbs_licensing_location ?	\
-	  pbs_licensing_location : "null" )
+#define PBS_MIN_LICENSING_LICENSES 0
+#define PBS_MAX_LICENSING_LICENSES INT_MAX
+#define PBS_LIC_LINGER_TIME 31536000 /* keep extra licenses 1 year by default */
+#define PBS_LICENSE_LOCATION \
+	(pbs_licensing_location ? pbs_licensing_location : "null")
 
 extern void unset_signature(void *, char *);
 extern int release_node_lic(void *);
@@ -108,7 +106,7 @@ extern void remove_from_unlicensed_node_list(struct pbsnode *pnode);
 extern char *pbs_licensing_location;
 extern pbs_licensing_control licensing_control;
 extern pbs_license_counts license_counts;
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _PBS_LICENSE_H */
+#endif /* _PBS_LICENSE_H */

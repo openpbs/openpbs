@@ -37,13 +37,11 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_PBS_MPP_H
-#define	_PBS_MPP_H
-#ifdef	__cplusplus
+#ifndef _PBS_MPP_H
+#define _PBS_MPP_H
+#ifdef __cplusplus
 extern "C" {
 #endif
-
-
 
 /*
  *	Header file for defining MPP CPU states and scheduling restrictions.
@@ -65,8 +63,7 @@ static char *mpp_node_arch_name[] = {
 	"XT3",
 	"X1",
 	"X2",
-	"UNKNOWN"
-};
+	"UNKNOWN"};
 
 typedef enum {
 	mpp_node_state_none = 0,
@@ -81,8 +78,7 @@ static char *mpp_node_state_name[] = {
 	"AVAILABLE",
 	"UNAVAILABLE",
 	"DOWN",
-	"UNKNOWN"
-};
+	"UNKNOWN"};
 
 typedef enum {
 	mpp_cpu_type_none = 0,
@@ -97,8 +93,7 @@ static char *mpp_cpu_type_name[] = {
 	"x86_64",
 	"craynv1",
 	"Cray-BlackWidow",
-	"UNKNOWN"
-};
+	"UNKNOWN"};
 
 typedef enum {
 	mpp_cpu_state_none = 0,
@@ -111,15 +106,14 @@ static char *mpp_cpu_state_name[] = {
 	"NONE",
 	"UP",
 	"DOWN",
-	"UNKNOWN"
-};
+	"UNKNOWN"};
 
 typedef enum {
 	mpp_label_type_hard = 0,
 	mpp_label_type_soft
 } mpp_label_type_t;
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _PBS_MPP_H */
+#endif /* _PBS_MPP_H */

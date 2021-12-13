@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    pbs_client_thread.h
  *
@@ -46,14 +45,13 @@
  */
 
 #ifndef _PBS_CLIENT_THREAD_H
-#define	_PBS_CLIENT_THREAD_H
+#define _PBS_CLIENT_THREAD_H
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <pthread.h>
-
 
 /**
  * @brief
@@ -75,16 +73,15 @@ extern "C" {
  */
 struct pbs_client_thread_connect_context {
 	/** connection handle */
-	int		th_ch;
+	int th_ch;
 	/** last error number that occured on this connection handle */
-	int		th_ch_errno;
+	int th_ch_errno;
 	/** last server error text on this connection handle */
-	char		*th_ch_errtxt;
+	char *th_ch_errtxt;
 	/** link to the next node in the linked list */
 	struct pbs_client_thread_connect_context
-	*th_ch_next;
+		*th_ch_next;
 };
-
 
 /**
  * @brief
@@ -96,33 +93,32 @@ struct pbs_client_thread_connect_context {
  */
 struct pbs_client_thread_context {
 	/** stores the global pbs errno */
-	int			th_pbs_errno;
+	int th_pbs_errno;
 	/** head pointer to the linked list of connection contexts */
 	struct pbs_client_thread_connect_context
-	*th_conn_context;
+		*th_conn_context;
 	/** pointer to the array of attribute error structures */
 	struct ecl_attribute_errors
-	*th_errlist;
+		*th_errlist;
 	/** pointer to the location for the dis_buffer for each thread */
-	char			*th_dis_buffer;
+	char *th_dis_buffer;
 	/** pointer to the cred_info structure used by pbs_submit_with_cred */
-	void			*th_cred_info;
+	void *th_cred_info;
 	/** used by totpool and usepool functions */
-	void			*th_node_pool;
-	char			th_pbs_server[PBS_MAXSERVERNAME+1];
-	char			th_pbs_defserver[PBS_MAXSERVERNAME+1];
-	char			th_pbs_current_user[PBS_MAXUSER+1];
-	time_t			th_pbs_tcp_timeout;
-	int			th_pbs_tcp_interrupt;
-	int			th_pbs_tcp_errno;
-	int			th_pbs_mode;
+	void *th_node_pool;
+	char th_pbs_server[PBS_MAXSERVERNAME + 1];
+	char th_pbs_defserver[PBS_MAXSERVERNAME + 1];
+	char th_pbs_current_user[PBS_MAXUSER + 1];
+	time_t th_pbs_tcp_timeout;
+	int th_pbs_tcp_interrupt;
+	int th_pbs_tcp_errno;
+	int th_pbs_mode;
 };
-
 
 /* corresponding function pointers for the externally used functions */
 extern int (*pfn_pbs_client_thread_lock_connection)(int connect);
 extern int (*pfn_pbs_client_thread_unlock_connection)(int connect);
-extern struct pbs_client_thread_context * (*pfn_pbs_client_thread_get_context_data)(void);
+extern struct pbs_client_thread_context *(*pfn_pbs_client_thread_get_context_data)(void);
 extern int (*pfn_pbs_client_thread_lock_conntable)(void);
 extern int (*pfn_pbs_client_thread_unlock_conntable)(void);
 extern int (*pfn_pbs_client_thread_lock_conf)(void);
@@ -130,7 +126,6 @@ extern int (*pfn_pbs_client_thread_unlock_conf)(void);
 extern int (*pfn_pbs_client_thread_init_thread_context)(void);
 extern int (*pfn_pbs_client_thread_init_connect_context)(int connect);
 extern int (*pfn_pbs_client_thread_destroy_connect_context)(int connect);
-
 
 /* #defines for functions called by other code */
 #define pbs_client_thread_lock_connection(connect) \
@@ -154,21 +149,19 @@ extern int (*pfn_pbs_client_thread_destroy_connect_context)(int connect);
 #define pbs_client_thread_destroy_connect_context(connect) \
 	(*pfn_pbs_client_thread_destroy_connect_context)(connect)
 
-
 /* functions to add/remove/find connection context to the thread context */
 struct pbs_client_thread_connect_context *
 pbs_client_thread_add_connect_context(int connect);
 int pbs_client_thread_remove_connect_context(int connect);
 struct pbs_client_thread_connect_context *
 pbs_client_thread_find_connect_context(int connect);
-void free_errlist(struct ecl_attribute_errors * errlist);
+void free_errlist(struct ecl_attribute_errors *errlist);
 
 /* function called by daemons to set them to use the unthreaded functions */
 void pbs_client_thread_set_single_threaded_mode(void);
 
-
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* _PBS__CLIENT_THREAD_H */
+#endif /* _PBS__CLIENT_THREAD_H */

@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /*
  * This file is provided as a convenience to anyone wishing to utilize
  * the Batch and Application Scheduler Interface Layer (BASIL) for the
@@ -57,6 +56,7 @@
  * copies that Cray may provide.
  */
 
+// clang-format off
 
 #ifndef _BASIL_H
 #define _BASIL_H
@@ -976,3 +976,6 @@ typedef struct basil_response {
 #define BASIL_ERR_TRANSIENT	0x00000001UL
 
 #endif /* _BASIL_H */
+
+// clang-format on
+

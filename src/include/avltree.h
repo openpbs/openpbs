@@ -71,13 +71,13 @@ typedef struct {
 } AVL_IX_DESC;
 
 /*  return codes  */
-#define AVL_IX_OK   1
+#define AVL_IX_OK 1
 #define AVL_IX_FAIL 0
-#define AVL_EOIX    -2
+#define AVL_EOIX -2
 
 /* default behavior is no-dup-keys and case-sensitive search */
 #define AVL_DUP_KEYS_OK 0x01 /* repeated key & rec cause an error message */
-#define AVL_CASE_CMP    0x02 /* case insensitive search */
+#define AVL_CASE_CMP 0x02    /* case insensitive search */
 
 extern void avl_set_maxthreads(int n);
 extern void *get_avl_tls(void);

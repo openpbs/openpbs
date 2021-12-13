@@ -46,6 +46,6 @@
 /*
  * Magic cookie value for max_starve indicating jobs in queue never starve
  */
-#define	Q_SITE_STARVE_NEVER	(9999*3600)
+#define Q_SITE_STARVE_NEVER (9999 * 3600)
 
 #endif

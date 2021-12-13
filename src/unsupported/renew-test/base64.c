@@ -77,50 +77,50 @@
 #include <stdlib.h>
 
 #ifndef SIZE_MAX
-# define SIZE_MAX ((size_t)((size_t)0 - 1))
+#define SIZE_MAX ((size_t) ((size_t) 0 - 1))
 #endif
 
 static const char base64_chars[] =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 char *
 k5_base64_encode(const void *data, size_t len)
 {
-    char *s, *p;
-    size_t i;
-    unsigned int c;
-    const unsigned char *q;
+	char *s, *p;
+	size_t i;
+	unsigned int c;
+	const unsigned char *q;
 
-    if (len > SIZE_MAX / 4)
-        return NULL;
+	if (len > SIZE_MAX / 4)
+		return NULL;
 
-    p = s = malloc(len * 4 / 3 + 4);
-    if (p == NULL)
-        return NULL;
-    q = (const unsigned char *)data;
+	p = s = malloc(len * 4 / 3 + 4);
+	if (p == NULL)
+		return NULL;
+	q = (const unsigned char *) data;
 
-    for (i = 0; i < len;) {
-        c = q[i++];
-        c *= 256;
-        if (i < len)
-            c += q[i];
-        i++;
-        c *= 256;
-        if (i < len)
-            c += q[i];
-        i++;
-        p[0] = base64_chars[(c & 0x00fc0000) >> 18];
-        p[1] = base64_chars[(c & 0x0003f000) >> 12];
-        p[2] = base64_chars[(c & 0x00000fc0) >> 6];
-        p[3] = base64_chars[(c & 0x0000003f) >> 0];
-        if (i > len)
-            p[3] = '=';
-        if (i > len + 1)
-            p[2] = '=';
-        p += 4;
-    }
-    *p = '\0';
-    return s;
+	for (i = 0; i < len;) {
+		c = q[i++];
+		c *= 256;
+		if (i < len)
+			c += q[i];
+		i++;
+		c *= 256;
+		if (i < len)
+			c += q[i];
+		i++;
+		p[0] = base64_chars[(c & 0x00fc0000) >> 18];
+		p[1] = base64_chars[(c & 0x0003f000) >> 12];
+		p[2] = base64_chars[(c & 0x00000fc0) >> 6];
+		p[3] = base64_chars[(c & 0x0000003f) >> 0];
+		if (i > len)
+			p[3] = '=';
+		if (i > len + 1)
+			p[2] = '=';
+		p += 4;
+	}
+	*p = '\0';
+	return s;
 }
 
 #define DECODE_ERROR 0xffffffff
@@ -129,61 +129,61 @@ k5_base64_encode(const void *data, size_t len)
 static unsigned int
 decode_token(const char *token)
 {
-    int i, marker = 0;
-    unsigned int val = 0;
-    const char *p;
+	int i, marker = 0;
+	unsigned int val = 0;
+	const char *p;
 
-    for (i = 0; i < 4; i++) {
-        val *= 64;
-        if (token[i] == '=') {
-            marker++;
-        } else if (marker > 0) {
-            return DECODE_ERROR;
-        } else {
-            p = strchr(base64_chars, token[i]);
-            if (p == NULL)
-                return DECODE_ERROR;
-            val += p - base64_chars;
-        }
-    }
-    if (marker > 2)
-        return DECODE_ERROR;
-    return (marker << 24) | val;
+	for (i = 0; i < 4; i++) {
+		val *= 64;
+		if (token[i] == '=') {
+			marker++;
+		} else if (marker > 0) {
+			return DECODE_ERROR;
+		} else {
+			p = strchr(base64_chars, token[i]);
+			if (p == NULL)
+				return DECODE_ERROR;
+			val += p - base64_chars;
+		}
+	}
+	if (marker > 2)
+		return DECODE_ERROR;
+	return (marker << 24) | val;
 }
 
 void *
 k5_base64_decode(const char *str, size_t *len_out)
 {
-    unsigned char *data, *q;
-    unsigned int val, marker;
-    size_t len;
+	unsigned char *data, *q;
+	unsigned int val, marker;
+	size_t len;
 
-    *len_out = SIZE_MAX;
+	*len_out = SIZE_MAX;
 
-    /* Allocate the output buffer. */
-    len = strlen(str);
-    if (len % 4)
-        return NULL;
-    q = data = malloc(len / 4 * 3);
-    if (data == NULL) {
-        *len_out = 0;
-        return NULL;
-    }
+	/* Allocate the output buffer. */
+	len = strlen(str);
+	if (len % 4)
+		return NULL;
+	q = data = malloc(len / 4 * 3);
+	if (data == NULL) {
+		*len_out = 0;
+		return NULL;
+	}
 
-    /* Decode the string. */
-    for (; *str != '\0'; str += 4) {
-        val = decode_token(str);
-        if (val == DECODE_ERROR) {
-            free(data);
-            return NULL;
-        }
-        marker = (val >> 24) & 0xff;
-        *q++ = (val >> 16) & 0xff;
-        if (marker < 2)
-            *q++ = (val >> 8) & 0xff;
-        if (marker < 1)
-            *q++ = val & 0xff;
-    }
-    *len_out = q - data;
-    return data;
+	/* Decode the string. */
+	for (; *str != '\0'; str += 4) {
+		val = decode_token(str);
+		if (val == DECODE_ERROR) {
+			free(data);
+			return NULL;
+		}
+		marker = (val >> 24) & 0xff;
+		*q++ = (val >> 16) & 0xff;
+		if (marker < 2)
+			*q++ = (val >> 8) & 0xff;
+		if (marker < 1)
+			*q++ = val & 0xff;
+	}
+	*len_out = q - data;
+	return data;
 }

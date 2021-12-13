@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    fairshare.c
  *
@@ -95,7 +94,6 @@
 #include "sort.h"
 #endif
 
-
 extern time_t last_decay;
 
 /**
@@ -133,7 +131,7 @@ add_child(group_info *ginfo, group_info *parent)
 void
 add_unknown(group_info *ginfo, group_info *root)
 {
-	group_info *unknown;		/* ptr to the "unknown" group */
+	group_info *unknown; /* ptr to the "unknown" group */
 
 	unknown = find_group_info("unknown", root);
 	add_child(ginfo, unknown);
@@ -152,9 +150,9 @@ add_unknown(group_info *ginfo, group_info *root)
  *
  */
 group_info *
-find_group_info(const std::string& name, group_info *root)
+find_group_info(const std::string &name, group_info *root)
 {
-	group_info *ginfo;		/* the found group */
+	group_info *ginfo; /* the found group */
 	if (root == NULL || name == root->name)
 		return root;
 
@@ -178,9 +176,9 @@ find_group_info(const std::string& name, group_info *root)
  *
  */
 group_info *
-find_alloc_ginfo(const std::string& name, group_info *root)
+find_alloc_ginfo(const std::string &name, group_info *root)
 {
-	group_info *ginfo;		/* the found group or allocated group */
+	group_info *ginfo; /* the found group or allocated group */
 
 	if (root == NULL)
 		return NULL;
@@ -217,19 +215,19 @@ find_alloc_ginfo(const std::string& name, group_info *root)
 int
 parse_group(const char *fname, group_info *root)
 {
-	group_info *ginfo;		/* ptr to parent group */
-	group_info *new_ginfo;	/* used to add each new group */
-	char buf[256];		/* used to read each line from the file */
-	char *nametok;		/* strtok: name of new group */
-	char *grouptok;		/* strtok: parent group name */
-	char *cgrouptok;		/* strtok: resgrp of the children of newgrp */
-	char *sharestok;		/* strtok: the amount of shares for newgrp */
-	FILE *fp;			/* file pointer to the resource group file */
-	char error = 0;		/* boolean: is there an error ? */
-	int shares;			/* number of shares for the new group */
-	int cgroup;			/* resource group of the children of the grp */
-	char *endp;			/* used for strtol() */
-	int linenum = 0;		/* current line number in the file */
+	group_info *ginfo;     /* ptr to parent group */
+	group_info *new_ginfo; /* used to add each new group */
+	char buf[256];	       /* used to read each line from the file */
+	char *nametok;	       /* strtok: name of new group */
+	char *grouptok;	       /* strtok: parent group name */
+	char *cgrouptok;       /* strtok: resgrp of the children of newgrp */
+	char *sharestok;       /* strtok: the amount of shares for newgrp */
+	FILE *fp;	       /* file pointer to the resource group file */
+	char error = 0;	       /* boolean: is there an error ? */
+	int shares;	       /* number of shares for the new group */
+	int cgroup;	       /* resource group of the children of the grp */
+	char *endp;	       /* used for strtol() */
+	int linenum = 0;       /* current line number in the file */
 
 	if ((fp = fopen(fname, "r")) == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer), "Error opening file %s", fname);
@@ -239,27 +237,25 @@ parse_group(const char *fname, group_info *root)
 	}
 
 	while (fgets(buf, 256, fp) != NULL) {
-		if (buf[strlen(buf)-1] == '\n')
-			buf[strlen(buf)-1] = '\0';
+		if (buf[strlen(buf) - 1] == '\n')
+			buf[strlen(buf) - 1] = '\0';
 		linenum++;
 		if (!skip_line(buf)) {
 			nametok = strtok(buf, " \t");
 			cgrouptok = strtok(NULL, " \t");
 			grouptok = strtok(NULL, " \t");
-			sharestok= strtok(NULL, " \t");
+			sharestok = strtok(NULL, " \t");
 
 			if (nametok == NULL || cgrouptok == NULL ||
-				grouptok == NULL || sharestok == NULL) {
+			    grouptok == NULL || sharestok == NULL) {
 				error = 1;
-			}
-			else if (find_group_info(nametok, root) != NULL) {
+			} else if (find_group_info(nametok, root) != NULL) {
 				error = 1;
 				sprintf(log_buffer, "entity %s is not unique", nametok);
 				fprintf(stderr, "%s\n", log_buffer);
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-					"fairshare", log_buffer);
-			}
-			else {
+					  "fairshare", log_buffer);
+			} else {
 				if (!strcmp(grouptok, "root"))
 					ginfo = find_group_info(FAIRSHARE_ROOT_NAME, root);
 				else
@@ -276,19 +272,16 @@ parse_group(const char *fname, group_info *root)
 							new_ginfo->cresgroup = cgroup;
 							new_ginfo->shares = shares;
 							add_child(new_ginfo, ginfo);
-						}
-						else
+						} else
 							error = 1;
-					}
-					else
+					} else
 						error = 1;
-				}
-				else  {
+				} else {
 					error = 1;
 					sprintf(log_buffer, "Parent ginfo of %s doesnt exist.", nametok);
 					fprintf(stderr, "%s\n", log_buffer);
 					log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-						"fairshare", log_buffer);
+						  "fairshare", log_buffer);
 				}
 			}
 
@@ -296,7 +289,7 @@ parse_group(const char *fname, group_info *root)
 				sprintf(log_buffer, "resgroup: error on line %d.", linenum);
 				fprintf(stderr, "%s\n", log_buffer);
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-					"fairshare", log_buffer);
+					  "fairshare", log_buffer);
 			}
 
 			error = 0;
@@ -321,13 +314,12 @@ preload_tree()
 {
 	fairshare_head *head;
 	group_info *root;
-	group_info *unknown;		/* pointer to the "unknown" group */
+	group_info *unknown; /* pointer to the "unknown" group */
 
 	if ((head = new fairshare_head()) == NULL)
 		return 0;
 
 	root = new group_info(FAIRSHARE_ROOT_NAME);
-
 
 	head->root = root;
 
@@ -362,8 +354,8 @@ preload_tree()
 int
 count_shares(group_info *grp)
 {
-	int shares = 0;		/* accumulator to count the shares */
-	group_info *cur_grp;		/* the current group in a sibling chain */
+	int shares = 0;	     /* accumulator to count the shares */
+	group_info *cur_grp; /* the current group in a sibling chain */
 
 	cur_grp = grp;
 
@@ -390,7 +382,7 @@ count_shares(group_info *grp)
 int
 calc_fair_share_perc(group_info *root, int shares)
 {
-	int cur_shares;		/* total number of shares in the resgrp */
+	int cur_shares; /* total number of shares in the resgrp */
 
 	if (root == NULL)
 		return 0;
@@ -403,10 +395,9 @@ calc_fair_share_perc(group_info *root, int shares)
 	if (cur_shares * root->parent->tree_percentage == 0) {
 		root->group_percentage = 0;
 		root->tree_percentage = 0;
-	}
-	else {
+	} else {
 		root->group_percentage = (float) root->shares / cur_shares;
-		root->tree_percentage = root->group_percentage  * root->parent->tree_percentage;
+		root->tree_percentage = root->group_percentage * root->parent->tree_percentage;
 	}
 
 	calc_fair_share_perc(root->sibling, cur_shares);
@@ -438,13 +429,12 @@ update_usage_on_run(resource_resv *resresv)
 		return;
 
 	u = formula_evaluate(conf.fairshare_res.c_str(), resresv, resresv->resreq);
-	if (resresv->job->ginfo !=NULL) {
-		for (auto& g : resresv->job->ginfo->gpath)
+	if (resresv->job->ginfo != NULL) {
+		for (auto &g : resresv->job->ginfo->gpath)
 			g->temp_usage += u;
-	}
-	else
+	} else
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, resresv->name,
-			"Job doesn't have a group_info ptr set, usage not updated.");
+			  "Job doesn't have a group_info ptr set, usage not updated.");
 }
 
 /**
@@ -488,7 +478,7 @@ decay_fairshare_tree(group_info *root)
  *
  */
 int
-compare_path(std::vector<group_info *>& gp1, std::vector<group_info *>& gp2)
+compare_path(std::vector<group_info *> &gp1, std::vector<group_info *> &gp2)
 {
 	double curval1, curval2;
 	int rc = 0;
@@ -498,7 +488,7 @@ compare_path(std::vector<group_info *>& gp1, std::vector<group_info *>& gp2)
 		len = gp2.size();
 	else
 		len = gp1.size();
-	
+
 	for (int i = 0; rc == 0 && i < len; i++) {
 		if (gp1[i] != gp2[i]) {
 			if (gp1[i]->tree_percentage <= 0 && gp2[i]->tree_percentage > 0)
@@ -535,7 +525,7 @@ compare_path(std::vector<group_info *>& gp1, std::vector<group_info *>& gp2)
 int
 write_usage(const char *filename, fairshare_head *fhead)
 {
-	FILE *fp;		/* file pointer to usage file */
+	FILE *fp; /* file pointer to usage file */
 	struct group_node_header head;
 
 	if (fhead == NULL)
@@ -584,7 +574,7 @@ write_usage(const char *filename, fairshare_head *fhead)
 void
 rec_write_usage(group_info *root, FILE *fp)
 {
-	struct group_node_usage_v2 grp;	/* used to write out usage info */
+	struct group_node_usage_v2 grp; /* used to write out usage info */
 
 	if (root == NULL)
 		return;
@@ -620,9 +610,9 @@ rec_write_usage(group_info *root, FILE *fp)
 void
 read_usage(const char *filename, int flags, fairshare_head *fhead)
 {
-	FILE *fp;				/* file pointer to usage file */
-	struct group_node_header head;		/* usage file header */
-	time_t last;				/* read the last sync from the file */
+	FILE *fp;		       /* file pointer to usage file */
+	struct group_node_header head; /* usage file header */
+	time_t last;		       /* read the last sync from the file */
 
 	if (fhead == NULL || fhead->root == NULL)
 		return;
@@ -697,7 +687,7 @@ read_usage_v1(FILE *fp, group_info *root)
 				ginfo->temp_usage = grp.usage;
 				if (ginfo->child == NULL) {
 					/* add usage down the path from the root to our parent */
-					for (auto& g : ginfo->gpath) {
+					for (auto &g : ginfo->gpath) {
 						if (g == ginfo)
 							break;
 						g->usage += grp.usage;
@@ -705,8 +695,7 @@ read_usage_v1(FILE *fp, group_info *root)
 					}
 				}
 			}
-		}
-		else
+		} else
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING,
 				  "fairshare usage", "Invalid entity");
 	}
@@ -751,7 +740,7 @@ read_usage_v2(FILE *fp, int flags, group_info *root)
 				ginfo->temp_usage = grp.usage;
 				if (ginfo->child == NULL) {
 					/* add usage down the path from the root to our parent */
-					for (auto& g : ginfo->gpath) {
+					for (auto &g : ginfo->gpath) {
 						if (g == ginfo)
 							break;
 						g->usage += grp.usage;
@@ -759,8 +748,7 @@ read_usage_v2(FILE *fp, int flags, group_info *root)
 					}
 				}
 			}
-		}
-		else
+		} else
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING,
 				  "fairshare usage", "Invalid entity");
 	}
@@ -777,7 +765,8 @@ read_usage_v2(FILE *fp, int flags, group_info *root)
  * @return path
  *
  */
-std::vector<group_info *> create_group_path(group_info *ginfo)
+std::vector<group_info *>
+create_group_path(group_info *ginfo)
 {
 	struct group_info *cur;
 	std::vector<group_info *> gpath;
@@ -833,7 +822,7 @@ group_info::group_info(const std::string &gname) : name(gname)
 	child = NULL;
 }
 
-group_info::group_info(group_info& oginfo) : name(oginfo.name)
+group_info::group_info(group_info &oginfo) : name(oginfo.name)
 {
 	resgroup = oginfo.resgroup;
 	cresgroup = oginfo.cresgroup;
@@ -848,7 +837,8 @@ group_info::group_info(group_info& oginfo) : name(oginfo.name)
 	parent = NULL;
 }
 
-group_info& group_info::operator=(const group_info& oginfo)
+group_info &
+group_info::operator=(const group_info &oginfo)
 {
 	resgroup = oginfo.resgroup;
 	cresgroup = oginfo.cresgroup;
@@ -887,7 +877,6 @@ dup_fairshare_tree(group_info *root, group_info *nparent)
 		return NULL;
 
 	add_child(nroot, nparent);
-
 
 	nroot->sibling = dup_fairshare_tree(root->sibling, nparent);
 	nroot->child = dup_fairshare_tree(root->child, nroot);
@@ -932,7 +921,7 @@ fairshare_head::fairshare_head()
  * @return	duplicated fairshare_head
  * @retval	NULL	: fail 
  */
-fairshare_head::fairshare_head(fairshare_head& ofhead)
+fairshare_head::fairshare_head(fairshare_head &ofhead)
 {
 	last_decay = ofhead.last_decay;
 	root = dup_fairshare_tree(ofhead.root, NULL);
@@ -941,7 +930,8 @@ fairshare_head::fairshare_head(fairshare_head& ofhead)
 /**
  * @brief copy assignment operator for fairshare_head
  */
-fairshare_head& fairshare_head::operator=(fairshare_head& ofhead)
+fairshare_head &
+fairshare_head::operator=(fairshare_head &ofhead)
 {
 	free_fairshare_tree(root);
 	last_decay = ofhead.last_decay;
@@ -1028,7 +1018,6 @@ calc_usage_factor(fairshare_head *tree)
 		ginfo->usage_factor = ginfo->usage / root->usage;
 		calc_usage_factor_rec(root, ginfo->child);
 	}
-
 }
 
 /**
@@ -1037,8 +1026,10 @@ calc_usage_factor(fairshare_head *tree)
  *	fairshare usage file will retain their original usage.
  * @param node - the fairshare node
  */
-void reset_usage(group_info *node) {
-	if(node == NULL)
+void
+reset_usage(group_info *node)
+{
+	if (node == NULL)
 		return;
 	reset_usage(node->sibling);
 	reset_usage(node->child);

@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file    dedtime.c
  *
@@ -68,7 +67,6 @@
 #include "dedtime.h"
 #include "globals.h"
 
-
 /**
  * @brief
  *		parse_ded_file - read in dedicated times from file
@@ -87,11 +85,11 @@
 int
 parse_ded_file(const char *filename)
 {
-	FILE *fp;			/* file pointer for the dedtime file */
-	char line[256];		/* a buffer for a line from the file */
-	int error = 0;		/* boolean: is there an error? */
-	struct tm tm_from, tm_to;	/* tm structs used to convert to time_t */
-	time_t from, to;		/* time_t values for dedtime start - end */
+	FILE *fp;		  /* file pointer for the dedtime file */
+	char line[256];		  /* a buffer for a line from the file */
+	int error = 0;		  /* boolean: is there an error? */
+	struct tm tm_from, tm_to; /* tm structs used to convert to time_t */
+	time_t from, to;	  /* time_t values for dedtime start - end */
 
 	if ((fp = fopen(filename, "r")) == NULL) {
 		sprintf(log_buffer, "Error opening file %s", filename);
@@ -140,11 +138,10 @@ parse_ded_file(const char *filename)
 					conf.ded_time.emplace_back(from, to);
 
 				if (from > to) {
-					snprintf(log_buffer, LOG_BUF_SIZE-1, "From date is greater than To date in the line - '%s'.", line);
+					snprintf(log_buffer, LOG_BUF_SIZE - 1, "From date is greater than To date in the line - '%s'.", line);
 					log_err(-1, "Dedicated Time Conflict", log_buffer);
 					error = 1;
 				}
-
 			}
 			if (error) {
 				printf("Error: %s\n", line);
@@ -172,7 +169,7 @@ parse_ded_file(const char *filename)
  *
  */
 bool
-cmp_ded_time(const timegap& t1, const timegap& t2)
+cmp_ded_time(const timegap &t1, const timegap &t2)
 {
 	if (t1.from == 0 && t2.from != 0)
 		return 0;
@@ -207,7 +204,6 @@ is_ded_time(time_t t)
 		return false;
 }
 
-
 /**
  * @brief
  * 		find the next dedtime after time t
@@ -216,9 +212,10 @@ is_ded_time(time_t t)
  *
  * @return	the next dedtime or empty timegap if no dedtime
  */
-struct timegap find_next_dedtime(time_t t)
+struct timegap
+find_next_dedtime(time_t t)
 {
-	for (const auto& dt : conf.ded_time)
+	for (const auto &dt : conf.ded_time)
 		if (dt.to >= t)
 			return dt;
 

@@ -53,7 +53,6 @@
 #include "libpbs.h"
 #include "libutil.h"
 
-
 /**
  * @brief
  *	Print the error message returned by the server, if supplied. Otherwise,
@@ -92,4 +91,3 @@ prt_job_err(char *cmd, int connect, char *id)
 		fprintf(stderr, "%s: Server returned error %d for job %s\n", cmd, pbs_errno, id);
 	}
 }
-

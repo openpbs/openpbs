@@ -37,11 +37,10 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 #ifndef _PBS_INTERNAL_H
-#define	_PBS_INTERNAL_H
+#define _PBS_INTERNAL_H
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -61,139 +60,137 @@ extern "C" {
 
 /* node-attribute values (state,ntype) */
 
-#define	ND_free			"free"
-#define ND_offline		"offline"
-#define ND_offline_by_mom	"offline_by_mom"
-#define ND_down			"down"
-#define ND_Stale		"Stale"
-#define ND_jobbusy		"job-busy"
-#define ND_job_exclusive	"job-exclusive"
-#define ND_resv_exclusive	"resv-exclusive"
-#define ND_job_sharing		"job-sharing"
-#define ND_busy			"busy"
-#define ND_state_unknown	"state-unknown"
-#define ND_prov			"provisioning"
-#define ND_wait_prov		"wait-provisioning"
-#define ND_maintenance		"maintenance"
-#define ND_pbs			"PBS"
-#define ND_Default_Shared	"default_shared"
-#define ND_Default_Excl		"default_excl"
-#define ND_Default_Exclhost	"default_exclhost"
-#define ND_Ignore_Excl		"ignore_excl"
-#define ND_Force_Excl		"force_excl"
-#define ND_Force_Exclhost	"force_exclhost"
-#define ND_Initializing		"initializing"
-#define ND_unresolvable		"unresolvable"
-#define ND_sleep			"sleep"
+#define ND_free "free"
+#define ND_offline "offline"
+#define ND_offline_by_mom "offline_by_mom"
+#define ND_down "down"
+#define ND_Stale "Stale"
+#define ND_jobbusy "job-busy"
+#define ND_job_exclusive "job-exclusive"
+#define ND_resv_exclusive "resv-exclusive"
+#define ND_job_sharing "job-sharing"
+#define ND_busy "busy"
+#define ND_state_unknown "state-unknown"
+#define ND_prov "provisioning"
+#define ND_wait_prov "wait-provisioning"
+#define ND_maintenance "maintenance"
+#define ND_pbs "PBS"
+#define ND_Default_Shared "default_shared"
+#define ND_Default_Excl "default_excl"
+#define ND_Default_Exclhost "default_exclhost"
+#define ND_Ignore_Excl "ignore_excl"
+#define ND_Force_Excl "force_excl"
+#define ND_Force_Exclhost "force_exclhost"
+#define ND_Initializing "initializing"
+#define ND_unresolvable "unresolvable"
+#define ND_sleep "sleep"
 
 /* Defines for type of Attribute based on data type 			*/
 /* currently limited to 4 bits (max number 15)				*/
 
-#define ATR_TYPE_NONE		0	/* Not to be used */
-#define ATR_TYPE_LONG		1	/* Long integer, also Boolean */
-#define ATR_TYPE_CHAR		2	/* single character */
-#define ATR_TYPE_STR		3	/* string, null terminated */
-#define ATR_TYPE_ARST		4	/* Array of strings (char **) */
-#define ATR_TYPE_SIZE		5	/* size (integer + suffix) */
-#define ATR_TYPE_RESC		6	/* list type: resources only */
-#define ATR_TYPE_LIST		7	/* list type:  dependencies, unkn, etc */
-#define ATR_TYPE_ACL		8	/* Access Control Lists */
-#define ATR_TYPE_LL		9	/* Long (64 bit) integer */
-#define ATR_TYPE_SHORT	10	/* short integer    */
-#define ATR_TYPE_BOOL		11	/* boolean	    */
-#define ATR_TYPE_JINFOP	13	/* struct jobinfo*  */
-#define ATR_TYPE_FLOAT	14	/* Float  */
-#define ATR_TYPE_ENTITY	15	/* FGC Entity Limit */
+#define ATR_TYPE_NONE 0	   /* Not to be used */
+#define ATR_TYPE_LONG 1	   /* Long integer, also Boolean */
+#define ATR_TYPE_CHAR 2	   /* single character */
+#define ATR_TYPE_STR 3	   /* string, null terminated */
+#define ATR_TYPE_ARST 4	   /* Array of strings (char **) */
+#define ATR_TYPE_SIZE 5	   /* size (integer + suffix) */
+#define ATR_TYPE_RESC 6	   /* list type: resources only */
+#define ATR_TYPE_LIST 7	   /* list type:  dependencies, unkn, etc */
+#define ATR_TYPE_ACL 8	   /* Access Control Lists */
+#define ATR_TYPE_LL 9	   /* Long (64 bit) integer */
+#define ATR_TYPE_SHORT 10  /* short integer    */
+#define ATR_TYPE_BOOL 11   /* boolean	    */
+#define ATR_TYPE_JINFOP 13 /* struct jobinfo*  */
+#define ATR_TYPE_FLOAT 14  /* Float  */
+#define ATR_TYPE_ENTITY 15 /* FGC Entity Limit */
 /* WARNING: adding anther WILL overflow the type field in the attribut_def */
 
 /* Defines for  Flag field in attribute_def */
 
-#define ATR_DFLAG_USRD   0x01	/* User client can read (status) attribute */
-#define ATR_DFLAG_USWR   0x02	/* User client can write (set)   attribute */
-#define ATR_DFLAG_OPRD   0x04	/* Operator client can read   attribute */
-#define ATR_DFLAG_OPWR   0x08	/* Operator client can write  attribute */
-#define ATR_DFLAG_MGRD   0x10	/* Manager client can read  attribute */
-#define ATR_DFLAG_MGWR   0x20	/* Manager client can write attribute */
-#define ATR_DFLAG_OTHRD	 0x40	/* Reserved */
-#define ATR_DFLAG_Creat	 0x80	/* Can be set on create only */
-#define ATR_DFLAG_SvRD	 0x100	/* job attribute is sent to server on move */
-#define ATR_DFLAG_SvWR	 0x200	/* job attribute is settable by server/Sch */
-#define ATR_DFLAG_MOM    0x400	/* attr/resc sent to MOM "iff" set	   */
-#define ATR_DFLAG_RDACC  0x515	/* Read access mask  */
-#define ATR_DFLAG_WRACC  0x6AA	/* Write access mask */
-#define ATR_DFLAG_ACCESS 0x7ff	/* Mask access flags */
+#define ATR_DFLAG_USRD 0x01    /* User client can read (status) attribute */
+#define ATR_DFLAG_USWR 0x02    /* User client can write (set)   attribute */
+#define ATR_DFLAG_OPRD 0x04    /* Operator client can read   attribute */
+#define ATR_DFLAG_OPWR 0x08    /* Operator client can write  attribute */
+#define ATR_DFLAG_MGRD 0x10    /* Manager client can read  attribute */
+#define ATR_DFLAG_MGWR 0x20    /* Manager client can write attribute */
+#define ATR_DFLAG_OTHRD 0x40   /* Reserved */
+#define ATR_DFLAG_Creat 0x80   /* Can be set on create only */
+#define ATR_DFLAG_SvRD 0x100   /* job attribute is sent to server on move */
+#define ATR_DFLAG_SvWR 0x200   /* job attribute is settable by server/Sch */
+#define ATR_DFLAG_MOM 0x400    /* attr/resc sent to MOM "iff" set	   */
+#define ATR_DFLAG_RDACC 0x515  /* Read access mask  */
+#define ATR_DFLAG_WRACC 0x6AA  /* Write access mask */
+#define ATR_DFLAG_ACCESS 0x7ff /* Mask access flags */
 
-#define ATR_DFLAG_ALTRUN 0x0800	/* (job) attr/resc is alterable in Run state  */
-#define ATR_DFLAG_NOSAVM 0x1000	/* object not saved on attribute modify       */
-#define ATR_DFLAG_SELEQ  0x2000	/* attribute is only selectable eq/ne	      */
-#define ATR_DFLAG_RASSN  0x4000 /* resc in server/queue resources_assigned    */
-#define ATR_DFLAG_ANASSN 0x8000  /* resource in all node resources_assigned  */
+#define ATR_DFLAG_ALTRUN 0x0800	 /* (job) attr/resc is alterable in Run state  */
+#define ATR_DFLAG_NOSAVM 0x1000	 /* object not saved on attribute modify       */
+#define ATR_DFLAG_SELEQ 0x2000	 /* attribute is only selectable eq/ne	      */
+#define ATR_DFLAG_RASSN 0x4000	 /* resc in server/queue resources_assigned    */
+#define ATR_DFLAG_ANASSN 0x8000	 /* resource in all node resources_assigned  */
 #define ATR_DFLAG_FNASSN 0x10000 /* resource in 1st node resources_assigned  */
 #define ATR_DFLAG_CVTSLT 0x20000 /* used in or converted to select directive */
 #define ATR_DFLAG_SCGALT 0x40000 /* if altered during sched cycle dont run job*/
-#define ATR_DFLAG_HIDDEN  0x80000 /* if set, keep attribute hidden to client */
+#define ATR_DFLAG_HIDDEN 0x80000 /* if set, keep attribute hidden to client */
 
-#define SHUT_MASK	0xf
-#define SHUT_WHO_MASK   0x1f0
-#define SHUT_SIG	8
-#define SHUT_WHO_SCHED  0x10	/* also shutdown Scheduler	  */
-#define SHUT_WHO_MOM    0x20	/* also shutdown Moms		  */
-#define SHUT_WHO_SECDRY 0x40	/* also shutdown Secondary Server */
-#define SHUT_WHO_IDLESECDRY 0x80  /* idle the Secondary Server    */
-#define SHUT_WHO_SECDONLY   0x100 /* shut down the Secondary only */
+#define SHUT_MASK 0xf
+#define SHUT_WHO_MASK 0x1f0
+#define SHUT_SIG 8
+#define SHUT_WHO_SCHED 0x10	 /* also shutdown Scheduler	  */
+#define SHUT_WHO_MOM 0x20	 /* also shutdown Moms		  */
+#define SHUT_WHO_SECDRY 0x40	 /* also shutdown Secondary Server */
+#define SHUT_WHO_IDLESECDRY 0x80 /* idle the Secondary Server    */
+#define SHUT_WHO_SECDONLY 0x100	 /* shut down the Secondary only */
 
-
-#define SIG_RESUME	"resume"
-#define SIG_SUSPEND	"suspend"
-#define SIG_TermJob	"TermJob"
-#define SIG_RERUN	"Rerun"
+#define SIG_RESUME "resume"
+#define SIG_SUSPEND "suspend"
+#define SIG_TermJob "TermJob"
+#define SIG_RERUN "Rerun"
 #define SIG_ADMIN_SUSPEND "admin-suspend"
 #define SIG_ADMIN_RESUME "admin-resume"
 
+#define PLACE_Group "group"
+#define PLACE_Excl "excl"
+#define PLACE_ExclHost "exclhost"
+#define PLACE_Shared "shared"
+#define PLACE_Free "free"
+#define PLACE_Pack "pack"
+#define PLACE_Scatter "scatter"
+#define PLACE_VScatter "vscatter"
 
-#define PLACE_Group	"group"
-#define PLACE_Excl	"excl"
-#define PLACE_ExclHost	"exclhost"
-#define PLACE_Shared	"shared"
-#define PLACE_Free	"free"
-#define PLACE_Pack	"pack"
-#define PLACE_Scatter	"scatter"
-#define PLACE_VScatter	"vscatter"
-
-
-#define ATR_TRUE	"True"
-#define ATR_FALSE	"False"
+#define ATR_TRUE "True"
+#define ATR_FALSE "False"
 
 #ifdef WIN32
-#define	ESC_CHAR	'^'	/* commonly used in windows cmd shell */
+#define ESC_CHAR '^' /* commonly used in windows cmd shell */
 #else
-#define	ESC_CHAR	'\\'
+#define ESC_CHAR '\\'
 #endif
 
 /* set of characters that are not allowed in a queue name */
 #define INVALID_QUEUE_NAME_CHARS "`~!$%^&*()+=<>?;'\"|"
 
 /*constant related to sum of string lengths for above strings*/
-#define	MAX_ENCODE_BFR		100
+#define MAX_ENCODE_BFR 100
 
 /* Default value of Node fail requeue (ATTR_nodefailrq)*/
-#define PBS_NODE_FAIL_REQUEUE_DEFAULT	310
+#define PBS_NODE_FAIL_REQUEUE_DEFAULT 310
 
 /* Default value of preempt_queue_prio */
-#define PBS_PREEMPT_QUEUE_PRIO_DEFAULT	150
+#define PBS_PREEMPT_QUEUE_PRIO_DEFAULT 150
 
 /* Default value of server_dyn_res_alarm */
-#define PBS_SERVER_DYN_RES_ALARM_DEFAULT	30
+#define PBS_SERVER_DYN_RES_ALARM_DEFAULT 30
 
 /* Default value of preempt_prio */
-#define PBS_PREEMPT_PRIO_DEFAULT	"express_queue, normal_jobs"
+#define PBS_PREEMPT_PRIO_DEFAULT "express_queue, normal_jobs"
 
 /* Default value of preempt_order */
-#define PBS_PREEMPT_ORDER_DEFAULT	"SCR"
+#define PBS_PREEMPT_ORDER_DEFAULT "SCR"
 
 /* Default value of preempt_sort */
-#define PBS_PREEMPT_SORT_DEFAULT	"min_time_since_start"
+#define PBS_PREEMPT_SORT_DEFAULT "min_time_since_start"
 
+// clang-format off
 struct pbs_config
 {
 	unsigned loaded:1;			/* has the conf file been loaded? */
@@ -254,6 +251,8 @@ struct pbs_config
 };
 
 extern struct pbs_config pbs_conf;
+
+// clang-format on
 
 /*
  * NOTE: PBS_CONF_PATH is no longer defined here. It has moved into

@@ -56,7 +56,7 @@ if [ "x${ptl_prefix_lib}" != "x" ]; then
 	prefix=$( dirname ${ptl_prefix_lib} )
 
 	export PATH=${prefix}/bin/:${PATH}
-	export PYTHONPATH=${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH
+	export PYTHONPATH=${prefix}/lib/${python_dir}/site-packages${PYTHONPATH:+:$PYTHONPATH}
 	unset python_dir
 	unset prefix
 	unset ptl_prefix_lib
@@ -70,9 +70,9 @@ else
 			PTL_PREFIX=$( dirname ${__PBS_EXEC} )/ptl
 			python_dir=$( /bin/ls -1 ${PTL_PREFIX}/lib )/site-packages
 			[ -d "${PTL_PREFIX}/bin" ] && export PATH="${PATH}:${PTL_PREFIX}/bin"
-			[ -d "${PTL_PREFIX}/lib/${python_dir}" ] && export PYTHONPATH="${PYTHONPATH}:${PTL_PREFIX}/lib/${python_dir}"
-			[ -d "${__PBS_EXEC}/lib/python/altair" ] && export PYTHONPATH="${PYTHONPATH}:${__PBS_EXEC}/lib/python/altair"
-			[ -d "${__PBS_EXEC}/lib64/python/altair" ] && export PYTHONPATH="${PYTHONPATH}:${__PBS_EXEC}/lib64/python/altair"
+			[ -d "${PTL_PREFIX}/lib/${python_dir}" ] && export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}${PTL_PREFIX}/lib/${python_dir}"
+			[ -d "${__PBS_EXEC}/lib/python/altair" ] && export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}${__PBS_EXEC}/lib/python/altair"
+			[ -d "${__PBS_EXEC}/lib64/python/altair" ] && export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}${__PBS_EXEC}/lib64/python/altair"
 		fi
 		unset __PBS_EXEC
 		unset PTL_PREFIX

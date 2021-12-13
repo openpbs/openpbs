@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /*
  * The purpose of this file is to share information between different parts
  * of PBS.
@@ -55,14 +54,14 @@ extern "C" {
 
 /* Formula special case constants */
 
-#define FORMULA_FSPERC 		"fairshare_perc"
-#define FORMULA_FSPERC_DEP	"fair_share_perc"
-#define FORMULA_TREE_USAGE	"fairshare_tree_usage"
-#define FORMULA_FSFACTOR	"fairshare_factor"
-#define FORMULA_QUEUE_PRIO 	"queue_priority"
-#define FORMULA_JOB_PRIO 	"job_priority"
-#define FORMULA_ELIGIBLE_TIME 	"eligible_time"
-#define FORMULA_ACCRUE_TYPE 	"accrue_type"
+#define FORMULA_FSPERC "fairshare_perc"
+#define FORMULA_FSPERC_DEP "fair_share_perc"
+#define FORMULA_TREE_USAGE "fairshare_tree_usage"
+#define FORMULA_FSFACTOR "fairshare_factor"
+#define FORMULA_QUEUE_PRIO "queue_priority"
+#define FORMULA_JOB_PRIO "job_priority"
+#define FORMULA_ELIGIBLE_TIME "eligible_time"
+#define FORMULA_ACCRUE_TYPE "accrue_type"
 
 /* Well known file to store job sorting formula */
 #define FORMULA_FILENAME "sched_formula"
@@ -74,22 +73,22 @@ extern "C" {
 /* Constants for qstat's comment field */
 
 /* comment buffer can hold max 255 chars */
-#define COMMENT_BUF_SIZE	256
+#define COMMENT_BUF_SIZE 256
 /* buffer takes only 255 chars, minus 34 chars for timespec, hence the remaining.
  * sacrificing 3 chars for ...
  */
-#define MAXCOMMENTSCOPE COMMENT_BUF_SIZE-1-34
-#define MAXCOMMENTLEN  	COMMENT_BUF_SIZE-1-37
+#define MAXCOMMENTSCOPE COMMENT_BUF_SIZE - 1 - 34
+#define MAXCOMMENTLEN COMMENT_BUF_SIZE - 1 - 37
 /* comment line has 3 spaces each at beginning and at end. hence, for qstat -s
  * 74 chars can be displayed and for qstat -sw 114 chars can be displayed.
  */
 #define COMMENTLENSCOPE_SHORT 74
-#define COMMENTLENSCOPE_WIDE  114
+#define COMMENTLENSCOPE_WIDE 114
 /* if comment string is longer than length of the scope then ... is appended.
  * this reduces the actual display length by 3
  */
 #define COMMENTLEN_SHORT 71
-#define COMMENTLEN_WIDE  111
+#define COMMENTLEN_WIDE 111
 
 /* number of digits to print after the decimal point for floats */
 #define FLOAT_NUM_DIGITS 4
@@ -104,7 +103,7 @@ extern "C" {
 #define PBS_DFLT_SCHED_NAME "default"
 
 /* scheduler-attribute values (state) */
-#define SC_DOWN	"down"
+#define SC_DOWN "down"
 #define SC_IDLE "idle"
 #define SC_SCHEDULING "scheduling"
 
@@ -115,12 +114,11 @@ extern "C" {
 #define RUN_WAIT_RUNJOB_HOOK "runjob_hook"
 #define RUN_WAIT_EXECJOB_HOOK "execjob_hook"
 
-struct preempt_ordering
-{
-	unsigned high_range;            /* high end of the walltime range */
-	unsigned low_range;             /* low end of the walltime range */
+struct preempt_ordering {
+	unsigned high_range; /* high end of the walltime range */
+	unsigned low_range;  /* low end of the walltime range */
 
-	enum preempt_method order[PREEMPT_METHOD_HIGH];/* the order to preempt jobs */
+	enum preempt_method order[PREEMPT_METHOD_HIGH]; /* the order to preempt jobs */
 };
 
 #ifdef __cplusplus

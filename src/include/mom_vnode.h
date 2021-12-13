@@ -37,20 +37,18 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-#include	"job.h"
-#include	"server_limits.h"
-#include	"attribute.h"
-#include	"resource.h"
-#include	"pbs_nodes.h"
-
+#include "job.h"
+#include "server_limits.h"
+#include "attribute.h"
+#include "resource.h"
+#include "pbs_nodes.h"
 
 /*
  *	A mom that manages its own lists of CPUs needs to provide a function
  *	that frees these CPUs when the job terminates.  If non-NULL, this
  *	function pointer will be called from mom_deljob().
  */
-extern void	(*free_job_CPUs)(job *);
+extern void (*free_job_CPUs)(job *);
 
 /*
  *	These are interfaces to functions that manipulate CPU states for moms
@@ -62,7 +60,7 @@ extern void	(*free_job_CPUs)(job *);
  *	represent the CPUs (resp. memory boards) discovered while parsing
  *	vnode definitions files.
  */
-extern void	cpuindex_free(mom_vninfo_t *, unsigned int);
-extern void	cpuindex_inuse(mom_vninfo_t *, unsigned int, job *);
-extern void	cpunum_outofservice(unsigned int);
-extern void	cpu_raresync(void);
+extern void cpuindex_free(mom_vninfo_t *, unsigned int);
+extern void cpuindex_inuse(mom_vninfo_t *, unsigned int, job *);
+extern void cpunum_outofservice(unsigned int);
+extern void cpu_raresync(void);

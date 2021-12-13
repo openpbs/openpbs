@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_PREV_JOB_INFO_H
-#define	_PREV_JOB_INFO_H
+#ifndef _PREV_JOB_INFO_H
+#define _PREV_JOB_INFO_H
 
 #include "data_types.h"
 
@@ -48,4 +48,4 @@
  */
 void create_prev_job_info(resource_resv **jobs);
 
-#endif	/* _PREV_JOB_INFO_H */
+#endif /* _PREV_JOB_INFO_H */

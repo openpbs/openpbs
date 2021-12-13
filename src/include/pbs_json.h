@@ -37,9 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_PBS_JSON_H
-#define	_PBS_JSON_H
-#ifdef	__cplusplus
+#ifndef _PBS_JSON_H
+#define _PBS_JSON_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -57,8 +57,8 @@ typedef enum {
 
 typedef enum {
 	JSON_NOVALUE,
-	JSON_ESCAPE,		/* the value may be partially escaped */
-	JSON_FULLESCAPE,	/* escape all the necessary chars */
+	JSON_ESCAPE,	 /* the value may be partially escaped */
+	JSON_FULLESCAPE, /* escape all the necessary chars */
 } JsonEscapeType;
 
 typedef enum {
@@ -87,7 +87,7 @@ char *strdup_escape(JsonEscapeType esc_type, const char *str);
 int generate_json(FILE *stream);
 void free_json_node_list();
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _PBS_JSON_H */
+#endif /* _PBS_JSON_H */

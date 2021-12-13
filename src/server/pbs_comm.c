@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  * @file	pbs_comm.c
  *
@@ -77,17 +76,17 @@
 #include "pbs_version.h"
 #include "auth.h"
 
-char daemonname[PBS_MAXHOSTNAME+8];
-extern char	*msg_corelimit;
-extern char	*msg_init_chdir;
+char daemonname[PBS_MAXHOSTNAME + 8];
+extern char *msg_corelimit;
+extern char *msg_init_chdir;
 int lockfds;
 int already_forked = 0;
 #define PBS_COMM_LOGDIR "comm_logs"
 
-char	        server_host[PBS_MAXHOSTNAME+1];   /* host_name of server */
-char	        primary_host[PBS_MAXHOSTNAME+1];   /* host_name of primary */
+char server_host[PBS_MAXHOSTNAME + 1];	/* host_name of server */
+char primary_host[PBS_MAXHOSTNAME + 1]; /* host_name of primary */
 
-static int stalone = 0;	/* is program running not as a service ? */
+static int stalone = 0; /* is program running not as a service ? */
 static int get_out = 0;
 static int hupped = 0;
 
@@ -95,11 +94,11 @@ static int hupped = 0;
  * Server failover role
  */
 enum failover_state {
-	FAILOVER_NONE,		/* Only Server, no failover */
-	FAILOVER_PRIMARY,       /* Primary in failover configuration */
-	FAILOVER_SECONDARY,	/* Secondary in failover */
-	FAILOVER_CONFIG_ERROR,	/* error in configuration */
-	FAILOVER_NEITHER,  /* failover configured, but I am neither primary/secondary */
+	FAILOVER_NONE,	       /* Only Server, no failover */
+	FAILOVER_PRIMARY,      /* Primary in failover configuration */
+	FAILOVER_SECONDARY,    /* Secondary in failover */
+	FAILOVER_CONFIG_ERROR, /* error in configuration */
+	FAILOVER_NEITHER,      /* failover configured, but I am neither primary/secondary */
 };
 
 /**
@@ -114,9 +113,10 @@ enum failover_state {
  * @retval  FAILOVER_CONFIG_ERROR	- error in pbs.conf configuration
  * @retval  FAILOVER_NEITHER	- failover configured, but I am neither primary/secondary
  */
-enum failover_state are_we_primary(void)
+enum failover_state
+are_we_primary(void)
 {
-	char hn1[PBS_MAXHOSTNAME+1];
+	char hn1[PBS_MAXHOSTNAME + 1];
 
 	/* both secondary and primary should be set or neither set */
 	if ((pbs_conf.pbs_secondary == NULL) && (pbs_conf.pbs_primary == NULL))
@@ -125,20 +125,20 @@ enum failover_state are_we_primary(void)
 	if ((pbs_conf.pbs_secondary == NULL) || (pbs_conf.pbs_primary == NULL))
 		return FAILOVER_CONFIG_ERROR;
 
-	if (get_fullhostname(pbs_conf.pbs_primary, primary_host, (sizeof(primary_host) - 1))==-1) {
+	if (get_fullhostname(pbs_conf.pbs_primary, primary_host, (sizeof(primary_host) - 1)) == -1) {
 		log_err(-1, __func__, "Unable to get full host name of primary");
 		return FAILOVER_CONFIG_ERROR;
 	}
 
 	if (strcmp(primary_host, server_host) == 0)
-		return FAILOVER_PRIMARY;   /* we are the listed primary */
+		return FAILOVER_PRIMARY; /* we are the listed primary */
 
-	if (get_fullhostname(pbs_conf.pbs_secondary, hn1, (sizeof(hn1) - 1))==-1) {
+	if (get_fullhostname(pbs_conf.pbs_secondary, hn1, (sizeof(hn1) - 1)) == -1) {
 		log_err(-1, __func__, "Unable to get full host name of secondary");
 		return FAILOVER_CONFIG_ERROR;
 	}
 	if (strcmp(hn1, server_host) == 0)
-		return FAILOVER_SECONDARY;  /* we are the secondary */
+		return FAILOVER_SECONDARY; /* we are the secondary */
 
 	return FAILOVER_NEITHER; /* failover configured, but I am neither primary nor secondary */
 }
@@ -155,7 +155,8 @@ void
 usage(char *prog)
 {
 	fprintf(stderr, "Usage: %s [-r other_pbs_comms][-t threads][-N]\n"
-			"       %s --version\n", prog, prog);
+			"       %s --version\n",
+		prog, prog);
 }
 
 /**
@@ -259,9 +260,9 @@ pbs_close_stdfiles(void)
 	static int already_done = 0;
 
 	if (!already_done) {
-		(void)fclose(stdin);
-		(void)fclose(stdout);
-		(void)fclose(stderr);
+		(void) fclose(stdin);
+		(void) fclose(stdout);
+		(void) fclose(stderr);
 
 		fopen(NULL_DEVICE, "r");
 
@@ -303,7 +304,7 @@ go_to_background()
 	already_forked = 1;
 	return sid;
 }
-#endif	/* DEBUG is defined */
+#endif /* DEBUG is defined */
 
 /**
  * @brief
@@ -333,8 +334,8 @@ main(int argc, char **argv)
 	char *routers = NULL;
 	int c, i, rc;
 	extern char *optarg;
-	int	are_primary;
-	int	num_var_env;
+	int are_primary;
+	int num_var_env;
 	struct sigaction act;
 	struct sigaction oact;
 
@@ -346,7 +347,7 @@ main(int argc, char **argv)
 
 	i = sysconf(_SC_OPEN_MAX);
 	while (--i > 2)
-		(void)close(i); /* close any file desc left open by parent */
+		(void) close(i); /* close any file desc left open by parent */
 
 	/* If we are not run with real and effective uid of 0, forget it */
 	if ((getuid() != 0) || (geteuid() != 0)) {
@@ -364,8 +365,8 @@ main(int argc, char **argv)
 	}
 
 	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
-			pbs_conf.locallog, pbs_conf.syslogfac,
-			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+		     pbs_conf.locallog, pbs_conf.syslogfac,
+		     pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 
 	umask(022);
 
@@ -376,7 +377,7 @@ main(int argc, char **argv)
 	}
 
 	i = getgid();
-	(void)setgroups(1, (gid_t *)&i);	/* secure suppl. groups */
+	(void) setgroups(1, (gid_t *) &i); /* secure suppl. groups */
 
 	log_event_mask = &pbs_conf.pbs_comm_log_events;
 	tpp_set_logmask(*log_event_mask);
@@ -424,7 +425,8 @@ main(int argc, char **argv)
 
 	while ((c = getopt(argc, argv, "r:t:e:N")) != -1) {
 		switch (c) {
-			case 'e': *log_event_mask = strtol(optarg, NULL, 0);
+			case 'e':
+				*log_event_mask = strtol(optarg, NULL, 0);
 				break;
 			case 'r':
 				routers = optarg;
@@ -445,12 +447,12 @@ main(int argc, char **argv)
 		}
 	}
 
-	(void)strcpy(daemonname, "Comm@");
-	(void)strcat(daemonname, name);
-	if ((pc = strchr(daemonname, (int)'.')) != NULL)
+	(void) strcpy(daemonname, "Comm@");
+	(void) strcat(daemonname, name);
+	if ((pc = strchr(daemonname, (int) '.')) != NULL)
 		*pc = '\0';
 
-	if(set_msgdaemonname(daemonname)) {
+	if (set_msgdaemonname(daemonname)) {
 		fprintf(stderr, "Out of memory\n");
 		return 1;
 	}
@@ -557,7 +559,7 @@ main(int argc, char **argv)
 		log_err(errno, __func__, "sigactin for SHUTDN");
 		return (2);
 	}
-#endif	/* SIGSHUTDN */
+#endif /* SIGSHUTDN */
 
 	act.sa_handler = SIG_IGN;
 	if (sigaction(SIGPIPE, &act, &oact) != 0) {
@@ -611,8 +613,8 @@ main(int argc, char **argv)
 				log_event_mask = &pbs_conf.pbs_comm_log_events;
 				tpp_set_logmask(*log_event_mask);
 				set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
-						pbs_conf.locallog, pbs_conf.syslogfac,
-						pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+					     pbs_conf.locallog, pbs_conf.syslogfac,
+					     pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 			}
 		}
 		sleep(3);
@@ -623,9 +625,9 @@ main(int argc, char **argv)
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname, "Exiting");
 	log_close(1);
 
-	lock_out(lockfds, F_UNLCK);	/* unlock  */
-	(void)close(lockfds);
-	(void)unlink(lockfile);
+	lock_out(lockfds, F_UNLCK); /* unlock  */
+	(void) close(lockfds);
+	(void) unlink(lockfile);
 	unload_auths();
 
 	return 0;

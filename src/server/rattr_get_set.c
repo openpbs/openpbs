@@ -58,7 +58,7 @@ attribute *
 get_rattr(const resc_resv *presv, int attr_idx)
 {
 	if (presv != NULL)
-		return _get_attr_by_idx((attribute *)presv->ri_wattr, attr_idx);
+		return _get_attr_by_idx((attribute *) presv->ri_wattr, attr_idx);
 	return NULL;
 }
 
@@ -245,7 +245,6 @@ set_rattr_c_slim(resc_resv *presv, int attr_idx, char val, enum batch_op op)
 
 	return 0;
 }
-
 
 /**
  * @brief	Check if a reservation attribute is set
