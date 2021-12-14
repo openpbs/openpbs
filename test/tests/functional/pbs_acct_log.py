@@ -283,7 +283,8 @@ pbs.event().reject('foo')
 
     def test_alter_record_queuejob_hook(self):
         """
-        Test that when a quejob hook set attributes, an 'a' record is logged
+        Test that when a queuejob hook set an attribute, an 'a' record is
+        logged.
         """
         qj_hook = """
 import pbs
@@ -295,7 +296,8 @@ e2.accept()
         qj_attrs = {'event': 'queuejob', 'enabled': 'True'}
         self.server.create_import_hook('qj', qj_attrs, qj_hook)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        j1 = Job(TEST_USER, {'Resource_List.walltime': 1})
+        j1 = Job(TEST_USER, {'Resource_List.walltime': 42})
+        j1.set_sleep_time(1)
         jid1 = self.server.submit(j1)
         self.server.alterjob(jid1, {ATTR_p: 150})
         (_, line) = self.server.accounting_match(';a;' + jid1 + ';')
@@ -308,7 +310,8 @@ e2.accept()
 
     def test_alter_record_modifyjob_hook(self):
         """
-        Test that when a modifyjob hook set attributes, an 'a' record is logged
+        Test that when a modifyjob hook set attributes, an 'a' record is
+        logged.
         """
         mj_hook = """
 import pbs
@@ -321,7 +324,8 @@ e2.accept()
         mj_attrs = {'event': 'modifyjob', 'enabled': 'True'}
         self.server.create_import_hook('mj', mj_attrs, mj_hook)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        j1 = Job(TEST_USER, {'Resource_List.walltime': 1})
+        j1 = Job(TEST_USER, {'Resource_List.walltime': 42})
+        j1.set_sleep_time(1)
         jid1 = self.server.submit(j1)
         self.server.alterjob(jid1, {ATTR_p: 150})
         (_, line) = self.server.accounting_match(';a;' + jid1 + ';')
@@ -335,14 +339,14 @@ e2.accept()
 
     def test_alter_record_runjob_hook(self):
         """
-        Test that when a runjob hook set attributes, an 'a' record is logged
+        Test that when a runjob hook set attributes, an 'a' record is logged.
         """
         info_hook = """
 import pbs
 e1 = pbs.event()
 pbs.logmsg(pbs.LOG_ERROR, f"HOOK:e1:{hex(id(e1))}"
-                    f" jobid:{e1.job.id}"
-                    f" project:{e1.job.project}"
+                    f" job.id:{e1.job.id}"
+                    f" job.project:{e1.job.project}"
                     f" comment:{e1.job.comment}"
                     f" hex(id(job)):{hex(id(e1.job))}")
 e1.accept()
@@ -354,7 +358,8 @@ e1.accept()
         self.server.create_import_hook('mj', mj_attrs, info_hook)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        j1 = Job(TEST_USER, {'Resource_List.walltime': 1})
+        j1 = Job(TEST_USER, {'Resource_List.walltime': 42})
+        j1.set_sleep_time(1)
         jid1 = self.server.submit(j1)
         self.server.alterjob(jid1, {ATTR_p: 150})
 
@@ -379,9 +384,9 @@ e2.accept()
 
     def test_multiple_alter_record_hooks(self):
         """
-        Test that when hooks set attributes, an 'a' record is logged
+        Test that when hooks set attributes, an 'a' record is logged.
         """
-        mj_hook = """
+        mj_hook_00 = """
 import pbs
 e1 = pbs.event()
 e1.job.comment = 'foo'
@@ -389,7 +394,7 @@ e1.job.project = "aaa"
 e2 = pbs.event()
 e2.accept()
 """
-        mj_hook2 = """
+        mj_hook_01 = """
 import pbs
 e1 = pbs.event()
 e1.job.comment = 'foo2'
@@ -397,7 +402,8 @@ e1.job.project = "bbb"
 e2 = pbs.event()
 e2.accept()
     """
-        mj_attrs = {'event': 'modifyjob', 'enabled': 'True'}
+        mj_attrs_00 = {'event': 'modifyjob', 'order': '1', 'enabled': 'True'}
+        mj_attrs_01 = {'event': 'modifyjob', 'order': '2', 'enabled': 'True'}
         rj_hook = """
 import pbs
 e1 = pbs.event()
@@ -407,13 +413,14 @@ e2.reject('bar')
 """
         rj_attrs = {'event': 'runjob', 'enabled': 'True'}
 
-        self.server.create_import_hook('mj', mj_attrs, mj_hook)
-        self.server.create_import_hook('mj2', mj_attrs, mj_hook2)
+        self.server.create_import_hook('mj01', mj_attrs_01, mj_hook_01)
+        # create out of order.
+        self.server.create_import_hook('mj00', mj_attrs_00, mj_hook_00)
         self.server.create_import_hook('rj', rj_attrs, rj_hook)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
-        j1 = Job(TEST_USER, {'Resource_List.walltime': 1})
+        j1 = Job(TEST_USER, {'Resource_List.walltime': 42})
         jid1 = self.server.submit(j1)
 
         self.server.alterjob(jid1, {ATTR_p: 150})
@@ -429,84 +436,9 @@ e2.reject('bar')
             pass
         (_, line) = self.server.accounting_match(f';a;{jid1};project=abc')
 
-    @skip("issue ????")
     def test_queue_record_multiple_hook_00(self):
         """
-        Test that changes made in a queuejob then modifyjob are stacking.
-        """
-        self.server.manager(MGR_CMD_SET, SERVER,
-                            {'scheduling': 'False',
-                             'job_history_enable': 'True',
-                             })
-        qj_hook_00 = """
-import pbs
-e1 = pbs.event()
-e1.job.project = 'foo00'
-e1.accept()
-"""
-        qj_hook_01 = """
-import pbs
-e1 = pbs.event()
-e1.job.project = str(e1.job.project) + '_foo01'
-e1 = pbs.event()
-pbs.logmsg(pbs.LOG_ERROR, f"HOOKQ1:e1:{hex(id(e1))}"
-                    f" jobid:{e1.job.id}"
-                    f" project:{e1.job.project}"
-                    f" Resource_List:{e1.job.Resource_List}"
-                    f" hex(id(job)):{hex(id(e1.job))}")
-e1.accept()
-"""
-        qj_attrs = {'event': 'queuejob', 'enabled': 'True'}
-        self.server.create_import_hook('qj00', qj_attrs, qj_hook_00)
-        self.server.create_import_hook('qj01', qj_attrs, qj_hook_01)
-
-        mj_hook_00 = """
-import pbs
-e1 = pbs.event()
-pbs.logmsg(pbs.LOG_ERROR, f"HOOKM0a:e1:{hex(id(e1))}"
-                    f" jobid:{e1.job.id}"
-                    f" project:{e1.job.project}"
-                    f" hex(id(job)):{hex(id(e1.job))}")
-e1.job.project = str(e1.job.project) + '_foo02'
-pbs.logmsg(pbs.LOG_ERROR, f"HOOKM0b:e1:{hex(id(e1))}"
-                    f" jobid:{e1.job.id}"
-                    f" project:{e1.job.project}"
-                    f" hex(id(job)):{hex(id(e1.job))}")
-e1.accept()
-"""
-        mj_hook_01 = """
-import pbs
-e1 = pbs.event()
-e1.job.project = str(e1.job.project) + '_foo03'
-pbs.logmsg(pbs.LOG_ERROR, f"HOOKM1:e1:{hex(id(e1))}"
-                    f" jobid:{e1.job.id}"
-                    f" project:{e1.job.project}"
-                    f" hex(id(job)):{hex(id(e1.job))}")
-e1.accept()
-"""
-        mj_attrs = {'event': 'modifyjob', 'enabled': 'True'}
-        self.server.create_import_hook('mj_00', mj_attrs, mj_hook_00)
-        self.server.create_import_hook('mj_01', mj_attrs, mj_hook_01)
-
-        j = Job(TEST_USER, {'Resource_List.walltime': 1})
-        j.set_sleep_time(1)
-        jid1 = self.server.submit(j, extend='x')
-        self.server.alterjob(jid1, {ATTR_p: 150})
-        (_, line) = self.server.accounting_match(';Q;' + jid1)
-        self.assertIn('project=foo00_foo01', line)
-        self.server.runjob(jid1)
-        self.server.expect(JOB, {'job_state': 'F'}, extend='x', id=jid1)
-
-        (_, line) = self.server.accounting_match(';a;' + jid1)
-        self.assertIn('Priority=150', line)
-        self.assertIn('project=foo00_foo01_foo02_foo03', line)
-
-        (_, line) = self.server.accounting_match(';E;' + jid1)
-        self.assertIn('project=foo00_foo01_foo02_foo03', line)
-
-    def test_queue_record_multiple_hook_01(self):
-        """
-        Test that changes made in a queuejob hook are reflected in the
+        Test that changes made in a queuejob hooks are reflected in the
         Q record
         """
         import pbs
@@ -519,7 +451,8 @@ import pbs
 e1 = pbs.event()
 e1.job.project = 'foo00'
 pbs.logmsg(pbs.LOG_ERROR, f"HOOK:e1:{hex(id(e1))}"
-                    f" project:{e1.job.project}"
+                    f" job.id:{e1.job.id}"
+                    f" job.project:{e1.job.project}"
                     f" Resource_List:{e1.job.Resource_List}"
                     f" hex(id(job)):{hex(id(e1.job))}")
 e1.accept()
@@ -536,7 +469,7 @@ e1.accept()
         self.server.create_import_hook('qj01', qj_attrs, qj_hook_01)
 
         j = Job(TEST_USER, {'Resource_List.walltime':
-                            pbs.duration("00:00:01")})
+                            pbs.duration("00:00:42")})
         j.set_sleep_time(1)
         jid1 = self.server.submit(j, extend='x')
         self.server.alterjob(jid1, {ATTR_p: 150})
@@ -549,7 +482,7 @@ e1.accept()
         (_, line) = self.server.accounting_match(';E;' + jid1)
         self.assertIn('project=foo00_foo01', line)
 
-    def test_queue_record_multiple_hook_02(self):
+    def test_queue_record_multiple_hook_01(self):
         """
         Test that changes made in a modifyjob hook are reflected in the
         Q record
@@ -562,18 +495,27 @@ e1.accept()
 import pbs
 e1 = pbs.event()
 e1.job.project = 'foo02'
+pbs.logmsg(pbs.LOG_ERROR, f"HOOKQ0:e1:{hex(id(e1))}"
+                    f" job.id:{e1.job.id}"
+                    f" job.project:{e1.job.project}"
+                    f" hex(id(job)):{hex(id(e1.job))}")
 e1.accept()
 """
         mj_hook_01 = """
 import pbs
 e1 = pbs.event()
 e1.job.project = str(e1.job.project) + '_foo03'
+pbs.logmsg(pbs.LOG_ERROR, f"HOOKQ0:e1:{hex(id(e1))}"
+                    f" job.id:{e1.job.id}"
+                    f" job.project:{e1.job.project}"
+                    f" hex(id(job)):{hex(id(e1.job))}")
 e1.accept()
 """
-        mj_attrs = {'event': 'modifyjob', 'enabled': 'True'}
-        self.server.create_import_hook('mj_00', mj_attrs, mj_hook_00)
-        self.server.create_import_hook('mj_01', mj_attrs, mj_hook_01)
-        j = Job(TEST_USER, {'Resource_List.walltime': 1})
+        mj_attrs_00 = {'event': 'modifyjob', 'order': 1, 'enabled': 'True'}
+        mj_attrs_01 = {'event': 'modifyjob', 'order': 2, 'enabled': 'True'}
+        self.server.create_import_hook('mj_00', mj_attrs_00, mj_hook_00)
+        self.server.create_import_hook('mj_01', mj_attrs_01, mj_hook_01)
+        j = Job(TEST_USER, {'Resource_List.walltime': 42})
         j.set_sleep_time(1)
         jid1 = self.server.submit(j, extend='x')
         self.server.alterjob(jid1, {ATTR_p: 150})
@@ -585,10 +527,10 @@ e1.accept()
         (_, line) = self.server.accounting_match(';E;' + jid1)
         self.assertIn('project=foo02_foo03', line)
 
-    @skip("issue ????")
-    def test_queue_record_multiple_hook_03(self):
+    def test_queue_record_multiple_hook_02(self):
         """
-        Test that changes made in a queuejob then modifyjob are stacking.
+        Test that changes made in a queuejob then modifyjob are stacking using
+        job_o in the modifyjob hook.
         """
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False',
@@ -600,8 +542,8 @@ e1 = pbs.event()
 e1.job.project = 'foo00'
 e1 = pbs.event()
 pbs.logmsg(pbs.LOG_ERROR, f"HOOKQ0:e1:{hex(id(e1))}"
-                    f" jobid:{e1.job.id}"
-                    f" project:{e1.job.project}"
+                    f" job.id:{e1.job.id}"
+                    f" job.project:{e1.job.project}"
                     f" Resource_List:{e1.job.Resource_List}"
                     f" hex(id(job)):{hex(id(e1.job))}")
 e1.accept()
@@ -613,13 +555,17 @@ e1.accept()
 import pbs
 e1 = pbs.event()
 pbs.logmsg(pbs.LOG_ERROR, f"HOOKM0a:e1:{hex(id(e1))}"
-                    f" jobid:{e1.job.id}"
-                    f" project:{e1.job.project}"
+                    f" job.id:{e1.job.id}"
+                    f" job.project:{e1.job.project}"
+                    f" job_o.id:{e1.job_o.id}"
+                    f" job_o.project:{e1.job_o.project}"
                     f" hex(id(job)):{hex(id(e1.job))}")
-e1.job.project = str(e1.job.project) + '_foo01'
+e1.job.project = str(e1.job_o.project) + '_foo01'
 pbs.logmsg(pbs.LOG_ERROR, f"HOOKM0b:e1:{hex(id(e1))}"
-                    f" jobid:{e1.job.id}"
-                    f" project:{e1.job.project}"
+                    f" job.id:{e1.job.id}"
+                    f" job.project:{e1.job.project}"
+                    f" job_o.id:{e1.job_o.id}"
+                    f" job_o.project:{e1.job_o.project}"
                     f" hex(id(job)):{hex(id(e1.job))}")
 e1.accept()
 """
@@ -632,8 +578,8 @@ e1.accept()
 import pbs
 e1 = pbs.event()
 pbs.logmsg(pbs.LOG_ERROR, f"HOOKR0:e1:{hex(id(e1))}"
-                    f" jobid:{e1.job.id}"
-                    f" project:{e1.job.project}"
+                    f" job.id:{e1.job.id}"
+                    f" job.project:{e1.job.project}"
                     f" hex(id(job)):{hex(id(e1.job))}")
 e1.accept()
 """
@@ -657,3 +603,85 @@ e1.accept()
 
         (_, line) = self.server.accounting_match(';E;' + jid1)
         self.assertIn('project=foo00_foo01', line)
+
+    def test_queue_record_multiple_hook_03(self):
+        """
+        Test that changes made in a queuejob then modifyjob are stacking using
+        job_o in the first modifyjob hook, but not in the second.
+        """
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'False',
+                             'job_history_enable': 'True',
+                             })
+        qj_hook_00 = """
+import pbs
+e1 = pbs.event()
+e1.job.project = 'foo00'
+e1.accept()
+"""
+        qj_hook_01 = """
+import pbs
+e1 = pbs.event()
+e1.job.project = str(e1.job.project) + '_foo01'
+pbs.logmsg(pbs.LOG_ERROR, f"HOOKQ1:e1:{hex(id(e1))}"
+                    f" job.id:{e1.job.id}"
+                    f" job.project:{e1.job.project}"
+                    f" Resource_List:{e1.job.Resource_List}"
+                    f" hex(id(job)):{hex(id(e1.job))}")
+e1.accept()
+"""
+        qj_attrs = {'event': 'queuejob', 'enabled': 'True'}
+        self.server.create_import_hook('qj00', qj_attrs, qj_hook_00)
+        self.server.create_import_hook('qj01', qj_attrs, qj_hook_01)
+
+        mj_hook_00 = """
+import pbs
+e1 = pbs.event()
+pbs.logmsg(pbs.LOG_ERROR, f"HOOKM0a:e1:{hex(id(e1))}"
+                    f" job.id:{e1.job.id}"
+                    f" job.project:{e1.job.project}"
+                    f" job_o.id:{e1.job_o.id}"
+                    f" job_o.project:{e1.job_o.project}"
+                    f" hex(id(job)):{hex(id(e1.job))}")
+e1.job.project = str(e1.job_o.project) + '_foo02'
+pbs.logmsg(pbs.LOG_ERROR, f"HOOKM0b:e1:{hex(id(e1))}"
+                    f" jobid:{e1.job.id}"
+                    f" project:{e1.job.project}"
+                    f" job_o.id:{e1.job_o.id}"
+                    f" job_o.project:{e1.job_o.project}"
+                    f" hex(id(job)):{hex(id(e1.job))}")
+e1.accept()
+"""
+        mj_hook_01 = """
+import pbs
+e1 = pbs.event()
+e1.job.project = str(e1.job.project) + '_foo03'
+pbs.logmsg(pbs.LOG_ERROR, f"HOOKM1:e1:{hex(id(e1))}"
+                    f" job.id:{e1.job.id}"
+                    f" job.project:{e1.job.project}"
+                    f" job_o.id:{e1.job_o.id}"
+                    f" job_o.project:{e1.job_o.project}"
+                    f" hex(id(job)):{hex(id(e1.job))}")
+e1.accept()
+"""
+        mj_attrs_00 = {'event': 'modifyjob', 'order': 1, 'enabled': 'True'}
+        mj_attrs_01 = {'event': 'modifyjob', 'order': 2, 'enabled': 'True'}
+        self.server.create_import_hook('mj_00', mj_attrs_00, mj_hook_00)
+        self.server.create_import_hook('mj_01', mj_attrs_01, mj_hook_01)
+
+        j = Job(TEST_USER, {'Resource_List.walltime': 1})
+        j.set_sleep_time(1)
+        jid1 = self.server.submit(j, extend='x')
+        self.server.alterjob(jid1, {ATTR_p: 150})
+        (_, line) = self.server.accounting_match(';Q;' + jid1)
+        self.assertIn('project=foo00_foo01', line)
+        self.server.runjob(jid1)
+        self.server.expect(JOB, {'job_state': 'F'}, extend='x', id=jid1)
+
+        (_, line) = self.server.accounting_match(';a;' + jid1)
+        self.assertIn('Priority=150', line)
+        self.assertIn('project=foo00_foo01_foo02_foo03', line)
+
+        (_, line) = self.server.accounting_match(';E;' + jid1)
+        self.assertIn('project=foo00_foo01_foo02_foo03', line)
+
