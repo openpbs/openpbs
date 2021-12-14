@@ -437,7 +437,7 @@ e2.reject('bar')
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False',
                              'job_history_enable': 'True',
-                            })
+                             })
         qj_hook_00 = """
 import pbs
 e1 = pbs.event()
@@ -506,13 +506,14 @@ e1.accept()
 
     def test_queue_record_multiple_hook_01(self):
         """
-        Test that changes made in a queuejob hook are reflected in the Q record
+        Test that changes made in a queuejob hook are reflected in the
+        Q record
         """
         import pbs
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False',
                              'job_history_enable': 'True',
-                            })
+                             })
         qj_hook_00 = """
 import pbs
 e1 = pbs.event()
@@ -534,7 +535,8 @@ e1.accept()
         # FIXME set hook attr to priority order
         self.server.create_import_hook('qj01', qj_attrs, qj_hook_01)
 
-        j = Job(TEST_USER, {'Resource_List.walltime': pbs.duration("00:00:01")})
+        j = Job(TEST_USER, {'Resource_List.walltime':
+                            pbs.duration("00:00:01")})
         j.set_sleep_time(1)
         jid1 = self.server.submit(j, extend='x')
         self.server.alterjob(jid1, {ATTR_p: 150})
@@ -549,12 +551,13 @@ e1.accept()
 
     def test_queue_record_multiple_hook_02(self):
         """
-        Test that changes made in a modifyjob hook are reflected in the Q record
+        Test that changes made in a modifyjob hook are reflected in the
+        Q record
         """
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False',
                              'job_history_enable': 'True',
-                            })
+                             })
         mj_hook_00 = """
 import pbs
 e1 = pbs.event()
@@ -590,7 +593,7 @@ e1.accept()
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False',
                              'job_history_enable': 'True',
-                            })
+                             })
         qj_hook_00 = """
 import pbs
 e1 = pbs.event()
