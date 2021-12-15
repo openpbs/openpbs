@@ -2673,7 +2673,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 		py_instance, PY_ATTRIBUTES_HOOK_SET); /* new ref */
 	if (py_attr_hookset_dict == NULL || !PyDict_Check(py_attr_hookset_dict)) {
 		LOG_ERROR_ARG2("%s: <%s> does not exist or is not a dict", objname,
-			PY_ATTRIBUTES_HOOK_SET);
+			       PY_ATTRIBUTES_HOOK_SET);
 		Py_CLEAR(py_attr_hookset_dict); /* don't use if not dict */
 	}
 
@@ -2816,7 +2816,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 			py_resc_hookset_dict = PyObject_GetAttrString(
 				py_val, PY_ATTRIBUTES_HOOK_SET); /* new ref */
 			if (py_resc_hookset_dict != NULL && !PyDict_Check(py_resc_hookset_dict)) {
-				Py_CLEAR(py_resc_hookset_dict);/* don't use if not dict */
+				Py_CLEAR(py_resc_hookset_dict); /* don't use if not dict */
 			}
 
 			num_keys = PyList_Size(py_keys);
@@ -2853,8 +2853,8 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 
 				hook_set_flag = 0;
 				if (py_resc_hookset_dict != NULL &&
-						PyDict_GetItemString(py_resc_hookset_dict, resc) != NULL) {
-					hook_set_flag = 1;	/* resource set/unset in hook script */
+				    PyDict_GetItemString(py_resc_hookset_dict, resc) != NULL) {
+					hook_set_flag = 1; /* resource set/unset in hook script */
 				}
 
 				if ((strcmp(resc, WALLTIME_RESC) == 0) && has_resv_duration) {
@@ -2999,7 +2999,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 
 			hook_set_flag = 0;
 			if (py_attr_hookset_dict != NULL &&
-					PyDict_GetItemString(py_attr_hookset_dict, name_str) != NULL) {
+			    PyDict_GetItemString(py_attr_hookset_dict, name_str) != NULL) {
 				hook_set_flag = 1; /* attribute set/unset in a hook script */
 			}
 			if (strcmp(name_str, ATTR_v) == 0) {
@@ -8934,12 +8934,12 @@ _pbs_python_event_job_getval_hookset(char *attrib_name, char *opval,
 		py_job, PY_ATTRIBUTES_HOOK_SET); /* NEW */
 	if (py_attr_hookset_dict == NULL) {
 		LOG_ERROR_ARG2("%s: does not have a value for <%s>",
-			PY_TYPE_JOB, PY_ATTRIBUTES_HOOK_SET);
+			       PY_TYPE_JOB, PY_ATTRIBUTES_HOOK_SET);
 		goto getval_exit;
 	}
 	if (!PyDict_Check(py_attr_hookset_dict)) {
 		LOG_ERROR_ARG2("%s: <%s> is not a dict",
-			PY_TYPE_JOB, PY_ATTRIBUTES_HOOK_SET);
+			       PY_TYPE_JOB, PY_ATTRIBUTES_HOOK_SET);
 		goto getval_exit;
 	}
 
@@ -10216,12 +10216,12 @@ _pbs_python_event_jobresc_getval_hookset(char *attr_name, char *resc_name)
 		py_jobresc, PY_ATTRIBUTES_HOOK_SET); /* NEW */
 	if (py_attr_hookset_dict == NULL) {
 		LOG_ERROR_ARG2("%s: does not have a value for <%s>",
-			attr_name, PY_ATTRIBUTES_HOOK_SET);
+			       attr_name, PY_ATTRIBUTES_HOOK_SET);
 		goto jobresc_getval_hookset_exit;
 	}
 	if (!PyDict_Check(py_attr_hookset_dict)) {
 		LOG_ERROR_ARG2("%s: <%s> is not a dict",
-			attr_name, PY_ATTRIBUTES_HOOK_SET);
+			       attr_name, PY_ATTRIBUTES_HOOK_SET);
 		goto jobresc_getval_hookset_exit;
 	}
 
@@ -10378,12 +10378,12 @@ _pbs_python_event_jobresc_clear_hookset(char *attr_name)
 		py_jobresc, PY_ATTRIBUTES_HOOK_SET); /* NEW */
 	if (py_attr_hookset_dict == NULL) {
 		LOG_ERROR_ARG2("%s: does not have a value for <%s>",
-			attr_name, PY_ATTRIBUTES_HOOK_SET);
+			       attr_name, PY_ATTRIBUTES_HOOK_SET);
 		goto jobresc_clear_hookset_exit;
 	}
 	if (!PyDict_Check(py_attr_hookset_dict)) {
 		LOG_ERROR_ARG2("%s: <%s> is not a dict",
-			attr_name, PY_ATTRIBUTES_HOOK_SET);
+			       attr_name, PY_ATTRIBUTES_HOOK_SET);
 		goto jobresc_clear_hookset_exit;
 	}
 
