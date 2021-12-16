@@ -57,7 +57,6 @@ class Test_systemd(TestFunctional):
         if ret['rc'] == 1:
             self.skipTest("Systemd not functional")
 
-
     def shutdown_all(self):
         if self.server.isUp():
             self.server.stop()
