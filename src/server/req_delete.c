@@ -1167,9 +1167,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		 * the job is not transiting (though it may have been) and
 		 * is not running, so abort it.
 		 */
-		if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob)) {
-			abortjob = 1; /* set flag to abort job after mail sent */
-		}
+		abortjob = 1; /* set flag to abort job after mail sent */
 	}
 	/*
 	 * Log delete and if requesting client is not job owner, send mail.
@@ -1178,8 +1176,18 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 	acct_del_write(pjob->ji_qs.ji_jobid, pjob, preq, 0);
 	job_id = strdup(pjob->ji_qs.ji_jobid);
 
-	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob)
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
+		if (forcedel) {
+			/* If the array job is being force deleted, then reset the subjob
+			   state counts so that chk_array_doneness() doesn't consider the
+			   array job to still have active subjobs. */
+			pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_QUEUED] = 0;
+			pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_RUNNING] = 0;
+			pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_HELD] = 0;
+			pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_EXITING] = 0;
+		}
 		chk_array_doneness(pjob);
+	}
 	else if (abortjob) {
 		if (check_job_state(pjob, JOB_STATE_LTR_EXITING))
 			discard_job(pjob, "Forced Delete", 1);
