@@ -93,7 +93,8 @@ try:
 
     if sys.path.__contains__(py_path + '/python' + py_version) == False:
         for my_path in my_paths:
-            sys.path.append(my_path)
+            if my_path not in sys.path:
+                sys.path.append(my_path)
 
 except ImportError:
     pass
