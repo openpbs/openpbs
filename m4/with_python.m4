@@ -50,16 +50,14 @@ AC_DEFUN([PBS_AC_WITH_PYTHON],
     [PYTHON="$with_python/bin/python3"] [PYTHON_CONFIG="$with_python/bin/python3-config"],
     [PYTHON_CONFIG="python3-config"]
   )
-  AM_PATH_PYTHON([3.5])
-  AS_IF([test "$PYTHON_VERSION" != "3.5" \
-          -a "$PYTHON_VERSION" != "3.6" \
-          -a "$PYTHON_VERSION" != "3.7" \
-          -a "$PYTHON_VERSION" != "3.8" \
-          -a "$PYTHON_VERSION" != "3.9" ],
-    AC_MSG_ERROR([Python must be version 3.5, 3.6, 3.7, 3.8 or 3.9]))
+  AM_PATH_PYTHON([3.6])
+  [python_major_version=`echo $PYTHON_VERSION | sed -e 's/\..*$//'`]
+  [python_minor_version=`echo $PYTHON_VERSION | sed -e 's/^[^.]*\.//'`]
+  AS_IF([test $python_major_version -ne 3 - o \
+      \( $python_minor_version -lt 6 -a $python_minor_version -gt 10 \)],
+    AC_MSG_ERROR([Python must be version 3.6 - 3.10]))
   _extra_arg=""
-  AS_IF([test "$PYTHON_VERSION" = "3.8"], [_extra_arg="--embed"])
-  AS_IF([test "$PYTHON_VERSION" = "3.9"], [_extra_arg="--embed"])
+  AS_IF([test $python_minor_version -ge 8], [_extra_arg="--embed"])
   [PYTHON_INCLUDES=`$PYTHON_CONFIG --includes ${_extra_arg}`]
   AC_SUBST(PYTHON_INCLUDES)
   [PYTHON_CFLAGS=`$PYTHON_CONFIG --cflags ${_extra_arg}`]
