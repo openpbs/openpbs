@@ -54,7 +54,7 @@ AC_DEFUN([PBS_AC_WITH_PYTHON],
   [python_major_version=`echo $PYTHON_VERSION | sed -e 's/\..*$//'`]
   [python_minor_version=`echo $PYTHON_VERSION | sed -e 's/^[^.]*\.//'`]
   AS_IF([test $python_major_version -ne 3 - o \
-      \( $python_minor_version -lt 6 -a $python_minor_version -gt 10 \)],
+      $python_minor_version -lt 6 -o $python_minor_version -gt 10],
     AC_MSG_ERROR([Python must be version 3.6 - 3.10]))
   _extra_arg=""
   AS_IF([test $python_minor_version -ge 8], [_extra_arg="--embed"])
