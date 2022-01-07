@@ -53,6 +53,9 @@ class Test_systemd(TestFunctional):
         is_systemctl = self.du.which(exe='systemctl')
         if is_systemctl == 'systemctl':
             self.skipTest("Systemctl command not found")
+        ret = self.du.run_cmd(self.server.hostname, "systemctl is-active dbus")
+        if ret['rc'] == 1:
+            self.skipTest("Systemd not functional")
 
     def shutdown_all(self):
         if self.server.isUp():

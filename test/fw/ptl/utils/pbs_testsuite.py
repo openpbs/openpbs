@@ -1769,12 +1769,30 @@ class PBSTestSuite(unittest.TestCase):
         for server in self.servers.values():
             server.cleanup_files()
 
+        for comm in self.comms.values():
+            if not comm.isUp(max_attempts=1):
+                # If the comm was stopped, killed or left in a bad state, bring
+                # the comm back up to avoid a possible delay or failure when
+                # starting the next test.
+                comm.start()
+
         for mom in self.moms.values():
             mom.cleanup_files()
+            if not mom.isUp(max_attempts=1):
+                # If the MoM was stopped, killed or left in a bad state, bring
+                # the MoM back up to avoid a possible delay or failure when
+                # starting the next test.
+                mom.start()
 
-        for sched in self.scheds:
-            self.scheds[sched].cleanup_files()
+        for sched in self.scheds.values():
+            sched.cleanup_files()
+            if not sched.isUp(max_attempts=1):
+                # If the scheduler was stopped, killed or left in a bad state,
+                # bring the scheduler back up to avoid a possible delay or
+                # failure when starting the next test.
+                sched.start()
         self.server.delete_sched_config()
+
         if self.use_cur_setup:
             self.delete_current_state(self.server, self.moms)
             ret = self.server.load_configuration(self.saved_file)
