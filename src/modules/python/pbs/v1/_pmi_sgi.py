@@ -56,20 +56,27 @@ if pbsexec is None:
     raise BackendError("PBS_EXEC not found")
 
 py_version = str(sys.version_info.major) + "." + str(sys.version_info.minor)
-sys.path.append(os.path.join(pbsexec, "python", "lib", py_version))
-sys.path.append(os.path.join(pbsexec, "python", "lib", py_version,
-                "lib-dynload"))
+_path = os.path.join(pbsexec, "python", "lib", py_version)
+if _path not in sys.path:
+    sys.path.append(_path)
+_path = os.path.join(pbsexec, "python", "lib", py_version, "lib-dynload")
+if _path not in sys.path:
+    sys.path.append(_path)
 import encodings
 
 
 # Plug in the path for the HPE/SGI power API.
-if os.path.exists("/opt/clmgr/power-service"):
+_path = "/opt/clmgr/power-service"
+if os.path.exists(_path):
     # Look for HPCM support.
-    sys.path.append("/opt/clmgr/power-service")
+    if _path not in sys.path:
+        sys.path.append(_path)
     import hpe_clmgr_power_api as api
 else:
     # Look for SGIMC support.
-    sys.path.append("/opt/sgi/ta")
+    _path = "/opt/sgi/ta"
+    if _path not in sys.path:
+        sys.path.append(_path)
     import sgi_power_api as api
 
 

@@ -50,7 +50,8 @@ It is run by the Cray RUR system as an "output plugin".
 import os
 import sys
 rur_path = os.path.join(os.path.sep, 'opt', 'cray', 'rur', 'default', 'bin')
-sys.path.append(rur_path)
+if rur_path not in sys.path:
+    sys.path.append(rur_path)
 try:
     from rur_plugins import rur_output_args, get_plugin_name, rur_errorlog
 except Exception:
