@@ -53,19 +53,20 @@ AC_DEFUN([PBS_AC_WITH_PYTHON],
   AM_PATH_PYTHON([3.6])
   [python_major_version=`echo $PYTHON_VERSION | sed -e 's/\..*$//'`]
   [python_minor_version=`echo $PYTHON_VERSION | sed -e 's/^[^.]*\.//'`]
-  AS_IF([test $python_major_version -ne 3 - o \
-      $python_minor_version -lt 6 -o $python_minor_version -gt 10],
-    AC_MSG_ERROR([Python must be version 3.6 - 3.10]))
-  _extra_arg=""
-  AS_IF([test $python_minor_version -ge 8], [_extra_arg="--embed"])
-  [PYTHON_INCLUDES=`$PYTHON_CONFIG --includes ${_extra_arg}`]
-  AC_SUBST(PYTHON_INCLUDES)
-  [PYTHON_CFLAGS=`$PYTHON_CONFIG --cflags ${_extra_arg}`]
-  AC_SUBST(PYTHON_CFLAGS)
-  [PYTHON_LDFLAGS=`$PYTHON_CONFIG --ldflags ${_extra_arg}`]
-  AC_SUBST(PYTHON_LDFLAGS)
-  [PYTHON_LIBS=`$PYTHON_CONFIG --libs ${_extra_arg}`]
-  AC_SUBST(PYTHON_LIBS)
-  AC_DEFINE([PYTHON], [], [Defined when Python is available])
-  AC_DEFINE_UNQUOTED([PYTHON_BIN_PATH], ["$PYTHON"], [Python executable path])
+  AS_IF([test $python_major_version -eq 3],
+  [
+    python_config_embed=""
+    AS_IF([test $python_minor_version -ge 8], [python_config_embed="--embed"])
+    [PYTHON_INCLUDES=`$PYTHON_CONFIG --includes ${python_config_embed}`]
+    AC_SUBST(PYTHON_INCLUDES)
+    [PYTHON_CFLAGS=`$PYTHON_CONFIG --cflags ${python_config_embed}`]
+    AC_SUBST(PYTHON_CFLAGS)
+    [PYTHON_LDFLAGS=`$PYTHON_CONFIG --ldflags ${python_config_embed}`]
+    AC_SUBST(PYTHON_LDFLAGS)
+    [PYTHON_LIBS=`$PYTHON_CONFIG --libs ${python_config_embed}`]
+    AC_SUBST(PYTHON_LIBS)
+    AC_DEFINE([PYTHON], [], [Defined when Python is available])
+    AC_DEFINE_UNQUOTED([PYTHON_BIN_PATH], ["$PYTHON"], [Python executable path])
+  ],
+  [AC_MSG_ERROR([Python version 3 is required.])])
 ])
