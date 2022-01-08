@@ -59,7 +59,7 @@ class TestSchedConfig(TestSelf):
         slines = [x for x in clines if re.match(r'[\w]', x)]
         return slines
 
-    def get_a_setting(self, slines, key, squash=True):
+    def get_a_setting(self, slines, key):
         """"
         Extract lines changing a particular setting from a list of lines
         """
@@ -68,8 +68,6 @@ class TestSchedConfig(TestSelf):
         for line in slines:
             if line.startswith(key_colon):
                 value = line[len(key_colon):].strip()
-                if squash:
-                    value = ' '.join(value.split())
                 vals.append(value)
         return vals
 
@@ -77,17 +75,28 @@ class TestSchedConfig(TestSelf):
         '''
         Test whether Scheduler.set_sched_config() works as expected.
         '''
-        self.our_sched = self.scheds['default']
 
-        # First, get default settings for a few values and verify
-        # they are what they should be as of this version of test.
+        def get_dflt(key):
+            '''Get default value as list'''
+            if key in dflts:
+                val = dflts[key]
+                if not isinstance(val, list):
+                    val = [val]
+            else:
+                val = []
+            return val
+
+        self.our_sched = self.scheds['default']
+        dflts = self.our_sched.sched_config
+
+        # First, fetch default values our way and compare to real defaults
         slines = self.set_and_get({})
         def_rr = self.get_a_setting(slines, 'round_robin')
         def_nsk = self.get_a_setting(slines, 'node_sort_key')
         def_jsk = self.get_a_setting(slines, 'job_sort_key')
-        self.assertEqual(def_rr, ["False all"])
-        self.assertEqual(def_nsk, ['"sort_priority HIGH" ALL'])
-        self.assertEqual(def_jsk, [])
+        self.assertEqual(def_rr, get_dflt('round_robin'))
+        self.assertEqual(def_nsk, get_dflt('node_sort_key'))
+        self.assertEqual(def_jsk, get_dflt('job_sort_key'))
 
         # See if we can change an existing value, and leave others alone
         slines = self.set_and_get({'round_robin': 'True ALL'})
