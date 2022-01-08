@@ -46,7 +46,7 @@ class TestSchedConfig(TestSelf):
     Test setting values in sched_config file.
     """
 
-    def set_and_get(self, confs={}, validate=False):
+    def set_and_get(self, confs, validate=False):
         """
         Change settings in scheduler config file and fetch the new
         file contents
@@ -81,7 +81,7 @@ class TestSchedConfig(TestSelf):
 
         # First, get default settings for a few values and verify
         # they are what they should be as of this version of test.
-        slines = self.set_and_get()
+        slines = self.set_and_get({})
         def_rr = self.get_a_setting(slines, 'round_robin')
         def_nsk = self.get_a_setting(slines, 'node_sort_key')
         def_jsk = self.get_a_setting(slines, 'job_sort_key')
