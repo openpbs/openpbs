@@ -451,8 +451,12 @@ decr_single_subjob_usage(job *parent)
  * Complexity: O(N)
  * 
  * @param[in] preq - request structure
+ *
+ * @return int
+ * @retval 0 for success
+ * @retval 1 for failure
  */
-static void
+static int
 init_deljoblist(struct batch_request *preq)
 {
 	int head = -1;
@@ -463,10 +467,10 @@ init_deljoblist(struct batch_request *preq)
 	char *temp;
 
 	if (preq->rq_ind.rq_deletejoblist.rq_resume)
-		return;
+		return 0;
 
 	if (!jlist || !jlist[0])
-		return;
+		return 0;
 
 	preply->brp_un.brp_deletejoblist.undeleted_job_idx = pbs_idx_create(0, 0);
 
@@ -477,6 +481,12 @@ init_deljoblist(struct batch_request *preq)
 			continue;
 
 		pbs_idx_insert(preply->brp_un.brp_deletejoblist.undeleted_job_idx, pjob->ji_qs.ji_jobid, NULL);
+		if (strcmp(jlist[tail], pjob->ji_qs.ji_jobid) != 0) {
+			free(jlist[tail]);
+			jlist[tail] = strdup(pjob->ji_qs.ji_jobid);
+			if (jlist[tail] == NULL)
+				return 1;
+		}
 
 		if (head == -1) {
 			if (get_job_state(pjob) != JOB_STATE_LTR_QUEUED) {
@@ -491,6 +501,8 @@ init_deljoblist(struct batch_request *preq)
 			jlist[tail] = temp;
 		}
 	}
+
+	return 0;
 }
 
 /**
@@ -558,7 +570,12 @@ req_deletejob(struct batch_request *preq)
 	if (preq->rq_type == PBS_BATCH_DeleteJobList) {
 
 		if (!preq->rq_ind.rq_deletejoblist.rq_resume) {
-			init_deljoblist(preq);
+			if (init_deljoblist(preq) != 0) {
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+						"Error while initializing deljoblist operation (init_deljoblist failed)");
+				req_reject(PBSE_INTERNAL, 0, preq);
+				return;
+			}
 		} else
 			start_jobid = preq->rq_ind.rq_deletejoblist.jobid_to_resume;
 
