@@ -574,7 +574,7 @@ req_deletejob(struct batch_request *preq)
 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 						"Error while initializing deljoblist operation (init_deljoblist failed)");
 				req_reject(PBSE_INTERNAL, 0, preq);
-				goto end;
+				return;
 			}
 		} else
 			start_jobid = preq->rq_ind.rq_deletejoblist.jobid_to_resume;
