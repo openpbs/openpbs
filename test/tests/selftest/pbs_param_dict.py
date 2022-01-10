@@ -73,14 +73,8 @@ class TestParamDict(TestSelf):
                 return 'Unexpected parse error'
             if expect_none and new is not None:
                 return 'Should have failed'
-            all_keys = set(old.keys()) | set(new.keys())
-            diffs = []
-            for k in sorted(all_keys):
-                o = old.get(k, None)
-                n = new.get(k, None)
-                if o != n:
-                    diffs.append((k, n))
-            return diffs
+            diffs = [(k, new[k]) for k in old if old[k] != new[k]]
+            return sorted(diffs)
 
         def check_diffs(self, new, expected):
             """
