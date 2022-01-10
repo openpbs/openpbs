@@ -673,7 +673,7 @@ class PTLTestRunner(Plugin):
         information
         """
         def get_bool(v):
-            if v == None or v == '':
+            if v is None or v == '':
                 return False
             if v in PTL_TRUE:
                 return True
