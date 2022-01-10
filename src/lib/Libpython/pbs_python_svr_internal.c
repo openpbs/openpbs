@@ -8928,8 +8928,10 @@ _pbs_python_event_job_getval_hookset(char *attrib_name, char *opval,
 		return NULL;
 	}
 
-	/* Get the attributes that have been set in the hook script via the
-	   _attributes_hook_set dictionary. */
+	/*
+	 * Get the attributes that have been set in the hook script via the
+	 * _attributes_hook_set dictionary.
+	 */
 	py_attr_hookset_dict = PyObject_GetAttrString(
 		py_job, PY_ATTRIBUTES_HOOK_SET); /* NEW */
 	if (py_attr_hookset_dict == NULL) {
@@ -10210,8 +10212,10 @@ _pbs_python_event_jobresc_getval_hookset(char *attr_name, char *resc_name)
 		goto jobresc_getval_hookset_exit;
 	}
 
-	/* Get the attributes that have been set in the hook script via the
-	   _attributes_hook_set dictionary. */
+	/*
+	 * Get the attributes that have been set in the hook script via the
+	 * _attributes_hook_set dictionary.
+	 */
 	py_attr_hookset_dict = PyObject_GetAttrString(
 		py_jobresc, PY_ATTRIBUTES_HOOK_SET); /* NEW */
 	if (py_attr_hookset_dict == NULL) {
@@ -10372,8 +10376,10 @@ _pbs_python_event_jobresc_clear_hookset(char *attr_name)
 		goto jobresc_clear_hookset_exit;
 	}
 
-	/* Get the attributes that have been set in the hook script via the
-	   _attributes_hook_set dictionary. */
+	/*
+	 * Get the attributes that have been set in the hook script via the
+	 * _attributes_hook_set dictionary.
+	 */
 	py_attr_hookset_dict = PyObject_GetAttrString(
 		py_jobresc, PY_ATTRIBUTES_HOOK_SET); /* NEW */
 	if (py_attr_hookset_dict == NULL) {

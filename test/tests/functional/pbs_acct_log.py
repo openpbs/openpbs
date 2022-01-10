@@ -353,7 +353,7 @@ e1.accept()
 """
 
         qj_attrs = {'event': 'queuejob', 'enabled': 'True'}
-        mj_attrs = {'event': 'queuejob', 'enabled': 'True'}
+        mj_attrs = {'event': 'modifyjob', 'enabled': 'True'}
         self.server.create_import_hook('qj', qj_attrs, info_hook)
         self.server.create_import_hook('mj', mj_attrs, info_hook)
 
@@ -434,7 +434,7 @@ e2.reject('bar')
         except PbsRunError:
             # runjob hook is rejecting the run request
             pass
-        (_, line) = self.server.accounting_match(f';a;{jid1};project=abc')
+        self.server.accounting_match(f';a;{jid1};project=abc')
 
     def test_queue_record_multiple_hook_00(self):
         """
@@ -467,10 +467,9 @@ e1.accept()
         # FIXME set hook attr to priority order
         self.server.create_import_hook('qj01', qj_attrs, qj_hook_01)
 
-        j = Job(TEST_USER, {'Resource_List.walltime':
-                            BatchUtils().convert_duration("00:00:42")})
+        j = Job(TEST_USER, {'Resource_List.walltime': 42})
         j.set_sleep_time(1)
-        jid1 = self.server.submit(j, extend='x')
+        jid1 = self.server.submit(j)
         self.server.alterjob(jid1, {ATTR_p: 150})
         (_, line) = self.server.accounting_match(';Q;' + jid1)
         self.assertIn('project=foo00_foo01', line)
@@ -484,7 +483,7 @@ e1.accept()
     def test_queue_record_multiple_hook_01(self):
         """
         Test that changes made in a modifyjob hook are reflected in the
-        Q record
+        E record
         """
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False',
@@ -516,7 +515,7 @@ e1.accept()
         self.server.create_import_hook('mj_01', mj_attrs_01, mj_hook_01)
         j = Job(TEST_USER, {'Resource_List.walltime': 42})
         j.set_sleep_time(1)
-        jid1 = self.server.submit(j, extend='x')
+        jid1 = self.server.submit(j)
         self.server.alterjob(jid1, {ATTR_p: 150})
         (_, line) = self.server.accounting_match(';a;' + jid1)
         self.assertIn('Priority=150', line)
@@ -573,22 +572,9 @@ e1.accept()
         # the modifyjob hook doesn't get the change from the queuejob.
         self.server.create_import_hook('mj_00', mj_attrs, mj_hook_00)
 
-        rj_hook_00 = """
-import pbs
-e1 = pbs.event()
-pbs.logmsg(pbs.LOG_ERROR, f"HOOKR0:e1:{hex(id(e1))}"
-                    f" job.id:{e1.job.id}"
-                    f" job.project:{e1.job.project}"
-                    f" hex(id(job)):{hex(id(e1.job))}")
-e1.accept()
-"""
-        rj_attrs = {'event': 'runjob', 'enabled': 'True'}
-
-        self.server.create_import_hook('rj', rj_attrs, rj_hook_00)
-
         j = Job(TEST_USER, {'Resource_List.walltime': 1})
         j.set_sleep_time(1)
-        jid1 = self.server.submit(j, extend='x')
+        jid1 = self.server.submit(j)
         self.server.alterjob(jid1, {ATTR_p: 150})
         self.server.runjob(jid1)
         self.server.expect(JOB, {'job_state': 'F'}, extend='x', id=jid1)
@@ -670,7 +656,7 @@ e1.accept()
 
         j = Job(TEST_USER, {'Resource_List.walltime': 1})
         j.set_sleep_time(1)
-        jid1 = self.server.submit(j, extend='x')
+        jid1 = self.server.submit(j)
         self.server.alterjob(jid1, {ATTR_p: 150})
         (_, line) = self.server.accounting_match(';Q;' + jid1)
         self.assertIn('project=foo00_foo01', line)

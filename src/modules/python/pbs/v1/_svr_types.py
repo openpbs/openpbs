@@ -913,9 +913,6 @@ class _event():
     #: m(__reject__)
 
     def __getattr__(self, key):
-        # _pbs_v1.logmsg(
-        #     _pbs_v1.EVENT_ERROR,
-        #     f"EVENT: __getattr__({hex(id(self))}, {key})")
         try:
             return self._param[key]
         except KeyError:
