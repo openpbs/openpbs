@@ -87,7 +87,7 @@ def get_server_data_fp():
     if data_file is None:
         return None
     try:
-        return open(data_file, "a+");
+        return open(data_file, "a+")
     except:
         _pbs_v1.logmsg(_pbs_v1.LOG_WARNING,
                        "warning: error opening debug data file %s" % data_file)
@@ -286,7 +286,6 @@ class _job():
     """
 
     attributes = PbsReadOnlyDescriptor('attributes', {})
-    _attributes_hook_set = {}
 
     def __new__(cls, value, connect_server=None):
         return object.__new__(cls)
@@ -295,6 +294,7 @@ class _job():
                  failed_node_list=None, node_list=None):
         """__init__"""
 
+        self._attributes_hook_set = {}
         self.id = jid
         self._connect_server = connect_server
         self._readonly = False
@@ -315,6 +315,13 @@ class _job():
     #: m(__str__)
 
     def __setattr__(self, name, value):
+        if name == '_attributes_hook_set':
+            if _pbs_v1.in_python_mode():
+                raise BadAttributeValueError(
+                    f"the attribute '{name}' is readonly")
+            super().__setattr__(name, value)
+            return
+
         if name == "_readonly":
             if _pbs_v1.in_python_mode() and \
                     hasattr(self, "_readonly") and not value:
@@ -327,21 +334,13 @@ class _job():
             raise UnsetAttributeNameError(
                 "job attribute '%s' not found" % (name,))
 
-        super(_job, self).__setattr__(name, value)
+        super().__setattr__(name, value)
 
         # attributes that are set in python mode will be reflected in
         # _attributes_hook_set dictionary.
-        # For example,
-        # _attributes_hook_set[<job object>]=['Priority', 'comment']
-        # if 'comment' or 'Priority' has been assigned a value within the hook
-        # script, or been unset.
-
         if _pbs_v1.in_python_mode():
-            if self not in self._attributes_hook_set:
-                self._attributes_hook_set[self] = {}
             # using a dictionary value as easier to search for keys
-            self._attributes_hook_set[self].update({name: None})
-
+            self._attributes_hook_set[name] = None
     #: m(__setattr__)
 
     def rerun(self):
@@ -400,11 +399,11 @@ class _job():
 
 _job.id = PbsAttributeDescriptor(_job, 'id', "", (str,))
 _job.failed_mom_list = PbsAttributeDescriptor(
-    _job, 'failed_mom_list', {}, (list,))
+    _job, 'failed_mom_list', [], (list,))
 _job.succeeded_mom_list = PbsAttributeDescriptor(
-    _job, 'succeeded_mom_list', {}, (list,))
+    _job, 'succeeded_mom_list', [], (list,))
 _job._connect_server = PbsAttributeDescriptor(
-    _job, '_connect_server', {}, (str,))
+    _job, '_connect_server', "", (str,))
 #: C(job)
 
 #:------------------------------------------------------------------------
@@ -418,7 +417,6 @@ class _vnode():
     """
 
     attributes = PbsReadOnlyDescriptor('attributes', {})
-    _attributes_hook_set = {}
 
     def __new__(cls, value, connect_server=None):
         return object.__new__(cls)
@@ -426,6 +424,7 @@ class _vnode():
     def __init__(self, name, connect_server=None):
         """__init__"""
 
+        self._attributes_hook_set = {}
         self.name = name
         self._readonly = False
         self._connect_server = connect_server
@@ -438,6 +437,13 @@ class _vnode():
     #: m(__str__)
 
     def __setattr__(self, name, value):
+        if name == '_attributes_hook_set':
+            if _pbs_v1.in_python_mode():
+                raise BadAttributeValueError(
+                    f"the attribute '{name}' is readonly")
+            super().__setattr__(name, value)
+            return
+
         if name == "_readonly":
             if _pbs_v1.in_python_mode() and \
                     hasattr(self, "_readonly") and not value:
@@ -446,20 +452,14 @@ class _vnode():
         elif name not in _vnode.attributes:
             raise UnsetAttributeNameError(
                 "vnode attribute '%s' not found" % (name,))
-        super(_vnode, self).__setattr__(name, value)
+
+        super().__setattr__(name, value)
 
         # attributes that are set in python mode will be reflected in
         # _attributes_hook_set dictionary.
-        # For example,
-        # _attributes_hook_set[<vnode object>]=['Priority', 'comment']
-        # if 'comment' or 'Priority' has been assigned a value within the hook
-        # script, or been unset.
-
         if _pbs_v1.in_python_mode() and (name != "_connect_server"):
-            if self not in self._attributes_hook_set:
-                self._attributes_hook_set[self] = {}
             # using a dictionary value as easier to search for keys
-            self._attributes_hook_set[self].update({name: None})
+            self._attributes_hook_set[name] = None
             _pbs_v1.mark_vnode_set(self.name, name, str(value))
 
     #: m(__seattr__)
@@ -501,7 +501,6 @@ class _resv():
     """
 
     attributes = PbsReadOnlyDescriptor('attributes', {})
-    _attributes_hook_set = {}
     attributes_readonly = PbsReadOnlyDescriptor('attributes_readonly',
                                                 [])
 
@@ -511,6 +510,7 @@ class _resv():
     def __init__(self, resvid, connect_server=None):
         """__init__"""
 
+        self._attributes_hook_set = {}
         self.resvid = resvid
         self._readonly = False
         self._connect_server = connect_server
@@ -523,6 +523,13 @@ class _resv():
     #: m(__str__)
 
     def __setattr__(self, name, value):
+        if name == '_attributes_hook_set':
+            if _pbs_v1.in_python_mode():
+                raise BadAttributeValueError(
+                    f"the attribute '{name}' is readonly")
+            super().__setattr__(name, value)
+            return
+
         if (name == "_readonly"):
             if _pbs_v1.in_python_mode() and \
                     hasattr(self, "_readonly") and not value:
@@ -537,21 +544,14 @@ class _resv():
             # readonly under a SITE hook
             raise BadAttributeValueError(
                 "resv attribute '%s' is readonly" % (name,))
-        super(_resv, self).__setattr__(name, value)
-        #super(_resv, self).__setattr__(name, value)
+
+        super().__setattr__(name, value)
 
         # attributes that are set in python mode will be reflected in
         # _attributes_hook_set dictionary.
-        # For example,
-        # _attributes_hook_set[<resv object>]=['reserve_start', 'reserve_end']
-        # if 'reserve_start' or 'reserve_end' has been assigned a value within
-        # the hook script, or been unset.
-
         if _pbs_v1.in_python_mode():
-            if self not in self._attributes_hook_set:
-                self._attributes_hook_set[self] = {}
             # using a dictionary value as easier to search for keys
-            self._attributes_hook_set[self].update({name: None})
+            self._attributes_hook_set[name] = None
     #: m(__setattr__)
 
 
@@ -913,10 +913,10 @@ class _event():
     #: m(__reject__)
 
     def __getattr__(self, key):
-        if self._param.__contains__(key):
+        try:
             return self._param[key]
-        # did not find <key>
-        raise EventIncompatibleError
+        except KeyError:
+            raise EventIncompatibleError(f'"{key}" not found in self._param')
     #: m(__getattr__)
 
     def __setattr__(self, name, value):
@@ -925,7 +925,7 @@ class _event():
                     hasattr(self, "_readonly") and not value:
                 raise BadAttributeValueError(
                     "_readonly can only be set to True!")
-        elif _pbs_v1.in_python_mode() and self._param.__contains__(name):
+        elif _pbs_v1.in_python_mode() and name in self._param:
             if name == "progname" or name == "argv" or name == "env":
                 self._param[name] = value
                 return
@@ -1424,7 +1424,7 @@ class _server_attribute:
     This represents a external form of attributes..
     """
     attributes = PbsReadOnlyDescriptor('attributes', {})
-    _attributes_hook_set = {}
+
     def __init__(self, name, resource, value, op, flags):
         self.name = name
         self.resource = resource
@@ -1482,7 +1482,6 @@ class _management:
     This represents a management operation.
     """
     attributes = PbsReadOnlyDescriptor('attributes', {})
-    _attributes_hook_set = {}
 
     def __init__(self, cmd, objtype, objname, request_time, reply_code,
         reply_auxcode, reply_choice, reply_text,
@@ -1517,9 +1516,6 @@ class _management:
         super().__setattr__(name, value)
     #: m(__setattr__)
 
-_management.cmd = PbsAttributeDescriptor(_management, 'cmd', None, (int,))
-_management.objtype = PbsAttributeDescriptor(_management, 'objtype', None, (int,))
-_management.objname = PbsAttributeDescriptor(_management, 'objname', "", (str,))
 _management._connect_server = PbsAttributeDescriptor(
     _management, '_connect_server', "", (str,))
 #: C(_management)
