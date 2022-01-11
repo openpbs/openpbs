@@ -46,97 +46,67 @@ class TestSchedConfig(TestSelf):
     Test setting values in sched_config file.
     """
 
-    def set_and_get(self, confs, validate=False):
-        """
-        Change settings in scheduler config file and fetch the new
-        file contents
-        """
-        sched = self.our_sched
-        sched.set_sched_config(confs, apply=True, validate=validate)
-        cfile = sched.sched_config_file
-        clines = self.du.cat(sched.hostname, cfile, sudo=True,
-                             level=logging.DEBUG2)['out']
-        slines = [x for x in clines if re.match(r'[\w]', x)]
-        return slines
-
-    def get_a_setting(self, slines, key):
-        """"
-        Extract lines changing a particular setting from a list of lines
-        """
-        vals = []
-        key_colon = key + ':'
-        for line in slines:
-            if line.startswith(key_colon):
-                value = line[len(key_colon):].strip()
-                vals.append(value)
-        return vals
-
     def test_set_sched_config(self):
         '''
         Test whether Scheduler.set_sched_config() works as expected.
         '''
+        sched = self.scheds['default']
 
-        def get_dflt(key):
-            '''Get default value as list'''
-            if key in dflts:
-                val = dflts[key]
-                if not isinstance(val, list):
-                    val = [val]
-            else:
-                val = []
-            return val
+        def set_and_get(confs):
+            """
+            Change settings in scheduler config file and fetch the new
+            file contents
+            """
+            sched.set_sched_config(confs, apply=True, validate=False)
+            sched.parse_sched_config()
+            return sched.sched_config
 
-        self.our_sched = self.scheds['default']
-        dflts = self.our_sched.sched_config
-
-        # First, fetch default values our way and compare to real defaults
-        slines = self.set_and_get({})
-        def_rr = self.get_a_setting(slines, 'round_robin')
-        def_nsk = self.get_a_setting(slines, 'node_sort_key')
-        def_jsk = self.get_a_setting(slines, 'job_sort_key')
-        self.assertEqual(def_rr, get_dflt('round_robin'))
-        self.assertEqual(def_nsk, get_dflt('node_sort_key'))
-        self.assertEqual(def_jsk, get_dflt('job_sort_key'))
+        def cmp_dict(old, new):
+            """
+            Compare two dictionaries and build list of changes
+            """
+            all_keys = set(old.keys()) | set(new.keys())
+            diffs = []
+            for key in sorted(all_keys):
+                o = old.get(key, '<missing>')
+                n = new.get(key, '<missing>')
+                if o != n:
+                    diffs.append([key, n])
+            return diffs
 
         # See if we can change an existing value, and leave others alone
-        slines = self.set_and_get({'round_robin': 'True ALL'})
-        new_rr = self.get_a_setting(slines, 'round_robin')
-        new_nsk = self.get_a_setting(slines, 'node_sort_key')
-        new_jsk = self.get_a_setting(slines, 'job_sort_key')
-        self.assertEqual(new_rr, ["True ALL"])
-        def_rr = new_rr
-        self.assertEqual(new_nsk, def_nsk, "Change to unexpected setting")
-        self.assertEqual(new_jsk, def_jsk, "Change to unexpected setting")
+        old_conf = sched.sched_config
+        new_conf = set_and_get({'round_robin': 'True ALL'})
+        diffs = cmp_dict(old_conf, new_conf)
+        self.assertEqual(diffs, [['round_robin', 'True ALL']])
 
         # Repeat for initially missing setting
-        slines = self.set_and_get({'job_sort_key': '"ncpus HIGH"'})
-        new_rr = self.get_a_setting(slines, 'round_robin')
-        new_nsk = self.get_a_setting(slines, 'node_sort_key')
-        new_jsk = self.get_a_setting(slines, 'job_sort_key')
-        self.assertEqual(new_rr, def_rr, "Change to unexpected setting")
-        self.assertEqual(new_nsk, def_nsk, "Change to unexpected setting")
-        self.assertEqual(new_jsk, ['"ncpus HIGH"'])
-        def_jsk = new_jsk
+        old_conf = new_conf
+        new_conf = set_and_get({'job_sort_key': '"ncpus HIGH"'})
+        diffs = cmp_dict(old_conf, new_conf)
+        self.assertEqual(diffs, [['job_sort_key', '"ncpus HIGH"']])
 
         # Test whether we can unset a value by setting to empty list
-        slines = self.set_and_get({'job_sort_key': []})
-        new_rr = self.get_a_setting(slines, 'round_robin')
-        new_nsk = self.get_a_setting(slines, 'node_sort_key')
-        new_jsk = self.get_a_setting(slines, 'job_sort_key')
-        self.assertEqual(new_rr, def_rr, "Change to unexpected setting")
-        self.assertEqual(new_nsk, def_nsk, "Change to unexpected setting")
-        self.assertEqual(new_jsk, [])
-        def_jsk = new_jsk
+        old_conf = new_conf
+        new_conf = set_and_get({'job_sort_key': []})
+        diffs = cmp_dict(old_conf, new_conf)
+        self.assertEqual(diffs, [['job_sort_key', '<missing>']])
 
-        # Test whether we can set multiple values
-        slines = self.set_and_get({'job_sort_key':
-                                   ['"job_priority HIGH"', '"ncpus HIGH"']})
-        new_rr = self.get_a_setting(slines, 'round_robin')
-        new_nsk = self.get_a_setting(slines, 'node_sort_key')
-        new_jsk = self.get_a_setting(slines, 'job_sort_key')
-        self.assertEqual(new_rr, def_rr, "Change to unexpected setting")
-        self.assertEqual(new_nsk, def_nsk, "Change to unexpected setting")
-        self.assertEqual(new_jsk, ['"job_priority HIGH"', '"ncpus HIGH"'])
+        # Test whether we can set multiple values for one setting
+        old_conf = new_conf
+        jsk = ['"job_priority HIGH"', '"ncpus HIGH"']
+        new_conf = set_and_get({'job_sort_key': jsk})
+        diffs = cmp_dict(old_conf, new_conf)
+        self.assertEqual(diffs, [['job_sort_key', jsk]])
 
-        # Finally, check if the scheduler likes the final result
-        self.our_sched.set_sched_config(apply=True, validate=True)
+        # Test whether we can change multiple settings
+        old_conf = new_conf
+        jsk = ['"job_priority LOW"', '"mem LOW"']
+        new_conf = set_and_get({'primetime_prefix': 'xp_',
+                                'job_sort_key': jsk})
+        diffs = cmp_dict(old_conf, new_conf)
+        self.assertEqual(diffs, [['job_sort_key', jsk],
+                                 ['primetime_prefix', 'xp_']])
+
+        # Finally, check if the scheduler likes the result
+        sched.set_sched_config(confs={}, apply=True, validate=True)
