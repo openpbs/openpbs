@@ -1054,8 +1054,8 @@ class PTLTestRunner(Plugin):
             self.logger.debug('Cleaning %s\'s home directory' % (str(user)))
             runas = PbsUser.get_user(user)
             for host in hosts:
-                ret = du.run_cmd(host, cmd=['echo', '$HOME'], sudo=True,
-                                 runas=runas, logerr=False, as_script=True,
+                ret = du.run_cmd(host, cmd=['printenv', 'HOME'], sudo=True,
+                                 runas=runas, logerr=False, as_script=False,
                                  level=logging.DEBUG)
                 if ret['rc'] == 0:
                     path = ret['out'][0].strip()
