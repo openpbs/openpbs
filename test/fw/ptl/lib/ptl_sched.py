@@ -468,19 +468,18 @@ class Scheduler(PBSService):
         """
         Parse a sceduling configuration file into a dictionary.
         Special handling of identical keys ``(e.g., node_sort_key)``
-        is done by appending a delimiter, '%', between each value
-        of the key. When printed back to file, each delimited entry
+        is done using a list of values as the value of the key.
+        When printed back to file, each entry in the list
         gets written on a line of its own. For example, the python
         dictionary entry:
 
         ``{'node_sort_key':
-        ["ncpus HIGH unusued" prime", "node_priority HIH"
-        non-prime"]}``
+        ['"ncpus HIGH unused" prime', '"node_priority HIGH" non-prime']}``
 
         will get written as:
 
-        ``node_sort_key: "ncpus HIGH unusued" prime``
-        ``node_sort_key: "node_priority HIGH"  non-prime``
+        ``node_sort_key: "ncpus HIGH unused" prime``
+        ``node_sort_key: "node_priority HIGH" non-prime``
 
         Returns sched_config dictionary that gets reinitialized
         every time this method is called.
@@ -631,7 +630,11 @@ class Scheduler(PBSService):
                         fd.write("\n")
                 for k, v in self.sched_config.items():
                     if k not in self._config_order:
-                        fd.write(k + ": " + str(v).strip() + "\n")
+                        if isinstance(v, list):
+                            for val in v:
+                                fd.write(k + ": " + str(val).strip() + "\n")
+                        else:
+                                fd.write(k + ": " + str(v).strip() + "\n")
 
                 if 'PTL_SCHED_CONFIG_TAIL' in self._sched_config_comments:
                     fd.write("\n".join(
