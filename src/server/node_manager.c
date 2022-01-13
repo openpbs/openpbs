@@ -3794,7 +3794,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 					/* restart */
 
 					pattr->at_flags &= ~ATR_VFLAG_DEFLT;
-					post_attr_set(pattr);
+					pattr->at_flags |= ATR_VFLAG_MODCACHE;
 					if (psrp->vna_val[0] != '\0')
 						pattr->at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODIFY);
 					snprintf(log_buffer,
