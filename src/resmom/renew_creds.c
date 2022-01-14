@@ -134,7 +134,7 @@ static int get_job_info_from_principal(const char *principal, const char *jobid,
 static krb5_error_code get_ticket_from_storage(struct krb_holder *ticket, char *errbuf, size_t errbufsz);
 static krb5_error_code get_ticket_from_ccache(struct krb_holder *ticket, char *errbuf, size_t errbufsz);
 static krb5_error_code get_renewed_creds(struct krb_holder *ticket, char *errbuf, size_t errbufsz);
-static int init_ticket(struct krb_holder *ticket, int cred_action);
+static int init_ticket(struct krb_holder *ticket, job *pjob, int cred_action);
 
 static svrcred_data *find_cred_data_by_jobid(char *jobid);
 
@@ -163,7 +163,7 @@ init_ticket_from_req(char *principal, char *jobid, struct krb_holder *ticket, in
 		return ret;
 	}
 
-	ret = init_ticket(ticket, cred_action);
+	ret = init_ticket(ticket, NULL, cred_action);
 	if (ret == 0) {
 		ticket->got_ticket = 1;
 	}
@@ -196,7 +196,7 @@ init_ticket_from_job(job *pjob, const task *ptask, struct krb_holder *ticket, in
 		return ret;
 	}
 
-	ret = init_ticket(ticket, cred_action);
+	ret = init_ticket(ticket, pjob, cred_action);
 	if (ret == 0) {
 		ticket->got_ticket = 1;
 	}
@@ -260,7 +260,7 @@ init_ticket_from_ccache(job *pjob, const task *ptask, struct krb_holder *ticket)
  * @retval	!= PBS_KRB5_OK on error
  */
 static int
-init_ticket(struct krb_holder *ticket, int cred_action)
+init_ticket(struct krb_holder *ticket, job *pjob, int cred_action)
 {
 	int ret;
 	char buf[LOG_BUF_SIZE];
@@ -296,8 +296,8 @@ init_ticket(struct krb_holder *ticket, int cred_action)
 			break;
 	}
 
-	if (vtable.v_envp != NULL)
-		bld_env_variables(&vtable, "KRB5CCNAME", ticket->job_info->ccache_name);
+	if (pjob != NULL && pjob->ji_env.v_envp != NULL)
+		bld_env_variables(&(pjob->ji_env), "KRB5CCNAME", ticket->job_info->ccache_name);
 	else
 		setenv("KRB5CCNAME", ticket->job_info->ccache_name, 1);
 

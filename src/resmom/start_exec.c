@@ -4701,13 +4701,13 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if (ptask->ti_job->ji_tasks.ll_prior == ptask->ti_job->ji_tasks.ll_next) { /* create only on first task */
+	if (pjob->ji_tasks.ll_prior == pjob->ji_tasks.ll_next) { /* create only on first task */
 		cred_action = CRED_RENEWAL;
 	} else {
 		cred_action = CRED_SETENV;
 	}
 
-	if (cred_by_job(ptask->ti_job, cred_action) != PBS_KRB5_OK) {
+	if (cred_by_job(pjob, cred_action) != PBS_KRB5_OK) {
 		log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid,
 			   "failed to set credentials for task %8.8X",
 			   ptask->ti_qs.ti_task);
