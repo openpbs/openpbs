@@ -167,13 +167,14 @@ For example:
 .B qsub -S /bin/bash myscript.sh
 .RE
 
-In the first line of your script.  For example:
+You can specify a different interpreter in the first line of your script.
+For example:
 .RS 3
 .nf
 .B cat myscript.sh
-#!/bin/sh
+#!/bin/bash
 #PBS -N MyHelloJob
-print "Hello"
+echo "Hello"
 .fi
 .RE
 
@@ -200,22 +201,20 @@ For example, we have a Python job script that includes PBS directives:
 #!/usr/bin/python
 #PBS -l select=1:ncpus=3:mem=1gb
 #PBS -N HelloJob
-print "Hello"
+print "Hello" 
 .fi
 .RE
 
-To run a Python job script under Linux, use the Python path on the execution host:
+So long as the first line of the script is the "#!/usr/bin/python" line
+or similar, you don't need to do anything special to run a python script.
 .RS 3
-.I qsub -S <Python path on execution host> <script name>
-
-For example, 
-.br
-.B qsub -S $PBS_EXEC/bin/pbs_python <script name>
+.I qsub <script name>
 .RE
 
-To run a Python job script under Windows, use the Python path on the execution host: 
+To run a Python job script under Windows, use the path to the pbs_python
+executable on the execution host:
 .RS 3
-.I qsub -S <Python path on execution host> <script name>
+.I qsub -S <pbs_python path on execution host> <script name>
 
 For example, 
 .br
@@ -275,7 +274,7 @@ when the Windows command interpreter tries to execute that last line.
 To submit a PBS job by typing job specifications at the command line,
 you type:
 .br
-.I qsub [<options>]  [-] <return>  
+.I qsub [<options>] [\-] <return>
 .br
 then type any directives, then any tasks, followed by:
 .RS 3
@@ -321,6 +320,12 @@ For example, to run myprog with the arguments a and b:
 For example, to run myprog with the arguments a and b, naming the job "JobA":
 .RS 3
 .B qsub -N JobA -- myprog a b <return>
+.RE
+
+On Linux, you need to specify the path to myprog, so the previous example
+becomes:
+.RS 3
+.B qsub -N JobA -- /path/to/myprog a b <return>
 .RE
 
 .B Requesting Resources and Placing Jobs
@@ -641,7 +646,7 @@ argument is a null string, qsub
 does not scan the script file for directives.
 Overrides the PBS_DPREFIX environment variable and the default.
 The string "PBS_DPREFIX" cannot be used as a PBS directive.
-Length limit: 4096 charactes.
+Length limit: 4096 characters.
 
 .IP "-e <path>" 8
 Path to be used for the job's standard error stream.
@@ -995,13 +1000,16 @@ is interpreted as follows:
 If
 .I path 
 is relative, it is taken to be relative to 
-the current working directory of the command, where it is executing 
-on the current host.  
+the current working directory of the
+.B qsub
+command, where it is executing on the current host.  
 
 If
 .I path
 is absolute, it is taken to be an absolute path on 
-the current host where the command is executing.
+the current host where the
+.B qsub
+command is executing.
 .IP hostname:path
 
 If 
@@ -1214,9 +1222,9 @@ Default: job owner (username on submission host)
 
 .IP "-v <variable list>"
 Lists environment variables and shell functions to be exported to the job.
-This is the list of environment variables which is added to 
+This is the list of environment variables that are added to
 those already automatically exported.  These variables exist in
-the user's login environment, from which 
+the user's environment from which
 .B qsub
 is run.
 The job's 
@@ -1248,7 +1256,7 @@ enclose the value.  For example:
 .RS 3
 qsub -v "var1='A,B,C,D'" job.sh
 .br
-qsub -v a=10, "var2='A,B'", c=20, HOME=/home/zzz job.sh
+qsub -v "a=10,var2='A,B',c=20,d='Hello world'" job.sh
 .RE
 
 Default: no environment variables are added to the job's variable list.
@@ -1256,7 +1264,7 @@ Default: no environment variables are added to the job's variable list.
 
 .IP "-V" 8
 All environment variables and shell functions in the user's
-login environment where 
+environment where
 .B qsub
 is run are exported to the job.
 The job's
@@ -1437,9 +1445,11 @@ is sent to the job submitter stating the error.
 
 Dependency examples:
 .RS 3
-.B "qsub -W depend=afterok:123.host1.domain.com /tmp/script"
+.B "job1=`qsub first_step.sh`"
 .br
-.B "qsub -W depend=before:234.host1.com:235.host1.com /tmp/script"
+.B "qsub -W depend=afterok:$job1 second_step.sh"
+.sp
+.B "qsub -W depend=before:234.host1.com:235.host1.com jobscript"
 .RE
 .RE
 
@@ -1590,8 +1600,8 @@ The name
 .I storage_path
 is the path on 
 .I <hostname>. 
-The name can be relative to the staging and execution directory on the
-primary execution host, or it can be an absolute path.
+The storage_path can be absolute, or it can be relative to the user's home
+directory on hostname.
 
 If 
 .I path list
@@ -1619,7 +1629,7 @@ The following example allows group and world read on the job's output:
 .B -W umask=33
 .RE
 
-Format: One to four digits; typically two
+Format: One to four octal digits; typically two
 
 Default value: 
 .I 077
@@ -1654,6 +1664,8 @@ Can be used with
 option.
 
 Not available under Windows.
+.RE
+
 .LP
 
 .IP "-z" 8
@@ -1683,6 +1695,8 @@ Path to script.  Can be absolute or relative to current directory
 where 
 .B qsub 
 is run.
+The script must be the last argument to
+.BR qsub .
 .RE
 
 .I "-"
@@ -1697,10 +1711,9 @@ A single executable (preceded by two dashes) and its arguments
 
 The executable, and any arguments to the executable, are given on the
 qsub command line.  The executable is preceded by two dashes, "--".
-
-If a script or executable is specified, it must be the last argument
-to qsub.  The arguments to an executable must follow the name of the
-executable.
+All
+.B qsub
+options must come before the "--".
 
 When you run qsub this way, it runs the executable directly.  It does
 not start a shell, so no shell initialization scripts are run, and
@@ -1736,12 +1749,10 @@ Name of default server.
 Prefix string which identifies PBS directives.
 .RE
 
+PBS automatically exports the following environment variables to the job.
 Environment variables beginning with "PBS_O_" are created by 
-.B qsub.
-PBS automatically exports the following environment variables to the job, 
-and the job's 
-.I Variable_List 
-attribute is set to this list:
+.B qsub
+and included in the job's Variable_List.
 
 .IP PBS_ENVIRONMENT 8
 Set to 
@@ -1749,9 +1760,6 @@ Set to
 for a batch job.  Set to 
 .I PBS_INTERACTIVE
 for an interactive job.
-Created when 
-.B qsub
-is run.
 
 .IP PBS_JOBDIR 8
 Pathname of job's staging and execution directory on the
@@ -1759,21 +1767,13 @@ primary execution host.
 
 .IP PBS_JOBID 8
 Job identifier given by PBS when the job is submitted.
-Created when 
-.B qsub
-is run.
 
 .IP PBS_JOBNAME 8
 Job name specified by submitter.
-Created when 
-.B qsub
-is run.
 
 .IP PBS_NODEFILE 8
-Name of file containing the list of vnodes assigned to the job.
-Created when 
-.B qsub
-is run.
+Name of file containing the list of vnodes assigned to the job when
+the job runs.
 
 .IP PBS_O_HOME 8
 User's home directory.  
@@ -1802,7 +1802,7 @@ Name of the queue to which the job was submitted.
 Value taken from job submission, otherwise default queue.
 
 .IP PBS_O_SHELL 8
-Value taken from user's submission environment.
+Value of SHELL taken from user's submission environment.
 
 .IP PBS_O_SYSTEM 8
 Operating system, from 
@@ -1821,9 +1821,6 @@ Value taken from user's submission environment.
 
 .IP PBS_QUEUE 8
 Name of the queue from which the job is executed.
-Created when 
-.B qsub
-is run.
 
 .IP TMPDIR 8
 Pathname of job's scratch directory.  Set when PBS assigns it.
@@ -1851,7 +1848,8 @@ If the job is deleted without being run
 .B Warning About Exit Status with csh:
 .br
 If a job is run in csh and a .logout file
-exists in the home directory in which the job executes, the exit status
+exists in the user's home directory on the host where the job executes,
+the exit status
 of the job is that of the .logout script, not the job script.  This may
 impact any inter-job dependencies.  
 
