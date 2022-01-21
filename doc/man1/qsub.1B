@@ -201,7 +201,7 @@ For example, we have a Python job script that includes PBS directives:
 #!/usr/bin/python
 #PBS -l select=1:ncpus=3:mem=1gb
 #PBS -N HelloJob
-print "Hello" 
+print "Hello"
 .fi
 .RE
 
@@ -274,7 +274,7 @@ when the Windows command interpreter tries to execute that last line.
 To submit a PBS job by typing job specifications at the command line,
 you type:
 .br
-.I qsub [<options>] [\-] <return>
+.I qsub [<options>] [-] <return>
 .br
 then type any directives, then any tasks, followed by:
 .RS 3
@@ -1002,7 +1002,7 @@ If
 is relative, it is taken to be relative to 
 the current working directory of the
 .B qsub
-command, where it is executing on the current host.  
+command, where it is executing on the current host.
 
 If
 .I path
@@ -1448,7 +1448,11 @@ Dependency examples:
 .B "job1=`qsub first_step.sh`"
 .br
 .B "qsub -W depend=afterok:$job1 second_step.sh"
+.RE
+In this example, we saved the output from the first qsub (the jobid)
+into job1 so we could give it to the depend option on the second job.
 .sp
+.RS 3
 .B "qsub -W depend=before:234.host1.com:235.host1.com jobscript"
 .RE
 .RE
