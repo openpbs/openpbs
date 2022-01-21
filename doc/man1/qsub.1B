@@ -1390,6 +1390,9 @@ was deleted without ever having been run.
 Jobs in 
 .I arg list 
 may begin execution once this job has begun execution.
+It is uncommon for users to specify a before condition. Rather,
+PBS adds before dependencies automatically to the targets of
+after dependencies.
 
 .IP  "beforeok: <arg list>" 4
 Jobs in 
@@ -1443,18 +1446,18 @@ which the newly submitted job is performed after the job is queued.
 If an error is detected, the new job is deleted by the server.  Mail
 is sent to the job submitter stating the error.
 
-Dependency examples:
+Dependency example:
 .RS 3
-.B "job1=`qsub first_step.sh`"
+In this example, we save the output (the jobid) from the first qsub into
+shell variable "jobid" so we can supply it to the depend option on the
+second job.
 .br
-.B "qsub -W depend=afterok:$job1 second_step.sh"
+.B "jobid=`qsub first_step.sh`"
+.br
+.B "qsub -W depend=afterok:$jobid second_step.sh"
+.br
 .RE
-In this example, we saved the output from the first qsub (the jobid)
-into job1 so we could give it to the depend option on the second job.
-.sp
-.RS 3
-.B "qsub -W depend=before:234.host1.com:235.host1.com jobscript"
-.RE
+
 .RE
 
 .I "group_list=<group list>"
