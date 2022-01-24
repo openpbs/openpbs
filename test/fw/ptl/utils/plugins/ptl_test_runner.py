@@ -71,6 +71,7 @@ from ptl.utils.pbs_testsuite import (MINIMUM_TESTCASE_TIMEOUT,
                                      REQUIREMENTS_KEY, TIMEOUT_KEY)
 from ptl.utils.plugins.ptl_test_info import get_effective_reqs
 from ptl.utils.pbs_testusers import PBS_ALL_USERS, PBS_USERS, PbsUser
+from ptl.lib.ptl_constants import (PTL_TRUE, PTL_FALSE)
 from io import StringIO
 
 log = logging.getLogger('nose.plugins.PTLTestRunner')
@@ -671,6 +672,15 @@ class PTLTestRunner(Plugin):
         Method to convert data in param into dictionary of cluster
         information
         """
+        def get_bool(v):
+            if v is None or v == '':
+                return False
+            if v in PTL_TRUE:
+                return True
+            if v in PTL_FALSE:
+                return False
+            raise ValueError("Need boolean value, not %s" % v)
+
         tparam_contents = {}
         nomomlist = []
         shortname = (socket.gethostname()).split('.', 1)[0]
@@ -696,11 +706,11 @@ class PTLTestRunner(Plugin):
                     elif k == 'nomom':
                         nomomlist = hosts
                     elif k == 'mom_on_server':
-                        tparam_contents['mom_on_server'] = v
+                        tparam_contents['mom_on_server'] = get_bool(v)
                     elif k == 'no_mom_on_server':
-                        tparam_contents['no_mom_on_server'] = v
+                        tparam_contents['no_mom_on_server'] = get_bool(v)
                     elif k == 'no_comm_on_mom':
-                        tparam_contents['no_comm_on_mom'] = v
+                        tparam_contents['no_comm_on_mom'] = get_bool(v)
         for pkey in ['servers', 'moms', 'comms', 'clients']:
             if not tparam_contents[pkey]:
                 tparam_contents[pkey] = set([shortname])
