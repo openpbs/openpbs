@@ -51,8 +51,7 @@ class Test_PBS_CP_Variable(TestFunctional):
 
     def test_PBSCP_with_dir_permission(self):
         """
-        This test to include default PBS_CP path, wrong PBS_SCP path in pbs.conf and and Submit a job from directory where we have permission to 
-        copy output files and observe stage out message in momlogs
+        This test to include default PBS_CP path, wrong PBS_SCP path in pbs.conf and submit a job from directory where we have permission to copy output files and observe stage out message in momlogs
         """
         conf = {'PBS_CP': '/bin/cp','PBS_SCP': '/tmp/scp'}
         self.du.set_pbs_config(hostname=self.server.hostname, confs=conf)
@@ -70,8 +69,7 @@ class Test_PBS_CP_Variable(TestFunctional):
 
     def test_PBSCP_without_dir_permission(self):
         """
-        This test to include default PBS_CP path, wrong PBS_SCP path in pbs.conf and Submit a job from directory where we don’t have permission to 
-        copy output files and check failure messages related to copy command in momlogs
+        This test to include default PBS_CP path, wrong PBS_SCP path in pbs.conf and submit a job from directory where we don’t have permission to copy output files and check failure messages related to copy command in momlogs
         """
         conf = {'PBS_CP': '/bin/cp','PBS_SCP': '/tmp/scp'}
         self.du.set_pbs_config(hostname=self.server.hostname, confs=conf)
