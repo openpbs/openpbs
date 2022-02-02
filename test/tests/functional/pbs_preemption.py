@@ -702,6 +702,19 @@ exit 3
         self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
         self.server.expect(JOB, {'job_state=Q': 1})
 
+    @staticmethod
+    def wrong_cull_attr(name, totnodes, numnode, attrib):
+        """
+        Helper function for test_preempt_wrong_cull
+        """
+
+        a = {}
+        if numnode % 2 == 0:
+            a['resources_available.app'] = 'appA'
+        else:
+            a['resources_available.app'] = 'appB'
+        return {**attrib, **a}
+
     def test_preempt_wrong_cull(self):
         """
         Test to make sure that if a preemptor cannot run because
@@ -711,17 +724,14 @@ exit 3
         Deciding on their utility should be left to the check
         to see whether the nodes they occupy are useful.
         """
+
         attr = {'type': 'string_array', 'flag': 'h'}
         self.server.manager(MGR_CMD_CREATE, RSC, attr, id='app')
         self.scheduler.add_resource('app')
 
-        a = {'resources_available.ncpus': 1, 'resources_available.app': 'appA'}
-        self.mom.create_vnodes(a, num=1,
-                               usenatvnode=False, vname='vna')
-        b = {'resources_available.ncpus': 1, 'resources_available.app': 'appB'}
-        self.mom.create_vnodes(b, num=1,
-                               usenatvnode=False, additive=True, vname='vnb')
-
+        a = {'resources_available.ncpus': 1}
+        self.mom.create_vnodes(attrib=a, num=2, usenatvnode=False,
+                               attrfunc=self.wrong_cull_attr)
         # set the preempt_order to kill/requeue only -- try old and new syntax
         self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R'})
 
@@ -740,7 +750,8 @@ exit 3
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "lopri")
 
         # submit job 1
-        a = {'Resource_List.select': '1:ncpus=1:vnode=vna[0]', ATTR_q: 'lopri'}
+        a = {'Resource_List.select': '1:ncpus=1:vnode=' +
+             self.mom.shortname + '[0]', ATTR_q: 'lopri'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
 

@@ -90,11 +90,12 @@ else:
         test = []
         test += ['#PBS -l select=vnode=%s+vnode=%s\n' %
                  (self.hostA, self.hostB)]
-        test += ['%s -j $PBS_JOBID %s 30\n' %
-                 (self.pbs_attach, self.mom.sleep_cmd)]
-        test += ['%s %s %s %s 30\n' %
-                 (self.pbs_tmrsh, self.momB.hostname, self.pbs_attach,
-                  self.mom.sleep_cmd)]
+        test += ['setsid --fork %s -j $PBS_JOBID %s 3000\n'
+                 % (self.pbs_attach, self.mem.sleep_cmd)]
+        test += ['%s %s setsid --fork %s -j $PBS_JOBID %s 3000\n'
+                 % (self.pbs_tmrsh, self.momB.shortname, self.pbs_attach,
+                    self.mem.sleep_cmd)]
+        test += ['%s 3000\n' % self.mom.sleep_cmd]
 
         # Submit a job
         j = Job(TEST_USER)
@@ -179,11 +180,13 @@ e.accept()
         test = []
         test += ['#PBS -l select=vnode=%s+vnode=%s\n' %
                  (self.hostA, self.hostB)]
-        test += ['%s -j $PBS_JOBID %s 30\n' %
-                 (self.pbs_attach, self.mom.sleep_cmd)]
-        test += ['%s %s %s %s 30\n' %
-                 (self.pbs_tmrsh, self.momB.hostname, self.pbs_attach,
-                  self.mom.sleep_cmd)]
+
+        test += ['setsid --fork %s -j $PBS_JOBID %s 3000\n'
+                 % (self.pbs_attach, self.mom.sleep_cmd)]
+        test += ['%s %s setsid --fork %s -j $PBS_JOBID %s 3000\n'
+                 % (self.pbs_tmrsh, self.momB.shortname, self.pbs_attach,
+                    self.mom.sleep_cmd)]
+        test += ['%s 3000\n' % self.mom.sleep_cmd]
 
         # Submit a job
         j = Job(TEST_USER)

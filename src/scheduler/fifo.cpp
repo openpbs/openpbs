@@ -987,7 +987,9 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 					  LOG_INFO, njob->name, log_msg);
 
 			/* If this job couldn't run, the mark the equiv class so the rest of the jobs are discarded quickly.*/
-			if (sinfo->equiv_classes != NULL && njob->ec_index != UNSPECIFIED) {
+			/* Note: for MAX_RUN_SUBJOBS it concerns only this array, not the equivalence class!! */
+			if(sinfo->equiv_classes != NULL && njob->ec_index != UNSPECIFIED &&
+			   err->error_code != MAX_RUN_SUBJOBS) {
 				resresv_set *ec = sinfo->equiv_classes[njob->ec_index];
 				if (rc != RUN_FAILURE && !ec->can_not_run) {
 					ec->can_not_run = 1;
