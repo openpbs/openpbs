@@ -619,13 +619,11 @@ Format:
 No checkpointing.
 .IP s 5
 Checkpoint only when the server is shut down.
-
 .IP u 5
 Unset.  Defaults to behavior when 
 .I interval
 argument is set to 
 .I s.
-.I 
 .LP
 Default: 
 .I u
@@ -776,7 +774,6 @@ Job arrays cannot be interactive.
 When used with 
 .I -Wblock=true, 
 no exit status is returned.
-
 
 .IP "-j <join>" 8
 Specifies whether and how to join the job's standard error and standard output streams.
@@ -1011,7 +1008,6 @@ the current host where the
 .B qsub
 command is executing.
 .IP hostname:path
-
 If 
 .I path
 is relative, it is taken to be relative to the user's 
@@ -1451,13 +1447,12 @@ Dependency example:
 In this example, we save the output (the jobid) from the first qsub into
 shell variable "jobid" so we can supply it to the depend option on the
 second job.
-.br
+.LP
 .B "jobid=`qsub first_step.sh`"
 .br
 .B "qsub -W depend=afterok:$jobid second_step.sh"
 .br
 .RE
-
 .RE
 
 .I "group_list=<group list>"
@@ -1655,7 +1650,7 @@ one of the following:
 .RS 3
 .I -I 
 .br
-.I -W interactive = true 
+.I -W interactive=true
 .B (deprecated)
 .RE
 
@@ -1672,8 +1667,6 @@ option.
 
 Not available under Windows.
 .RE
-
-.LP
 
 .IP "-z" 8
 Job identifier is not written to standard output.
