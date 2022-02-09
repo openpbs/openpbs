@@ -805,7 +805,7 @@ if __name__ == "__main__":
     Examples of using arguments.
         ./ci -p 'OS=centos:7'
         ./ci -p 'tests=-t SmokeTest'
-        ./ci -p 'configure=CFLAGS='-g O2' --enable-ptl'
+        ./ci -p 'configure=CFLAGS="-g -O2" --enable-ptl'
         ./ci -p 'nodes=mom=centos:7;server=ubuntu:16.04'
         ./ci -d or ./ci --delete
         ./ci -b or ./ci --build

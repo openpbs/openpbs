@@ -80,6 +80,8 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     fi
   elif [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
     export LANG="C.utf8"
+    sed -i -e "s|mirrorlist=|#mirrorlist=|g" /etc/yum.repos.d/CentOS-*
+    sed -i -e "s|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
     dnf -y clean all
     dnf -y install 'dnf-command(config-manager)'
     dnf -y config-manager --set-enabled powertools
@@ -179,9 +181,11 @@ with open('${config_dir}/${CONFIGURE_OPT_FILE}') as f:
   x = f.read()
 import re
 if len(x.split("'")) > 1:
-  print(re.match(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('\'')[1])
+  if re.search(r"CFLAGS=(\"|\').*(\"|\')",x) != None:
+    print(re.search(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('\'')[1])
 else:
-  print(re.match(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('"')[1])
+  if re.search(r"CFLAGS=(\"|\').*(\"|\')",x) != None:
+    print(re.search(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('"')[1])
 END
 )
       _cflags="$(python3 -c "$PYTHON_CODE")"
@@ -228,9 +232,11 @@ with open('${config_dir}/${CONFIGURE_OPT_FILE}') as f:
   x = f.read()
 import re
 if len(x.split("'")) > 1:
-  print(re.match(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('\'')[1])
+  if re.search(r"CFLAGS=(\"|\').*(\"|\')",x) != None:
+    print(re.search(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('\'')[1])
 else:
-  print(re.match(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('"')[1])
+  if re.search(r"CFLAGS=(\"|\').*(\"|\')",x) != None:
+    print(re.search(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('"')[1])
 END
 )
       _cflags="$(python3 -c "$PYTHON_CODE")"
@@ -264,9 +270,11 @@ with open('${config_dir}/${CONFIGURE_OPT_FILE}') as f:
   x = f.read()
 import re
 if len(x.split("'")) > 1:
-  print(re.match(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('\'')[1])
+  if re.search(r"CFLAGS=(\"|\').*(\"|\')",x) != None:
+    print(re.search(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('\'')[1])
 else:
-  print(re.match(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('"')[1])
+  if re.search(r"CFLAGS=(\"|\').*(\"|\')",x) != None:
+    print(re.search(r"CFLAGS=(\"|\').*(\"|\')",x).group(0).split('"')[1])
 END
 )
       _cflags="$(python3 -c "$PYTHON_CODE")"

@@ -71,6 +71,8 @@ chmod g+x,o+x /home/*
 . /etc/os-release
 
 if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
+  sed -i -e "s|mirrorlist=|#mirrorlist=|g" /etc/yum.repos.d/CentOS-*
+  sed -i -e "s|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
   dnf -y clean all
   dnf -y install 'dnf-command(config-manager)'
   dnf -y config-manager --set-enabled powertools
