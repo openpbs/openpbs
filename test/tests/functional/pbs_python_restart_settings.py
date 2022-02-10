@@ -307,7 +307,7 @@ pbs.event().accept()
         # every 3s
         logs = self.server.log_match(
             "Restarting Python interpreter to reduce mem usage",
-            allmatch=True, starttime=stime, max_attempts=8)
+            allmatch=True, starttime=stime, max_attempts=8, n="ALL")
         self.assertTrue(len(logs) > 1)
         log1 = logs[0][1]
         log2 = logs[1][1]
@@ -321,7 +321,12 @@ pbs.event().accept()
         self.logger.info("Time difference between log message is " +
                          str(diff) + " seconds")
         # Leave a little wiggle room for slow systems
-        self.assertTrue(diff >= 3 and diff <= 5)
+        self.assertTrue(diff > 2, "time between Python restart log messages"
+                        " (%s seconds) is too short;"
+                        " expected roughly 3 seconds" % str(diff))
+        self.assertTrue(diff <= 10, "time between Python restart log messages"
+                        " (%s seconds) is too long;"
+                        " expected roughly 3 seconds" % str(diff))
         # This message only gets printed if /proc/self/statm is present
         if os.path.isfile("/proc/self/statm"):
             self.server.log_match("Current memory usage:",

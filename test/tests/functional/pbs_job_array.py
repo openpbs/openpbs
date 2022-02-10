@@ -777,6 +777,27 @@ e.accept()
         msg = "Number of concurrent running subjobs limit reached"
         self.scheduler.log_match(j_id + ';' + msg)
 
+    @skipOnCpuSet
+    def test_max_run_subjobs_equiv_class(self):
+        """
+        Test that if a job is submitted with 'max_run_subjobs' attribute
+        it does not stop jobs in equivalence class from running
+        """
+
+        a = {'resources_available.ncpus': 8}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(attrs={ATTR_J: '1-20%2', 'Resource_List.walltime': 3600,
+                       'Resource_List.select': 'ncpus=2'})
+        j_id = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=j_id)
+        self.server.expect(JOB, {'job_state=R': 2}, extend='t')
+
+        j = Job(attrs={'Resource_List.walltime': 3600,
+                       'Resource_List.select': 'ncpus=2'})
+        j_id_equiv = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j_id_equiv)
+
+    @skipOnCpuSet
     def test_max_run_subjobs_calendar(self):
         """
         Test that if a job is submitted with 'max_run_subjobs' attribute
