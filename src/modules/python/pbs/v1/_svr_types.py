@@ -438,9 +438,6 @@ class _vnode():
 
     def __setattr__(self, name, value):
         if name == '_attributes_hook_set':
-            if _pbs_v1.in_python_mode():
-                raise BadAttributeValueError(
-                    f"the attribute '{name}' is readonly")
             super().__setattr__(name, value)
             return
 
