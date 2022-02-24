@@ -1079,14 +1079,14 @@ find_check_resource(schd_resource *reslist, resource_req *resreq, unsigned int f
 	}
 
 	if (res == NULL) {
-		/* If the requested resource is boolean and the resource isn't set in
-		 * reslist, then this means the boolean is false
-		 */
+		if (!(flags & UNSET_RES_ZERO))
+			return NULL;
+
 		if (resreq->type.is_boolean)
 			res = fres;
-		else if (resreq->type.is_num && (flags & UNSET_RES_ZERO))
+		else if (resreq->type.is_num)
 			res = zres;
-		else if (resreq->type.is_string && (flags & UNSET_RES_ZERO))
+		else if (resreq->type.is_string)
 			res = ustr;
 		else /* ignore check: effect is resource is infinite */
 			return NULL;
