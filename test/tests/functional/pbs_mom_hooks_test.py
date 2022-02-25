@@ -152,6 +152,7 @@ class TestMoMHooks(TestFunctional):
             if h['id'] in ("period",):
                 self.server.manager(MGR_CMD_DELETE, HOOK, id=h['id'])
 
+
 period_py = """import pbs
 import os
 import sys
