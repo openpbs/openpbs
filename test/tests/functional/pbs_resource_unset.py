@@ -40,6 +40,7 @@
 
 from tests.functional import *
 
+
 class TestResourceUnset(TestFunctional):
     """
     Test that resources behave properly when unset
