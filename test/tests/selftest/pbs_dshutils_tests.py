@@ -203,7 +203,7 @@ class TestDshUtils(TestSelf):
                 break
 
         if remote is None:
-            self.skip_test("Provide a remote hostname")
+            self.skip_test("Provide a remote mom")
 
         # First, figure out where temp files are created
         pfx = 'PtlPbs'      # This should be a constant someplace
