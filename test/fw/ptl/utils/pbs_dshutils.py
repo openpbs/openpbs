@@ -984,13 +984,12 @@ class DshUtils(object):
                 ret['rc'] = p.returncode
 
             if as_script:
+                # Remove the script file. If we ran remotely, the file will
+                # be owned by the runas user. If we ran locally, the file
+                # is owned by the current user.
                 # must pass as_script=False otherwise it will loop infinite
-                if platform == 'shasta' and runas:
-                    self.rm(hostname, path=_script, as_script=False,
-                            level=level, runas=runas)
-                else:
-                    self.rm(hostname, path=_script, as_script=False,
-                            level=level)
+                self.rm(hostname, path=_script, as_script=False,
+                        level=level, runas=(_user if islocal else runas))
 
             # handle the case where stdout is not a PIPE
             if o is not None:
