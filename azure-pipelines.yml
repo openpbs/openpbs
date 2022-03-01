@@ -18,11 +18,6 @@ jobs:
     dependsOn: runcheck
     strategy:
       matrix:
-        "CentOS 8":
-           OS_TYPE: "centos:8"
-           PKG_INSTALL_CMD: "sed -i -e 's|mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-* && sed -i -e 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && yum -y install python3"
-           DOCKER_EXTRA_ARG: ""
-           CI_CMD: "./ci --local"
         "OpenSuse 15":
            OS_TYPE: "opensuse/leap:15"
            PKG_INSTALL_CMD: "zypper -n install python3"
