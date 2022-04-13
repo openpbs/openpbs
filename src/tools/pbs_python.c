@@ -2044,6 +2044,38 @@ main(int argc, char *argv[], char *envp[])
 				}
 
 				break;
+			case HOOK_EVENT_POSTQUEUEJOB:
+				rqj.rq_jid[0] = '\0';
+				if ((svrattrl_e = find_svrattrl_list_entry(&event_job,
+									   "id", NULL)) != NULL) {
+					strcpy((char *) rqj.rq_jid,
+					       svrattrl_e->al_value);
+				}
+				rqj.rq_destin[0] = '\0';
+				if ((svrattrl_e = find_svrattrl_list_entry(&event_job,
+									   ATTR_queue, NULL)) != NULL) {
+					strcpy((char *) rqj.rq_destin,
+					       svrattrl_e->al_value);
+				}
+				if (copy_svrattrl_list(&event_job,
+						       &rqj.rq_attr) == -1) {
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
+					rc = 1;
+					goto pbs_python_end;
+				}
+
+				req_params.rq_job = (struct rq_postqueuejob *) &rqj;
+				req_params.vns_list = (pbs_list_head *) &event_vnode;
+				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
+
+				if (rc == -1) { /* internal server code failure */
+					log_event(PBSEVENT_DEBUG,
+						  PBS_EVENTCLASS_HOOK, LOG_ERR,
+						  hook_name,
+						  "Encountered an error while setting event");
+				}
+
+				break;
 			case HOOK_EVENT_MODIFYJOB:
 				rqm.rq_objname[0] = '\0';
 				if ((svrattrl_e = find_svrattrl_list_entry(&event_job,
@@ -2412,6 +2444,28 @@ main(int argc, char *argv[], char *envp[])
 					fprintf(fp_out, "%s=False\n", EVENT_REJECT_OBJECT);
 
 					req_params_out.rq_job = (struct rq_quejob *) &rqj;
+					pbs_python_event_to_request(hook_event, &req_params_out, perf_label, perf_action);
+
+					fprint_svrattrl_list(fp_out, EVENT_JOB_OBJECT,
+							     &rqj.rq_attr);
+				}
+				break;
+
+			case HOOK_EVENT_POSTQUEUEJOB:
+
+				if (pbs_python_event_get_accept_flag() == FALSE) {
+					rej_msg = pbs_python_event_get_reject_msg();
+
+					fprintf(fp_out, "%s=True\n", EVENT_REJECT_OBJECT);
+					fprintf(fp_out, "%s=False\n", EVENT_ACCEPT_OBJECT);
+					if (rej_msg != NULL)
+						fprintf(fp_out, "%s=%s\n", EVENT_REJECT_MSG_OBJECT,
+							rej_msg);
+				} else {
+					fprintf(fp_out, "%s=True\n", EVENT_ACCEPT_OBJECT);
+					fprintf(fp_out, "%s=False\n", EVENT_REJECT_OBJECT);
+
+					req_params_out.rq_job = (struct rq_postqueuejob *) &rqj;
 					pbs_python_event_to_request(hook_event, &req_params_out, perf_label, perf_action);
 
 					fprint_svrattrl_list(fp_out, EVENT_JOB_OBJECT,

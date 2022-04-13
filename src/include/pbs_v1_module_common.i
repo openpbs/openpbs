@@ -94,6 +94,7 @@ pbs_list_head svr_alljobs;
 pbs_list_head svr_allresvs;
 pbs_list_head svr_allhooks;
 pbs_list_head svr_queuejob_hooks;
+pbs_list_head svr_postqueuejob_hooks;
 pbs_list_head svr_modifyjob_hooks;
 pbs_list_head svr_resvsub_hooks;
 pbs_list_head svr_modifyresv_hooks;

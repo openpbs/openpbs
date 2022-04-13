@@ -865,6 +865,7 @@ main(int argc, char **argv)
 	CLEAR_HEAD(svr_deferred_req);
 	CLEAR_HEAD(svr_allhooks);
 	CLEAR_HEAD(svr_queuejob_hooks);
+	CLEAR_HEAD(svr_postqueuejob_hooks);
 	CLEAR_HEAD(svr_modifyjob_hooks);
 	CLEAR_HEAD(svr_resvsub_hooks);
 	CLEAR_HEAD(svr_modifyresv_hooks);

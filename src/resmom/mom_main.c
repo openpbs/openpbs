@@ -331,6 +331,7 @@ unsigned long hook_action_id = 0;
 pbs_list_head svr_allhooks;
 /* hooks below ignored */
 pbs_list_head svr_queuejob_hooks;
+pbs_list_head svr_postqueuejob_hooks;
 pbs_list_head svr_modifyjob_hooks;
 pbs_list_head svr_resvsub_hooks;
 pbs_list_head svr_modifyresv_hooks;
@@ -7861,6 +7862,7 @@ main(int argc, char *argv[])
 
 	CLEAR_HEAD(svr_allhooks);
 	CLEAR_HEAD(svr_queuejob_hooks);
+	CLEAR_HEAD(svr_postqueuejob_hooks);
 	CLEAR_HEAD(svr_modifyjob_hooks);
 	CLEAR_HEAD(svr_resvsub_hooks);
 	CLEAR_HEAD(svr_modifyresv_hooks);

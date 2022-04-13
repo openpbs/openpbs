@@ -58,6 +58,14 @@ struct rq_queuejob {
 	pbs_list_head rq_attr; /* svrattrlist */
 };
 
+/* PostQueueJob */
+struct rq_postqueuejob {
+	struct job *rq_pjob;
+	char rq_destin[PBS_MAXSVRRESVID + 1];
+	char rq_jid[PBS_MAXSVRJOBID + 1];
+	pbs_list_head rq_attr; /* svrattrlist */
+};
+
 /* JobCredential */
 struct rq_jobcred {
 	int rq_type;
@@ -307,6 +315,7 @@ struct batch_request {
 		struct rq_auth rq_auth;
 		int rq_connect;
 		struct rq_queuejob rq_queuejob;
+		struct rq_postqueuejob rq_postqueuejob;
 		struct rq_jobcred rq_jobcred;
 		struct rq_jobfile rq_jobfile;
 		char rq_rdytocommit[PBS_MAXSVRJOBID + 1];
