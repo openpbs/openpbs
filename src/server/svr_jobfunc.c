@@ -210,6 +210,7 @@ svr_enquejob(job *pjob, char *selectspec)
 	pbs_sched *psched;
 	int state_num;
 	char *qtype;
+	char hook_msg[HOOK_MSG_SIZE] = {0};
 
 	state_num = get_job_state_num(pjob);
 
@@ -415,6 +416,26 @@ svr_enquejob(job *pjob, char *selectspec)
 		pjob->ji_qs.ji_un_type = JOB_UNION_TYPE_ROUTE;
 		pjob->ji_qs.ji_un.ji_routet.ji_quetime = time_now;
 		pjob->ji_qs.ji_un.ji_routet.ji_rteretry = 0;
+	}
+
+	/* start postqueuejob hook */
+
+	struct batch_request *preq;
+	preq = alloc_br(PBS_BATCH_PostQueueJob);
+	if (preq == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "failed to alloc_br for PBS_BATCH_PostQueueJob");
+	} else {
+		preq->rq_ind.rq_postqueuejob.rq_pjob = pjob;
+		strcpy(preq->rq_ind.rq_postqueuejob.rq_jid, pjob->ji_qs.ji_jobid);
+		strncpy(preq->rq_user, pbs_current_user, PBS_MAXUSER);
+		strncpy(preq->rq_host, server_host, PBS_MAXHOSTNAME);
+
+		rc = process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+		if (rc == -1) {
+			log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+				"postqueuejob process_hooks call failed: %s", hook_msg);
+		}
+		free_br(preq);
 	}
 	return (0);
 }

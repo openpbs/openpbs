@@ -89,6 +89,7 @@ extern time_t time_now;
 
 extern pbs_list_head svr_allhooks;
 extern pbs_list_head svr_queuejob_hooks;
+extern pbs_list_head svr_postqueuejob_hooks;
 extern pbs_list_head svr_modifyjob_hooks;
 extern pbs_list_head svr_resvsub_hooks;
 extern pbs_list_head svr_modifyresv_hooks;
@@ -128,6 +129,7 @@ void
 clear_hook_links(hook *phook)
 {
 	delete_link(&phook->hi_queuejob_hooks);
+	delete_link(&phook->hi_postqueuejob_hooks);
 	delete_link(&phook->hi_modifyjob_hooks);
 	delete_link(&phook->hi_resvsub_hooks);
 	delete_link(&phook->hi_modifyresv_hooks);
@@ -183,6 +185,13 @@ hook_event_as_string(unsigned int event)
 	eventstr[0] = '\0';
 	if (event & HOOK_EVENT_QUEUEJOB) {
 		snprintf(eventstr, sizeof(eventstr), HOOKSTR_QUEUEJOB);
+		ev_ct++;
+	}
+
+	if (event & HOOK_EVENT_POSTQUEUEJOB) {
+		if (ev_ct > 0)
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_POSTQUEUEJOB, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
@@ -387,6 +396,8 @@ hookstr_event_toint(char *eventstr)
 {
 	if (strcmp(eventstr, HOOKSTR_QUEUEJOB) == 0)
 		return HOOK_EVENT_QUEUEJOB;
+	if (strcmp(eventstr, HOOKSTR_POSTQUEUEJOB) == 0)
+		return HOOK_EVENT_POSTQUEUEJOB;
 	if (strcmp(eventstr, HOOKSTR_MODIFYJOB) == 0)
 		return HOOK_EVENT_MODIFYJOB;
 	if (strcmp(eventstr, HOOKSTR_RESVSUB) == 0)
@@ -932,6 +943,8 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 
 	if (event == HOOK_EVENT_QUEUEJOB) {
 		plink_elem = &phook->hi_queuejob_hooks;
+	} else if (event == HOOK_EVENT_POSTQUEUEJOB) {
+		plink_elem = &phook->hi_postqueuejob_hooks;
 	} else if (event == HOOK_EVENT_MODIFYJOB) {
 		plink_elem = &phook->hi_modifyjob_hooks;
 	} else if (event == HOOK_EVENT_RESVSUB) {
@@ -1000,6 +1013,8 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 
 		if (event == HOOK_EVENT_QUEUEJOB) {
 			plink_cur = &phook_cur->hi_queuejob_hooks;
+		} else if (event == HOOK_EVENT_POSTQUEUEJOB) {
+			plink_cur = &phook_cur->hi_postqueuejob_hooks;
 		} else if (event == HOOK_EVENT_MODIFYJOB) {
 			plink_cur = &phook_cur->hi_modifyjob_hooks;
 		} else if (event == HOOK_EVENT_RESVSUB) {
@@ -1384,6 +1399,7 @@ set_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 	if (phook->event != 0) {
 
 		delete_link(&phook->hi_queuejob_hooks);
+		delete_link(&phook->hi_postqueuejob_hooks);
 		delete_link(&phook->hi_modifyjob_hooks);
 		delete_link(&phook->hi_modifyvnode_hooks);
 		delete_link(&phook->hi_management_hooks);
@@ -1468,6 +1484,13 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 			phook->event |= HOOK_EVENT_QUEUEJOB;
 			insert_hook_sort_order(HOOK_EVENT_QUEUEJOB,
 					       &svr_queuejob_hooks, phook);
+		} else if (strcmp(val, HOOKSTR_POSTQUEUEJOB) == 0) {
+			if (phook->event & HOOK_EVENT_PROVISION)
+				goto err;
+			delete_link(&phook->hi_postqueuejob_hooks);
+			phook->event |= HOOK_EVENT_POSTQUEUEJOB;
+			insert_hook_sort_order(HOOK_EVENT_POSTQUEUEJOB,
+					       &svr_postqueuejob_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_MODIFYJOB) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
@@ -1662,10 +1685,10 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		} else if (strcmp(val, HOOKSTR_NONE) != 0) {
 			snprintf(msg, msg_len - 1,
 				 "invalid argument (%s) to event. "
-				 "Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"
+				 "Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
 				 "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s "
 				 "or %s for no event",
-				 newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB, HOOKSTR_MODIFYVNODE, HOOKSTR_MANAGEMENT,
+				 newval, HOOKSTR_QUEUEJOB, HOOKSTR_POSTQUEUEJOB, HOOKSTR_MODIFYJOB, HOOKSTR_MODIFYVNODE, HOOKSTR_MANAGEMENT,
 				 HOOKSTR_RESVSUB, HOOKSTR_MODIFYRESV, HOOKSTR_MOVEJOB, HOOKSTR_JOBOBIT,
 				 HOOKSTR_RUNJOB, HOOKSTR_PROVISION, HOOKSTR_PERIODIC, HOOKSTR_RESV_CONFIRM,
 				 HOOKSTR_RESV_BEGIN, HOOKSTR_RESV_END, HOOKSTR_EXECJOB_BEGIN,
@@ -1739,6 +1762,9 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		if (strcmp(val, HOOKSTR_QUEUEJOB) == 0) {
 			delete_link(&phook->hi_queuejob_hooks);
 			phook->event &= ~HOOK_EVENT_QUEUEJOB;
+		} else if (strcmp(val, HOOKSTR_POSTQUEUEJOB) == 0) {
+			delete_link(&phook->hi_postqueuejob_hooks);
+			phook->event &= ~HOOK_EVENT_POSTQUEUEJOB;
 		} else if (strcmp(val, HOOKSTR_MODIFYJOB) == 0) {
 			delete_link(&phook->hi_modifyjob_hooks);
 			phook->event &= ~HOOK_EVENT_MODIFYJOB;
@@ -1821,10 +1847,10 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		} else if (strcmp(val, HOOKSTR_NONE) != 0) {
 			snprintf(msg, msg_len - 1,
 				 "invalid argument (%s) to event. "
-				 "Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
+				 "Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
 				 "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s "
 				 "or %s for no event.",
-				 newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB, HOOKSTR_MODIFYVNODE, HOOKSTR_MANAGEMENT,
+				 newval, HOOKSTR_QUEUEJOB, HOOKSTR_POSTQUEUEJOB, HOOKSTR_MODIFYJOB, HOOKSTR_MODIFYVNODE, HOOKSTR_MANAGEMENT,
 				 HOOKSTR_RESVSUB, HOOKSTR_MODIFYRESV, HOOKSTR_MOVEJOB,
 				 HOOKSTR_RUNJOB, HOOKSTR_PERIODIC, HOOKSTR_PROVISION, HOOKSTR_RESV_CONFIRM,
 				 HOOKSTR_RESV_BEGIN, HOOKSTR_RESV_END, HOOKSTR_EXECJOB_BEGIN,
@@ -1914,6 +1940,12 @@ set_hook_order(hook *phook, char *newval, char *msg, size_t msg_len)
 		delete_link(&phook->hi_queuejob_hooks);
 		insert_hook_sort_order(HOOK_EVENT_QUEUEJOB,
 				       &svr_queuejob_hooks, phook);
+	}
+
+	if (phook->event & HOOK_EVENT_POSTQUEUEJOB) {
+		delete_link(&phook->hi_postqueuejob_hooks);
+		insert_hook_sort_order(HOOK_EVENT_POSTQUEUEJOB,
+				       &svr_postqueuejob_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_MODIFYJOB) {
@@ -2346,6 +2378,9 @@ unset_hook_event(hook *phook, char *msg, size_t msg_len)
 	if (phook->event & HOOK_EVENT_QUEUEJOB)
 		delete_link(&phook->hi_queuejob_hooks);
 
+	if (phook->event & HOOK_EVENT_POSTQUEUEJOB)
+		delete_link(&phook->hi_postqueuejob_hooks);
+
 	if (phook->event & HOOK_EVENT_MODIFYJOB)
 		delete_link(&phook->hi_modifyjob_hooks);
 
@@ -2475,6 +2510,12 @@ unset_hook_order(hook *phook, char *msg, size_t msg_len)
 		delete_link(&phook->hi_queuejob_hooks);
 		insert_hook_sort_order(HOOK_EVENT_QUEUEJOB,
 				       &svr_queuejob_hooks, phook);
+	}
+
+	if (phook->event & HOOK_EVENT_POSTQUEUEJOB) {
+		delete_link(&phook->hi_postqueuejob_hooks);
+		insert_hook_sort_order(HOOK_EVENT_POSTQUEUEJOB,
+				       &svr_postqueuejob_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_MODIFYJOB) {
@@ -3641,6 +3682,9 @@ print_hooks(unsigned int event)
 	if (event == HOOK_EVENT_QUEUEJOB) {
 		l_elem = svr_queuejob_hooks;
 		strcpy(ev_str, HOOKSTR_QUEUEJOB);
+	} else if (event == HOOK_EVENT_POSTQUEUEJOB) {
+		l_elem = svr_postqueuejob_hooks;
+		strcpy(ev_str, HOOKSTR_POSTQUEUEJOB);
 	} else if (event == HOOK_EVENT_MODIFYJOB) {
 		l_elem = svr_modifyjob_hooks;
 		strcpy(ev_str, HOOKSTR_MODIFYJOB);
@@ -3732,6 +3776,8 @@ print_hooks(unsigned int event)
 		print_hook(phook, heading);
 		if (event == HOOK_EVENT_QUEUEJOB)
 			phook = (hook *) GET_NEXT(phook->hi_queuejob_hooks);
+		else if (event == HOOK_EVENT_POSTQUEUEJOB)
+			phook = (hook *) GET_NEXT(phook->hi_postqueuejob_hooks);
 		else if (event == HOOK_EVENT_MODIFYJOB)
 			phook = (hook *) GET_NEXT(phook->hi_modifyjob_hooks);
 		else if (event == HOOK_EVENT_RESVSUB)

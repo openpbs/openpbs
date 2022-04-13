@@ -592,6 +592,7 @@ hook_input_param_init(hook_input_param_t *hook_input)
 {
 
 	hook_input->rq_job = NULL;
+	hook_input->rq_postqueuejob = NULL;
 	hook_input->rq_manage = NULL;
 	hook_input->rq_move = NULL;
 	hook_input->rq_prov = NULL;
@@ -618,6 +619,7 @@ void
 hook_output_param_init(hook_output_param_t *hook_output)
 {
 	hook_output->rq_job = NULL;
+	hook_output->rq_postqueuejob = NULL;
 	hook_output->rq_manage = NULL;
 	hook_output->rq_move = NULL;
 	hook_output->rq_prov = NULL;

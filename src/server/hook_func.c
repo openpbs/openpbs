@@ -199,6 +199,7 @@ extern char *msg_internal;
 extern char *msg_norelytomom;
 extern pbs_list_head svr_allhooks;
 extern pbs_list_head svr_queuejob_hooks;
+extern pbs_list_head svr_postqueuejob_hooks;
 extern pbs_list_head svr_modifyjob_hooks;
 extern pbs_list_head svr_resvsub_hooks;
 extern pbs_list_head svr_modifyresv_hooks;
@@ -3525,6 +3526,124 @@ do_runjob_reject_actions(job *pjob, char *hook_name)
 	return (rc);
 }
 
+/*
+ * the following is a list of attributes modifiable in a HOOK_EVENT_POSTQUEUEJOB
+ * hook that ends in a pbs.event().accept().
+ */
+struct attribute_jobmap postqueuejob_accept_attrlist[] = {
+	{JOB_ATR_hold, {0}},
+	{JOB_ATR_project, {0}},
+	{JOB_ATR_variables, {0}},
+	{JOB_ATR_resource, {0}},
+	{(enum job_atr) - 1, {0}}};
+
+/**
+ * @brief
+ *		Perform the job updates to 'pjob' as a result of a POSTQUEUEJOB hook
+ *		execution ending in a pbs.event().accept() call.
+ *
+ * @see
+ * 		process_hooks
+ * @param[in]	pjob	- job to modify.
+ * @param[in]	hook_name - name of hook doing the accept action.
+ *
+ * @return int
+ * @retval 0	- success
+ * @retval 1	- fail
+ */
+static int
+do_postqueuejob_accept_actions(job *pjob, char *hook_name)
+{
+	int index, aindex;
+	int rc = 0;
+	char *attr_name = NULL;
+	char *new_attrval_str = NULL;
+
+	if ((pjob == NULL) || (hook_name == NULL)) {
+		log_err(-1, __func__, "bad pjob or hook_name param");
+		return (1);
+	}
+
+	attribute_jobmap_init(pjob, postqueuejob_accept_attrlist);
+
+	for (index = 0; (aindex = (int) postqueuejob_accept_attrlist[index].attr_i) >= 0;
+	     ++index) {
+
+		attr_name = job_attr_def[aindex].at_name;
+		if (attr_name == NULL) {
+			log_err(-1, __func__,
+				"encountered an unexpected NULL attr_name");
+			continue;
+		}
+
+		log_buffer[0] = '\0';
+		if (strcmp(attr_name, ATTR_h) == 0) {
+			char hold_opval[HOOK_BUF_SIZE];
+			char hold_delval[HOOK_BUF_SIZE];
+
+			new_attrval_str =
+				pbs_python_event_job_getval_hookset(ATTR_h,
+								    hold_opval, HOOK_BUF_SIZE, hold_delval,
+								    HOOK_BUF_SIZE);
+			if (new_attrval_str == NULL)
+				continue;
+
+			if (set_hold_types(pjob, new_attrval_str,
+					   hold_opval, hold_delval, log_buffer, LOG_BUF_SIZE,
+					   hook_name) != 0) {
+				log_event(PBSEVENT_ERROR | PBSEVENT_FORCE,
+					  PBS_EVENTCLASS_JOB, LOG_ERR,
+					  pjob->ji_qs.ji_jobid, log_buffer);
+			} else {
+
+				if (log_buffer[0] != '\0')
+					log_event(PBSEVENT_JOB,
+						  PBS_EVENTCLASS_JOB, LOG_INFO,
+						  pjob->ji_qs.ji_jobid,
+						  log_buffer);
+			}
+
+		} else if (strcmp(attr_name, ATTR_v) == 0) {
+			if (set_job_varlist(pjob, hook_name, log_buffer,
+					    LOG_BUF_SIZE - 1) != 0) {
+				rc = 1;
+				break;
+			}
+		} else if (strcmp(attr_name, ATTR_l) == 0) {
+			if (set_job_reslist(pjob, hook_name, log_buffer,
+					    LOG_BUF_SIZE - 1, REJECT_HOOK_EVENT) != 0) {
+				rc = 1;
+				break;
+			}
+		} else {
+			new_attrval_str =
+				pbs_python_event_job_getval_hookset(attr_name,
+								    NULL, 0, NULL, 0);
+			if (new_attrval_str == NULL)
+				continue;
+
+			if (set_attribute(pjob, aindex,
+					  new_attrval_str, log_buffer, LOG_BUF_SIZE,
+					  hook_name) != 0) {
+
+				log_event(PBSEVENT_ERROR | PBSEVENT_FORCE,
+					  PBS_EVENTCLASS_JOB, LOG_ERR,
+					  pjob->ji_qs.ji_jobid, log_buffer);
+				rc = 1;
+				break;
+			} else {
+				if (log_buffer[0] != '\0')
+					log_event(PBSEVENT_JOB,
+						  PBS_EVENTCLASS_JOB, LOG_INFO,
+						  pjob->ji_qs.ji_jobid,
+						  log_buffer);
+			}
+		}
+	}
+	attribute_jobmap_clear(runjob_reject_attrlist);
+	return (rc);
+}
+
 /**
  * @brief
  * 		Write into the hook debug output file, information about
@@ -3768,6 +3887,15 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 		hook_event = HOOK_EVENT_QUEUEJOB;
 		req_ptr.rq_job = (struct rq_quejob *) &preq->rq_ind.rq_queuejob;
 		head_ptr = &svr_queuejob_hooks;
+	} else if (preq->rq_type == PBS_BATCH_PostQueueJob) {
+		hook_event = HOOK_EVENT_POSTQUEUEJOB;
+		req_ptr.rq_postqueuejob = (struct rq_postqueuejob *) &preq->rq_ind.rq_postqueuejob;
+		head_ptr = &svr_postqueuejob_hooks;
+		jobid = ((struct rq_postqueuejob *) (req_ptr.rq_postqueuejob))->rq_jid;
+		t = is_job_array(jobid);
+		if ((t == IS_ARRAY_Single) || (t == IS_ARRAY_NO)) {
+			pjob = find_job(jobid);
+		}
 	} else if (preq->rq_type == PBS_BATCH_SubmitResv) {
 		hook_event = HOOK_EVENT_RESVSUB;
 		req_ptr.rq_job = (struct rq_quejob *) &preq->rq_ind.rq_queuejob;
@@ -3852,6 +3980,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 
 		if (preq->rq_type == PBS_BATCH_QueueJob) {
 			phook_next = (hook *) GET_NEXT(phook->hi_queuejob_hooks);
+		}else if (preq->rq_type == PBS_BATCH_PostQueueJob) {
+			phook_next = (hook *) GET_NEXT(phook->hi_postqueuejob_hooks);
 		} else if (preq->rq_type == PBS_BATCH_SubmitResv) {
 			phook_next = (hook *) GET_NEXT(phook->hi_resvsub_hooks);
 		} else if (preq->rq_type == PBS_BATCH_ModifyResv) {
@@ -4079,6 +4209,10 @@ server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				case PBS_BATCH_QueueJob:
 				case PBS_BATCH_SubmitResv:
 					CLEAR_HEAD(temp_req->rq_ind.rq_queuejob.rq_attr);
+					do_recreate = 1;
+					break;
+				case PBS_BATCH_PostQueueJob:
+					CLEAR_HEAD(temp_req->rq_ind.rq_postqueuejob.rq_attr);
 					do_recreate = 1;
 					break;
 				case PBS_BATCH_ModifyJob:
@@ -4521,7 +4655,21 @@ server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 		goto server_process_hooks_exit;
 	} else { /* hook request has been accepted */
 
-		if (rq_type == PBS_BATCH_RunJob || rq_type == PBS_BATCH_AsyrunJob || rq_type == PBS_BATCH_AsyrunJob_ack) {
+		if (rq_type == PBS_BATCH_PostQueueJob) {
+
+			hook_msg[0] = '\0';
+			if (do_postqueuejob_accept_actions(pjob, phook->hook_name) != 0) {
+				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name,
+					 "postqueuejob request rejected: %s", hook_msg);
+				snprintf(log_buffer, sizeof(log_buffer),
+					 "request rejected by filter hook: %s", hook_msg);
+				strncpy(hook_msg, log_buffer, msg_len - 1);
+				attribute_jobmap_restore(pjob, postqueuejob_accept_attrlist);
+				write_hook_reject_debug_output_and_close(hook_msg);
+				rc = 0;
+				goto server_process_hooks_exit;
+			}
+		} else if (rq_type == PBS_BATCH_RunJob || rq_type == PBS_BATCH_AsyrunJob || rq_type == PBS_BATCH_AsyrunJob_ack) {
 			char *new_exec_time_str = NULL;
 			char *new_hold_types_str = NULL;
 			char *new_project_str = NULL;
@@ -4721,6 +4869,11 @@ recreate_request(struct batch_request *preq)
 		req_params.rq_job = (struct rq_quejob *) &preq->rq_ind.rq_queuejob;
 		snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", HOOKSTR_QUEUEJOB, preq->rq_ind.rq_queuejob.rq_jid, getpid());
 		rc = pbs_python_event_to_request(HOOK_EVENT_QUEUEJOB,
+						 &req_params, perf_label, HOOK_PERF_HOOK_OUTPUT);
+	} else if (preq->rq_type == PBS_BATCH_PostQueueJob) {
+		req_params.rq_postqueuejob = (struct rq_postqueuejob *) &preq->rq_ind.rq_postqueuejob;
+		snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", HOOKSTR_QUEUEJOB, preq->rq_ind.rq_postqueuejob.rq_jid, getpid());
+		rc = pbs_python_event_to_request(HOOK_EVENT_POSTQUEUEJOB,
 						 &req_params, perf_label, HOOK_PERF_HOOK_OUTPUT);
 	} else if (preq->rq_type == PBS_BATCH_SubmitResv) {
 		req_params.rq_job = (struct rq_quejob *) &preq->rq_ind.rq_queuejob;
