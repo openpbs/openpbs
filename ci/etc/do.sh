@@ -163,6 +163,7 @@ fi
 mkdir -p ${_targetdirname}
 [[ -f Makefile ]] && make distclean || true
 if [ ! -f ./${SPEC_FILE} ]; then
+  git config --global --add safe.directory ${PBS_DIR}
   git checkout ${SPEC_FILE}
 fi
 if [ ! -f ./configure ]; then
