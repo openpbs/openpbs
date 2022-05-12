@@ -1061,18 +1061,6 @@ main(int argc, char **argv)
 
 	/* database connection code end */
 
-	/* Curses! pbsd_init() calls validate_job_formula() (in svr_recov()) */
-	/* which makes Python calls, so Python interpreter must be	     */
-	/* temporarily initialized. Can't call the real                      */
-	/* pbs_python_ext_start_interpreter() this early, as this loads PBS  */
-	/* attributes  and resources (including custom resources) into       */
-	/* Python world, which are made  complete after call to pbsd_init()! */
-	pbs_python_ext_quick_start_interpreter();
-
-	/* The real pbs_python_ext_start_interpreter() will be called later  */
-	/* for the permanent interpreter start.				     */
-	pbs_python_ext_quick_shutdown_interpreter();
-
 	if (stalone == 2) {
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, LOG_NOTICE,
 			  PBS_EVENTCLASS_SERVER, msg_daemonname, msg_svrdown);
@@ -1202,7 +1190,6 @@ main(int argc, char **argv)
 
 	if (pbsd_init(server_init_type) != 0) {
 		log_err(-1, msg_daemonname, "pbsd_init failed");
-		pbs_python_ext_quick_shutdown_interpreter();
 		stop_db();
 		return (3);
 	}

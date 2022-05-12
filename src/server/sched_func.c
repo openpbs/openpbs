@@ -162,8 +162,11 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 			return PBSE_SVR_SCHED_JSF_INCOMPAT;
 	}
 
-	if (!Py_IsInitialized())
+	if (!Py_IsInitialized()) {
+		if (actmode == ATR_ACTION_RECOV)
+			return 0;
 		return PBSE_INTERNAL;
+	}
 
 	globals1 = malloc(globals_size1);
 	if (globals1 == NULL) {

@@ -1264,6 +1264,11 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(JOB, msg, id=jid_1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid_2)
 
+        # test to make sure server can still start with job_sort_formula set
+        self.server.restart()
+        restart_msg = 'Failed to restart PBS'
+        self.assertTrue(self.server.isUp(), restart_msg)
+
     @staticmethod
     def cust_attr(name, totnodes, numnode, attrib):
         a = {}
