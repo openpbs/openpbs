@@ -46,9 +46,6 @@ class TestJobSortFormula(TestFunctional):
     Tests for the job_sort_formula
     """
 
-    # PBS server internal error (15011) in decode_attr_db, Action function
-    # failed for job_sort_formula attr, errn 15011
-    @skip("Issue 2475: server crashes during setup of subsequent tests")
     def test_job_sort_formula_negative_value(self):
         """
         Test to see that negative values in the
