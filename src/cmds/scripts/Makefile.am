@@ -96,7 +96,9 @@ dist_sbin_SCRIPTS = \
 	pbs_snapshot
 
 dist_sysconf_DATA = \
-	modulefile 
+	modulefile \
+	pbs.csh \
+	pbs.sh
 
 CLEANFILES = \
 	pbs_init.d \
