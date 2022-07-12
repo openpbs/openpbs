@@ -628,7 +628,7 @@ Python type:
 Default: No default
 
 .IP "executable" 8
-JSDL-encoded listong of job's executable.  
+JSDL-encoded listing of job's executable.  
 Shown if job is submitted with "-- <executable> [<arg list>]".
 .br
 Can be read and set by user, Operator, Manager.
