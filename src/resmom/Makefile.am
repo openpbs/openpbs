@@ -56,7 +56,7 @@ pbs_mom_LDADD = \
 	$(top_builddir)/src/lib/Libattr/libattr.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
+	$(top_builddir)/src/lib/Libpbs/libpbs.la \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libsite/libsite.a \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \

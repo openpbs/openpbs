@@ -56,15 +56,15 @@
  * @brief initialize daemon info structure
  * This struct is common for all service end points
  * inlcluding mom/peer-svr
- * 
+ *
  * @param[in] pul - list of IP addresses of host; will be freed on error
  *			or saved in structure; caller must not free pul
- * @param[in] port - port of service end point 
+ * @param[in] port - port of service end point
  * @param[in] pmi - machine info struct
- * @return dmn_info_t* 
+ * @return dmn_info_t*
  */
 dmn_info_t *
-init_daemon_info(ulong *pul, uint port, struct machine_info *pmi)
+init_daemon_info(unsigned long *pul, uint port, struct machine_info *pmi)
 {
 	dmn_info_t *dmn_info = calloc(1, sizeof(dmn_info_t));
 	if (!dmn_info)
@@ -85,14 +85,14 @@ init_daemon_info(ulong *pul, uint port, struct machine_info *pmi)
 
 /**
  * @brief free up daemon info struct and associated data
- * 
+ *
  * @param[in] pmi - mom/peer-svr struct
  */
 void
 delete_daemon_info(struct machine_info *pmi)
 {
 	dmn_info_t *pdmninfo;
-	ulong *up;
+	unsigned long *up;
 
 	if (!pmi || !pmi->mi_dmn_info)
 		return;

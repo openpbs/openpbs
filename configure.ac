@@ -188,7 +188,6 @@ AC_CHECK_HEADERS([ \
 	sys/types.h \
 	sys/uio.h \
 	sys/un.h \
-	sys/unistd.h \
 	sys/user.h \
 	sys/utsname.h \
 	sys/wait.h \
