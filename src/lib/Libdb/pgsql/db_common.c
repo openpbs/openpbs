@@ -515,7 +515,7 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 
 	if (!(strcmp(cmd, PBS_DB_CONTROL_START))) {
 		sprintf(dbcmd,
-			"su - %s -s /bin/sh -c \"/bin/sh -c '%s -o \\\"-p %d \\\" -W start -l %s > %s 2>&1'\"",
+			"su - %s -c \"/bin/sh -c '%s -o \\\"-p %d \\\" -W start -l %s > %s 2>&1'\"",
 			pg_user,
 			pg_ctl,
 			pbs_ds_port,
@@ -523,14 +523,14 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 			errfile);
 	} else if (!(strcmp(cmd, PBS_DB_CONTROL_STATUS))) {
 		sprintf(dbcmd,
-			"su - %s -s /bin/sh -c \"/bin/sh -c '%s -o \\\"-p %d \\\" -w status > %s 2>&1'\"",
+			"su - %s -c \"/bin/sh -c '%s -o \\\"-p %d \\\" -w status > %s 2>&1'\"",
 			pg_user,
 			pg_ctl,
 			pbs_ds_port,
 			errfile);
 	} else if (!(strcmp(cmd, PBS_DB_CONTROL_STOP))) {
 		sprintf(dbcmd,
-			"su - %s -s /bin/sh -c \"/bin/sh -c '%s -w stop -m fast > %s 2>&1'\"",
+			"su - %s -c \"/bin/sh -c '%s -w stop -m fast > %s 2>&1'\"",
 			pg_user,
 			pg_ctl,
 			errfile);
