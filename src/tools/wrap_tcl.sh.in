@@ -51,7 +51,7 @@ EXEC_ARGS=$*
 
 LIBS_TO_LOAD=/opt/pbs/lib:/usr/pbs/lib:/usr/lib:/usr/local/lib
 
-PBS_CONF_FILE=${PBS_CONF_FILE:-/etc/pbs.conf}
+PBS_CONF_FILE=${PBS_CONF_FILE:-@PBS_CONF_FILE@}
 
 test -f $PBS_CONF_FILE && . $PBS_CONF_FILE
 

@@ -146,7 +146,7 @@ check_hostname() {
 #
 # Start of the pbs_habitat script
 #
-conf=${PBS_CONF_FILE:-/etc/pbs.conf}
+conf=${PBS_CONF_FILE:-@PBS_CONF_FILE@}
 ostype=`uname 2>/dev/null`
 umask 022
 
@@ -293,7 +293,7 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			echo "*** Error starting pbs server"
 			exit $ret
 		fi
-		server_started=1	
+		server_started=1
 
 		if is_cray_xt; then
 			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null

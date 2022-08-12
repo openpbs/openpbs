@@ -52,7 +52,7 @@ else
    name=`basename $0`
 fi
 
-. ${PBS_CONF_FILE:-/etc/pbs.conf}
+. ${PBS_CONF_FILE:-@PBS_CONF_FILE@}
 PBS_LIB_PATH="${PBS_EXEC}/lib"
 if [ ! -d ${PBS_LIB_PATH} -a -d ${PBS_EXEC}/lib64 ] ; then
 	PBS_LIB_PATH=${PBS_EXEC}/lib64

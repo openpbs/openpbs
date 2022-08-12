@@ -47,7 +47,7 @@ mpirun="mpirun"
 name=`basename $0`
 
 export PBS_RSHCOMMAND=${P4_RSHCOMMAND:-rsh}
-. ${PBS_CONF_FILE:-/etc/pbs.conf}
+. ${PBS_CONF_FILE:-@PBS_CONF_FILE@}
 export P4_RSHCOMMAND=${PBS_EXEC}/bin/pbs_remsh
 export MPICH_PROCESS_GROUP=no
 export PBS_TMPDIR="${PBS_TMPDIR:-${TMPDIR:-/var/tmp}}"

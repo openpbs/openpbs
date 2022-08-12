@@ -56,7 +56,7 @@
 %endif
 
 %if !%{defined pbs_home}
-%define pbs_home /var/spool/pbs
+%define pbs_home @PBS_SERVER_HOME@
 %endif
 
 %if !%{defined pbs_dbuser}
@@ -427,7 +427,7 @@ if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
 	ldconfig %{_libdir}
 	echo
-	echo "NOTE: /etc/pbs.conf and the PBS_HOME directory must be deleted manually"
+	echo "NOTE: @PBS_CONF_FILE@ and the PBS_HOME directory must be deleted manually"
 	echo
 fi
 
@@ -436,7 +436,7 @@ if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
 	ldconfig %{_libdir}
 	echo
-	echo "NOTE: /etc/pbs.conf and the PBS_HOME directory must be deleted manually"
+	echo "NOTE: @PBS_CONF_FILE@ and the PBS_HOME directory must be deleted manually"
 	echo
 fi
 
@@ -445,7 +445,7 @@ if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
 	ldconfig %{_libdir}
 	echo
-	echo "NOTE: /etc/pbs.conf must be deleted manually"
+	echo "NOTE: @PBS_CONF_FILE@ must be deleted manually"
 	echo
 fi
 

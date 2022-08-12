@@ -449,7 +449,7 @@ stop_pbs() {
 				if [ -r "${PBS_HOME}/server_priv/qmgr_shutdown" ]; then
 					echo "pbs_server evaluating ${PBS_HOME}/server_priv/qmgr_shutdown"
 					${PBS_EXEC}/bin/qmgr <"${PBS_HOME}/server_priv/qmgr_shutdown"
-				fi	
+				fi
 				${PBS_EXEC}/bin/qterm -t quick
 				echo "PBS server - was pid: ${pbs_server_pid}"
 			elif [ ${is_secondary} -eq 1 ]; then
@@ -639,7 +639,7 @@ pre_start_pbs()
 env_save="/tmp/$$_$(date +'%s')_env_save"
 declare -x > "${env_save}"
 
-conf=${PBS_CONF_FILE:-/etc/pbs.conf}
+conf=${PBS_CONF_FILE:-@PBS_CONF_FILE@}
 [ -r "${conf}" ] && . "${conf}"
 
 # re-apply saved env variables

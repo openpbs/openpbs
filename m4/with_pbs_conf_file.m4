@@ -52,5 +52,6 @@ AC_DEFUN([PBS_AC_WITH_PBS_CONF_FILE],
     pbs_conf_file=[/etc/pbs.conf]
   )
   AC_MSG_RESULT([$pbs_conf_file])
+  AC_SUBST([PBS_CONF_FILE], ["$pbs_conf_file"])
   AC_DEFINE_UNQUOTED([PBS_CONF_FILE], ["$pbs_conf_file"], [Location of the PBS configuration file])
 ])
