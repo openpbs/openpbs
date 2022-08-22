@@ -430,7 +430,7 @@ pbs_install_db () {
 	# change directory to data_dir to ensure that we don't get cd errors from postgres later
 	cd ${data_dir}
 
-	err=`su ${user} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/initdb -D ${data_dir} -U \"${user}\" -E SQL_ASCII ${locale}'" 2>&1`
+	err=`su ${user} -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/initdb -D ${data_dir} -U \"${user}\" -E SQL_ASCII ${locale}'" 2>&1`
 
 	if [ $? -ne 0 ]; then
 		echo "$err"
@@ -452,7 +452,7 @@ pbs_install_db () {
 		exit 1
 	fi
 
-	# update postgresql.conf 
+	# update postgresql.conf
 	sed "{
 		s/#checkpoint_segments = 3/checkpoint_segments = 20/g
 		s/#port = 5432/port = ${port}/g
@@ -490,7 +490,7 @@ pbs_install_db () {
 		cleanup
 		exit 1
 	fi
-	
+
 	# Copy pgsql directory to PBS_HOME (as pgsql.forupgrade) for it's future upgrade
 	[ ! -d "${PBS_HOME}/pgsql.forupgrade" -a -d "${PBS_EXEC}/pgsql" -a -d "${PBS_HOME}" ] && cp -pr --no-preserve=timestamps "${PBS_EXEC}/pgsql" "${PBS_HOME}/pgsql.forupgrade" 2>&1
 
@@ -502,7 +502,7 @@ pbs_install_db () {
 	# Add IPV6 local address to pg_hba.conf so the pbs_ds_password is fine
 	echo "host    all             all             ::1/128                 trust" >> ${data_dir}/pg_hba.conf
 
-	${server_ctl} start 
+	${server_ctl} start
 	if [ $? -ne 0 ]; then
 		echo "Error starting PBS Data Service"
 		cleanup
@@ -526,7 +526,7 @@ pbs_install_db () {
 		exit 1
 	fi
 
-	err=`su ${user} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/createdb -p ${port} pbs_datastore'" 2>&1`
+	err=`su ${user} -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/createdb -p ${port} pbs_datastore'" 2>&1`
 
 	if [ $? -ne 0 ]; then
 		echo "$err"
@@ -537,7 +537,7 @@ pbs_install_db () {
 	fi
 
 	# now install the pbs datastore schema onto the datastore
-	err=`su ${user} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/psql -p ${port} -d pbs_datastore -U \"${user}\" -f ${schema}'" 2>&1`
+	err=`su ${user} -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/psql -p ${port} -d pbs_datastore -U \"${user}\" -f ${schema}'" 2>&1`
 
 	if [ $? -ne 0 ]; then
 		echo $err

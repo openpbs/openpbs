@@ -75,7 +75,7 @@ chk_dataservice_user() {
 	fi
 
 	# login as ${chk_usr} and try to cd to user home dir
-	su - ${chk_usr} -s /bin/sh -c "cd" > /dev/null 2>&1
+	su - ${chk_usr} -c "cd" > /dev/null 2>&1
 
 	if [ $? -ne 0 ]; then
 		echo "Unable to login as user ${chk_usr}. Is the user enabled/home directory accessible?"
@@ -293,7 +293,7 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			echo "*** Error starting pbs server"
 			exit $ret
 		fi
-		server_started=1	
+		server_started=1
 
 		if is_cray_xt; then
 			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null

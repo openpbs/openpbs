@@ -127,7 +127,7 @@ if [ "${myid}" != "0" ]; then
 fi
 
 # Check if DBUSER is enabled, try to cd to user home
-su - ${DBUSER} -s /bin/sh -c "cd" >/dev/null 2>&1
+su - ${DBUSER} -c "cd" >/dev/null 2>&1
 if [ $? -ne 0 ]; then
 	echo "Unable to login as user ${DBUSER}. Is the user enabled/home directory accessible?"
 	exit 1
@@ -173,7 +173,7 @@ check_status() {
 		echo "${res}" | grep 'no server running'
 		if [ $? -eq 0 ]; then
 			status=1
-		else 
+		else
 			msg="PBS data service running locally"
 		fi
 	else
@@ -224,7 +224,7 @@ case "$1" in
 		if [ ${ret} -ne 0 ]; then
 			echo "${msg} - cannot stop"
 			exit 0
-		fi	
+		fi
 
 		# Check if PBS is running
 		${PBS_EXEC}/bin/qstat -Bf >/dev/null 2>&1
