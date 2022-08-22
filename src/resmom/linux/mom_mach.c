@@ -69,6 +69,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 
+#include "mom_mach.h"
 #include "pbs_error.h"
 #include "portability.h"
 #include "list_link.h"
