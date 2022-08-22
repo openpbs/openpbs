@@ -669,7 +669,7 @@ transform_appfile ()
 # MAIN
 #####################################################
 
-. ${PBS_CONF_FILE:-/etc/pbs.conf}
+. ${PBS_CONF_FILE:-@PBS_CONF_FILE@}
 export PBS_TMPDIR="${PBS_TMPDIR:-${TMPDIR:-/var/tmp}}"
 
 # Global variables

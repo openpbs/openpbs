@@ -181,7 +181,7 @@ fi
 #	startup initializations
 init()
 {
-	pbsconffile=${PBS_CONF_FILE:-"/etc/pbs.conf"}
+	pbsconffile=${PBS_CONF_FILE:-"@PBS_CONF_FILE@"}
 	if [ -r $pbsconffile ]
 	then
 		. $pbsconffile

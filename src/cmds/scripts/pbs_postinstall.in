@@ -92,7 +92,7 @@ createpath() {
 
 
 create_conf() {
-	# If we have an existing /etc/pbs.conf, save the old PBS_EXEC from
+	# If we have an existing @PBS_CONF_FILE@, save the old PBS_EXEC from
 	# the existing pbs.conf and make a backup. It may be a directory or
 	# a symbolic link so use cp rather than mv.
 	if [ -f "$conf" ] ; then
@@ -387,7 +387,7 @@ install_pbsinitd() {
 	fi
 	echo "***"
 
-	if [ "$conf" != "/etc/pbs.conf" ]; then
+	if [ "$conf" != "@PBS_CONF_FILE@" ]; then
 		echo "*** ======="
 		echo "*** NOTICE:"
 		echo "*** ======="
@@ -396,7 +396,7 @@ install_pbsinitd() {
 		echo "*** installation, a symbolic link must be created to the new"
 		echo "*** configuration file by manually issuing a command similar"
 		echo "*** to the following:"
-		echo "*** ln -s $conf /etc/pbs.conf"
+		echo "*** ln -s $conf @PBS_CONF_FILE@"
 		echo "***"
 	fi
 }
@@ -577,7 +577,7 @@ create_home() {
 			touch "$momconfig"
 			chmod 0644 "$momconfig"
 		fi
-		
+
 		if is_cray_xt; then
 			grep "^\$vnodedef_additive" "$momconfig" >/dev/null
 			if [ $? -ne 0 ] ; then
@@ -610,7 +610,7 @@ echo "*** Postinstall script called as follows:"
 printf "*** $0 "; printf "%q " "$@"; printf "\n"
 echo "***"
 PBS_VERSION='@PBS_VERSION@'
-conf="${PBS_CONF_FILE:-/etc/pbs.conf}"
+conf="${PBS_CONF_FILE:-@PBS_CONF_FILE@}"
 oldconfdir=`dirname "${conf}"`
 ostype=`uname 2>/dev/null`
 unset PBS_EXEC
