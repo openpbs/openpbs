@@ -76,6 +76,8 @@ typedef unsigned long ulong;
 #include <basil.h>
 #endif /* MOM_ALPS */
 
+#include "job.h"
+
 typedef struct pbs_plinks { /* struct to link processes */
 	pid_t pl_pid;	    /* pid of this proc */
 	pid_t pl_ppid;	    /* parent pid of this proc */
