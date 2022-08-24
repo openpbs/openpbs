@@ -48,10 +48,6 @@ extern "C" {
  * Target System: linux
  */
 
-#ifndef __linux__
-typedef unsigned long ulong;
-#endif
-
 #ifndef PBS_MACH
 #define PBS_MACH "linux"
 #endif /* PBS_MACH */
@@ -87,7 +83,7 @@ typedef struct pbs_plinks { /* struct to link processes */
 	int pl_done;	    /* kill has been done */
 } pbs_plinks;
 
-extern ulong totalmem;
+extern unsigned long totalmem;
 extern int kill_session(pid_t pid, int sig, int dir);
 extern int bld_ptree(pid_t sid);
 
@@ -151,16 +147,16 @@ typedef struct proc_stat {
 						 Traced or stopped on signal */
 	pid_t ppid;	    /* parent pid */
 	pid_t pgrp;	    /* process group id */
-	ulong utime;	    /* utime this process */
-	ulong stime;	    /* stime this process */
-	ulong cutime;	    /* sum of children's utime */
-	ulong cstime;	    /* sum of children's stime */
+	unsigned long utime;	    /* utime this process */
+	unsigned long stime;	    /* stime this process */
+	unsigned long cutime;	    /* sum of children's utime */
+	unsigned long cstime;	    /* sum of children's stime */
 	pid_t pid;	    /* process id */
-	ulong vsize;	    /* virtual memory size for proc */
-	ulong rss;	    /* resident set size */
-	ulong start_time;   /* start time of this process */
-	ulong flags;	    /* the flags of the process */
-	ulong uid;	    /* uid of the process owner */
+	unsigned long vsize;	    /* virtual memory size for proc */
+	unsigned long rss;	    /* resident set size */
+	unsigned long start_time;   /* start time of this process */
+	unsigned long flags;	    /* the flags of the process */
+	unsigned long uid;	    /* uid of the process owner */
 	char comm[COMSIZE]; /* command name */
 } proc_stat_t;
 

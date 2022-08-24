@@ -46,7 +46,7 @@ pbs_iff_CPPFLAGS = \
 	@KRB5_CFLAGS@
 
 pbs_iff_LDADD = \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
+	$(top_builddir)/src/lib/Libpbs/libpbs.la \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \

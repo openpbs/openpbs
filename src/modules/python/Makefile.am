@@ -101,7 +101,8 @@ _pbs_ifl_la_LDFLAGS = \
 	-shared \
 	-export-dynamic \
 	-avoid-version \
-	-no-undefined
+	-no-undefined \
+	@PYTHON_LDFLAGS@
 _pbs_ifl_la_LIBADD = \
 	$(top_builddir)/src/lib/Libpbs/libpbs.la
 

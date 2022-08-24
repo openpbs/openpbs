@@ -173,13 +173,13 @@ extern char *nullproc(struct rm_attribute *attrib);
 time_t wait_time = 10;
 
 typedef struct proc_mem {
-	ulong total;
-	ulong used;
-	ulong free;
+	unsigned long total;
+	unsigned long used;
+	unsigned long free;
 } proc_mem_t;
 
 int mom_does_chkpnt = 0;
-ulong totalmem;
+unsigned long totalmem;
 
 static int myproc_max = 0;    /* entries in Proc_lnks  */
 pbs_plinks *Proc_lnks = NULL; /* process links table head */
@@ -273,14 +273,14 @@ get_proc_mem(void)
 {
 	static proc_mem_t mm;
 	FILE *fp;
-	ulong m_tot, m_use, m_free;
-	ulong s_tot, s_use, s_free;
+	unsigned long m_tot, m_use, m_free;
+	unsigned long s_tot, s_use, s_free;
 	char strbuf[BUFSIZ];
 
 	if ((fp = fopen("/proc/meminfo", "r")) == NULL)
 		return NULL;
 
-	m_tot = m_free = s_tot = s_free = (ulong) 0;
+	m_tot = m_free = s_tot = s_free = (unsigned long) 0;
 	while (fgets(strbuf, sizeof(strbuf), fp) != NULL) {
 		sscanf(strbuf, "MemTotal: %ld k", &m_tot);
 		sscanf(strbuf, "MemFree: %ld k", &m_free);
@@ -474,22 +474,22 @@ injob(job *pjob, pid_t sid)
  *
  * @param[in] job - a job pointer.
  *
- * @return	ulong
+ * @return	unsigned long
  * @retval	sum of all cpu time consumed for all tasks executed by the job, in seconds,
  *		adjusted by cputfactor.
  *
  */
-static ulong
+static unsigned long
 cput_sum(job *pjob)
 {
 	int i;
-	ulong cputime = 0;
+	unsigned long cputime = 0;
 	int nps = 0;
 	int active_tasks = 0;
 	int taskprocs;
 	proc_stat_t *ps;
 	task *ptask;
-	ulong pcput, tcput;
+	unsigned long pcput, tcput;
 
 	for (ptask = (task *) GET_NEXT(pjob->ji_tasks);
 	     ptask != NULL;
@@ -630,7 +630,7 @@ cput_sum(job *pjob)
 		return 0;
 	}
 
-	return ((ulong) ((double) cputime * cputfactor));
+	return ((unsigned long) ((double) cputime * cputfactor));
 }
 
 /**
@@ -639,16 +639,16 @@ cput_sum(job *pjob)
  *
  * @param[in] job - job pointer
  *
- * @return	ulong
+ * @return	unsigned long
  * @retval	the total number of bytes of address
  *		space consumed by all current processes within the job.
  *
  */
-static ulong
+static unsigned long
 mem_sum(job *pjob)
 {
 	int i;
-	ulong segadd;
+	unsigned long segadd;
 	proc_stat_t *ps;
 
 	segadd = 0;
@@ -661,7 +661,7 @@ mem_sum(job *pjob)
 			continue;
 		segadd += ps->vsize;
 		DBPRT(("%s: pid: %d  pr_size: %lu  total: %lu\n",
-		       __func__, ps->pid, (ulong) ps->vsize, segadd))
+		       __func__, ps->pid, (unsigned long) ps->vsize, segadd))
 	}
 
 	return (segadd);
@@ -673,16 +673,16 @@ mem_sum(job *pjob)
  *
  * @param[in] pjob - job pointer
  *
- * @return	ulong
+ * @return	unsigned long
  * @retval	new resident set size 	Success
  * @retval	old resident set size	Error
  *
  */
-static ulong
+static unsigned long
 resi_sum(job *pjob)
 {
 	int i;
-	ulong resisize;
+	unsigned long resisize;
 	proc_stat_t *ps;
 
 	resisize = 0;
@@ -734,12 +734,12 @@ mom_set_limits(job *pjob, int set_mode)
 {
 	char *pname;
 	int retval;
-	ulong value; /* place in which to build resource value */
+	unsigned long value; /* place in which to build resource value */
 	resource *pres;
 	struct rlimit reslim;
-	ulong mem_limit = 0;
-	ulong vmem_limit = 0;
-	ulong cput_limit = 0;
+	unsigned long mem_limit = 0;
+	unsigned long vmem_limit = 0;
+	unsigned long cput_limit = 0;
 
 	DBPRT(("%s: entered\n", __func__))
 	assert(pjob != NULL);
@@ -821,7 +821,7 @@ mom_set_limits(job *pjob, int set_mode)
 		/* if either cput or pcput was given, set sys limit to lesser */
 		if (cput_limit != 0) {
 			reslim.rlim_cur = reslim.rlim_max =
-				(ulong) ((double) cput_limit / cputfactor);
+				(unsigned long) ((double) cput_limit / cputfactor);
 			if (setrlimit(RLIMIT_CPU, &reslim) < 0)
 				return (error("RLIMIT_CPU", PBSE_SYSTEM));
 		}
@@ -1078,7 +1078,7 @@ mom_set_use(job *pjob)
 	attribute *at_req;
 	resource_def *rd;
 	u_Long *lp_sz, lnum_sz;
-	ulong *lp, lnum, oldcput;
+	unsigned long *lp, lnum, oldcput;
 	long ncpus_req;
 
 	assert(pjob != NULL);
@@ -1122,7 +1122,7 @@ mom_set_use(job *pjob)
 		pres->rs_value.at_type = ATR_TYPE_LONG;
 		pres->rs_value.at_val.at_long = 0;
 	}
-	lp = (ulong *) &pres->rs_value.at_val.at_long;
+	lp = (unsigned long *) &pres->rs_value.at_val.at_long;
 	oldcput = *lp;
 	lnum = cput_sum(pjob);
 	lnum = MAX(*lp, lnum);
@@ -1583,7 +1583,7 @@ cput(struct rm_attribute *attrib)
 char *
 mem_job(pid_t sid)
 {
-	ulong memsize;
+	unsigned long memsize;
 	int i;
 	proc_stat_t *ps;
 
@@ -1636,7 +1636,7 @@ mem_proc(pid_t pid)
 		return NULL;
 	}
 
-	sprintf(ret_string, "%lukb", (ulong) ps->vsize >> 10); /* KB */
+	sprintf(ret_string, "%lukb", (unsigned long) ps->vsize >> 10); /* KB */
 	return ret_string;
 }
 
@@ -1698,7 +1698,7 @@ static char *
 resi_job(pid_t jobid)
 {
 	int i;
-	ulong resisize;
+	unsigned long resisize;
 	int found = 0;
 	proc_stat_t *ps;
 
@@ -1717,7 +1717,7 @@ resi_job(pid_t jobid)
 	}
 	if (found) {
 		/* in KB */
-		sprintf(ret_string, "%lukb", (resisize * (ulong) pagesize) >> 10);
+		sprintf(ret_string, "%lukb", (resisize * (unsigned long) pagesize) >> 10);
 		return ret_string;
 	}
 
@@ -1753,7 +1753,7 @@ resi_proc(pid_t pid)
 		return NULL;
 	}
 	/* in KB */
-	sprintf(ret_string, "%lukb", ((ulong) ps->rss * (ulong) pagesize) >> 10);
+	sprintf(ret_string, "%lukb", ((unsigned long) ps->rss * (unsigned long) pagesize) >> 10);
 	return ret_string;
 }
 
@@ -2103,7 +2103,7 @@ totmem(struct rm_attribute *attrib)
 		return NULL;
 	}
 	DBPRT(("%s: total mem=%lu\n", __func__, mm->total))
-	sprintf(ret_string, "%lukb", (ulong) mm->total >> 10); /* KB */
+	sprintf(ret_string, "%lukb", (unsigned long) mm->total >> 10); /* KB */
 	return ret_string;
 }
 
@@ -2133,7 +2133,7 @@ availmem(struct rm_attribute *attrib)
 		return NULL;
 	}
 	DBPRT(("%s: free mem=%lu\n", __func__, mm->free))
-	sprintf(ret_string, "%lukb", (ulong) mm->free >> 10); /* KB */
+	sprintf(ret_string, "%lukb", (unsigned long) mm->free >> 10); /* KB */
 	return ret_string;
 }
 
@@ -2657,7 +2657,7 @@ physmem(struct rm_attribute *attrib)
 	while (fgets(strbuf, 256, fp) != NULL) {
 		if (sscanf(strbuf, "MemTotal: %s k", ret_string) == 1) {
 			fclose(fp);
-			totalmem = (ulong) atol(ret_string);
+			totalmem = (unsigned long) atol(ret_string);
 
 			sprintf(ret_string, "%lukb",
 				totalmem * (num_acpus / num_pcpus));
@@ -2698,7 +2698,7 @@ size_fs(char *param)
 		return NULL;
 	}
 	sprintf(ret_string, "%lukb",
-		(ulong) (((double) fsbuf.f_bsize *
+		(unsigned long) (((double) fsbuf.f_bsize *
 			  (double) fsbuf.f_bfree) /
 			 1024.0)); /* KB */
 	return ret_string;
@@ -2734,7 +2734,7 @@ size_file(char *param)
 		return NULL;
 	}
 
-	sprintf(ret_string, "%lukb", (ulong) (sbuf.st_size >> 10)); /* KB */
+	sprintf(ret_string, "%lukb", (unsigned long) (sbuf.st_size >> 10)); /* KB */
 	return ret_string;
 }
 

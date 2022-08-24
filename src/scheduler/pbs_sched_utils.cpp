@@ -62,7 +62,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <sys/unistd.h>
+#include <unistd.h>
 #ifdef _POSIX_MEMLOCK
 #include <sys/mman.h>
 #endif /* _POSIX_MEMLOCK */

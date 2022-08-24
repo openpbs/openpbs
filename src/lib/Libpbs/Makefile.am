@@ -235,6 +235,7 @@ libpbs_la_SOURCES = \
 	../Libutil/pbs_aes_encrypt.c \
 	../Libutil/pbs_idx.c \
 	../Libutil/range.c \
+	../Libnet/get_hostaddr.c \
 	../Libnet/hnls.c \
 	../Libtpp/tpp_client.c \
 	../Libtpp/tpp_em.c \

@@ -4165,7 +4165,7 @@ inventory_to_vnodes(basil_response_t *brp)
 {
 	extern int internal_state_update;
 	extern int num_acpus;
-	extern ulong totalmem;
+	extern unsigned long totalmem;
 	int aflag = READ_WRITE | ATR_DFLAG_CVTSLT;
 	long order = 0;
 	char *attr;
