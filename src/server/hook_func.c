@@ -4085,6 +4085,10 @@ server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 					CLEAR_HEAD(temp_req->rq_ind.rq_modify.rq_attr);
 					do_recreate = 1;
 					break;
+				case PBS_BATCH_Manager:
+					CLEAR_HEAD(temp_req->rq_ind.rq_manager.rq_attr);
+					do_recreate = 0;
+					break;
 				default:
 					do_recreate = 0;
 			}
