@@ -47,10 +47,10 @@ AC_DEFUN([PBS_AC_WITH_PYTHON],
     )
   )
   AS_IF([test "x$with_python" != "x"],
-    [PYTHON="$with_python/bin/python3"] [PYTHON_CONFIG="$with_python/bin/python3-config"],
-    [PYTHON_CONFIG="python3-config"]
+    [PYTHON="$with_python/bin/python3"]
   )
   AM_PATH_PYTHON([3.6])
+  [PYTHON_CONFIG="$PYTHON-config"]
   [python_major_version=`echo $PYTHON_VERSION | sed -e 's/\..*$//'`]
   [python_minor_version=`echo $PYTHON_VERSION | sed -e 's/^[^.]*\.//'`]
   AS_IF([test $python_major_version -eq 3],
