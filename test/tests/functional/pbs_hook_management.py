@@ -330,7 +330,7 @@ class TestHookManagement(TestFunctional):
         attrs = {'event': 'management', 'enabled': 'True', 'debug': 'True'}
         start_time_a = time.time()
         ret = self.server.create_hook(hook_name_a, attrs)
-        self.assertEqual(ret, True, f"Could not import hook {hook_name_a}")
+        self.assertEqual(ret, True, f"Could not create hook {hook_name_a}")
         ret = self.server.import_hook(hook_name_a, hook_body_a)
         self.assertEqual(ret, True, f"Could not import hook {hook_name_a}")
 
@@ -372,7 +372,7 @@ class TestHookManagement(TestFunctional):
                  'debug': 'True', 'order': 2}
         start_time_a = time.time()
         ret = self.server.create_hook(hook_name_a, attrs)
-        self.assertEqual(ret, True, f"Could not import hook {hook_name_a}")
+        self.assertEqual(ret, True, f"Could not create hook {hook_name_a}")
         ret = self.server.import_hook(hook_name_a, hook_body_a)
         self.assertEqual(ret, True, f"Could not import hook {hook_name_a}")
 
