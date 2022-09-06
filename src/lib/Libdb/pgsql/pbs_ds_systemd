@@ -40,7 +40,7 @@
 
 is_systemd=1
 _status=$(systemctl is-system-running 2>/dev/null)
-if [ "x${_status}" == "xoffline" -o "x${_status}" == "xunknown" ] ; then
+if [ ! "${_status}" -o "x${_status}" = "xoffline" -o "x${_status}" = "xunknown" ] ; then
     is_systemd=0
 fi
 if [ $is_systemd -eq 1 ] ; then
