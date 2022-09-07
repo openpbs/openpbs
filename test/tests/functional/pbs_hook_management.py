@@ -318,6 +318,95 @@ class TestHookManagement(TestFunctional):
 
         self.logger.info("**************** HOOK END ****************")
 
+    def test_hook_03(self):
+        """
+        By creating an import hook, it executes a management hook.
+        Also sets debug to True.
+        """
+        self.logger.info("**************** HOOK START ****************")
+        hook_name_a = "management_03a"
+        hook_msg_a = 'running management hook_03a'
+        hook_body_a = get_hook_body(hook_msg_a)
+        attrs = {'event': 'management', 'enabled': 'True', 'debug': 'True'}
+        start_time_a = time.time()
+        ret = self.server.create_hook(hook_name_a, attrs)
+        self.assertEqual(ret, True, f"Could not create hook {hook_name_a}")
+        ret = self.server.import_hook(hook_name_a, hook_body_a)
+        self.assertEqual(ret, True, f"Could not import hook {hook_name_a}")
+
+        self.server.add_resource("management_03_1_resource", type="string")
+
+        hook_name_b = "management_03b"
+        hook_msg_b = 'running management hook_03b'
+        hook_body_b = get_hook_body(hook_msg_b)
+        attrs = {'event': 'management', 'enabled': 'True', 'debug': 'True'}
+        start_time_b = time.time()
+        ret = self.server.create_hook(hook_name_b, attrs)
+        self.assertEqual(ret, True, f"Could not create hook {hook_name_b}")
+        ret = self.server.import_hook(hook_name_b, hook_body_b)
+        self.assertEqual(ret, True, f"Could not import hook {hook_name_b}")
+
+        self.server.add_resource("management_03_2_resource", type="string")
+        self.server.add_resource("management_03_3_resource", type="string")
+        self.server.delete_resources()
+
+        ret = self.server.delete_hook(hook_name_a)
+        self.assertEqual(ret, True, f"Could not delete hook {hook_name_a}")
+        ret = self.server.delete_hook(hook_name_b)
+        self.assertEqual(ret, True, f"Could not delete hook {hook_name_b}")
+
+        self.server.log_match(hook_msg_a, starttime=start_time_a)
+        self.server.log_match(hook_msg_b, starttime=start_time_b)
+        self.logger.info("**************** HOOK END ****************")
+
+    def test_hook_04(self):
+        """
+        By creating an import hook, it executes a management hook.
+        Also sets debug to False.
+        """
+        self.logger.info("**************** HOOK START ****************")
+        hook_name_a = "management_03a"
+        hook_msg_a = 'running management hook_03a'
+        hook_body_a = get_hook_body(hook_msg_a)
+        attrs = {'event': 'management', 'enabled': 'True',
+                 'debug': 'True', 'order': 2}
+        start_time_a = time.time()
+        ret = self.server.create_hook(hook_name_a, attrs)
+        self.assertEqual(ret, True, f"Could not create hook {hook_name_a}")
+        ret = self.server.import_hook(hook_name_a, hook_body_a)
+        self.assertEqual(ret, True, f"Could not import hook {hook_name_a}")
+
+        self.server.add_resource("management_03_1_resource", type="string")
+
+        hook_name_b = "management_03b"
+        hook_msg_b = 'running management hook_03b'
+        hook_body_b = get_hook_body(hook_msg_b)
+        attrs = {'event': 'management', 'enabled': 'False', 'debug': 'False'}
+        start_time_b = time.time()
+        ret = self.server.create_hook(hook_name_b, attrs)
+        self.assertEqual(ret, True, f"Could not create hook {hook_name_b}")
+        ret = self.server.import_hook(hook_name_b, hook_body_b)
+        self.assertEqual(ret, True, f"Could not import hook {hook_name_b}")
+        ret = self.server.import_hook(hook_name_b, hook_body_b)
+
+        attrs = {'enabled': 'true'}
+        self.logger.info(f"Enabling {hook_name_b}...")
+        rc = self.server.manager(MGR_CMD_SET, HOOK, attrs, id=hook_name_b)
+        self.logger.info(f"Result for {hook_name_b}->{rc}")
+
+        self.server.add_resource("management_03_2_resource", type="string")
+        self.server.add_resource("management_03_3_resource", type="string")
+        self.server.delete_resources()
+
+        ret = self.server.delete_hook(hook_name_a)
+        self.assertEqual(ret, True, f"Could not delete hook {hook_name_a}")
+        ret = self.server.delete_hook(hook_name_b)
+        self.assertEqual(ret, True, f"Could not delete hook {hook_name_b}")
+
+        self.server.log_match(hook_msg_a, starttime=start_time_a)
+        self.server.log_match(hook_msg_b, starttime=start_time_b)
+        self.logger.info("**************** HOOK END ****************")
+
     def test_hook_str_00(self):
         """
         By creating an import hook, it executes a management hook.
