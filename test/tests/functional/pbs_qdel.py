@@ -223,3 +223,63 @@ class TestQdel(TestFunctional):
         self.server.delete([jid, jid, jid, jid, jid], wait=True)
         self.server.expect(JOB, {'job_state': 'F'}, id=jid,
                            extend='x', max_attempts=20)
+
+    def test_qdel_same_jobid_nx_array_00(self):
+        """
+        Test that qdel that deletes the array job more than once in the same line.
+        """
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        j = Job(TEST_USER, attrs={ATTR_J: '1-2'})
+        jid = self.server.submit(j)
+        sjid=j.create_subjob_id(jid, 1)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid)
+        self.server.delete([jid, jid, jid, jid, jid], wait=True)
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=20)
+
+    def test_qdel_same_jobid_nx_array_01(self):
+        """
+        Test that qdel that deletes the array job more than once in the same line.
+        """
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        j = Job(TEST_USER, attrs={ATTR_J: '0-734:512'})
+        jid = self.server.submit(j)
+        sjid=j.create_subjob_id(jid, 1)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid)
+        self.server.delete([jid, jid, jid, jid, jid], wait=True)
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=20)
+
+    def test_qdel_same_jobid_nx_array_subjob_00(self):
+        """
+        Test that qdel that deletes and array subjob more than once in the same line.
+        """
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        j = Job(TEST_USER, attrs={ATTR_J: '1-2'})
+        jid = self.server.submit(j)
+
+        sjid1 = j.create_subjob_id(jid, 1)
+        sjid2 = j.create_subjob_id(jid, 2)
+
+        self.server.delete([sjid1, sjid1, sjid1, sjid1, sjid1], wait=True)
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=20)
+
+    def test_qdel_same_jobid_nx_array_subjob_01(self):
+        """
+        Test that qdel that deletes and array subjob more than once in the same line.
+        """
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        j = Job(TEST_USER, attrs={ATTR_J: '0-734:512'})
+        jid = self.server.submit(j)
+
+        sjid1 = j.create_subjob_id(jid, 0)
+        sjid2 = j.create_subjob_id(jid, 512)
+
+        self.server.delete([sjid1, sjid1, sjid1, sjid1, sjid1], wait=True)
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=20)
