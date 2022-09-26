@@ -164,3 +164,62 @@ class TestQdel(TestFunctional):
         a = {'job_state': 'F', 'substate': '92'}
         self.server.expect(JOB, a, extend='x',
                            offset=1, id=jid, interval=1)
+
+    def test_qdel_same_jobid_nx_00(self):
+        """
+        Test that qdel that deletes the job more than once in the same line.
+        """
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.delete([jid, jid, jid, jid, jid], wait=True)
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=20)
+
+    def test_qdel_same_jobid_nx_01(self):
+        """
+        Test that qdel that deletes the job more than once in the same line.
+        Done twice.
+        """
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.delete([jid, jid], wait=True)
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=20)
+
+        # this may take 2 or more times to break.
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.delete([jid, jid], wait=True)
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=20)
+
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.delete([jid, jid], wait=True)
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=20)
+
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.delete([jid, jid], wait=True)
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=20)
+
+
+    def test_qdel_same_jobid_nx_02(self):
+        """
+        Test that qdel that deletes the job more than once in the same line.
+        With rerun.
+        """
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        attrs = {ATTR_r: 'y'}
+        j = Job(TEST_USER, attrs=attrs)
+        jid = self.server.submit(j)
+        self.server.delete([jid, jid, jid, jid, jid], wait=True)
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=20)
