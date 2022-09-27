@@ -103,7 +103,7 @@ class TestQdel(TestFunctional):
         self.assertIn(m, e.exception.msg[0])
         self.server.delete(jid, extend='deletehist')
 
-    def test_qdel_arrayjob_in_tranit(self):
+    def test_qdel_arrayjob_in_transit(self):
         """
         Test the array job deletion
         soon after they have been signalled for running.
@@ -130,7 +130,7 @@ class TestQdel(TestFunctional):
             msg = arrjob + ";Job Run at request of Scheduler"
             self.scheduler.log_match(msg, existence=False, max_attempts=3)
 
-    def test_qdel_hstry_jobs_rerun(self):
+    def test_qdel_history_job_rerun(self):
         """
         Test rerunning a history job that was prematurely terminated due
         to a a downed mom.
@@ -140,6 +140,7 @@ class TestQdel(TestFunctional):
              'scheduler_iteration': '5'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job()
+        j.set_sleep_time(30)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
@@ -165,7 +166,7 @@ class TestQdel(TestFunctional):
         self.server.expect(JOB, a, extend='x',
                            offset=1, id=jid, interval=1)
 
-    def test_qdel_hstry_jobs_rerun_nx(self):
+    def test_qdel_history_job_rerun_nx(self):
         """
         Test rerunning a history job that was prematurely terminated due
         to a a downed mom.
@@ -175,6 +176,7 @@ class TestQdel(TestFunctional):
              'scheduler_iteration': '5'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job()
+        j.set_sleep_time(30)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
@@ -201,6 +203,8 @@ class TestQdel(TestFunctional):
         self.server.expect(JOB, a, extend='x',
                            offset=1, id=jid, interval=1)
 
+    # TODO: add rerun nx for multiple job arrays
+
     def test_qdel_same_jobid_nx_00(self):
         """
         Test that qdel that deletes the job more than once in the same line.
@@ -209,8 +213,9 @@ class TestQdel(TestFunctional):
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER)
         jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=jid)
         self.server.delete([jid, jid, jid, jid, jid], wait=True)
-        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+        self.server.expect(JOB, {'job_state': 'F', 'substate': 91}, id=jid,
                            extend='x', max_attempts=20)
 
     def test_qdel_same_jobid_nx_01(self):
@@ -222,27 +227,31 @@ class TestQdel(TestFunctional):
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER)
         jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=jid)
         self.server.delete([jid, jid], wait=True)
-        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+        self.server.expect(JOB, {'job_state': 'F', 'substate': 91}, id=jid,
                            extend='x', max_attempts=20)
 
         # this may take 2 or more times to break.
         j = Job(TEST_USER)
         jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=jid)
         self.server.delete([jid, jid], wait=True)
-        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+        self.server.expect(JOB, {'job_state': 'F', 'substate': 91}, id=jid,
                            extend='x', max_attempts=20)
 
         j = Job(TEST_USER)
         jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=jid)
         self.server.delete([jid, jid], wait=True)
-        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+        self.server.expect(JOB, {'job_state': 'F', 'substate': 91}, id=jid,
                            extend='x', max_attempts=20)
 
         j = Job(TEST_USER)
         jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=jid)
         self.server.delete([jid, jid], wait=True)
-        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+        self.server.expect(JOB, {'job_state': 'F', 'substate': 91}, id=jid,
                            extend='x', max_attempts=20)
 
 
@@ -256,8 +265,9 @@ class TestQdel(TestFunctional):
         attrs = {ATTR_r: 'y'}
         j = Job(TEST_USER, attrs=attrs)
         jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=jid)
         self.server.delete([jid, jid, jid, jid, jid], wait=True)
-        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+        self.server.expect(JOB, {'job_state': 'F', 'substate': 91}, id=jid,
                            extend='x', max_attempts=20)
 
     def test_qdel_same_jobid_nx_array_00(self):
@@ -272,7 +282,7 @@ class TestQdel(TestFunctional):
         sjid = j.create_subjob_id(jid, 1)
         self.server.expect(JOB, {ATTR_state: "R"}, id=sjid)
         self.server.delete([jid, jid, jid, jid, jid], wait=True)
-        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+        self.server.expect(JOB, {'job_state': 'F', 'substate': 91}, id=jid,
                            extend='x', max_attempts=20)
 
     def test_qdel_same_jobid_nx_array_01(self):
@@ -298,10 +308,13 @@ class TestQdel(TestFunctional):
         a = {'job_history_enable': 'True'}
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER, attrs={ATTR_J: '1-2'})
+        j.set_sleep_time(20)
         jid = self.server.submit(j)
 
         sjid1 = j.create_subjob_id(jid, 1)
         sjid2 = j.create_subjob_id(jid, 2)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid1)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid2)
 
         self.server.delete([sjid1, sjid1, sjid1, sjid1, sjid1], wait=True)
         self.server.expect(JOB, {'job_state': 'F'}, id=jid,
@@ -315,7 +328,10 @@ class TestQdel(TestFunctional):
         a = {'job_history_enable': 'True'}
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER, attrs={ATTR_J: '0-734:512'})
+        j.set_sleep_time(20)
         jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid1)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid2)
 
         sjid1 = j.create_subjob_id(jid, 0)
         sjid2 = j.create_subjob_id(jid, 512)
