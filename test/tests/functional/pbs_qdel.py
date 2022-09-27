@@ -165,6 +165,42 @@ class TestQdel(TestFunctional):
         self.server.expect(JOB, a, extend='x',
                            offset=1, id=jid, interval=1)
 
+    def test_qdel_hstry_jobs_rerun_nx(self):
+        """
+        Test rerunning a history job that was prematurely terminated due
+        to a a downed mom.
+        """
+        a = {'job_history_enable': 'True', 'job_history_duration': '5',
+             'job_requeue_timeout': '5', 'node_fail_requeue': '5',
+             'scheduler_iteration': '5'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        j = Job()
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        self.mom.stop()
+
+        # Force job to be prematurely terminated and try to delete it more than
+        # once.
+        try:
+            self.server.deljob([jid, jid, jid, jid])
+        except PbsDeljobError as e:
+            err_msg = "could not connect to MOM"
+            self.assertTrue(err_msg in e.msg[0],
+                            "Did not get the expected message")
+            self.assertTrue(e.rc != 0, "Exit code shows success")
+        else:
+            raise self.failureException("qdel job did not return error")
+
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+        self.mom.start()
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+
+        # Upon rerun, finished status should be '92' (Finished)
+        a = {'job_state': 'F', 'substate': '92'}
+        self.server.expect(JOB, a, extend='x',
+                           offset=1, id=jid, interval=1)
+
     def test_qdel_same_jobid_nx_00(self):
         """
         Test that qdel that deletes the job more than once in the same line.
@@ -226,13 +262,14 @@ class TestQdel(TestFunctional):
 
     def test_qdel_same_jobid_nx_array_00(self):
         """
-        Test that qdel that deletes the array job more than once in the same line.
+        Test that qdel that deletes the array job more than once in the same
+        line.
         """
         a = {'job_history_enable': 'True'}
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER, attrs={ATTR_J: '1-2'})
         jid = self.server.submit(j)
-        sjid=j.create_subjob_id(jid, 1)
+        sjid = j.create_subjob_id(jid, 1)
         self.server.expect(JOB, {ATTR_state: "R"}, id=sjid)
         self.server.delete([jid, jid, jid, jid, jid], wait=True)
         self.server.expect(JOB, {'job_state': 'F'}, id=jid,
@@ -240,13 +277,14 @@ class TestQdel(TestFunctional):
 
     def test_qdel_same_jobid_nx_array_01(self):
         """
-        Test that qdel that deletes the array job more than once in the same line.
+        Test that qdel that deletes the array job more than once in the same
+        line.
         """
         a = {'job_history_enable': 'True'}
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER, attrs={ATTR_J: '0-734:512'})
         jid = self.server.submit(j)
-        sjid=j.create_subjob_id(jid, 1)
+        sjid = j.create_subjob_id(jid, 1)
         self.server.expect(JOB, {ATTR_state: "R"}, id=sjid)
         self.server.delete([jid, jid, jid, jid, jid], wait=True)
         self.server.expect(JOB, {'job_state': 'F'}, id=jid,
@@ -254,7 +292,8 @@ class TestQdel(TestFunctional):
 
     def test_qdel_same_jobid_nx_array_subjob_00(self):
         """
-        Test that qdel that deletes and array subjob more than once in the same line.
+        Test that qdel that deletes and array subjob more than once in the same
+        line.
         """
         a = {'job_history_enable': 'True'}
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
@@ -270,7 +309,8 @@ class TestQdel(TestFunctional):
 
     def test_qdel_same_jobid_nx_array_subjob_01(self):
         """
-        Test that qdel that deletes and array subjob more than once in the same line.
+        Test that qdel that deletes and array subjob more than once in the same
+        line.
         """
         a = {'job_history_enable': 'True'}
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
