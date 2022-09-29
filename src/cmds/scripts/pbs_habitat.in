@@ -143,6 +143,39 @@ check_hostname() {
 	return 1
 }
 
+# Backup pgsql binaries and libraries to PBS_EXEC
+backup_pgsql() {
+	psql_ver=`psql --version | cut -d ' ' -f3 | cut -d '.' -f 1,2`
+	mkdir -p "$PBS_HOME/pgsql.forupgrade/bin"
+	mkdir -p "$PBS_HOME/pgsql.forupgrade/lib"
+	mkdir -p "$PBS_HOME/pgsql.forupgrade/lib64/pgsql"
+	mkdir -p "$PBS_HOME/pgsql.forupgrade/share/pgsql/timezonesets"
+	mkdir -p "$PBS_HOME/pgsql.forupgrade/share/timezonesets"
+	pgsql_lib_dir=`dirname $PGSQL_BIN`"/lib64/pgsql"
+	if [ ! -d $pgsql_lib_dir ];then
+		pgsql_lib_dir="/usr/pgsql-${psql_ver}/lib"
+	fi
+	cp -r $pgsql_lib_dir/* "$PBS_HOME/pgsql.forupgrade/lib64/pgsql"
+	cp -r $pgsql_lib_dir/* "$PBS_HOME/pgsql.forupgrade/lib/"
+	pgsql_share_dir=`dirname $PGSQL_BIN`"/share/pgsql"
+	if [ ! -d $pgsql_share_dir ];then
+		pgsql_share_dir="/usr/pgsql-${psql_ver}/share"
+	fi
+	cp -r $pgsql_share_dir/timezonesets/* "$PBS_HOME/pgsql.forupgrade/share/pgsql/timezonesets"
+	cp -r $pgsql_share_dir/timezonesets/* "$PBS_HOME/pgsql.forupgrade/share/timezonesets"
+	cp "$PGSQL_BIN/pg_ctl" "$PBS_HOME/pgsql.forupgrade/bin"
+	cp "$PGSQL_BIN/postgres" "$PBS_HOME/pgsql.forupgrade/bin"
+	cp "$PGSQL_BIN/pg_controldata" "$PBS_HOME/pgsql.forupgrade/bin"
+	cp "$PGSQL_BIN/pg_resetxlog" "$PBS_HOME/pgsql.forupgrade/bin"
+	cp "$PGSQL_BIN/psql" "$PBS_HOME/pgsql.forupgrade/bin"
+	cp "$PGSQL_BIN/pg_dump" "$PBS_HOME/pgsql.forupgrade/bin"
+	cp "$PGSQL_BIN/pg_restore" "$PBS_HOME/pgsql.forupgrade/bin"
+	psql_ver_min=9.3
+	if [ ${psql_ver_min%.*} -eq ${psql_ver%.*} ] && [ ${psql_ver_min#*.} \> ${psql_ver#*.} ] || [ ${psql_ver_min%.*} -gt ${psql_ver%.*} ]; then
+		touch "$PBS_HOME/pgsql.forupgrade/oss"
+	fi
+}
+
 #
 # Start of the pbs_habitat script
 #
@@ -372,6 +405,10 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 	if [ $server_started -eq 1 ]; then
 		${PBS_EXEC}/bin/qterm
 	fi
+
+	# Take a backup of pgsql binaries and lib to the PBS_EXEC folder
+	backup_pgsql
+
 fi
 
 #
