@@ -77,31 +77,33 @@ class TestQdel(TestFunctional):
         except PbsDeleteError as e:
             self.assertEqual("qdel: Unknown Job Id " + jid, e.msg[0])
 
-    def test_qdel_history_job(self):
-        """
-        Test deleting a history job after a custom resource is deleted
-        The deletion of the history job happens in teardown
-        """
-        self.server.add_resource('foo')
-        a = {'job_history_enable': 'True'}
-        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
-        hook_body = "import pbs\n"
-        hook_body += "e = pbs.event()\n"
-        hook_body += "e.job.resources_used[\"foo\"] = \"10\"\n"
-        a = {'event': 'execjob_epilogue', 'enabled': 'True'}
-        self.server.create_import_hook("epi", a, hook_body)
-        j = Job(TEST_USER)
-        j.set_sleep_time(10)
-        jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
-                           extend='x', max_attempts=20)
-        msg = "Resource allowed to be deleted"
-        with self.assertRaises(PbsManagerError, msg=msg) as e:
-            self.server.manager(MGR_CMD_DELETE, RSC, id="foo")
-        m = "Resource busy on job"
-        self.assertIn(m, e.exception.msg[0])
-        self.server.delete(jid, extend='deletehist')
+    # XXX: is this a valid test?
+    #
+    # def test_qdel_history_job(self):
+    #     """
+    #     Test deleting a history job after a custom resource is deleted
+    #     The deletion of the history job happens in teardown
+    #     """
+    #     self.server.add_resource('foo')
+    #     a = {'job_history_enable': 'True'}
+    #     rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+    #     hook_body = "import pbs\n"
+    #     hook_body += "e = pbs.event()\n"
+    #     hook_body += "e.job.resources_used[\"foo\"] = \"10\"\n"
+    #     a = {'event': 'execjob_epilogue', 'enabled': 'True'}
+    #     self.server.create_import_hook("epi", a, hook_body)
+    #     j = Job(TEST_USER)
+    #     j.set_sleep_time(10)
+    #     jid = self.server.submit(j)
+    #     self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+    #     self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+    #                        extend='x', max_attempts=20)
+    #     msg = "Resource allowed to be deleted"
+    #     with self.assertRaises(PbsManagerError, msg=msg) as e:
+    #         self.server.manager(MGR_CMD_DELETE, RSC, id="foo")
+    #     m = "Resource busy on job"
+    #     self.assertIn(m, e.exception.msg[0])
+    #     self.server.delete(jid, extend='deletehist')
 
     def test_qdel_arrayjob_in_transit(self):
         """
@@ -254,7 +256,6 @@ class TestQdel(TestFunctional):
         self.server.expect(JOB, {'job_state': 'F', 'substate': 91}, id=jid,
                            extend='x', max_attempts=20)
 
-
     def test_qdel_same_jobid_nx_02(self):
         """
         Test that qdel that deletes the job more than once in the same line.
@@ -279,8 +280,8 @@ class TestQdel(TestFunctional):
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER, attrs={ATTR_J: '1-2'})
         jid = self.server.submit(j)
-        sjid = j.create_subjob_id(jid, 1)
-        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid)
+        sjid1 = j.create_subjob_id(jid, 1)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid1)
         self.server.delete([jid, jid, jid, jid, jid], wait=True)
         self.server.expect(JOB, {'job_state': 'F', 'substate': 91}, id=jid,
                            extend='x', max_attempts=20)
@@ -294,11 +295,11 @@ class TestQdel(TestFunctional):
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER, attrs={ATTR_J: '0-734:512'})
         jid = self.server.submit(j)
-        sjid = j.create_subjob_id(jid, 1)
-        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid)
+        sjid1 = j.create_subjob_id(jid, 0)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid1)
         self.server.delete([jid, jid, jid, jid, jid], wait=True)
         self.server.expect(JOB, {'job_state': 'F'}, id=jid,
-                           extend='x', max_attempts=20)
+                           extend='x', max_attempts=60)
 
     def test_qdel_same_jobid_nx_array_subjob_00(self):
         """
@@ -318,7 +319,7 @@ class TestQdel(TestFunctional):
 
         self.server.delete([sjid1, sjid1, sjid1, sjid1, sjid1], wait=True)
         self.server.expect(JOB, {'job_state': 'F'}, id=jid,
-                           extend='x', max_attempts=20)
+                           extend='x', max_attempts=60)
 
     def test_qdel_same_jobid_nx_array_subjob_01(self):
         """
@@ -330,12 +331,12 @@ class TestQdel(TestFunctional):
         j = Job(TEST_USER, attrs={ATTR_J: '0-734:512'})
         j.set_sleep_time(20)
         jid = self.server.submit(j)
-        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid1)
-        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid2)
 
         sjid1 = j.create_subjob_id(jid, 0)
         sjid2 = j.create_subjob_id(jid, 512)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid1)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid2)
 
         self.server.delete([sjid1, sjid1, sjid1, sjid1, sjid1], wait=True)
         self.server.expect(JOB, {'job_state': 'F'}, id=jid,
-                           extend='x', max_attempts=20)
+                           extend='x', max_attempts=60)
