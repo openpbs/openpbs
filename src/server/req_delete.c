@@ -558,7 +558,7 @@ req_deletejob(struct batch_request *preq)
 	int rc = 0;
 	int delhist = 0;
 	int err = PBSE_NONE;
-	char **jobids;
+	char **jobids = NULL;
 	int count;
 	int j;
 	struct batch_reply *preply = &preq->rq_reply;
@@ -568,14 +568,12 @@ req_deletejob(struct batch_request *preq)
 	time_t begin_time = time(NULL);
 	void * processed_jobs_idx = NULL;
 
-	preq->rq_refct++;
-
 	if (preq->rq_type == PBS_BATCH_DeleteJobList) {
 
 		if (!preq->rq_ind.rq_deletejoblist.rq_resume) {
 			if (init_deljoblist(preq) != 0) {
-				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-						"Error while initializing deljoblist operation (init_deljoblist failed)");
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,
+					"Error while initializing deljoblist operation (init_deljoblist failed)");
 				req_reject(PBSE_INTERNAL, 0, preq);
 				goto fn_exit;
 			}
@@ -584,11 +582,17 @@ req_deletejob(struct batch_request *preq)
 			start_jobid = preq->rq_ind.rq_deletejoblist.jobid_to_resume;
 
 		preply->brp_choice = BATCH_REPLY_CHOICE_Delete;
-		jobids = preq->rq_ind.rq_deletejoblist.rq_jobslist;
+		jobids = dup_string_arr(preq->rq_ind.rq_deletejoblist.rq_jobslist);
 		count = preq->rq_ind.rq_deletejoblist.rq_count;
 	} else {
 		jobids = break_comma_list(preq->rq_ind.rq_delete.rq_objname);
 		count = 1;
+	}
+	if (!jobids) {
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,
+			"Error while copying the list of job ids to be deleted");
+		req_reject(PBSE_INTERNAL, 0, preq);
+		goto fn_exit;
 	}
 
 	if (preq->rq_extend && strstr(preq->rq_extend, DELETEHISTORY))
@@ -603,8 +607,9 @@ req_deletejob(struct batch_request *preq)
 		qdel_mail = false;
 
 	for (j = start_jobid; j < count; j++) {
-		if (processed_jobs_idx && find_job(jobids[j]) &&
-		    pbs_idx_insert(processed_jobs_idx, jobids[j], NULL) != PBS_IDX_RET_OK) {
+		snprintf(jid, sizeof(jid), "%s", jobids[j]);
+		if (processed_jobs_idx && find_job(jid) &&
+		    pbs_idx_insert(processed_jobs_idx, jid, NULL) != PBS_IDX_RET_OK) {
 			continue;
 		}
 
@@ -621,7 +626,6 @@ req_deletejob(struct batch_request *preq)
 			goto fn_exit;
 		}
 
-		snprintf(jid, sizeof(jid), "%s", jobids[j]);
 		parent = chk_job_request(jid, preq, &jt, &err);
 		if (parent == NULL) {
 			pjob = find_job(jid);
@@ -875,10 +879,9 @@ req_deletejob(struct batch_request *preq)
 		}
 	}
 
-	fn_exit:
-		preq->rq_refct--;
-		reply_send(preq);
-		pbs_idx_destroy(processed_jobs_idx);
+fn_exit:
+	free_string_array(jobids);
+	pbs_idx_destroy(processed_jobs_idx);
 }
 
 /**
