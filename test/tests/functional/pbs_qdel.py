@@ -346,8 +346,14 @@ class TestQdel(TestFunctional):
         Test that qdel that deletes and array subjob more than once in the same
         line but uses ranges.
         """
-        a = {'job_history_enable': 'True'}
-        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {
+            'log_events': 4095,
+            'job_history_enable': 'True'
+        }
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 16}
+        for mom in self.moms.values():
+            self.server.manager(MGR_CMD_SET, NODE, a, mom.shortname)
         j = Job(TEST_USER, attrs={ATTR_J: '1-7'})
         j.set_sleep_time(20)
         jid = self.server.submit(j)
@@ -369,7 +375,7 @@ class TestQdel(TestFunctional):
 
         jid_array = jid.split("[")[0]
 
-        self.server.delete([f"{jid_array}[2-4]", f"{jid_array}[3-5]"] * 10, wait=False)
+        self.server.delete([f"{jid_array}[2-4]", f"{jid_array}[3-5]"] * 10, wait=True)
         self.server.expect(JOB, {'job_state': 'F'}, id=jid,
                            extend='x', max_attempts=60)
 
@@ -378,8 +384,14 @@ class TestQdel(TestFunctional):
         Test that qdel that deletes and array subjob more than once in the same
         line but uses ranges.
         """
-        a = {'job_history_enable': 'True'}
-        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {
+            'log_events': 4095,
+            'job_history_enable': 'True'
+        }
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 16}
+        for mom in self.moms.values():
+            self.server.manager(MGR_CMD_SET, NODE, a, mom.shortname)
         j = Job(TEST_USER, attrs={ATTR_J: '1-7'})
         j.set_sleep_time(20)
         jid = self.server.submit(j)
@@ -403,6 +415,44 @@ class TestQdel(TestFunctional):
 
         self.server.delete([f"{jid_array}[2-4]", f"{jid_array}[3-5]"] * 10, wait=False)
         self.server.delete([f"{jid_array}[2-4]", f"{jid_array}[3-5]"] * 10, wait=False)
+        self.server.delete([f"{jid_array}[2-4]", f"{jid_array}[3-5]"] * 10, wait=True)
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=60)
+
+    def test_qdel_same_jobid_nx_array_subjob_04(self):
+        """
+        Test that qdel that deletes and array subjob more than once in the same
+        line but uses ranges.
+        """
+        a = {
+            'log_events': 4095,
+            'job_history_enable': 'True'
+        }
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 6}
+        for mom in self.moms.values():
+            self.server.manager(MGR_CMD_SET, NODE, a, mom.shortname)
+        j = Job(TEST_USER, attrs={ATTR_J: '1-10'})
+        j.set_sleep_time(20)
+        jid = self.server.submit(j)
+
+        sjid1 = j.create_subjob_id(jid, 1)
+        sjid2 = j.create_subjob_id(jid, 2)
+        sjid3 = j.create_subjob_id(jid, 3)
+        sjid4 = j.create_subjob_id(jid, 4)
+        sjid5 = j.create_subjob_id(jid, 5)
+        sjid6 = j.create_subjob_id(jid, 6)
+        sjid7 = j.create_subjob_id(jid, 7)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid1)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid2)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid3)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid4)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid5)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid6)
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid7)
+
+        jid_array = jid.split("[")[0]
+
         self.server.delete([f"{jid_array}[2-4]", f"{jid_array}[3-5]"] * 10, wait=True)
         self.server.expect(JOB, {'job_state': 'F'}, id=jid,
                            extend='x', max_attempts=60)
