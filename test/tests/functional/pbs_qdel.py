@@ -187,15 +187,12 @@ class TestQdel(TestFunctional):
 
         # Force job to be prematurely terminated and try to delete it more than
         # once.
-        try:
+        err_msg = "could not connect to MOM"
+        msg = "qdel job did not return error"
+        with self.assertRaises(PbsDeljobError, msg=msg) as e:
             self.server.deljob([jid, jid, jid, jid])
-        except PbsDeljobError as e:
-            err_msg = "could not connect to MOM"
-            self.assertTrue(err_msg in e.msg[0],
-                            "Did not get the expected message")
-            self.assertTrue(e.rc != 0, "Exit code shows success")
-        else:
-            raise self.failureException("qdel job did not return error")
+        self.assertIn(err_msg, e.exception.msg[0])
+        self.assertNotEqual(e.exception.rc, 0)
 
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
         self.mom.start()
