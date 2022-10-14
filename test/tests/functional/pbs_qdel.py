@@ -78,33 +78,31 @@ class TestQdel(TestFunctional):
         except PbsDeleteError as e:
             self.assertEqual("qdel: Unknown Job Id " + jid, e.msg[0])
 
-    # XXX: is this a valid test?
-    #
-    # def test_qdel_history_job(self):
-    #     """
-    #     Test deleting a history job after a custom resource is deleted
-    #     The deletion of the history job happens in teardown
-    #     """
-    #     self.server.add_resource('foo')
-    #     a = {'job_history_enable': 'True'}
-    #     rc = self.server.manager(MGR_CMD_SET, SERVER, a)
-    #     hook_body = "import pbs\n"
-    #     hook_body += "e = pbs.event()\n"
-    #     hook_body += "e.job.resources_used[\"foo\"] = \"10\"\n"
-    #     a = {'event': 'execjob_epilogue', 'enabled': 'True'}
-    #     self.server.create_import_hook("epi", a, hook_body)
-    #     j = Job(TEST_USER)
-    #     j.set_sleep_time(10)
-    #     jid = self.server.submit(j)
-    #     self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-    #     self.server.expect(JOB, {'job_state': 'F'}, id=jid,
-    #                        extend='x', max_attempts=20)
-    #     msg = "Resource allowed to be deleted"
-    #     with self.assertRaises(PbsManagerError, msg=msg) as e:
-    #         self.server.manager(MGR_CMD_DELETE, RSC, id="foo")
-    #     m = "Resource busy on job"
-    #     self.assertIn(m, e.exception.msg[0])
-    #     self.server.delete(jid, extend='deletehist')
+    def test_qdel_history_job(self):
+        """
+        Test deleting a history job after a custom resource is deleted
+        The deletion of the history job happens in teardown
+        """
+        self.server.add_resource('foo')
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        hook_body = "import pbs\n"
+        hook_body += "e = pbs.event()\n"
+        hook_body += "e.job.resources_used[\"foo\"] = \"10\"\n"
+        a = {'event': 'execjob_epilogue', 'enabled': 'True'}
+        self.server.create_import_hook("epi", a, hook_body)
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=20)
+        msg = "Resource allowed to be deleted"
+        with self.assertRaises(PbsManagerError, msg=msg) as e:
+            self.server.manager(MGR_CMD_DELETE, RSC, id="foo")
+        m = "Resource busy on job"
+        self.assertIn(m, e.exception.msg[0])
+        self.server.delete(jid, extend='deletehist')
 
     def test_qdel_arrayjob_in_transit(self):
         """
@@ -358,6 +356,7 @@ class TestQdel(TestFunctional):
         self.server.expect(
             JOB, {'job_state': 'F'}, id=jid, extend='x', max_attempts=20)
 
+    @skip("issue 2554")
     @requirements(num_moms=1)
     def test_qdel_same_jobid_nx_array_subjob_03(self):
         """
@@ -397,6 +396,7 @@ class TestQdel(TestFunctional):
         self.server.expect(
             JOB, {'job_state': 'F'}, id=jid, extend='x', max_attempts=20)
 
+    @skip("issue 2554")
     @requirements(num_moms=1)
     def test_qdel_same_jobid_nx_array_subjob_05(self):
         """
@@ -414,4 +414,42 @@ class TestQdel(TestFunctional):
         self.server.expect(
             JOB, {'job_state': 'F'}, id=jid, extend='x', max_attempts=20)
 
+    @skip("issue 2554")
+    @requirements(num_moms=1)
+    def test_qdel_same_jobid_nx_array_subjob_06(self):
+        """
+        Test that the server handles deleting repeating ranges of
+        array subjobs in a single operation, where some subjobs have completed,
+        a subset are running, and some are queued.
+        """
+        jid, array_id, sjids = self.array_job_start(20, 4, 12)
+        for sjid in sjids[:6]:
+            self.server.expect(JOB, {ATTR_state: "R"}, id=sjid)
+        sj_range1 = f"{array_id}[1-4]"
+        sj_list = [sj_range1] * 20
+        self.server.delete(sj_list, wait=True)
+        self.server.expect(
+            JOB, {'job_state': 'F'}, id=jid, extend='x', max_attempts=20)
+
+    @skip("issue 2554")
+    @requirements(num_moms=1)
+    def test_qdel_same_jobid_nx_array_subjob_07(self):
+        """
+        Test that the server handles deleting repeating ranges of
+        array subjobs in a single operation, where some subjobs have completed,
+        a subset are running, and some are queued.
+        """
+        jid, array_id, sjids = self.array_job_start(20, 4, 12)
+        for sjid in sjids[:6]:
+            self.server.expect(JOB, {ATTR_state: "R"}, id=sjid)
+        sj_range1 = f"{array_id}[1-4]"
+        sj_range2 = f"{array_id}[3-6]"
+        sj_range3 = f"{array_id}[5-8]"
+
+        sj_list = [sj_range1, sj_range2, sj_range3]
+        self.server.delete(sj_list, wait=True)
+        self.server.expect(
+            JOB, {'job_state': 'F'}, id=jid, extend='x', max_attempts=20)
+
     # TODO: add rerun nx for job arrays
+
