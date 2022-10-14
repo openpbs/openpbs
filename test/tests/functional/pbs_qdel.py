@@ -452,4 +452,3 @@ class TestQdel(TestFunctional):
             JOB, {'job_state': 'F'}, id=jid, extend='x', max_attempts=20)
 
     # TODO: add rerun nx for job arrays
-
