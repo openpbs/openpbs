@@ -313,7 +313,7 @@ def get_node_config(node_image=default_platform):
     # get required number of servers and moms
     for _ in range(max_servers_needed):
         server_nodes.append(node_image)
-    if no_mom_on_server_flag == False:
+    if not no_mom_on_server_flag:
         max_moms_needed = max(max_moms_needed, max_servers_needed)
         if max_moms_needed > max_servers_needed:
             for _ in range(max_moms_needed - max_servers_needed):
@@ -324,10 +324,10 @@ def get_node_config(node_image=default_platform):
 
     only_moms = len(mom_nodes)
     # get required num of comms
-    if no_comm_on_mom_flag == True and no_comm_on_server_flag == True:
+    if no_comm_on_mom_flag and no_comm_on_server_flag:
         for _ in range(max_comms_needed):
             comm_nodes.append(node_image)
-    elif no_comm_on_mom_flag == True and no_comm_on_server_flag == False:
+    elif no_comm_on_mom_flag and not no_comm_on_server_flag:
         if max_comms_needed > max_servers_needed:
             for _ in range(max_comms_needed-max_servers_needed):
                 comm_nodes.append(node_image)

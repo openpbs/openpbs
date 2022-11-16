@@ -91,7 +91,7 @@ try:
                 py_path + '/python' + py_version + '/lib-dynload',
                 py_path + '/python' + py_version + '/site-packages']
 
-    if sys.path.__contains__(py_path + '/python' + py_version) == False:
+    if not sys.path.__contains__(py_path + '/python' + py_version):
         for my_path in my_paths:
             if my_path not in sys.path:
                 sys.path.append(my_path)
@@ -651,7 +651,7 @@ class NodeHealthCheck:
         if isinstance(status, list):
             comment = str(status[1])
             status = status[0].lower()
-        elif isinstance(status, bool) != True:
+        elif not isinstance(status, bool):
             status = status.lower()
 
         # Check to see how to handle the status
