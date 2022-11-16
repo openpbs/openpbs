@@ -61,4 +61,5 @@ libutil_a_SOURCES = \
 	pbs_aes_encrypt.c \
 	pbs_idx.c \
 	range.c  \
-	thread_utils.c
+	thread_utils.c \
+	dedup_jobids.c

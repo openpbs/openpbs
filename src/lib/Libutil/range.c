@@ -282,7 +282,7 @@ range_parse(char *str)
  *			   if no current value is given, return the first
  *
  * @param[in]	r	-	the range to return the value from
- * @param[in]	cur_value	-	the current value or if negitive, no value
+ * @param[in]	cur_value	-	the current value or if negative, no value
  *
  * @return	the next value in the range
  * @retval	-1	: on error
@@ -598,9 +598,8 @@ range_intersection(range *r1, range *r2)
 	cur = range_next_value(r1, -1);
 
 	while (cur >= 0) {
-		if (range_contains(r2, cur)) {
+		if (range_contains(r2, cur))
 			range_add_value(&intersection, cur, r2->step);
-		}
 		cur = range_next_value(r1, cur);
 	}
 	return intersection;
@@ -755,4 +754,56 @@ range_to_str(range *r)
 		range_str[len - 1] = '\0';
 
 	return range_str;
+}
+
+/**
+ * @brief	Join r1 and r2 by removing the duplicate values 
+ * 
+ * @param[in] r1 range of sub job
+ * @param[in] r2 range of sub job
+ * @return range
+ * @retval r3 superset of r1 and r2 ranges
+ * @retval NULL if not done
+ */
+range *
+range_join(range *r1, range *r2)
+{
+	range *ri = NULL;
+	range *r3 = NULL;
+	int cur = 0;
+	ri = range_intersection(r1, r2);
+	if (ri != NULL) {
+		/* XOR */
+		cur = range_next_value(ri, -1);
+		while (cur >= 0) {
+			if (range_contains(r1, cur)) {
+			range_remove_value(&r1, cur);
+		}
+		if (range_contains(r2, cur)) {
+			range_remove_value(&r2, cur);
+		}
+		cur = range_next_value(ri, cur);
+	}
+	/* JOIN r1, r2 and ri in r3*/
+	r3 = dup_range(r1);
+	cur = range_next_value(ri, -1);
+	while (cur >= 0) {
+		range_add_value(&r3, cur, 1);
+		cur = range_next_value(ri, cur);
+	}
+	cur = range_next_value(r2, -1);
+	while (cur >= 0) {
+		range_add_value(&r3, cur, 1);
+		cur = range_next_value(r2, cur);
+	}
+	free_range_list(ri);
+	} else {
+		r3 = dup_range(r1);
+		cur = range_next_value(r2, -1);
+		while (cur >= 0) {
+		range_add_value(&r3, cur, 1);
+		cur = range_next_value(r2, cur);
+		}
+	}
+	return r3;
 }
