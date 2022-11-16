@@ -736,7 +736,7 @@ class pbs_env(dict):
         """String representation of the object"""
         rv = ""
         for k in self.keys():
-            if self[k] != None:
+            if self[k] is not None:
                 rv += "%s=%s," % (k, self[k])
         return rv.rstrip(",")
     #: m(__str__)
@@ -785,7 +785,7 @@ class pbs_bool(_generic_attr):
     def __cmp__(self, value):
         iself = int(str(self))
 
-        if value == None:
+        if value is None:
             return 1
 
         ivalue = int(value)
@@ -1601,7 +1601,7 @@ class pbs_resource():
             if resc == '_name' or resc == '_has_value':
                 continue
             v = getattr(self, resc)
-            if (v != None) or (v == ""):
+            if (v is not None) or (v == ""):
                 str_v = str(v)
                 if (str_v.find("\"") == -1) and (str_v.find(",") != -1):
                     rv.append("%s=\"%s\"" % (resc, v))
@@ -1705,7 +1705,7 @@ class pbs_resource():
             if resc == '_name' or resc == '_has_value':
                 continue
             v = getattr(self, resc)
-            if v != None:
+            if v is not None:
                 rv.append(resc)
         #
         return rv

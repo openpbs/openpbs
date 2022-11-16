@@ -281,7 +281,7 @@ def process(master_file, svr_file, ecl_file, defines_file):
         tail_list = node.getElementsByTagName('tail')
         for t in tail_list:
             tail_value = t.childNodes[0].nodeValue
-            if tail_value == None:
+            if tail_value is None:
                 pass
             fileappend(PropType.BOTH, '\n')
             tail_both = t.getElementsByTagName('both')

@@ -65,7 +65,7 @@ high_priority_queue="high"
 e = pbs.event()
 if e.job.interactive:
     high = pbs.server().queue(high_priority_queue)
-    if high != None:
+    if high is not None:
         e.job.queue = high
         pbs.logmsg(pbs.LOG_DEBUG, "quick start interactive job")
         pbs.server().scheduler_restart_cycle()

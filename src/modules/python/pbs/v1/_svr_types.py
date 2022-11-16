@@ -133,7 +133,7 @@ def pbs_statobj(objtype, name=None, connect_server=None, filter_queue=None):
 
     _pbs_v1.set_c_mode()
 
-    if(connect_server == None):
+    if(connect_server is None):
         con = pbs_connect("localhost")
     else:
         con = pbs_connect(connect_server)
@@ -207,7 +207,7 @@ def pbs_statobj(objtype, name=None, connect_server=None, filter_queue=None):
                     v = _pbs_v1.str_to_vnode_sharing(v)
 
             elif(objtype == "job"):
-                if((filter_queue != None) and (n == ATTR_queue) and
+                if((filter_queue is not None) and (n == ATTR_queue) and
                         (filter_queue != v)):
                     pbs_disconnect(con)
                     if server_data_fp:
@@ -221,18 +221,18 @@ def pbs_statobj(objtype, name=None, connect_server=None, filter_queue=None):
                 pr = getattr(obj, n)
 
                 # instantiate Resource_List object if not set
-                if(pr == None):
+                if(pr is None):
                     setattr(obj, n)
 
                 pr = getattr(obj, n)
-                if (pr == None):
+                if (pr is None):
                     _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
                                    "pbs_statobj: missing %s" % (n))
                     a = a.next
                     continue
 
                 vo = getattr(pr, r)
-                if(vo == None):
+                if(vo is None):
                     setattr(pr, r, v)
                     if server_data_fp:
                         server_data_fp.write(
@@ -249,7 +249,7 @@ def pbs_statobj(objtype, name=None, connect_server=None, filter_queue=None):
             else:
                 vo = getattr(obj, n)
 
-                if(vo == None):
+                if(vo is None):
                     setattr(obj, n, v)
                     if server_data_fp:
                         server_data_fp.write("%s.%s=%s\n" % (header_str, n, v))
@@ -748,7 +748,7 @@ class _server():
     #: m(resv)
 
     # NAS localmod 014
-    if NAS_mod != None and NAS_mod != 0:
+    if NAS_mod is not None and NAS_mod != 0:
         def jobs(self, ignore_fin=None, qname=None, username=None):
             """
             Returns an iterator that loops over the list of jobs
@@ -800,7 +800,7 @@ class _server():
         """
         Flags the server to tell the scheduler to restart scheduling cycle
         """
-        if self._connect_server == None:
+        if self._connect_server is None:
             _pbs_v1.scheduler_restart_cycle(_pbs_v1.get_pbs_server_name())
         else:
             _pbs_v1.scheduler_restart_cycle(self._connect_server)
@@ -967,7 +967,7 @@ class pbs_iter():
     connect_server Name of the pbs server to get various stats.
     """
     # NAS localmod 014
-    if NAS_mod != None and NAS_mod != 0:
+    if NAS_mod is not None and NAS_mod != 0:
         """
         We add the following args:
 
@@ -982,7 +982,7 @@ class pbs_iter():
             self._caller = _pbs_v1.get_python_daemon_name()
             if self._caller == "pbs_python":
 
-                if(connect_server == None):
+                if(connect_server is None):
                     self._connect_server = "localhost"
                     sn = ""
                 else:
@@ -1043,13 +1043,13 @@ class pbs_iter():
                 self.ignore_fin = 0
                 self.filter_user = ""
 
-                if pbs_filter2 != None:
+                if pbs_filter2 is not None:
                     self.filter2 = pbs_filter2
 
-                if pbs_ignore_fin != None:
+                if pbs_ignore_fin is not None:
                     self.ignore_fin = pbs_ignore_fin
 
-                if pbs_username != None:
+                if pbs_username is not None:
                     self.filter_user = pbs_username
 
                 # argument 1 below tells C function were inside __init__
@@ -1063,7 +1063,7 @@ class pbs_iter():
             self._caller = _pbs_v1.get_python_daemon_name()
             if self._caller == "pbs_python":
 
-                if(connect_server == None):
+                if(connect_server is None):
                     self._connect_server = "localhost"
                     sn = ""
                 else:
@@ -1124,10 +1124,10 @@ class pbs_iter():
         return self
 
     # NAS localmod 014
-    if NAS_mod != None and NAS_mod != 0:
+    if NAS_mod is not None and NAS_mod != 0:
         def __next__(self):
             if self._caller == "pbs_python":
-                if not hasattr(self, "bs") or self.bs == None:
+                if not hasattr(self, "bs") or self.bs is None:
                     if not _pbs_v1.use_static_data():
                         pbs_disconnect(self.con)
                         self.con = -1
@@ -1215,18 +1215,18 @@ class pbs_iter():
                             pr = getattr(obj, n)
 
                             # if resource list does not exist, then set it
-                            if(pr == None):
+                            if(pr is None):
                                 setattr(obj, n)
 
                             pr = getattr(obj, n)
-                            if (pr == None):
+                            if (pr is None):
                                 _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
                                                "pbs_statobj: missing %s" % (n))
                                 a = a.next
                                 continue
 
                             vo = getattr(pr, r)
-                            if(vo == None):
+                            if(vo is None):
                                 setattr(pr, r, v)
                                 if server_data_fp:
                                     server_data_fp.write(
@@ -1245,7 +1245,7 @@ class pbs_iter():
                         else:
                             vo = getattr(obj, n)
 
-                            if(vo == None):
+                            if(vo is None):
                                 setattr(obj, n, v)
                                 if server_data_fp:
                                     server_data_fp.write(
@@ -1274,7 +1274,7 @@ class pbs_iter():
     else:
         def __next__(self):
             if self._caller == "pbs_python":
-                if not hasattr(self, "bs") or self.bs == None:
+                if not hasattr(self, "bs") or self.bs is None:
                     if not _pbs_v1.use_static_data():
                         pbs_disconnect(self.con)
                         self.con = -1
@@ -1357,18 +1357,18 @@ class pbs_iter():
                             pr = getattr(obj, n)
 
                             # if resource list does not exist, then set it
-                            if(pr == None):
+                            if(pr is None):
                                 setattr(obj, n)
 
                             pr = getattr(obj, n)
-                            if (pr == None):
+                            if (pr is None):
                                 _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
                                                "pbs_statobj: missing %s" % (n))
                                 a = a.__next__
                                 continue
 
                             vo = getattr(pr, r)
-                            if(vo == None):
+                            if(vo is None):
                                 setattr(pr, r, v)
                                 if server_data_fp:
                                     server_data_fp.write(
@@ -1387,7 +1387,7 @@ class pbs_iter():
                         else:
                             vo = getattr(obj, n)
 
-                            if(vo == None):
+                            if(vo is None):
                                 setattr(obj, n, v)
                                 if server_data_fp:
                                     server_data_fp.write(
