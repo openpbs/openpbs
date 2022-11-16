@@ -272,6 +272,7 @@ check_pwd(job *pjob)
 	struct passwd *pwdp;
 	struct group *grpp;
 	struct stat sb;
+	attribute *jb_group;
 
 	pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 	if (pwdp == NULL) {
@@ -304,7 +305,8 @@ check_pwd(job *pjob)
 
 	/* get the group and supplimentary under which the job is to be run */
 
-	if (is_jattr_set(pjob, JOB_ATR_egroup)) {
+	jb_group = get_jattr(pjob, JOB_ATR_egroup);
+	if ((jb_group->at_flags & (ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == ATR_VFLAG_SET) {
 
 		/* execution group specified - not defaulting to login group */
 
