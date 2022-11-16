@@ -134,7 +134,7 @@ extern resource_def *find_resc_def(resource_def *, char *);
 extern resource *find_resc_entry(const attribute *, resource_def *);
 extern int update_resource_def_file(char *name, resdef_op_t op, int type, int perms);
 extern int add_resource_def(char *name, int type, int perms);
-extern int restart_python_interpreter(const char *);
+extern int reload_python_resources(const char *);
 extern long long to_kbsize(char *val);
 extern int alloc_svrleaf(char *resc_name, svr_entlim_leaf_t **pplf);
 extern int parse_resc_type(char *val, int *resc_type_p);

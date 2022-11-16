@@ -1282,6 +1282,24 @@ ERROR_EXIT:
 
 /**
  * @brief
+ *    Reload the PBS python resource types initialized
+ *
+ * @return      int
+ * @retval      -1      :       failure
+ * @retval      0       :       success
+ */
+
+int
+pbs_python_reload_python_resource_type()
+{
+	int rc;
+	pbs_python_free_py_types_array(&py_svr_resc_types);   /* all resources */
+	rc = pbs_python_setup_python_resource_type();
+	return rc;
+}
+
+/**
+ * @brief
  *    Unload all the PBS python types initialized, as well as static Python
  *    objects created during the initial loading of the interpreter.
  *

@@ -3697,7 +3697,7 @@ mgr_resource_create(struct batch_request *preq)
 	}
 	reply_ack(preq);
 
-	restart_python_interpreter(__func__);
+	reload_python_resources(__func__);
 	deferred_send_rescdef();
 
 	return;
@@ -3890,7 +3890,7 @@ mgr_resource_delete(struct batch_request *preq)
 
 	reply_ack(preq);
 
-	restart_python_interpreter(__func__);
+	reload_python_resources(__func__);
 	deferred_send_rescdef();
 	set_scheduler_flag(SCH_CONFIGURE, NULL);
 
@@ -4121,7 +4121,7 @@ mgr_resource_set(struct batch_request *preq)
 
 	reply_ack(preq);
 
-	restart_python_interpreter(__func__);
+	reload_python_resources(__func__);
 	deferred_send_rescdef();
 	set_scheduler_flag(SCH_CONFIGURE, NULL);
 
@@ -4342,7 +4342,7 @@ mgr_resource_unset(struct batch_request *preq)
 
 	reply_ack(preq);
 
-	restart_python_interpreter(__func__);
+	reload_python_resources(__func__);
 	deferred_send_rescdef();
 	set_scheduler_flag(SCH_CONFIGURE, NULL);
 
