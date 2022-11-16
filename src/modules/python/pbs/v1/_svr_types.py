@@ -62,7 +62,7 @@ try:
     if _pbs_v1.get_python_daemon_name() == "pbs_python":
         from _pbs_ifl import *
         from pbs_ifl import *
-except:
+except ImportError:
     pass
 
 # Set global hook_config_filename parameter.
@@ -72,7 +72,7 @@ try:
 
     if "PBS_HOOK_CONFIG_FILE" in os.environ:
         hook_config_filename = os.environ["PBS_HOOK_CONFIG_FILE"]
-except:
+except Exception:
     pass
 
 # Set global pbs_conf parameter.
@@ -88,7 +88,7 @@ def get_server_data_fp():
         return None
     try:
         return open(data_file, "a+")
-    except:
+    except OSError:
         _pbs_v1.logmsg(_pbs_v1.LOG_WARNING,
                        "warning: error opening debug data file %s" % data_file)
         return None

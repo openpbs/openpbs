@@ -81,7 +81,7 @@ def get_local_node(name):
     # Get host names from /etc/hosts and return matching name for the MoM
     try:
         (hostname, aliaslist, _) = socket.gethostbyname_ex(name)
-    except:
+    except Exception:
         return None
     aliaslist.append(hostname)
     # Search for possible match in server vnode list.
@@ -112,7 +112,7 @@ def parse_config_file():
         pbs_conf = pbs.get_pbs_conf()
         pbs_home = pbs_conf['PBS_HOME']
         pbs_exec = pbs_conf['PBS_EXEC']
-    except:
+    except Exception:
         pbs.logmsg(pbs.EVENT_DEBUG,
                    "PBS_HOME needs to be defined in the config file")
         pbs.logmsg(pbs.EVENT_DEBUG, "Exiting the power hook")
@@ -142,7 +142,7 @@ def parse_config_file():
         fd.close()
     except IOError:
         raise Exception("I/O error reading config file")
-    except:
+    except Exception:
         raise Exception("Error reading config file")
 
     # Assign default values to attributes
@@ -549,7 +549,7 @@ if this_event.type == pbs.EXECJOB_BEGIN:
     try:
         if not _svr_vnode(me).power_provisioning:
             this_event.accept()
-    except:
+    except Exception:
         # Try with different hostname
         vn = get_local_node(me)
         if not _svr_vnode(vn.name).power_provisioning:

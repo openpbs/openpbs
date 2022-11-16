@@ -112,7 +112,7 @@ try:
     else:
         f = open(boot_check_file, 'w+')
     flock(f.fileno(), LOCK_EX)
-except:
+except Exception:
     sys.exit(255)
 try:
     f.seek(0)
@@ -128,7 +128,7 @@ try:
     f.truncate()
     f.writelines('\n'.join(new_lines))
     flock(f.fileno(), LOCK_UN)
-except:
+except Exception:
     flock(f.fileno(), LOCK_UN)
     f.close()
     sys.exit(255)

@@ -54,5 +54,5 @@ from ._svr_types import *
 #: this is Power Management Infrastructure which may not exist on all system types yet
 try:
     from ._pmi_types import *
-except:
+except ImportError:
     pass

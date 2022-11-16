@@ -371,7 +371,7 @@ def get_uid(user):
     """
     try:
         return pwd.getpwnam(user).pw_uid
-    except:
+    except Exception:
         pbs.logmsg(pbs.EVENT_DEBUG, "Error while reading user uid from the"
                    " machine.")
         raise RejectError(f"Unable to get uid for {user}")

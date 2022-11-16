@@ -261,7 +261,7 @@ def create_ts_tree_json():
     try:
         cmd = '/src/etc/gen_ptl_json.sh "' + benchpress_value + '"'
         run_docker_cmd(cmd, run_on='server')
-    except:
+    except Exception:
         log_error('Failed to generate testsuite info json')
         sys.exit(1)
 
@@ -281,7 +281,7 @@ def get_node_config(node_image=default_platform):
     try:
         with open(os.path.join(ci_dirname, 'ptl_ts_tree.json')) as f:
             json_data = json.load(f)
-    except:
+    except Exception:
         log_error('Could not find ptl tree json file')
     for ts in json_data.values():
         for tclist in ts['tclist'].values():
@@ -478,7 +478,7 @@ def unpack_node_string(nodes):
             num = x.split('*')[0]
             try:
                 num = int(num)
-            except:
+            except Exception:
                 log_error('invalid string provided for "nodes" configuration')
                 sys.exit(1)
             val = x.split('*')[1]
@@ -571,7 +571,7 @@ def ensure_ci_running():
         else:
             log_info("running container found")
             return 0
-    except:
+    except Exception:
         log_error(e)
 
 
@@ -584,7 +584,7 @@ def check_prerequisites():
 
     try:
         subprocess.run([cmd, "docker"], stdout=subprocess.DEVNULL)
-    except:
+    except Exception:
         log_error("docker not found in PATH")
         sys.exit(1)
 
@@ -600,13 +600,13 @@ def check_prerequisites():
             print(version[0])
             print("Docker version less than minimum required " + req_version)
             sys.exit(1)
-    except:
+    except Exception:
         log_error("Failed to get docker version")
         sys.exit(1)
 
     try:
         subprocess.run([cmd, "docker-compose"], stdout=subprocess.DEVNULL)
-    except:
+    except Exception:
         log_error("docker-compose not found in PATH")
         sys.exit(1)
 
