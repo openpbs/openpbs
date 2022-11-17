@@ -63,7 +63,7 @@ try:
             # '/proc/uptime' file not exists, get system uptime from 'uptime' command
             # here uptime format will be as follow:
             # <current time> <uptime>, <number of user logged into system>, <load average>
-	    # Example: 11:14pm  up 150 days  5:39,  5 users,  load average: 0.07, 0.25, 0.22
+            # Example: 11:14pm  up 150 days  5:39,  5 users,  load average: 0.07, 0.25, 0.22
             # from above format the <uptime> will be one of the following format:
             #
             # 1. up MM min,
