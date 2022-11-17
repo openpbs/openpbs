@@ -1804,7 +1804,7 @@ class Scheduler(PBSService):
             return True
 
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs')]
-        if self.sc_name is not 'default':
+        if self.sc_name != 'default':
             cmd += ['-I', self.sc_name]
         cmd += ['-d']
 

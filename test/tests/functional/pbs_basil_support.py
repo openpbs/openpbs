@@ -187,8 +187,8 @@ class TestBasilQuery(TestFunctional):
             hbm_size_mb = node.attrib["hbm_size_mb"]
             hbm_cache_pct = node.attrib["hbm_cache_pct"]
 
-            if role == 'batch' and state == 'up' and numa_cfg is not ""\
-               and hbm_size_mb is not "" and hbm_cache_pct is not "":
+            if role == 'batch' and state == 'up' and numa_cfg != ""\
+               and hbm_size_mb != "" and hbm_cache_pct != "":
                 # derived values from XML
                 knl_info['current_aoe'] = numa_cfg + '_' + hbm_cache_pct
                 knl_info['hbmem'] = hbm_size_mb + 'mb'
