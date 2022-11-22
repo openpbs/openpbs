@@ -65,7 +65,7 @@ class TestJobDefaultGroup(TestFunctional):
         attr = {'flatuid': True}
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         starttime = int(time.time())
-        user = PbsUser("testpbsuser1")
+        user = PbsUser(self.user_name)
         self.server.client = self.mom.hostname
         jid = self.server.submit(Job(user), submit_dir='/tmp')
         self.server.client = self.server.hostname
