@@ -57,23 +57,27 @@ class TestJobDefaultGroup(TestFunctional):
         if self.server.hostname == self.mom.hostname:
             self.skipTest("Server and Execution host must be different")
         # add a temporary new user on execution host
-        self.user_name =  'temppbs' + ''.join(random.choices(string.ascii_letters, k=5))
+        self.user_name = "temppbs" + \
+            "".join(random.choices(string.ascii_letters, k=5))
         cmd = f"useradd -m {self.user_name}"
         res = self.du.run_cmd(self.mom.hostname, cmd=cmd, sudo=True)
-        if res['rc'] != 0:
-            raise PtlException('Unable to create user on execution host')
-        attr = {'flatuid': True}
+        if res["rc"] != 0:
+            raise PtlException("Unable to create user on execution host")
+        attr = {"flatuid": True}
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         starttime = int(time.time())
         user = PbsUser(self.user_name)
         self.server.client = self.mom.hostname
-        jid = self.server.submit(Job(user), submit_dir='/tmp')
+        jid = self.server.submit(Job(user), submit_dir="/tmp")
         self.server.client = self.server.hostname
-        attr = {'job_state': 'R'}
+        attr = {"job_state": "R"}
         self.server.expect(JOB, attr, id=jid)
-        self.mom.log_match(f'Job;{jid};No Group Entry for Group -default-',
-                           starttime=starttime, existence=False,
-                           max_attempts=30)
+        self.mom.log_match(
+            f"Job;{jid};No Group Entry for Group -default-",
+            starttime=starttime,
+            existence=False,
+            max_attempts=30,
+        )
 
     def tearDown(self):
         super().tearDown()
