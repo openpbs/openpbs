@@ -37,6 +37,9 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
+import random
+import string
+
 from tests.functional import *
 
 
@@ -53,13 +56,14 @@ class TestJobDefaultGroup(TestFunctional):
         """
         if self.server.hostname == self.mom.hostname:
             self.skipTest("Server and Execution host must be different")
-        attr = {'flatuid': True}
-        self.server.manager(MGR_CMD_SET, SERVER, attr)
         # add a temporary new user on execution host
-        cmd = "useradd -m testpbsuser1"
+        self.user_name =  'temppbs' + ''.join(random.choices(string.ascii_letters, k=5))
+        cmd = f"useradd -m {self.user_name}"
         res = self.du.run_cmd(self.mom.hostname, cmd=cmd, sudo=True)
         if res['rc'] != 0:
             raise PtlException('Unable to create user on execution host')
+        attr = {'flatuid': True}
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
         starttime = int(time.time())
         user = PbsUser("testpbsuser1")
         self.server.client = self.mom.hostname
@@ -73,5 +77,5 @@ class TestJobDefaultGroup(TestFunctional):
 
     def tearDown(self):
         super().tearDown()
-        cmd = "userdel testpbsuser1"
+        cmd = f"userdel {self.user_name}"
         self.du.run_cmd(self.mom.hostname, cmd=cmd, sudo=True)
