@@ -37,9 +37,7 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-import random
-import string
-
+import pwd
 from tests.functional import *
 
 
@@ -56,12 +54,22 @@ class TestJobDefaultGroup(TestFunctional):
         """
         if self.server.hostname == self.mom.hostname:
             self.skipTest("Server and Execution host must be different")
-        # add a temporary new user on execution host
-        self.user_name = "temppbs" + \
-            "".join(random.choices(string.ascii_letters, k=5))
+        # add a temporary new user on execution host and assume that user
+        # will be created and check user is not present on server host
+        self.user_name = "ptlpbstestuser1"
+        try:
+            pwd.getpwnam(self.user_name)
+            self.skipTest(f"{self.user_name} should not be present "
+                           "on server host")
+        except KeyError:
+            # good! user is not present on server host
+            # just as we needed
+            pass
+        self.testuser_created = True
         cmd = f"useradd -m {self.user_name}"
         res = self.du.run_cmd(self.mom.hostname, cmd=cmd, sudo=True)
         if res["rc"] != 0:
+            self.testuser_created = False
             raise PtlException("Unable to create user on execution host")
         attr = {"flatuid": True}
         self.server.manager(MGR_CMD_SET, SERVER, attr)
@@ -81,5 +89,6 @@ class TestJobDefaultGroup(TestFunctional):
 
     def tearDown(self):
         super().tearDown()
-        cmd = f"userdel {self.user_name}"
-        self.du.run_cmd(self.mom.hostname, cmd=cmd, sudo=True)
+        if self.testuser_created:
+            cmd = f"userdel {self.user_name}"
+            self.du.run_cmd(self.mom.hostname, cmd=cmd, sudo=True)
