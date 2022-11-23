@@ -59,8 +59,8 @@ class TestJobDefaultGroup(TestFunctional):
         self.user_name = "ptlpbstestuser1"
         try:
             pwd.getpwnam(self.user_name)
-            self.skipTest(f"{self.user_name} should not be present "
-                           "on server host")
+            self.skipTest(
+                f"{self.user_name} should not be present " "on server host")
         except KeyError:
             # good! user is not present on server host
             # just as we needed
