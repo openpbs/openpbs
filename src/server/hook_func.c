@@ -3902,12 +3902,21 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 		rc = server_process_hooks(preq->rq_type, preq->rq_user, preq->rq_host, phook,
 					  hook_event, pjob, &req_ptr, hook_msg, msg_len, pyinter_func,
 					  &num_run, &event_initialized);
-		if ((rc == 0) || (rc == -1))
+		pbs_python_ext_free_global_dict(phook->script);
+		if ((rc == 0) || (rc == -1)) {
+			pbs_python_clear_attributes();
 			return (rc);
+		}
 	}
 
 	if (num_run == 0)
 		return (2);
+	/* clear attributes for the requests which don't call recreate_request */
+	if ((preq->rq_type != PBS_BATCH_SubmitResv) && (preq->rq_type != PBS_BATCH_ModifyJob) &&
+			(preq->rq_type != PBS_BATCH_QueueJob) && (preq->rq_type != PBS_BATCH_MoveJob) &&
+			(preq->rq_type != PBS_BATCH_ModifyResv)) {
+				pbs_python_clear_attributes();
+	}
 	return 1;
 }
 /**
@@ -4756,7 +4765,8 @@ recreate_request(struct batch_request *preq)
 		pbs_python_set_hook_debug_output_fp(NULL);
 		pbs_python_set_hook_debug_output_file("");
 	}
-
+	/* clear python cached objects */
+	pbs_python_clear_attributes();
 	return (rc);
 }
 

@@ -4996,6 +4996,90 @@ create_hook_vnode_list_param(PyObject *py_event_param,
 }
 
 /**
+ *
+ * @brief
+ *	Function which will clear python objects after the processing
+ *  hooks
+ *
+ */
+void
+pbs_python_clear_attributes()
+{
+	pbs_iter_item *iter_entry = NULL;
+	pbs_iter_item *nxp_iter_entry;
+
+	vnode_set_req *vn_set_req = NULL;
+	vnode_set_req *nxp_vn_set_req;
+
+	pbs_resource_value *resc_val = NULL;
+	pbs_resource_value *nxp_resc_val;
+	int i;
+
+	/* Initialize the list of PBS iterators for new runs of hooks */
+	/* servicing a given event (e.g. runjob event).               */
+	if (pbs_iter_list.ll_next != NULL)
+		iter_entry = (pbs_iter_item *) GET_NEXT(pbs_iter_list);
+	while (iter_entry != NULL) {
+		/* save the next iterator item */
+		nxp_iter_entry = (pbs_iter_item *) GET_NEXT(iter_entry->all_iters);
+
+		if (iter_entry->py_iter)
+			Py_CLEAR(iter_entry->py_iter);
+
+		delete_link(&iter_entry->all_iters);
+		free(iter_entry);
+		iter_entry = nxp_iter_entry;
+	}
+
+	/* Initialize the list of PBS vnode set operations for new runs of hooks */
+	/* servicing a given event (e.g. runjob event).               */
+	if (pbs_vnode_set_list.ll_next != NULL)
+		vn_set_req = (vnode_set_req *) GET_NEXT(pbs_vnode_set_list);
+	while (vn_set_req != NULL) {
+		/* save the next vnode_set_req item  */
+		nxp_vn_set_req = (vnode_set_req *) GET_NEXT(vn_set_req->all_reqs);
+
+		free_attrlist(&vn_set_req->rq_attr);
+
+		delete_link(&vn_set_req->all_reqs);
+		free(vn_set_req);
+		vn_set_req = nxp_vn_set_req;
+	}
+
+	/* Initialize the list of PBS resource values to set for new runs of hooks */
+	/* servicing a given event (e.g. runjob event).               */
+	if (pbs_resource_value_list.ll_next != NULL)
+		resc_val = (pbs_resource_value *) GET_NEXT(pbs_resource_value_list);
+	while (resc_val != NULL) {
+		/* save the next vnode_set_req item  */
+		nxp_resc_val = (pbs_resource_value *) GET_NEXT(resc_val->all_rescs);
+
+		Py_CLEAR(resc_val->py_resource);
+		Py_CLEAR(resc_val->py_resource_str_value);
+		free_attrlist(&resc_val->value_list);
+
+		delete_link(&resc_val->all_rescs);
+		free(resc_val);
+		resc_val = nxp_resc_val;
+	}
+
+	/* py_hook_pbsevent is instantiated in C_MODE so I own it */
+	if (py_hook_pbsevent != NULL)
+		Py_CLEAR(py_hook_pbsevent);
+
+	/* py_hook_pbsserver is instantiated in C_MODE so I own it */
+	if (py_hook_pbsserver != NULL)
+		Py_CLEAR(py_hook_pbsserver);
+
+	if (py_hook_pbsque != NULL) {
+		for (i = 0; (i < py_hook_pbsque_max) && (py_hook_pbsque[i] != NULL); i++) {
+			Py_CLEAR(py_hook_pbsque[i]);
+		}
+	}
+}
+
+
+/**
  * @brief
  *      Creates a PBS Python event object that can be accessed in a hook
  *	script as: pbs.event().
@@ -5070,16 +5154,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	long lval;
 	int restart_python;
 	int rc = -1;
-	int i;
-
-	pbs_iter_item *iter_entry;
-	pbs_iter_item *nxp_iter_entry;
-
-	vnode_set_req *vn_set_req;
-	vnode_set_req *nxp_vn_set_req;
-
-	pbs_resource_value *resc_val;
-	pbs_resource_value *nxp_resc_val;
 
 	pbs_list_head *vnlist;
 	pbs_list_head *joblist;
@@ -5098,63 +5172,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	if (!init_resource_values) {
 		CLEAR_HEAD(pbs_resource_value_list);
 		init_resource_values = 1;
-	}
-
-	/* Initialize the list of PBS iterators for new runs of hooks */
-	/* servicing a given event (e.g. runjob event).               */
-	iter_entry = (pbs_iter_item *) GET_NEXT(pbs_iter_list);
-	while (iter_entry != NULL) {
-		/* save the next iterator item */
-		nxp_iter_entry = (pbs_iter_item *) GET_NEXT(iter_entry->all_iters);
-
-		if (iter_entry->py_iter)
-			Py_CLEAR(iter_entry->py_iter);
-
-		delete_link(&iter_entry->all_iters);
-		free(iter_entry);
-		iter_entry = nxp_iter_entry;
-	}
-
-	/* Initialize the list of PBS vnode set operations for new runs of hooks */
-	/* servicing a given event (e.g. runjob event).               */
-	vn_set_req = (vnode_set_req *) GET_NEXT(pbs_vnode_set_list);
-	while (vn_set_req != NULL) {
-		/* save the next vnode_set_req item  */
-		nxp_vn_set_req = (vnode_set_req *) GET_NEXT(vn_set_req->all_reqs);
-
-		free_attrlist(&vn_set_req->rq_attr);
-
-		delete_link(&vn_set_req->all_reqs);
-		free(vn_set_req);
-		vn_set_req = nxp_vn_set_req;
-	}
-
-	/* Initialize the list of PBS resource values to set for new runs of hooks */
-	/* servicing a given event (e.g. runjob event).               */
-	resc_val = (pbs_resource_value *) GET_NEXT(pbs_resource_value_list);
-	while (resc_val != NULL) {
-		/* save the next vnode_set_req item  */
-		nxp_resc_val = (pbs_resource_value *) GET_NEXT(resc_val->all_rescs);
-
-		Py_CLEAR(resc_val->py_resource);
-		Py_CLEAR(resc_val->py_resource_str_value);
-		free_attrlist(&resc_val->value_list);
-
-		delete_link(&resc_val->all_rescs);
-		free(resc_val);
-		resc_val = nxp_resc_val;
-	}
-
-	/* py_hook_pbsevent is instantiated in C_MODE so I own it */
-	Py_CLEAR(py_hook_pbsevent);
-
-	/* py_hook_pbsserver is instantiated in C_MODE so I own it */
-	Py_CLEAR(py_hook_pbsserver);
-
-	if (py_hook_pbsque != NULL) {
-		for (i = 0; (i < py_hook_pbsque_max) && (py_hook_pbsque[i] != NULL); i++) {
-			Py_CLEAR(py_hook_pbsque[i]);
-		}
 	}
 
 	lval = max_hooks;
@@ -6483,11 +6500,6 @@ event_set_exit:
 	return (rc);
 }
 
-void
-_pbs_python_event_unset(void)
-{
-	Py_CLEAR(py_hook_pbsevent);
-}
 
 /**
  *
@@ -11938,6 +11950,7 @@ pbs_python_set_os_environ(char *env_var, char *env_val)
 {
 	PyObject *pystr_env_val = NULL;
 	PyObject *pystr_env_var = NULL;
+	PyObject *temp_item = NULL;
 	PyObject *os_mod_obj = NULL; /* 'sys' module  */
 	PyObject *os_mod_env = NULL; /* os.environ */
 
@@ -11979,7 +11992,7 @@ pbs_python_set_os_environ(char *env_var, char *env_val)
 
 	if (env_val == NULL) {
 
-		if (PyObject_GetItem(os_mod_env, pystr_env_var) != NULL) {
+		if (temp_item = PyObject_GetItem(os_mod_env, pystr_env_var) != NULL) {
 			if (PyObject_DelItem(os_mod_env,
 					     pystr_env_var) == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
@@ -11991,6 +12004,7 @@ pbs_python_set_os_environ(char *env_var, char *env_val)
 				Py_CLEAR(pystr_env_var);
 				return (-1);
 			}
+			Py_CLEAR(temp_item);
 		}
 	} else {
 		/* if sucess we get a NEW ref */

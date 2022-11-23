@@ -234,6 +234,10 @@ extern int pbs_python_run_code_in_namespace(
 
 extern void pbs_python_ext_free_python_script(
 	struct python_script *py_script);
+extern void	pbs_python_ext_free_code_obj(
+	struct python_script *py_script);
+extern void	pbs_python_ext_free_global_dict(
+	struct python_script *py_script);
 extern int pbs_python_ext_alloc_python_script(
 	const char *script_path,
 	struct python_script **py_script);
@@ -242,6 +246,7 @@ extern void pbs_python_ext_quick_start_interpreter(void);
 extern void pbs_python_ext_quick_shutdown_interpreter(void);
 extern int set_py_progname(void);
 extern int get_py_progname(char **);
+extern void pbs_python_clear_attributes();
 
 /* -- END pbs_python_external.c implementations -- */
 
@@ -454,8 +459,6 @@ extern int pbs_python_event_set(
 	char *req_host,
 	hook_input_param_t *req_params,
 	char *perf_label);
-
-extern void pbs_python_event_unset(void);
 
 extern int pbs_python_event_to_request(unsigned int hook_event,
 				       hook_output_param_t *req_params, char *perf_label, char *perf_action);
