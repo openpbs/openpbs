@@ -65,7 +65,7 @@ class TestJobDefaultGroup(TestFunctional):
             res = self.du.run_cmd(self.server.hostname, cmd=cmd, sudo=True)
             if res["rc"] != 0:
                 raise PtlException("Unable to delete user on server host")
-            self.logger.info(f"Delete {self.user_name} on server host.")
+            self.logger.info(f"Deleted {self.user_name} on server host.")
         except KeyError:
             # good! user is not present on server host
             # just as we needed
