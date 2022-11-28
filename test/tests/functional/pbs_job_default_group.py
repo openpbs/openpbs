@@ -59,8 +59,13 @@ class TestJobDefaultGroup(TestFunctional):
         self.user_name = "ptlpbstestuser1"
         try:
             pwd.getpwnam(self.user_name)
-            self.skipTest(
-                f"{self.user_name} should not be present " "on server host")
+            # user is present in server host, must delete user before
+            # qsub
+            cmd = f"userdel {self.user_name}"
+            res = self.du.run_cmd(self.server.hostname, cmd=cmd, sudo=True)
+            if res["rc"] != 0:
+                raise PtlException("Unable to delete user on server host")
+            self.logger.info(f"Delete {self.user_name} on server host.")
         except KeyError:
             # good! user is not present on server host
             # just as we needed
