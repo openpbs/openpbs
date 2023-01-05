@@ -11992,7 +11992,7 @@ pbs_python_set_os_environ(char *env_var, char *env_val)
 
 	if (env_val == NULL) {
 
-		if (temp_item = PyObject_GetItem(os_mod_env, pystr_env_var) != NULL) {
+		if ((temp_item = PyObject_GetItem(os_mod_env, pystr_env_var)) != NULL) {
 			if (PyObject_DelItem(os_mod_env,
 					     pystr_env_var) == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
