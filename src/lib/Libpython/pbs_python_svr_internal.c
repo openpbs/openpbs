@@ -6729,19 +6729,19 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 			if (queue) {
 				if (hook_event == HOOK_EVENT_QUEUEJOB)
 					strcpy(((struct rq_queuejob *) (req_params->rq_job))->rq_destin, queue);
-				else 
+				else
 					strcpy(((struct rq_postqueuejob *) (req_params->rq_postqueuejob))->rq_destin, queue);
 			}
 
 			if (hook_event == HOOK_EVENT_QUEUEJOB) {
 				if (pbs_python_populate_svrattrl_from_python_class(py_job,
-										&((struct rq_queuejob *) (req_params->rq_job))->rq_attr, NULL, 0) == -1) {
+										   &((struct rq_queuejob *) (req_params->rq_job))->rq_attr, NULL, 0) == -1) {
 					goto event_to_request_exit;
 				}
 				print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_queuejob *) (req_params->rq_job))->rq_attr);
 			} else {
 				if (pbs_python_populate_svrattrl_from_python_class(py_job,
-										&((struct rq_postqueuejob *) (req_params->rq_postqueuejob))->rq_attr, NULL, 0) == -1) {
+										   &((struct rq_postqueuejob *) (req_params->rq_postqueuejob))->rq_attr, NULL, 0) == -1) {
 					goto event_to_request_exit;
 				}
 				print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_postqueuejob *) (req_params->rq_job))->rq_attr);

@@ -3980,7 +3980,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 
 		if (preq->rq_type == PBS_BATCH_QueueJob) {
 			phook_next = (hook *) GET_NEXT(phook->hi_queuejob_hooks);
-		}else if (preq->rq_type == PBS_BATCH_PostQueueJob) {
+		} else if (preq->rq_type == PBS_BATCH_PostQueueJob) {
 			phook_next = (hook *) GET_NEXT(phook->hi_postqueuejob_hooks);
 		} else if (preq->rq_type == PBS_BATCH_SubmitResv) {
 			phook_next = (hook *) GET_NEXT(phook->hi_resvsub_hooks);
@@ -4660,7 +4660,7 @@ server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			hook_msg[0] = '\0';
 			if (do_postqueuejob_accept_actions(pjob, phook->hook_name) != 0) {
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name,
-					 "postqueuejob request rejected: %s", hook_msg);
+					   "postqueuejob request rejected: %s", hook_msg);
 				snprintf(log_buffer, sizeof(log_buffer),
 					 "request rejected by filter hook: %s", hook_msg);
 				strncpy(hook_msg, log_buffer, msg_len - 1);
@@ -5038,7 +5038,7 @@ add_mom_hook_action(mom_hook_action_t ***hookact_array,
 		/* need to grow the array			      */
 
 		tp = (mom_hook_action_t **) realloc(*hookact_array,
-						    (size_t) (sizeof(mom_hook_action_t *) * (*hookact_array_size + GROW_MOMHOOK_ARRAY_AMT)));
+						    (size_t)(sizeof(mom_hook_action_t *) * (*hookact_array_size + GROW_MOMHOOK_ARRAY_AMT)));
 		if (tp != NULL) {
 			empty = *hookact_array_size;
 			*hookact_array = tp;

@@ -433,7 +433,7 @@ svr_enquejob(job *pjob, char *selectspec)
 		rc = process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 		if (rc == -1) {
 			log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
-				"postqueuejob process_hooks call failed: %s", hook_msg);
+				   "postqueuejob process_hooks call failed: %s", hook_msg);
 		}
 		free_br(preq);
 	}
@@ -2968,7 +2968,7 @@ Time4occurrenceFinish(resc_resv *presv)
 
 	/* Set the new start time, end time, and occurrence index */
 	newstart = next;
-	newend = (time_t) (newstart + presv->ri_qs.ri_duration);
+	newend = (time_t)(newstart + presv->ri_qs.ri_duration);
 
 	set_rattr_l_slim(presv, RESV_ATR_start, newstart, SET);
 	presv->ri_qs.ri_stime = newstart;

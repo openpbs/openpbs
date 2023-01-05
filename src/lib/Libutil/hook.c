@@ -3366,7 +3366,7 @@ encode_block_base64(unsigned char *bin_data, ssize_t bin_len,
 	}
 	*ascii_data++ = '\n'; /* Append a courtesy newline */
 
-	*p_ascii_len = (ssize_t) (ascii_data - ascii_data_start);
+	*p_ascii_len = (ssize_t)(ascii_data - ascii_data_start);
 
 	return (0);
 }
@@ -4127,7 +4127,7 @@ hook_recov_error:
  *
  */
 void
-catch_hook_alarm(ALARM_HANDLER_ARG)
+	catch_hook_alarm(ALARM_HANDLER_ARG)
 {
 	snprintf(log_buffer, LOG_BUF_SIZE - 1,
 		 "alarm call received, interrupting hook execution.");
