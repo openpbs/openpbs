@@ -312,13 +312,13 @@ event.accept()
         self.assertEqual(
             req_ncpus,
             job_ncpus,
-            "Requested ncpus is not updated after postqueuejob " \
-                "hook run")
+            "Requested ncpus is not updated after postqueuejob "
+            "hook run")
         self.assertEqual(
             req_project,
             job_project,
-            "Requested project is not updated after postqueuejob " \
-                "hook run")
+            "Requested project is not updated after postqueuejob "
+            "hook run")
 
     def test_altering_job_attribute_in_rejected_hook(self):
         """
@@ -371,8 +371,8 @@ event.accept()
         self.assertNotEqual(
             req_substate,
             job_substate,
-            "Requested substate is not updated after postqueuejob "\
-                "hook run")
+            "Requested substate is not updated after postqueuejob "
+            "hook run")
 
     def test_postqueuejob_in_list_hook(self):
         """
@@ -386,4 +386,3 @@ event.accept()
         attrs = {'event': 'queuejob,postqueuejob'}
         rv = self.server.expect(HOOK, attrs, id=hook_name)
         self.assertTrue(rv)
-
