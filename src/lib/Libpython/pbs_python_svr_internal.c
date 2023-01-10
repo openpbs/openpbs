@@ -5312,6 +5312,70 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				       PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
 			goto event_set_exit;
 		}
+	} else if (hook_event == HOOK_EVENT_POSTQUEUEJOB) {
+		struct rq_postqueuejob *rqj = req_params->rq_postqueuejob;
+
+		/* initialize event param to None */
+		(void) PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_JOB,
+					    Py_None);
+		if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name)) {
+			if (py_pbs_statobj != NULL) {
+				Py_XDECREF(py_jargs); /* discard previously used value */
+				py_jargs = Py_BuildValue("(sss)", "job", rqj->rq_jid,
+							 pbs_conf.pbs_server_name); /* NEW ref */
+				py_job = PyObject_Call(py_pbs_statobj, py_jargs,
+						       NULL); /*NEW*/
+				hook_set_mode = C_MODE;	      /* ensure still in C mode */
+			}
+		} else {
+			py_job = _pps_helper_get_job(NULL, rqj->rq_jid, NULL, perf_label);
+		}
+		/* NEW - we own ref */
+
+		if (!py_job || (py_job == Py_None)) {
+			LOG_ERROR_ARG2("%s:failed to get job %s's python "
+				       "job object",
+				       PY_TYPE_EVENT, rqj->rq_jid);
+			goto event_set_exit;
+		}
+
+		/* py_job given to py_event_parm...so ref. count auto incremented */
+		rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_JOB, py_job);
+
+		if (rc == -1) {
+			LOG_ERROR_ARG2("%s:failed to set param attribute <%s>",
+				       PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
+			goto event_set_exit;
+		}
+
+		/* py_job is not read-only but only ATTR_h, ATTR_a are modifiable and */
+		/* checked under is_attrib_val_settable(). Resource-type attributes   */
+		/* such as ATTR_l, which is part of py_job,  go through a different   */
+		/* processing mechanism.        				      */
+		/* It is fatal if py_job's readonly flag could not be set to False    */
+		/* as it could prevent all job attributes including ATTR_l to be      */
+		/* not settable.                                                      */
+		rc = pbs_python_object_set_attr_integral_value(py_job,
+							       PY_READONLY_FLAG, FALSE);
+		if (rc == -1) {
+
+			log_err(PBSE_INTERNAL, __func__,
+				"Failed set object's readonly flag");
+			goto event_set_exit;
+		}
+
+		py_resclist = PyObject_GetAttrString(py_job, ATTR_l); /* NEW */
+		if ((py_resclist != NULL) && (py_resclist != Py_None)) {
+			/* Don't mark pbs.event().job.Resource_List[] as readonly */
+			rc = pbs_python_object_set_attr_integral_value(py_resclist,
+								       PY_READONLY_FLAG, FALSE);
+			if (rc == -1) {
+
+				log_err(PBSE_INTERNAL, __func__,
+					"Failed set object's readonly flag");
+				LOG_ERROR_ARG2("%s: warning - failed to set object's '%s' readonly flag", __func__, "Resource_List[]");
+			}
+		}
 	} else if (hook_event == HOOK_EVENT_RESVSUB) {
 		struct rq_queuejob *rqj = req_params->rq_job;
 
@@ -6651,6 +6715,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 	hook_perf_stat_start(perf_label, perf_action, 0);
 	switch (hook_event) {
 		case HOOK_EVENT_QUEUEJOB:
+		case HOOK_EVENT_POSTQUEUEJOB:
 
 			py_job = _pbs_python_event_get_param(PY_EVENT_PARAM_JOB);
 			if (!py_job) {
@@ -6661,13 +6726,26 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 
 			queue = pbs_python_object_get_attr_string_value(py_job,
 									ATTR_queue);
-			if (queue)
-				strcpy(((struct rq_queuejob *) (req_params->rq_job))->rq_destin, queue);
-			if (pbs_python_populate_svrattrl_from_python_class(py_job,
-									   &((struct rq_queuejob *) (req_params->rq_job))->rq_attr, NULL, 0) == -1) {
-				goto event_to_request_exit;
+			if (queue) {
+				if (hook_event == HOOK_EVENT_QUEUEJOB)
+					strcpy(((struct rq_queuejob *) (req_params->rq_job))->rq_destin, queue);
+				else
+					strcpy(((struct rq_postqueuejob *) (req_params->rq_postqueuejob))->rq_destin, queue);
 			}
-			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_queuejob *) (req_params->rq_job))->rq_attr);
+
+			if (hook_event == HOOK_EVENT_QUEUEJOB) {
+				if (pbs_python_populate_svrattrl_from_python_class(py_job,
+										   &((struct rq_queuejob *) (req_params->rq_job))->rq_attr, NULL, 0) == -1) {
+					goto event_to_request_exit;
+				}
+				print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_queuejob *) (req_params->rq_job))->rq_attr);
+			} else {
+				if (pbs_python_populate_svrattrl_from_python_class(py_job,
+										   &((struct rq_postqueuejob *) (req_params->rq_postqueuejob))->rq_attr, NULL, 0) == -1) {
+					goto event_to_request_exit;
+				}
+				print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_postqueuejob *) (req_params->rq_job))->rq_attr);
+			}
 			break;
 		case HOOK_EVENT_EXECJOB_LAUNCH:
 		case HOOK_EVENT_EXECJOB_BEGIN:
@@ -7858,6 +7936,7 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 	event = pbs_python_object_get_attr_integral_value(py_hook_pbsevent, "type");
 	switch (event) {
 		case HOOK_EVENT_QUEUEJOB:
+		case HOOK_EVENT_POSTQUEUEJOB:
 		case HOOK_EVENT_MODIFYJOB:
 			if (!PyObject_IsInstance(py_owner,
 						 pbs_python_types_table[PP_JOB_IDX].t_class) &&

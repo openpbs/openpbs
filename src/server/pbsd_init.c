@@ -815,6 +815,7 @@ pbsd_init(int type)
 	}
 	print_hooks(0);
 	print_hooks(HOOK_EVENT_QUEUEJOB);
+	print_hooks(HOOK_EVENT_POSTQUEUEJOB);
 	print_hooks(HOOK_EVENT_MODIFYJOB);
 	print_hooks(HOOK_EVENT_RESVSUB);
 	print_hooks(HOOK_EVENT_MODIFYRESV);
