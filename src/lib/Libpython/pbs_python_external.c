@@ -61,8 +61,10 @@
 #include <signal.h>
 #include <unistd.h>
 #include <wchar.h>
+#include "hook.h"
 
 extern PyObject *PyInit__pbs_ifl(void);
+extern pbs_list_head svr_allhooks;
 
 static struct _inittab pbs_python_inittab_modules[] = {
 	{PBS_PYTHON_V1_MODULE_EXTENSION_NAME, pbs_v1_module_inittab},
@@ -303,6 +305,7 @@ pbs_python_ext_shutdown_interpreter(struct python_interpreter_data *interp_data)
 {
 #ifdef PYTHON /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
 	int evtype;
+	hook *phook;
 
 	if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name))
 		evtype = PBSEVENT_DEBUG3;
@@ -314,9 +317,18 @@ pbs_python_ext_shutdown_interpreter(struct python_interpreter_data *interp_data)
 			log_event(evtype, PBS_EVENTCLASS_SERVER,
 				  LOG_INFO, interp_data->daemon_name,
 				  "--> Stopping Python interpreter <--");
+			
+			if (!IS_PBS_PYTHON_CMD(pbs_python_daemon_name)) {
+				/* clear all code objects of hooks */
+				phook = (hook *) GET_NEXT(svr_allhooks);
+				while (phook) {
+					if (phook->script)
+						pbs_python_ext_free_code_obj(phook->script);
+					phook = (hook *) GET_NEXT(phook->hi_allhooks);
+				}
+			}
 
 			/* before finalize clear global python objects */
-			pbs_python_event_unset(); /* clear Python event object */
 			pbs_python_unload_python_types(interp_data);
 			Py_Finalize();
 		}
@@ -443,21 +455,38 @@ pbs_python_ext_quick_shutdown_interpreter(void)
 }
 
 void
+pbs_python_ext_free_global_dict(
+	struct python_script *py_script)
+{
+#ifdef PYTHON /* --- BEGIN PYTHON BLOCK --- */
+	if (py_script->global_dict) {
+		PyDict_Clear((PyObject *) py_script->global_dict); /* clear k,v */
+		Py_CLEAR(py_script->global_dict);
+	}
+#endif /* --- END   PYTHON BLOCK --- */
+	return;
+}
+
+void
+pbs_python_ext_free_code_obj(
+	struct python_script *py_script)
+{
+#ifdef PYTHON /* --- BEGIN PYTHON BLOCK --- */
+	if (py_script->py_code_obj)
+		Py_CLEAR(py_script->py_code_obj);
+#endif /* --- END   PYTHON BLOCK --- */
+	return;
+}
+
+void
 pbs_python_ext_free_python_script(
 	struct python_script *py_script)
 {
 	if (py_script) {
 		if (py_script->path)
 			free(py_script->path);
-
-#ifdef PYTHON /* --- BEGIN PYTHON BLOCK --- */
-		if (py_script->py_code_obj)
-			Py_CLEAR(py_script->py_code_obj);
-		if (py_script->global_dict) {
-			PyDict_Clear((PyObject *) py_script->global_dict); /* clear k,v */
-			Py_CLEAR(py_script->global_dict);
-		}
-#endif /* --- END   PYTHON BLOCK --- */
+		pbs_python_ext_free_code_obj(py_script);
+		pbs_python_ext_free_global_dict(py_script);
 	}
 	return;
 }
@@ -762,12 +791,6 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 	if ((pbs_python_setup_namespace_dict(pdict) == -1)) {
 		Py_CLEAR(pdict);
 		return -1;
-	}
-
-	/* clear previous global/local dictionary */
-	if (py_script->global_dict) {
-		PyDict_Clear((PyObject *) py_script->global_dict); /* clear k,v */
-		Py_CLEAR(py_script->global_dict);
 	}
 
 	py_script->global_dict = pdict;

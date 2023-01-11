@@ -2797,6 +2797,8 @@ main(int argc, char *argv[], char *envp[])
 		if ((fp_server_out != NULL) && (fp_server_out != stdout))
 			fclose(fp_server_out);
 
+		pbs_python_ext_free_global_dict(py_script);
+		pbs_python_clear_attributes();
 		pbs_python_ext_shutdown_interpreter(&svr_interp_data);
 
 		free_attrlist(&event_vnode);
