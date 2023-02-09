@@ -39,6 +39,12 @@
 
 %module pbs_ifl
 
+%begin %{    
+#ifndef PY_SSIZE_T_CLEAN
+#define PY_SSIZE_T_CLEAN
+#endif
+%}
+
 %{
 #include "pbs_ifl.h"
 #include "pbs_error.h"

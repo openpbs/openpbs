@@ -87,6 +87,9 @@
 #include <pbs_config.h>
 
 #ifdef PYTHON
+#ifndef PY_SSIZE_T_CLEAN
+#define PY_SSIZE_T_CLEAN
+#endif
 #include <Python.h>
 #endif
 
