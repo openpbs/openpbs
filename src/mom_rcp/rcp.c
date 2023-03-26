@@ -774,7 +774,7 @@ source(int argc, char *argv[])
 				if (result != amt)
 					haderr = result >= 0 ? EIO : errno;
 			}
-			if (haderr)
+			if (haderr) {
 
 #ifdef WIN32
 				(void) send(rem, bp->buf, amt, 0);
@@ -783,7 +783,7 @@ source(int argc, char *argv[])
 					errx(-1, __func__, "write failed. ERR : %s",strerror(errno));				
 				}
 #endif
-			else {
+			} else {
 #ifdef WIN32
 				result = send(rem, bp->buf, amt, 0);
 #else
@@ -817,7 +817,7 @@ source(int argc, char *argv[])
 		}
 #endif /* USELOG */
 
-		if (!haderr)
+		if (!haderr){
 
 #ifdef WIN32
 			(void) send(rem, "", 1, 0);
@@ -826,8 +826,9 @@ source(int argc, char *argv[])
 				errx(-1, __func__, "write failed. ERR : %s",strerror(errno));			
 			}
 #endif
-		else
+		} else {
 			run_err("%s: %s", name, strerror(haderr));
+		}
 		(void) response();
 	}
 }
