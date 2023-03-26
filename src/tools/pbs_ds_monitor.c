@@ -151,7 +151,9 @@ get_pid()
 		return 0;
 
 	memset(buf, 0, TEMP_BUF_SIZE + 1);
-	fgets(buf, TEMP_BUF_SIZE, fp);
+	if (fgets(buf, TEMP_BUF_SIZE, fp) == NULL) {
+		fprintf(stderr, "%s fgets failed. \n", __func__);
+	}
 	buf[TEMP_BUF_SIZE] = '\0';
 
 	fclose(fp);
@@ -202,9 +204,13 @@ lock_out(int fds, int op)
 	if (fcntl(fds, F_SETLK, &flock) != -1) {
 		if (op == F_WRLCK) {
 			/* if write-lock, record hostname and pid in file */
-			(void) ftruncate(fds, (off_t) 0);
+			if (ftruncate(fds, (off_t) 0) == -1) {
+				fprintf(stderr, "ftruncate failed, ERR = %s\n", strerror(errno));
+			}
 			(void) sprintf(buf, "%s:%d\n", thishost, getpid());
-			(void) write(fds, buf, strlen(buf));
+			if (write(fds, buf, strlen(buf)) == -1) {
+				fprintf(stderr, "write failed, ERR = %s\n", strerror(errno));
+			}
 		}
 		return 0;
 	}
@@ -414,7 +420,9 @@ unix_db_monitor(char *mode)
 			return 1;
 
 		if (res != 0) {
-			read(pipefd[0], &reason, sizeof(reason));
+			if (read(pipefd[0], &reason, sizeof(reason)) == -1) {
+				fprintf(stderr, "read failed, ERR = %s\n", strerror(errno));
+			}
 			fprintf(stderr, "Failed to acquire lock on %s. %s\n", lockfile, reason);
 		}
 
@@ -440,13 +448,19 @@ unix_db_monitor(char *mode)
 		if (is_lock_local && strcmp(mode, "check") == 0) {
 			/* write success to parent since lock is already held by the localhost */
 			res = 0;
-			write(pipefd[1], &res, sizeof(int));
+			if (write(pipefd[1], &res, sizeof(int)) == -1) {
+				fprintf(stderr, "write failed, ERR = %s\n", strerror(errno));
+			}
 			close(pipefd[1]);
 			return 0;
 		}
 		res = 1;
-		write(pipefd[1], &res, sizeof(int));
-		write(pipefd[1], reason, sizeof(reason));
+		if (write(pipefd[1], &res, sizeof(int)) == -1) {
+			fprintf(stderr, "write failed, ERR = %s\n", strerror(errno));
+		}
+		if (write(pipefd[1], reason, sizeof(reason)) == -1) {
+			fprintf(stderr, "write failed, ERR = %s\n", strerror(errno));
+		}
 		close(pipefd[1]);
 		return 1;
 	}
@@ -460,7 +474,9 @@ unix_db_monitor(char *mode)
 
 	/* write success to parent since we acquired the lock */
 	res = 0;
-	write(pipefd[1], &res, sizeof(int));
+	if (write(pipefd[1], &res, sizeof(int)) == -1) {
+		fprintf(stderr, "%s : write failed, ERR = %s\n", __func__ , strerror(errno));
+	}
 	close(pipefd[1]);
 
 	if (strcmp(mode, "check") == 0)

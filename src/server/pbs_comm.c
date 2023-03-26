@@ -234,9 +234,13 @@ lock_out(int fds, int op)
 		if (fcntl(fds, F_SETLK, &flock) != -1) {
 			if (op == F_WRLCK) {
 				/* if write-lock, record pid in file */
-				(void) ftruncate(fds, (off_t) 0);
+				if (ftruncate(fds, (off_t) 0) == -1) {
+					log_errf(-1, __func__, "ftruncate failed. ERR : %s",strerror(errno));
+				}
 				(void) sprintf(buf, "%d\n", getpid());
-				(void) write(fds, buf, strlen(buf));
+				if(write(fds, buf, strlen(buf)) == -1) {
+					log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));
+				}
 			}
 			return;
 		}
@@ -264,10 +268,15 @@ pbs_close_stdfiles(void)
 		(void) fclose(stdout);
 		(void) fclose(stderr);
 
-		fopen(NULL_DEVICE, "r");
-
-		fopen(NULL_DEVICE, "w");
-		fopen(NULL_DEVICE, "w");
+		if (fopen(NULL_DEVICE, "r") == NULL) {
+			log_errf(-1, __func__, "fopen of null device failed. ERR : %s",strerror(errno));
+		}
+		if (fopen(NULL_DEVICE, "w") == NULL) {
+			log_errf(-1, __func__, "fopen of null device failed. ERR : %s",strerror(errno));
+		}
+		if (fopen(NULL_DEVICE, "w") == NULL) {
+			log_errf(-1, __func__, "fopen of null device failed. ERR : %s",strerror(errno));
+		}
 		already_done = 1;
 	}
 }

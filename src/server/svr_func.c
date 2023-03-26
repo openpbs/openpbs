@@ -5981,7 +5981,10 @@ start_vnode_provisioning(struct prov_vnode_info *prov_vnode_info)
 			exit(13);
 
 		/* Redirect standard files to /dev/null */
-		freopen("/dev/null", "r", stdin);
+		if (freopen("/dev/null", "r", stdin) == NULL) {
+			log_errf(-1, __func__, "freopen of null device failed. ERR : %s",strerror(errno));
+		}
+
 
 		/* Unprotect child from being killed by system */
 		daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
