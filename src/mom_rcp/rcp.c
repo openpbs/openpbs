@@ -726,7 +726,8 @@ source(int argc, char *argv[])
 			(void) send(rem, buf, strlen(buf), 0);
 #else
 			if (write(rem, buf, strlen(buf)) == -1) {
-				errx(-1, __func__, "write failed. ERR : %s",strerror(errno));				
+				errx(-1, __func__, "write failed. ERR : %s",
+						strerror(errno));				
 			}
 #endif
 			if (response() < 0)
@@ -751,7 +752,8 @@ source(int argc, char *argv[])
 		(void) send(rem, buf, strlen(buf), 0);
 #else
 		if (write(rem, buf, strlen(buf)) == -1) {
-			errx(-1, __func__, "write failed. ERR : %s",strerror(errno));				
+			errx(-1, __func__, "write failed. ERR : %s",
+					strerror(errno));				
 		}
 #endif
 		if (response() < 0)
@@ -780,7 +782,8 @@ source(int argc, char *argv[])
 				(void) send(rem, bp->buf, amt, 0);
 #else
 				if (write(rem, bp->buf, amt) == -1) {
-					errx(-1, __func__, "write failed. ERR : %s",strerror(errno));				
+					errx(-1, __func__, "write fail. ERR:%s",
+							strerror(errno));				
 				}
 #endif
 			} else {

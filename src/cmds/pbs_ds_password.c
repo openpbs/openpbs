@@ -189,6 +189,7 @@ read_password(char *passwd)
 
 	if (fgets(passwd, MAX_PASSWORD_LEN, stdin) == NULL) {
 		fprintf(stderr, "%s : fgets failed", __func__);
+		return -1;
 	}
 
 	if (system("stty echo") != 0)
@@ -328,6 +329,7 @@ change_ownership(char *path, char *userid)
 
 	if ( chown(path, pwent->pw_uid, (gid_t) -1) == -1) {
 		fprintf(stderr, "%s : chown failed : ERR : %s\n",__func__, strerror(errno));
+		return -1;
 	}
 	dir = opendir(path);
 	if (dir == NULL) {
@@ -342,6 +344,7 @@ change_ownership(char *path, char *userid)
 		sprintf(dirfile, "%s/%s", path, pdirent->d_name);
 		if (chown(dirfile, pwent->pw_uid, (gid_t) -1) == -1) {
 			fprintf(stderr, "%s : chown failed : ERR : %s\n",__func__, strerror(errno));
+			continue;
 		}
 		stat(dirfile, &stbuf);
 		if (stbuf.st_mode & S_IFDIR) {

@@ -2167,11 +2167,9 @@ env_array_to_varlist(char **envp)
 	len += len; /* Double it for all the commas, etc. */
 
 	// len check to avoid warning "destination object of size 0 allocated by ‘malloc’"
-	if (len > 0) {
-		if ((job_env = (char *) malloc(len)) == NULL) {
+	if ((len > 0) && ((job_env = (char *) malloc(len)) == NULL)) {
 			fprintf(stderr, "env_array_to_varlist: malloc failure errno=%d", errno);
 			return NULL;
-		}
 	} else {
 		return NULL;
 	}
