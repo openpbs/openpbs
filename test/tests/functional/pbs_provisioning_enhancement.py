@@ -459,7 +459,7 @@ e.reject()
         self.server.expect(JOB, {'job_state': 'R',
                                  'substate': 71}, attrop=PTL_AND, id=jid)
         exp_msg = "Provisioning vnode " + self.momA.shortname
-        exp_msg += "\[[0-3]\] with AOE osimage1 started"
+        exp_msg += r"\[[0-3]\] with AOE osimage1 started"
         logs = self.server.log_match(msg=exp_msg, regexp=True, allmatch=True)
 
         # since max_concurrent_provision is 1, there should be only one
