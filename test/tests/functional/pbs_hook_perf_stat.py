@@ -88,12 +88,12 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
                               regexp=True)
 
         stat = "walltime=.* cputime=.*"
-        act = "action=populate:pbs\.event\(\)\.job\(.*\)"
+        act = r"action=populate:pbs\.event\(\)\.job\(.*\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
         lbl = "label=hook_func"
-        act = "action=populate:pbs.server\(\)"
+        act = r"action=populate:pbs.server\(\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
@@ -132,19 +132,19 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
                               regexp=True)
 
         stat = "walltime=.* cputime=.*"
-        act = "action=populate:pbs\.event\(\)\.job\(.*\)"
+        act = r"action=populate:pbs\.event\(\)\.job\(.*\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
-        act = "action=populate:pbs.server\(\).job\(.*\)"
+        act = r"action=populate:pbs.server\(\).job\(.*\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
-        act = "action=populate:pbs.server\(\).queue\(.*\)"
+        act = r"action=populate:pbs.server\(\).queue\(.*\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
-        act = "action=populate:pbs.server\(\)"
+        act = r"action=populate:pbs.server\(\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
@@ -183,15 +183,15 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
                               regexp=True)
 
         stat = "walltime=.* cputime=.*"
-        act = "action=populate:pbs.server\(\).job\(.*\)"
+        act = r"action=populate:pbs.server\(\).job\(.*\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
-        act = "action=populate:pbs.server\(\).queue\(.*\)"
+        act = r"action=populate:pbs.server\(\).queue\(.*\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
-        act = "action=populate:pbs.server\(\)"
+        act = r"action=populate:pbs.server\(\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
@@ -229,15 +229,15 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
                               regexp=True)
 
         stat = "walltime=.* cputime=.*"
-        act = "action=populate:pbs.server\(\).job\(.*\)"
+        act = r"action=populate:pbs.server\(\).job\(.*\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
-        act = "action=populate:pbs.server\(\).queue\(.*\)"
+        act = r"action=populate:pbs.server\(\).queue\(.*\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
-        act = "action=populate:pbs.server\(\)"
+        act = r"action=populate:pbs.server\(\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
@@ -270,12 +270,12 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
                               regexp=True)
 
         stat = "walltime=.* cputime=.*"
-        act = "action=populate:pbs\.event\(\)\.resv\(.*\)"
+        act = r"action=populate:pbs\.event\(\)\.resv\(.*\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
         lbl = "label=hook_func"
-        act = "action=populate:pbs.server\(\)"
+        act = r"action=populate:pbs.server\(\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
@@ -311,16 +311,16 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
                               regexp=True)
 
         stat = "walltime=.* cputime=.*"
-        act = "action=populate:pbs\.event\(\)\.vnode_list"
+        act = r"action=populate:pbs\.event\(\)\.vnode_list"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
-        act = "action=populate:pbs\.event\(\)\.resv_list"
+        act = r"action=populate:pbs\.event\(\)\.resv_list"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
         lbl = "label=hook_func"
-        act = "action=populate:pbs.server\(\)"
+        act = r"action=populate:pbs.server\(\)"
         self.server.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                               regexp=True)
 
@@ -382,7 +382,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
             self.mom.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                                regexp=True)
 
-            act = "action=populate:pbs\.event\(\)\.job\(.*\)"
+            act = r"action=populate:pbs\.event\(\)\.job\(.*\)"
             self.mom.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                                regexp=True)
 
@@ -429,11 +429,11 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
         self.mom.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                            regexp=True)
 
-        act = "action=populate:pbs\.event\(\)\.vnode_list"
+        act = r"action=populate:pbs\.event\(\)\.vnode_list"
         self.mom.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                            regexp=True)
 
-        act = "action=populate:pbs\.event\(\)\.job_list"
+        act = r"action=populate:pbs\.event\(\)\.job_list"
         self.mom.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                            regexp=True)
 

@@ -197,28 +197,28 @@ class TestPbsNodeRampDown(TestFunctional):
             regexp=True, n="ALL", starttime=self.stime)
 
         self.server.accounting_match(
-            msg=".*%s;%s.*Resource_List\.mem=%s.*" % (atype, jid, mem),
+            msg=r".*%s;%s.*Resource_List\.mem=%s.*" % (atype, jid, mem),
             regexp=True, n="ALL", starttime=self.stime)
 
         self.server.accounting_match(
-            msg=".*%s;%s.*Resource_List\.ncpus=%d.*" % (atype, jid, ncpus),
+            msg=r".*%s;%s.*Resource_List\.ncpus=%d.*" % (atype, jid, ncpus),
             regexp=True, n="ALL", starttime=self.stime)
 
         self.server.accounting_match(
-            msg=".*%s;%s.*Resource_List\.nodect=%d.*" % (atype, jid, nodect),
+            msg=r".*%s;%s.*Resource_List\.nodect=%d.*" % (atype, jid, nodect),
             regexp=True, n="ALL", starttime=self.stime)
 
         self.server.accounting_match(
-            msg=".*%s;%s.*Resource_List\.place=%s.*" % (atype, jid, place),
+            msg=r".*%s;%s.*Resource_List\.place=%s.*" % (atype, jid, place),
             regexp=True, n="ALL", starttime=self.stime)
 
         self.server.accounting_match(
-            msg=".*%s;%s.*Resource_List\.select=%s.*" % (atype, jid, select),
+            msg=r".*%s;%s.*Resource_List\.select=%s.*" % (atype, jid, select),
             regexp=True, n="ALL", starttime=self.stime)
 
         if atype != 'c':
             self.server.accounting_match(
-                msg=".*%s;%s.*resources_used\..*" % (atype, jid),
+                msg=r".*%s;%s.*resources_used\..*" % (atype, jid),
                 regexp=True, n="ALL", starttime=self.stime)
 
     def match_vnode_status(self, vnode_list, state, jobs=None, ncpus=None,
@@ -388,20 +388,21 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
             "%s:ncpus=1)+" % (self.n6,) + \
             "(%s:ncpus=2:mem=2097152kb)" % (self.n7,)
 
-        self.job1_sel_esc = self.job1_select.replace("+", "\+")
+        self.job1_sel_esc = self.job1_select.replace("+", r"\+")
         self.job1_exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+            "+", r"\+")
         self.job1_exec_vnode_esc = self.job1_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
         self.job1_newsel = self.transform_select(self.job1_select.split(
             '+')[0])
         self.job1_new_exec_host = self.job1_exec_host.split('+')[0]
         self.job1_new_exec_vnode = self.job1_exec_vnode.split(')')[0] + ')'
         self.job1_new_exec_vnode_esc = \
-            self.job1_new_exec_vnode.replace("[", "\[").replace(
-                "]", "\]").replace("(", "\(").replace(")", "\)").replace(
-                "+", "\+")
+            self.job1_new_exec_vnode.replace("[", r"\[").replace(
+                "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                "+", r"\+")
 
         self.script['job1'] = \
             "#PBS -S /bin/bash\n" \
@@ -545,13 +546,13 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
             "%s:ncpus=1)+" % (self.n6,) + \
             "(%s:ncpus=1:mem=1048576kb)" % (self.n7,)
         self.job11x_exec_vnode_match = \
-            "\(.+:mem=1048576kb:ncpus=1\+" + \
-            ".+:mem=1048576kb:ncpus=1\+" + \
-            ".+:ncpus=1\)\+" + \
-            "\(.+:mem=1048576kb:ncpus=1\+" + \
-            ".+:mem=1048576kb:ncpus=1\+" + \
-            ".+:ncpus=1\)\+" + \
-            "\(.+:ncpus=1:mem=1048576kb\)"
+            r"\(.+:mem=1048576kb:ncpus=1\+" + \
+            r".+:mem=1048576kb:ncpus=1\+" + \
+            r".+:ncpus=1\)\+" + \
+            r"\(.+:mem=1048576kb:ncpus=1\+" + \
+            r".+:mem=1048576kb:ncpus=1\+" + \
+            r".+:ncpus=1\)\+" + \
+            r"\(.+:ncpus=1:mem=1048576kb\)"
         self.script['job11x'] = \
             "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job11x_select + "\n" + \
@@ -691,26 +692,29 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
 
         # Verify remaining job resources.
 
-        sel_esc = self.job1_select.replace("+", "\+")
+        sel_esc = self.job1_select.replace("+", r"\+")
         exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job1_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
+        exec_vnode_esc = self.job1_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=1"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_exec_host.replace(
             "+%s/0*2" % (self.n7,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_exec_vnode.replace(
             "+%s:mem=1048576kb:ncpus=1" % (self.n5,), "")
         new_exec_vnode = new_exec_vnode.replace(
             "+%s:ncpus=1" % (self.n6,), "")
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
-        new_exec_vnode_esc = new_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+        new_exec_vnode_esc = new_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '3gb',
                                  'Resource_List.ncpus': 4,
@@ -2433,15 +2437,16 @@ pbs.event().job.release_nodes_on_stageout=False
         # Verify remaining job resources.
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
                  "1:ncpus=2:mem=2097152kb"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_exec_host
         new_exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
         new_exec_vnode_esc = new_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '5gb',
                                  'Resource_List.ncpus': 7,
@@ -2563,15 +2568,16 @@ pbs.event().job.release_nodes_on_stageout=False
         # Verify remaining job resources.
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
                  "1:ncpus=2:mem=2097152kb"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_exec_host
         new_exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
         new_exec_vnode_esc = new_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '5gb',
                                  'Resource_List.ncpus': 7,
@@ -2715,27 +2721,29 @@ pbs.event().job.release_nodes_on_stageout=False
                             existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
-        sel_esc = self.job1_extra_res_select.replace("+", "\+")
+        sel_esc = self.job1_extra_res_select.replace("+", r"\+")
         exec_host_esc = self.job1_extra_res_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+            "+", r"\+")
         exec_vnode_esc = \
             self.job1_extra_res_exec_vnode.replace(
-                "[", "\[").replace(
-                "]", "\]").replace("(", "\(").replace(")", "\)").replace(
-                "+", "\+")
+                "[", r"\[").replace(
+                "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                "+", r"\+")
 
         newsel = "1:mem=2097152kb:ncpus=3:mpiprocs=3:ompthreads=2+" + \
             "1:mem=1048576kb:ncpus=2:mpiprocs=3:ompthreads=3+" + \
             "1:ncpus=2:mem=2097152kb:mpiprocs=2:ompthreads=2"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_extra_res_exec_host
         new_exec_host_esc = self.job1_extra_res_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+            "+", r"\+")
         new_exec_vnode = self.job1_extra_res_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
-        new_exec_vnode_esc = new_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+        new_exec_vnode_esc = new_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB,
                            {'job_state': 'R',
                             'Resource_List.mem': '5gb',
@@ -2884,20 +2892,23 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Verify remaining job resources.
         exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job1_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+            "+", r"\+")
+        exec_vnode_esc = self.job1_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+            "+", r"\+")
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
                  "1:ncpus=2:mem=2097152kb"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_exec_host
         new_exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+            "+", r"\+")
         new_exec_vnode = self.job1_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n5,), "")
         new_exec_vnode_esc = new_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '5gb',
                                  'Resource_List.ncpus': 7,
@@ -3041,25 +3052,27 @@ pbs.event().job.release_nodes_on_stageout=False
                             existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
-        sel_esc = self.job1_extra_res_select.replace("+", "\+")
+        sel_esc = self.job1_extra_res_select.replace("+", r"\+")
         exec_host_esc = self.job1_extra_res_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+            "+", r"\+")
         exec_vnode_esc = self.job1_extra_res_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         newsel = "1:mem=2097152kb:ncpus=3:mpiprocs=3:ompthreads=2+" + \
                  "1:mem=1048576kb:ncpus=2:mpiprocs=3:ompthreads=3+" + \
                  "1:ncpus=2:mem=2097152kb:mpiprocs=2:ompthreads=2"
 
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_extra_res_exec_host
         new_exec_host_esc = self.job1_extra_res_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_extra_res_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n5,), "")
         new_exec_vnode_esc = new_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB,
                            {'job_state': 'R',
                             'Resource_List.mem': '5gb',
@@ -3208,22 +3221,24 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Verify remaining job resources.
         exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job1_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+            "+", r"\+")
+        exec_vnode_esc = self.job1_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
 
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=2097152kb:ncpus=2+" + \
                  "1:ncpus=2:mem=2097152kb"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_exec_host
         new_exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace(
-            "+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+            "+", r"\+")
         new_exec_vnode = self.job1_exec_vnode.replace(
             "+%s:ncpus=1" % (self.n6,), "")
-        new_exec_vnode_esc = new_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+        new_exec_vnode_esc = new_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '6gb',
                                  'Resource_List.ncpus': 7,
@@ -3369,25 +3384,28 @@ pbs.event().job.release_nodes_on_stageout=False
                             existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
-        sel_esc = self.job1_extra_res_select.replace("+", "\+")
+        sel_esc = self.job1_extra_res_select.replace("+", r"\+")
         exec_host_esc = self.job1_extra_res_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         exec_vnode_esc = self.job1_extra_res_exec_vnode.replace(
-            "[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
 
         newsel = "1:mem=2097152kb:ncpus=3:mpiprocs=3:ompthreads=2+" + \
                  "1:mem=2097152kb:ncpus=2:mpiprocs=3:ompthreads=3+" + \
                  "1:ncpus=2:mem=2097152kb:mpiprocs=2:ompthreads=2"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_extra_res_exec_host
         new_exec_host_esc = self.job1_extra_res_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+            "+", r"\+")
         new_exec_vnode = self.job1_extra_res_exec_vnode.replace(
             "+%s:ncpus=1" % (self.n6,), "")
         new_exec_vnode_esc = new_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB,
                            {'job_state': 'R',
                             'Resource_List.mem': '6gb',
@@ -3539,18 +3557,21 @@ pbs.event().job.release_nodes_on_stageout=False
         self.assertEqual(len(self.server.pu.processes), 0)
 
         # Verify remaining job resources.
-        sel_esc = self.job1_select.replace("+", "\+")
+        sel_esc = self.job1_select.replace("+", r"\+")
         exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job1_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
+        exec_vnode_esc = self.job1_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
 
         newsel = "1:mem=2097152kb:ncpus=3+1:ncpus=1"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_exec_host.replace(
             "+%s/0*2" % (self.n7,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
         new_exec_vnode = new_exec_vnode.replace(
@@ -3558,8 +3579,8 @@ pbs.event().job.release_nodes_on_stageout=False
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
         new_exec_vnode_esc = new_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '2gb',
                                  'Resource_List.ncpus': 4,
@@ -3712,29 +3733,32 @@ pbs.event().job.release_nodes_on_stageout=False
         self.assertEqual(len(self.server.pu.processes), 0)
 
         # Verify remaining job resources.
-        sel_esc = self.job1_extra_res_select.replace("+", "\+")
+        sel_esc = self.job1_extra_res_select.replace("+", r"\+")
         exec_host_esc = self.job1_extra_res_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         exec_vnode_esc = self.job1_extra_res_exec_vnode.replace(
-            "[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
 
         newsel = "1:mem=2097152kb:ncpus=3:mpiprocs=3:ompthreads=2+" + \
                  "1:ncpus=1:mpiprocs=3:ompthreads=3"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_extra_res_exec_host.replace(
             "+%s/0*2" % (self.n7,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_extra_res_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
         new_exec_vnode = new_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n5,), "")
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
-        new_exec_vnode_esc = new_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+        new_exec_vnode_esc = new_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '2gb',
                                  'Resource_List.ncpus': 4,
@@ -3889,18 +3913,21 @@ pbs.event().job.release_nodes_on_stageout=False
         self.assertEqual(len(self.server.pu.processes), 0)
 
         # Verify remaining job resources.
-        sel_esc = self.job1_select.replace("+", "\+")
+        sel_esc = self.job1_select.replace("+", r"\+")
         exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job1_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
+        exec_vnode_esc = self.job1_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=1"
 
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_exec_host.replace(
             "+%s/0*2" % (self.n7,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_exec_vnode.replace(
             "+%s:mem=1048576kb:ncpus=1" % (self.n5,), "")
         new_exec_vnode = new_exec_vnode.replace(
@@ -3908,8 +3935,8 @@ pbs.event().job.release_nodes_on_stageout=False
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
         new_exec_vnode_esc = \
-            new_exec_vnode.replace("[", "\[").replace("]", "\]").replace(
-                "(", "\(").replace(")", "\)").replace("+", "\+")
+            new_exec_vnode.replace("[", r"\[").replace("]", r"\]").replace(
+                "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '3gb',
                                  'Resource_List.ncpus': 4,
@@ -4066,22 +4093,24 @@ pbs.event().job.release_nodes_on_stageout=False
         self.assertEqual(len(self.server.pu.processes), 0)
 
         # Verify remaining job resources.
-        sel_esc = self.job1_extra_res_select.replace("+", "\+")
+        sel_esc = self.job1_extra_res_select.replace("+", r"\+")
         exec_host_esc = self.job1_extra_res_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         exec_vnode_esc = \
-            self.job1_extra_res_exec_vnode.replace("[", "\[").replace(
-                "]", "\]").replace("(", "\(").replace(")", "\)").replace(
-                "+", "\+")
+            self.job1_extra_res_exec_vnode.replace("[", r"\[").replace(
+                "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                "+", r"\+")
         newsel = \
             "1:mem=2097152kb:ncpus=3:mpiprocs=3:ompthreads=2+" + \
             "1:mem=1048576kb:ncpus=1:mpiprocs=3:ompthreads=3"
 
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_extra_res_exec_host.replace(
             "+%s/0*2" % (self.n7,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_extra_res_exec_vnode.replace(
             "+%s:mem=1048576kb:ncpus=1" % (self.n5,), "")
         new_exec_vnode = new_exec_vnode.replace(
@@ -4089,8 +4118,8 @@ pbs.event().job.release_nodes_on_stageout=False
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
         new_exec_vnode_esc = \
-            new_exec_vnode.replace("[", "\[").replace("]", "\]").replace(
-                "(", "\(").replace(")", "\)").replace("+", "\+")
+            new_exec_vnode.replace("[", r"\[").replace("]", r"\]").replace(
+                "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '3gb',
                                  'Resource_List.ncpus': 4,
@@ -4378,20 +4407,22 @@ pbs.event().job.release_nodes_on_stageout=False
         self.assertEqual(len(self.server.pu.processes), 0)
 
         # Verify remaining job resources.
-        sel_esc = self.job1_extra_res_select.replace("+", "\+")
+        sel_esc = self.job1_extra_res_select.replace("+", r"\+")
         exec_host_esc = self.job1_extra_res_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         exec_vnode_esc = \
-            self.job1_extra_res_exec_vnode.replace("[", "\[").replace(
-                "]", "\]").replace(
-                "(", "\(").replace(")", "\)").replace("+", "\+")
+            self.job1_extra_res_exec_vnode.replace("[", r"\[").replace(
+                "]", r"\]").replace(
+                "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         newsel = "1:mem=2097152kb:ncpus=3:mpiprocs=3:ompthreads=2"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_extra_res_exec_host.replace(
             "+%s/0*2" % (self.n7,), "")
         new_exec_host = new_exec_host.replace("+%s/0*0" % (self.n4,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_extra_res_exec_vnode.replace(
             "+%s:mem=1048576kb:ncpus=1" % (self.n5,), "")
         new_exec_vnode = new_exec_vnode.replace(
@@ -4401,8 +4432,8 @@ pbs.event().job.release_nodes_on_stageout=False
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
         new_exec_vnode_esc = \
-            new_exec_vnode.replace("[", "\[").replace("]", "\]").replace(
-                "(", "\(").replace(")", "\)").replace("+", "\+")
+            new_exec_vnode.replace("[", r"\[").replace("]", r"\]").replace(
+                "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB,
                            {'job_state': 'R',
                             'Resource_List.mem': '2gb',
@@ -4555,22 +4586,25 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Verify remaining job resources.
 
-        sel_esc = self.job1_select.replace("+", "\+")
+        sel_esc = self.job1_select.replace("+", r"\+")
         exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job1_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
+        exec_vnode_esc = self.job1_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
 
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=2097152kb:ncpus=3"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = "%s/0*0+%s/0*0" % (self.n0, self.hostB)
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_exec_vnode.replace(
             "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
         new_exec_vnode_esc = new_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '4194304kb',
                                  'Resource_List.ncpus': 6,
@@ -4619,21 +4653,24 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Verify remaining job resources.
 
-        sel_esc = self.job1_select.replace("+", "\+")
+        sel_esc = self.job1_select.replace("+", r"\+")
         exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job1_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
+        exec_vnode_esc = self.job1_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
         newsel = self.transform_select(self.job1_select.split('+')[0])
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
 
         new_exec_host = self.job1_exec_host.split('+')[0]
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_exec_vnode.split(')')[0] + ')'
-        new_exec_vnode_esc = new_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace(
-            "+", "\+")
+        new_exec_vnode_esc = new_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+            "+", r"\+")
         self.server.expect(JOB, {'job_state': 'E',
                                  'Resource_List.mem': '2gb',
                                  'Resource_List.ncpus': 3,
@@ -4778,24 +4815,27 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Verify remaining job resources.
 
-        sel_esc = self.job1_select.replace("+", "\+")
+        sel_esc = self.job1_select.replace("+", r"\+")
         exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job1_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
+        exec_vnode_esc = self.job1_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
 
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
                  "1:ncpus=2:mem=2097152kb"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_exec_host
         new_exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
         new_exec_vnode_esc = \
-            new_exec_vnode.replace("[", "\[").replace(
-                "]", "\]").replace("(", "\(").replace(
-                ")", "\)").replace("+", "\+")
+            new_exec_vnode.replace("[", r"\[").replace(
+                "]", r"\]").replace("(", r"\(").replace(
+                ")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '5gb',
                                  'Resource_List.ncpus': 7,
@@ -4873,11 +4913,12 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Verify remaining job resources.
         newsel = "1:mem=2097152kb:ncpus=3"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = new_exec_host.replace("+%s/0*2" % (self.n7,), "")
         new_exec_host = new_exec_host.replace("+%s/0*0" % (self.n4,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:mem=1048576kb:ncpus=1" % (self.n5,), "")
         new_exec_vnode = new_exec_vnode.replace(
@@ -4885,8 +4926,8 @@ pbs.event().job.release_nodes_on_stageout=False
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
         new_exec_vnode_esc = new_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '2gb',
                                  'Resource_List.ncpus': 3,
@@ -5226,26 +5267,29 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
 
         # Verify remaining job resources.
 
-        sel_esc = self.job11x_select.replace("+", "\+")
+        sel_esc = self.job11x_select.replace("+", r"\+")
         exec_host_esc = self.job11x_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job11x_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
+        exec_vnode_esc = self.job11x_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
         newsel = "1:mem=2097152kb:ncpus=3+1:ncpus=1"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job11x_exec_host.replace(
             "+%s/0" % (self.n7,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job11x_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
         new_exec_vnode = new_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n5), "")
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=1:mem=1048576kb)" % (self.n7,), "")
-        new_exec_vnode_esc = new_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+        new_exec_vnode_esc = new_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '2gb',
                                  'Resource_List.ncpus': 4,
@@ -5483,26 +5527,29 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
 
         # Verify remaining job resources.
 
-        sel_esc = self.job11x_select.replace("+", "\+")
+        sel_esc = self.job11x_select.replace("+", r"\+")
         exec_host_esc = self.job11x_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job11x_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
+        exec_vnode_esc = self.job11x_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
         newsel = "1:mem=2097152kb:ncpus=3+1:ncpus=1"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job11x_exec_host.replace(
             "+%s/0" % (self.n7,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job11x_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
         new_exec_vnode = new_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n5), "")
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=1:mem=1048576kb)" % (self.n7,), "")
-        new_exec_vnode_esc = new_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+        new_exec_vnode_esc = new_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '2gb',
                                  'Resource_List.ncpus': 4,
@@ -5680,26 +5727,29 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
 
         # Verify remaining job resources.
 
-        sel_esc = self.job11x_select.replace("+", "\+")
+        sel_esc = self.job11x_select.replace("+", r"\+")
         exec_host_esc = self.job11x_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job11x_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
+        exec_vnode_esc = self.job11x_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
         newsel = "1:mem=2097152kb:ncpus=3+1:ncpus=1"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job11x_exec_host.replace(
             "+%s/0" % (self.n7,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job11x_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
         new_exec_vnode = new_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n5), "")
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=1:mem=1048576kb)" % (self.n7,), "")
-        new_exec_vnode_esc = new_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+        new_exec_vnode_esc = new_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '2gb',
                                  'Resource_List.ncpus': 4,
@@ -5847,26 +5897,29 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
                             existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
-        sel_esc = self.job11_select.replace("+", "\+")
+        sel_esc = self.job11_select.replace("+", r"\+")
         exec_host_esc = self.job11_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job11_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
+        exec_vnode_esc = self.job11_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
         newsel = "1:mem=2097152kb:ncpus=3+1:ncpus=1"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job11_exec_host.replace(
             "+%s/0" % (self.n7,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job11_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
         new_exec_vnode = new_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n5,), "")
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=1:mem=1048576kb)" % (self.n7,), "")
-        new_exec_vnode_esc = new_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+        new_exec_vnode_esc = new_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '2gb',
                                  'Resource_List.ncpus': 4,
@@ -6024,17 +6077,20 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
                             existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
-        sel_esc = self.job11_select.replace("+", "\+")
+        sel_esc = self.job11_select.replace("+", r"\+")
         exec_host_esc = self.job11_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job11_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
+        exec_vnode_esc = self.job11_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
         newsel = "1:mem=2097152kb:ncpus=3+1:ncpus=1"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job11_exec_host.replace(
             "+%s/0" % (self.n7,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job11_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
         new_exec_vnode = new_exec_vnode.replace(
@@ -6042,8 +6098,8 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=1:mem=1048576kb)" % (self.n7,), "")
         new_exec_vnode_esc = new_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         # job's substate is 41 (PRERUN) since MS mom is stopped
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '2gb',
@@ -6186,18 +6242,21 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
                             max_attempts=5, existence=False, interval=1)
 
         # Verify remaining job resources.
-        sel_esc = self.job1_select.replace("+", "\+")
+        sel_esc = self.job1_select.replace("+", r"\+")
         exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job1_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
+        exec_vnode_esc = self.job1_exec_vnode.replace("[", r"\[").replace(
+            "]", r"\]").replace("(", r"\(").replace(")", r"\)").replace(
+                    "+", r"\+")
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=1"
 
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_exec_host.replace(
             "+%s/0*2" % (self.n7,), "")
         new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         new_exec_vnode = self.job1_exec_vnode.replace(
             "+%s:mem=1048576kb:ncpus=1" % (self.n5,), "")
         new_exec_vnode = new_exec_vnode.replace(
@@ -6205,8 +6264,8 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         new_exec_vnode = new_exec_vnode.replace(
             "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
         new_exec_vnode_esc = \
-            new_exec_vnode.replace("[", "\[").replace("]", "\]").replace(
-                "(", "\(").replace(")", "\)").replace("+", "\+")
+            new_exec_vnode.replace("[", r"\[").replace("]", r"\]").replace(
+                "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB,
                            {'job_state': 'R',
                             'Resource_List.mem': '3gb',
@@ -6355,7 +6414,7 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         # Verify remaining job resources.
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
                  "1:ncpus=2:mem=2097152kb"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_host = self.job1_exec_host
 
         # Below variable is being used for the accounting log match
@@ -6366,8 +6425,8 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         new_exec_vnode = self.job1_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
         new_exec_vnode_esc = new_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '5gb',
                                  'Resource_List.ncpus': 7,
@@ -6737,12 +6796,12 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         # Verify remaining job resources
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
                  "1:ncpus=2:mem=2097152kb"
-        newsel_esc = newsel.replace("+", "\+")
+        newsel_esc = newsel.replace("+", r"\+")
         new_exec_vnode = self.job1_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
         new_exec_vnode_esc = new_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace(
+            "(", r"\(").replace(")", r"\)").replace("+", r"\+")
         self.server.expect(JOB, {'job_state': 'R',
                                  'Resource_List.mem': '5gb',
                                  'Resource_List.ncpus': 7,

@@ -634,7 +634,7 @@ class Scheduler(PBSService):
                             for val in v:
                                 fd.write(k + ": " + str(val).strip() + "\n")
                         else:
-                                fd.write(k + ": " + str(v).strip() + "\n")
+                            fd.write(k + ": " + str(v).strip() + "\n")
 
                 if 'PTL_SCHED_CONFIG_TAIL' in self._sched_config_comments:
                     fd.write("\n".join(
