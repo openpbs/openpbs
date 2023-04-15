@@ -3216,9 +3216,14 @@ read_formula(void)
 	form[0] = '\0';
 
 	/* first line is a comment */
+<<<<<<< HEAD
+	if (fgets(buf, RF_BUFSIZE, fp) == NULL) 
+		log_errf(-1, __func__, "fgets failed.");
+=======
 	if (fgets(buf, RF_BUFSIZE, fp) == NULL) {
 		log_errf(-1, __func__, "fgets failed.");
 	}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 
 	while (fgets(buf, RF_BUFSIZE, fp) != NULL) {
 		auto len = strlen(form) + strlen(buf);

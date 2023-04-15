@@ -151,9 +151,14 @@ get_pid()
 		return 0;
 
 	memset(buf, 0, TEMP_BUF_SIZE + 1);
+<<<<<<< HEAD
+	if (fgets(buf, TEMP_BUF_SIZE, fp) == NULL) 
+		fprintf(stderr, "%s fgets failed. \n", __func__);
+=======
 	if (fgets(buf, TEMP_BUF_SIZE, fp) == NULL) {
 		fprintf(stderr, "%s fgets failed. \n", __func__);
 	}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 	buf[TEMP_BUF_SIZE] = '\0';
 
 	fclose(fp);
@@ -204,6 +209,13 @@ lock_out(int fds, int op)
 	if (fcntl(fds, F_SETLK, &flock) != -1) {
 		if (op == F_WRLCK) {
 			/* if write-lock, record hostname and pid in file */
+<<<<<<< HEAD
+			if (ftruncate(fds, (off_t) 0) == -1) 
+				fprintf(stderr, "ftruncate failed, ERR = %s\n", strerror(errno));
+			(void) sprintf(buf, "%s:%d\n", thishost, getpid());
+			if (write(fds, buf, strlen(buf)) == -1) 
+				fprintf(stderr, "write failed, ERR = %s\n", strerror(errno));
+=======
 			if (ftruncate(fds, (off_t) 0) == -1) {
 				fprintf(stderr, "ftruncate failed, ERR = %s\n", strerror(errno));
 			}
@@ -211,6 +223,7 @@ lock_out(int fds, int op)
 			if (write(fds, buf, strlen(buf)) == -1) {
 				fprintf(stderr, "write failed, ERR = %s\n", strerror(errno));
 			}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		}
 		return 0;
 	}
@@ -420,9 +433,14 @@ unix_db_monitor(char *mode)
 			return 1;
 
 		if (res != 0) {
+<<<<<<< HEAD
+			if (read(pipefd[0], &reason, sizeof(reason)) == -1) 
+				fprintf(stderr, "read failed, ERR = %s\n", strerror(errno));
+=======
 			if (read(pipefd[0], &reason, sizeof(reason)) == -1) {
 				fprintf(stderr, "read failed, ERR = %s\n", strerror(errno));
 			}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 			fprintf(stderr, "Failed to acquire lock on %s. %s\n", lockfile, reason);
 		}
 
@@ -448,19 +466,31 @@ unix_db_monitor(char *mode)
 		if (is_lock_local && strcmp(mode, "check") == 0) {
 			/* write success to parent since lock is already held by the localhost */
 			res = 0;
+<<<<<<< HEAD
+			if (write(pipefd[1], &res, sizeof(int)) == -1) 
+				fprintf(stderr, "write failed, ERR = %s\n", strerror(errno));
+=======
 			if (write(pipefd[1], &res, sizeof(int)) == -1) {
 				fprintf(stderr, "write failed, ERR = %s\n", strerror(errno));
 			}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 			close(pipefd[1]);
 			return 0;
 		}
 		res = 1;
+<<<<<<< HEAD
+		if (write(pipefd[1], &res, sizeof(int)) == -1) 
+			fprintf(stderr, "write failed, ERR = %s\n", strerror(errno));
+		if (write(pipefd[1], reason, sizeof(reason)) == -1) 
+			fprintf(stderr, "write failed, ERR = %s\n", strerror(errno));
+=======
 		if (write(pipefd[1], &res, sizeof(int)) == -1) {
 			fprintf(stderr, "write failed, ERR = %s\n", strerror(errno));
 		}
 		if (write(pipefd[1], reason, sizeof(reason)) == -1) {
 			fprintf(stderr, "write failed, ERR = %s\n", strerror(errno));
 		}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		close(pipefd[1]);
 		return 1;
 	}
@@ -474,9 +504,14 @@ unix_db_monitor(char *mode)
 
 	/* write success to parent since we acquired the lock */
 	res = 0;
+<<<<<<< HEAD
+	if (write(pipefd[1], &res, sizeof(int)) == -1) 
+		fprintf(stderr, "%s : write failed, ERR = %s\n", __func__ , strerror(errno));
+=======
 	if (write(pipefd[1], &res, sizeof(int)) == -1) {
 		fprintf(stderr, "%s : write failed, ERR = %s\n", __func__ , strerror(errno));
 	}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 	close(pipefd[1]);
 
 	if (strcmp(mode, "check") == 0)

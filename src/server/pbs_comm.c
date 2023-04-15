@@ -234,6 +234,13 @@ lock_out(int fds, int op)
 		if (fcntl(fds, F_SETLK, &flock) != -1) {
 			if (op == F_WRLCK) {
 				/* if write-lock, record pid in file */
+<<<<<<< HEAD
+				if (ftruncate(fds, (off_t) 0) == -1) 
+					log_errf(-1, __func__, "ftruncate failed. ERR : %s",strerror(errno));
+				(void) sprintf(buf, "%d\n", getpid());
+				if(write(fds, buf, strlen(buf)) == -1) 
+					log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));
+=======
 				if (ftruncate(fds, (off_t) 0) == -1) {
 					log_errf(-1, __func__, "ftruncate failed. ERR : %s",strerror(errno));
 				}
@@ -241,6 +248,7 @@ lock_out(int fds, int op)
 				if(write(fds, buf, strlen(buf)) == -1) {
 					log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));
 				}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 			}
 			return;
 		}
@@ -268,6 +276,14 @@ pbs_close_stdfiles(void)
 		(void) fclose(stdout);
 		(void) fclose(stderr);
 
+<<<<<<< HEAD
+		if (fopen(NULL_DEVICE, "r") == NULL) 
+			log_errf(-1, __func__, "fopen of null device failed. ERR : %s",strerror(errno));
+		if (fopen(NULL_DEVICE, "w") == NULL) 
+			log_errf(-1, __func__, "fopen of null device failed. ERR : %s",strerror(errno));
+		if (fopen(NULL_DEVICE, "w") == NULL) 
+			log_errf(-1, __func__, "fopen of null device failed. ERR : %s",strerror(errno));
+=======
 		if (fopen(NULL_DEVICE, "r") == NULL) {
 			log_errf(-1, __func__, "fopen of null device failed. ERR : %s",strerror(errno));
 		}
@@ -277,6 +293,7 @@ pbs_close_stdfiles(void)
 		if (fopen(NULL_DEVICE, "w") == NULL) {
 			log_errf(-1, __func__, "fopen of null device failed. ERR : %s",strerror(errno));
 		}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		already_done = 1;
 	}
 }

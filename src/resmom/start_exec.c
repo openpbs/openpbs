@@ -575,6 +575,13 @@ open_pty(job *pjob)
 
 		FDMOVE(pts);
 
+<<<<<<< HEAD
+		if (fchmod(pts, 0620) == -1) 
+			log_errf(-1, __func__, "fchmod failed. ERR : %s",strerror(errno));				
+		if (fchown(pts, pjob->ji_qs.ji_un.ji_momt.ji_exuid,
+			      pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1) 
+			log_errf(-1, __func__, "fchown failed. ERR : %s",strerror(errno));		
+=======
 		if (fchmod(pts, 0620) == -1) {
 			log_errf(-1, __func__, "fchmod failed. ERR : %s",strerror(errno));				
 		}
@@ -582,6 +589,7 @@ open_pty(job *pjob)
 			      pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1) {
 			log_errf(-1, __func__, "fchown failed. ERR : %s",strerror(errno));		
 				  }
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 #if defined(__osf__)
 		(void) ioctl(pts, TIOCSCTTY, 0); /* make controlling */
 #endif
@@ -670,25 +678,40 @@ open_std_out_err(job *pjob)
 		sprintf(log_buffer,
 			"Direct write is requested for job: %s, but the destination is not usecp-able from %s\n",
 			pjob->ji_qs.ji_jobid, pjob->ji_hosts[pjob->ji_nodeid].hn_host);
+<<<<<<< HEAD
+		if (write(file_err, log_buffer, strlen(log_buffer)) == -1) 
+			log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));			
+=======
 		if (write(file_err, log_buffer, strlen(log_buffer)) == -1) {
 			log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));			
 		}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 	}
 
 	FDMOVE(file_out); /* make sure descriptor > 2       */
 	FDMOVE(file_err); /* so don't clobber stdin/out/err */
 	if (file_out != 1) {
 		(void) close(1);
+<<<<<<< HEAD
+		if (dup(file_out) == -1) 
+			log_errf(-1, __func__, "dup failed. ERR : %s",strerror(errno));		
+=======
 		if (dup(file_out) == -1) {
 			log_errf(-1, __func__, "dup failed. ERR : %s",strerror(errno));		
 		}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		(void) close(file_out);
 	}
 	if (file_err != 2) {
 		(void) close(2);
+<<<<<<< HEAD
+		if (dup(file_err) == -1) 
+			log_errf(-1, __func__, "dup failed. ERR : %s",strerror(errno));		
+=======
 		if (dup(file_err) == -1) {
 			log_errf(-1, __func__, "dup failed. ERR : %s",strerror(errno));		
 		}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		(void) close(file_err);
 	}
 	return 0;
@@ -922,9 +945,14 @@ impersonate_user(uid_t uid, gid_t gid)
 	/* most systems */
 	if ((setegid(gid) == -1) ||
 	    (seteuid(uid) == -1)) {
+<<<<<<< HEAD
+		if (setegid(pbsgroup) == -1) 
+			log_errf(-1, __func__, "setegid to pbs group failed. ERR : %s",strerror(errno));		
+=======
 		if (setegid(pbsgroup) == -1) {
 			log_errf(-1, __func__, "setegid to pbs group failed. ERR : %s",strerror(errno));		
 		}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		return -1;
 	}
 #elif defined(HAVE_SETRESUID) && defined(HAVE_SETRESGID)
@@ -944,9 +972,14 @@ revert_from_user(void)
 {
 #if defined(HAVE_SETEUID)
 	/* most systems */
+<<<<<<< HEAD
+	if (seteuid(0) == -1) 
+		log_errf(-1, __func__, "seteuid failed. ERR : %s",strerror(errno));	
+=======
 	if (seteuid(0) == -1) {
 		log_errf(-1, __func__, "seteuid failed. ERR : %s",strerror(errno));	
 	}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 #elif defined(HAVE_SETRESUID)
 	(void) setresuid(-1, 0, -1);
 #else
@@ -956,9 +989,14 @@ revert_from_user(void)
 	(void) initgroups("root", pbsgroup);
 #endif
 #if defined(HAVE_SETEGID)
+<<<<<<< HEAD
+	if (setegid(pbsgroup) == -1) 
+		log_errf(-1, __func__, "setegid to pbs group failed. ERR : %s",strerror(errno));		
+=======
 	if (setegid(pbsgroup) == -1) {
 		log_errf(-1, __func__, "setegid to pbs group failed. ERR : %s",strerror(errno));		
 	}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 #elif defined(HAVE_SETRESGID)
 	(void) setresgid(-1, pbsgroup, -1);
 #else
@@ -3274,9 +3312,14 @@ finish_exec(job *pjob)
 			sprintf(buf, "%s%s%s", path_jobs,
 				pjob->ji_qs.ji_jobid, JOB_SCRIPT_SUFFIX);
 		if (chown(buf, pjob->ji_qs.ji_un.ji_momt.ji_exuid,
+<<<<<<< HEAD
+			     pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1) 
+				log_errf(-1, __func__, "chown failed. ERR : %s",strerror(errno));				
+=======
 			     pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1) {
 				log_errf(-1, __func__, "chown failed. ERR : %s",strerror(errno));				
 			 }
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 
 		/* add escape in front of brackets */
 		for (s = buf, d = holdbuf; *s && ((d - holdbuf) < sizeof(holdbuf)); s++, d++) {
@@ -3953,24 +3996,38 @@ finish_exec(job *pjob)
 
 				/* change pty back to available after */
 				/* job is done */
+<<<<<<< HEAD
+				if (chmod(pts_name, 0666) == -1) 
+					log_errf(-1, __func__, "chmod failed. ERR : %s",strerror(errno));			
+				if (chown(pts_name, 0, 0) == -1) 
+					log_errf(-1, __func__, "chown failed. ERR : %s",strerror(errno));		
+=======
 				if (chmod(pts_name, 0666) == -1) {
 					log_errf(-1, __func__, "chmod failed. ERR : %s",strerror(errno));			
 				}
 				if (chown(pts_name, 0, 0) == -1) {
 					log_errf(-1, __func__, "chown failed. ERR : %s",strerror(errno));		
 				}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 				exit(0);
 			}
 		} else { /* error */
 			log_err(errno, __func__, "cannot fork nanny");
 
 			/* change pty back to available */
+<<<<<<< HEAD
+			if (chmod(pts_name, 0666) == -1) 
+				log_errf(-1, __func__, "chmod failed. ERR : %s",strerror(errno));		
+			if (chown(pts_name, 0, 0) == -1) 
+				log_errf(-1, __func__, "chown failed. ERR : %s",strerror(errno));			
+=======
 			if (chmod(pts_name, 0666) == -1) {
 				log_errf(-1, __func__, "chmod failed. ERR : %s",strerror(errno));		
 			}
 			if (chown(pts_name, 0, 0) == -1) {
 				log_errf(-1, __func__, "chown failed. ERR : %s",strerror(errno));			
 			}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 
 			starter_return(upfds, downfds, JOB_EXEC_RETRY, &sjr);
 		}
@@ -4021,9 +4078,14 @@ finish_exec(job *pjob)
 			FDMOVE(script_in); /* make sure descriptor > 2       */
 			if (script_in != 0) {
 				close(0);
+<<<<<<< HEAD
+				if (dup(script_in) == -1) 
+					log_errf(-1, __func__, "dup failed. ERR : %s",strerror(errno));			
+=======
 				if (dup(script_in) == -1) {
 					log_errf(-1, __func__, "dup failed. ERR : %s",strerror(errno));			
 				}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 				close(script_in);
 			}
 		}
@@ -5044,6 +5106,13 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 				(void) close(fd);
 
 			if (write(1, get_jattr_str(pjob, JOB_ATR_Cookie),
+<<<<<<< HEAD
+			      strlen(get_jattr_str(pjob, JOB_ATR_Cookie))) == -1) 
+				log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));			
+			if ( write(2, get_jattr_str(pjob, JOB_ATR_Cookie),
+			      strlen(get_jattr_str(pjob, JOB_ATR_Cookie))) == -1) 
+				log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));			
+=======
 			      strlen(get_jattr_str(pjob, JOB_ATR_Cookie))) == -1) {
 				log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));			
 				  }
@@ -5051,6 +5120,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 			      strlen(get_jattr_str(pjob, JOB_ATR_Cookie))) == -1) {
 				log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));			
 				  }
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		}
 	} else if (is_jattr_set(pjob, JOB_ATR_interactive) && get_jattr_long(pjob, JOB_ATR_interactive) > 0) {
 		/* interactive job, single node, write to pty */

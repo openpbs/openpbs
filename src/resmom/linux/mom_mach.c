@@ -218,6 +218,16 @@ proc_get_btime(void)
 		return;
 
 	while (!feof(fp)) {
+<<<<<<< HEAD
+		if (fscanf(fp, "%s", label) == EOF) 
+			log_errf(-1, __func__, "fscanf failed. ERR : %s", strerror(errno));
+		if (strcmp(label, "btime")) {
+			if (fscanf(fp, "%*[^\n]%*c") == EOF) 
+				log_errf(-1, __func__, "fscanf failed. ERR : %s", strerror(errno));				
+		} else {
+			if (fscanf(fp, "%u", &linux_time)) 
+				log_errf(-1, __func__, "fscanf failed. ERR : %s", strerror(errno));				
+=======
 		if (fscanf(fp, "%s", label) == EOF) {
 			log_errf(-1, __func__, "fscanf failed. ERR : %s", strerror(errno));
 		}
@@ -229,6 +239,7 @@ proc_get_btime(void)
 			if (fscanf(fp, "%u", &linux_time)) {
 				log_errf(-1, __func__, "fscanf failed. ERR : %s", strerror(errno));				
 			}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 			fclose(fp);
 			return;
 		}

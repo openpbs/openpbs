@@ -296,9 +296,14 @@ int pe_io_type;
 
 		if (fd_input != 0) {
 			(void) close(STDIN_FILENO);
+<<<<<<< HEAD
+			if (dup(fd_input) == -1) 
+				log_errf(-1, __func__, "dup failed. ERR : %s", strerror(errno));				
+=======
 			if (dup(fd_input) == -1) {
 				log_errf(-1, __func__, "dup failed. ERR : %s", strerror(errno));				
 			}
+>>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 			(void) close(fd_input);
 		}
 
