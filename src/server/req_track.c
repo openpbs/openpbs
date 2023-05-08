@@ -217,14 +217,8 @@ track_save(struct work_task *pwt)
 		return;
 	}
 
-<<<<<<< HEAD
 	if (write(fd, (char *) server.sv_track, server.sv_tracksize * sizeof(struct tracking)) == -1) 
 		log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));
-=======
-	if (write(fd, (char *) server.sv_track, server.sv_tracksize * sizeof(struct tracking)) == -1) {
-		log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 	(void) close(fd);
 	server.sv_trackmodifed = 0;
 	return;

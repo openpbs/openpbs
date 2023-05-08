@@ -97,28 +97,16 @@ daemon_protect(pid_t pid, enum PBS_Daemon_Protect action)
 	 */
 	snprintf(fname, MAXPATHLEN, oom_protect_new.oom_path, pid);
 	if ((fd = open(fname, O_WRONLY | O_TRUNC)) != -1) {
-<<<<<<< HEAD
 		if (write(fd, oom_protect_new.oom_value[(int) action], strlen(oom_protect_new.oom_value[(int) action])) == -1) 
 				log_errf(-1, __func__, "write failed. ERR: %s", strerror(errno));
-=======
-		if ( write(fd, oom_protect_new.oom_value[(int) action], strlen(oom_protect_new.oom_value[(int) action])) == -1) {
-				log_errf(-1, __func__, "write failed. ERR: %s", strerror(errno));
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 	} else {
 
 		/* failed to open "oom_score_adj", now try "oom_adj" */
 		/* found in older Linux kernels			     */
 		snprintf(fname, MAXPATHLEN, oom_protect_old.oom_path, pid);
 		if ((fd = open(fname, O_WRONLY | O_TRUNC)) != -1) {
-<<<<<<< HEAD
 			if (write(fd, oom_protect_old.oom_value[(int) action], strlen(oom_protect_old.oom_value[(int) action])) == -1) 
 				log_errf(-1, __func__, "write failed. ERR: %s", strerror(errno));
-=======
-			if (write(fd, oom_protect_old.oom_value[(int) action], strlen(oom_protect_old.oom_value[(int) action])) == -1) {
-				log_errf(-1, __func__, "write failed. ERR: %s", strerror(errno));
-			}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		}
 	}
 	if (fd != -1)

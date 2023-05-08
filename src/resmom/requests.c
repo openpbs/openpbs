@@ -346,14 +346,8 @@ fork_to_user(struct batch_request *preq, job *pjob)
 		/* used the good stuff cached in the job structure */
 		useruid = pjob->ji_qs.ji_un.ji_momt.ji_exuid;
 		usergid = pjob->ji_qs.ji_un.ji_momt.ji_exgid;
-<<<<<<< HEAD
 		if (chdir(pjob->ji_grpcache->gc_homedir) == -1) 
 			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
-=======
-		if (chdir(pjob->ji_grpcache->gc_homedir) == -1) {
-			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		user_rgid = pjob->ji_grpcache->gc_rgid;
 		/* Account ID used to be set her for Cray via acctid(). */
 	} else {
@@ -370,14 +364,8 @@ fork_to_user(struct batch_request *preq, job *pjob)
 				frk_err(PBSE_BADUSER, preq); /* no return */
 			usergid = grpp->gr_gid;
 		}
-<<<<<<< HEAD
 		if (chdir(pwdp->pw_dir) == -1)  /* change to user`s home directory */
 			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));
-=======
-		if (chdir(pwdp->pw_dir) == -1) { /* change to user`s home directory */
-			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 	}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
@@ -2192,14 +2180,8 @@ del_files(struct rq_cpyfile *rqcpf, job *pjob, char **pbadfile)
 			pbs_jobdir = jobdirname(rqcpf->rq_jobid, pjob->ji_grpcache->gc_homedir);
 		else
 			pbs_jobdir = jobdirname(rqcpf->rq_jobid, NULL);
-<<<<<<< HEAD
 		if (chdir(pbs_jobdir) == -1) 
 			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
-=======
-		if (chdir(pbs_jobdir) == -1) {
-			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 	}
 
 	pair = (struct rqfpair *) GET_NEXT(rqcpf->rq_pair);
@@ -3195,14 +3177,8 @@ req_cpyfile(struct batch_request *preq)
 
 	/* chdir to job pbs_jobdir directory if "sandbox=PRIVATE" mode is requested */
 	if (stage_inout.sandbox_private) {
-<<<<<<< HEAD
 		if (chdir(pbs_jobdir) == -1) 
 			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));			
-=======
-		if (chdir(pbs_jobdir) == -1) {
-			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));			
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 	}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
@@ -3257,14 +3233,8 @@ req_cpyfile(struct batch_request *preq)
 	if ((dir == STAGE_DIR_IN) && stage_inout.sandbox_private && stage_inout.bad_files) {
 		/* cd to user's home to be out of   */
 		/* the sandbox so it can be deleted */
-<<<<<<< HEAD
 		if (chdir(pwdp->pw_dir) == -1) 
 			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));			
-=======
-		if (chdir(pwdp->pw_dir) == -1) {
-			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));			
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid, 0);
 	}
 
@@ -3575,27 +3545,14 @@ mom_checkpoint_job(job *pjob, int abort)
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
 			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL) {
-<<<<<<< HEAD
 				if (chdir(jobdirname(pjob->ji_qs.ji_jobid, pwdp->pw_dir)) == -1) 
 					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));					
-=======
-				if (chdir(jobdirname(pjob->ji_qs.ji_jobid, pwdp->pw_dir)) == -1) {
-					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));					
-				}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 			}
 		} else {
 			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
-<<<<<<< HEAD
 				if (chdir(pwdp->pw_dir) == -1) 
 					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));
-=======
-				if (chdir(pwdp->pw_dir) == -1) {
-				log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));
-					
-				}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		}
 	}
 #endif
@@ -3638,14 +3595,8 @@ mom_checkpoint_job(job *pjob, int abort)
 	/* Checkpoint successful */
 	/* return to MOM's rightful lair */
 	if (cwdname) {
-<<<<<<< HEAD
 		if (chdir(cwdname) == -1) 
 			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
-=======
-		if (chdir(cwdname) == -1) {
-			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		free(cwdname);
 	}
 
@@ -3695,14 +3646,8 @@ errout:
 
 	/* return to MOM's rightful lair */
 	if (cwdname) {
-<<<<<<< HEAD
 		if (chdir(cwdname) == -1) 
 			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
-=======
-		if (chdir(cwdname) == -1) {
-			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		free(cwdname);
 	}
 
@@ -4160,27 +4105,14 @@ mom_restart_job(job *pjob)
 			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL) {
 				if (chdir(jobdirname(pjob->ji_qs.ji_jobid,
-<<<<<<< HEAD
 					save_actual_homedir(pwdp, pjob))) == -1) 
 					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));				
-=======
-					save_actual_homedir(pwdp, pjob))) == -1) {
-					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));				
-				}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 			}
 		} else {
 			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
-<<<<<<< HEAD
 				if (chdir(save_actual_homedir(pwdp, pjob)) == -1) 
 					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));
-=======
-				if (chdir(save_actual_homedir(pwdp, pjob)) == -1) {
-					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));
-				
-			}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		}
 	}
 #else
@@ -4190,14 +4122,8 @@ mom_restart_job(job *pjob)
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
 			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
-<<<<<<< HEAD
 				if (chdir(jobdirname(pjob->ji_qs.ji_jobid, pwdp->pw_dir)) == -1) 
 					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
-=======
-				if (chdir(jobdirname(pjob->ji_qs.ji_jobid, pwdp->pw_dir)) == -1) {
-					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
-			}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		} else {
 			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
@@ -4295,14 +4221,8 @@ done:
 
 	/* return to MOM's rightful lair */
 	if (cwdname) {
-<<<<<<< HEAD
 		if (chdir(cwdname) == -1) 
 			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
-=======
-		if (chdir(cwdname) == -1) {
-			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		free(cwdname);
 	}
 	return rserr;

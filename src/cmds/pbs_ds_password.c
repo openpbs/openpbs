@@ -327,14 +327,9 @@ change_ownership(char *path, char *userid)
 	char dirfile[MAXPATHLEN + 1];
 	struct stat stbuf;
 
-<<<<<<< HEAD
 	if (chown(path, pwent->pw_uid, (gid_t) -1) == -1) {
 		fprintf(stderr, "%s : chown failed : ERR : %s\n"
 				,__func__, strerror(errno));
-=======
-	if ( chown(path, pwent->pw_uid, (gid_t) -1) == -1) {
-		fprintf(stderr, "%s : chown failed : ERR : %s\n",__func__, strerror(errno));
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		return -1;
 	}
 	dir = opendir(path);
@@ -349,12 +344,9 @@ change_ownership(char *path, char *userid)
 
 		sprintf(dirfile, "%s/%s", path, pdirent->d_name);
 		if (chown(dirfile, pwent->pw_uid, (gid_t) -1) == -1) {
-<<<<<<< HEAD
 			fprintf(stderr, "%s : chown failed : ERR : %s\n"
 					,__func__, strerror(errno));
-=======
 			fprintf(stderr, "%s : chown failed : ERR : %s\n",__func__, strerror(errno));
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 			continue;
 		}
 		stat(dirfile, &stbuf);

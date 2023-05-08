@@ -1220,14 +1220,8 @@ main(int argc, char **argv)
 
 				snprintf(schedcmd, sizeof(schedcmd), "%s/sbin/pbs_sched &", pbs_conf.pbs_exec_path);
 				snprintf(log_buffer, sizeof(log_buffer), "starting scheduler: %s", schedcmd);
-<<<<<<< HEAD
 				if (system(schedcmd) == -1) 
 					log_errf(-1, __func__, "system(%s) failed. ERR : %s",schedcmd, strerror(errno));
-=======
-				if (system(schedcmd) == -1) {
-					log_errf(-1, __func__, "system(%s) failed. ERR : %s",schedcmd, strerror(errno));
-				}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 
 				log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
 					  PBS_EVENTCLASS_SERVER, LOG_CRIT,
@@ -1680,23 +1674,12 @@ lock_out(int fds, int op)
 		if (fcntl(fds, F_SETLK, &flock) != -1) {
 			if (op == F_WRLCK) {
 				/* if write-lock, record pid in file */
-<<<<<<< HEAD
-				if (ftruncate(fds, (off_t) 0) == -1) 
+				if (ftruncate(fds, (off_t) 0) == -1)
 					log_errf(-1, __func__, "ftruncate failed. ERR : %s",strerror(errno));
 
 				(void) sprintf(buf, "%d\n", getpid());
 				if (write(fds, buf, strlen(buf)) == -1) 
 					log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));
-=======
-				if (ftruncate(fds, (off_t) 0) == -1) {
-					log_errf(-1, __func__, "ftruncate failed. ERR : %s",strerror(errno));
-				}
-
-				(void) sprintf(buf, "%d\n", getpid());
-				if (write(fds, buf, strlen(buf)) == -1) {
-					log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));
-				}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 			}
 			return;
 		}

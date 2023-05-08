@@ -7752,24 +7752,12 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 	}
-<<<<<<< HEAD
 	if (freopen(NULL_DEVICE, "r", stdin) == NULL) 
 		log_errf(-1, __func__, "freopen failed. ERR : %s", strerror(errno));
 	if (freopen(NULL_DEVICE, "w", stdout) == NULL) 
 		log_errf(-1, __func__, "freopen failed. ERR : %s", strerror(errno));	
 	if (freopen(NULL_DEVICE, "w", stderr) == NULL) 
 		log_errf(-1, __func__, "freopen failed. ERR : %s", strerror(errno));		
-=======
-	if (freopen(NULL_DEVICE, "r", stdin) == NULL) {
-		log_errf(-1, __func__, "freopen failed. ERR : %s", strerror(errno));
-	}
-	if (freopen(NULL_DEVICE, "w", stdout) == NULL) {
-		log_errf(-1, __func__, "freopen failed. ERR : %s", strerror(errno));	
-	}
-	if (freopen(NULL_DEVICE, "w", stderr) == NULL) {
-		log_errf(-1, __func__, "freopen failed. ERR : %s", strerror(errno));		
-	}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 #else  /* DEBUG */
 	setvbuf(stdout, NULL, _IONBF, 0);
 	setvbuf(stderr, NULL, _IONBF, 0);
@@ -7781,19 +7769,10 @@ main(int argc, char *argv[])
 
 	mom_pid = getpid();
 	sprintf(log_buffer, "%d\n", mom_pid);
-<<<<<<< HEAD
 	if (ftruncate(lockfds, 0) == -1) 
 		log_errf(-1, __func__, "ftruncate failed. ERR : %s", strerror(errno));		
 	if (write(lockfds, log_buffer, strlen(log_buffer)) == -1) 
 		log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));		
-=======
-	if (ftruncate(lockfds, 0) == -1) {
-		log_errf(-1, __func__, "ftruncate failed. ERR : %s", strerror(errno));		
-	}
-	if (write(lockfds, log_buffer, strlen(log_buffer)) == -1) {
-		log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));		
-	}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 
 #ifndef WIN32 /* ------------------------------------------------------------*/
 
@@ -8821,19 +8800,10 @@ main(int argc, char *argv[])
 										  pjob->ji_qs.ji_jobid, log_buffer);
 								} else {
 									if (write(fd, get_jattr_str(pjob, JOB_ATR_Cookie),
-<<<<<<< HEAD
 									      strlen(get_jattr_str(pjob, JOB_ATR_Cookie))) == -1) 
 											log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));					
 									if (write(fd, kill_msg, strlen(kill_msg)) == -1) 
 										log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));
-=======
-									      strlen(get_jattr_str(pjob, JOB_ATR_Cookie))) == -1) {
-											log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));					
-										  }
-									if (write(fd, kill_msg, strlen(kill_msg)) == -1) {
-										log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));
-									}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 									(void) close(fd);
 								}
 							}
@@ -9587,14 +9557,8 @@ mom_topology(void)
 	int pid;
 
 #ifndef WIN32
-<<<<<<< HEAD
 	if (pipe(fd) == -1) 
 		log_errf(-1, __func__, "pipe API failed. ERR : %s", strerror(errno));
-=======
-	if (pipe(fd) == -1) {
-		log_errf(-1, __func__, "pipe API failed. ERR : %s", strerror(errno));
-	}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 
 	if ((pid = fork()) == -1) {
 		log_err(PBSE_SYSTEM, __func__, "fork failed");
@@ -9631,24 +9595,12 @@ mom_topology(void)
 		if (ret != 0)
 			ret = -1;
 
-<<<<<<< HEAD
 		if (write(fd[1], &ret, (sizeof(ret))) == -1) 
 			log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));
 		if (write(fd[1], &xmllen, (sizeof(xmllen))) == -1) 
 			log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));			
 		if (write(fd[1], xmlbuf, xmllen) == -1) 
 			log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));			
-=======
-		if (write(fd[1], &ret, (sizeof(ret))) == -1) {
-			log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));
-		}
-		if (write(fd[1], &xmllen, (sizeof(xmllen))) == -1) {
-			log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));			
-		}
-		if (write(fd[1], xmlbuf, xmllen) == -1) {
-			log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));			
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 
 		hwloc_free_xmlbuffer(topology, xmlbuf);
 		hwloc_topology_destroy(topology);
@@ -9657,32 +9609,17 @@ mom_topology(void)
 	} else {
 		close(fd[1]);
 
-<<<<<<< HEAD
 		if (read(fd[0], &ret, sizeof(ret)) == -1) 
 			log_errf(-1, __func__, "read failed. ERR : %s", strerror(errno));
 		if (read(fd[0], &xmllen, sizeof(xmllen)) == -1) 
 			log_errf(-1, __func__, "read failed. ERR : %s", strerror(errno));			
-=======
-		if (read(fd[0], &ret, sizeof(ret)) == -1) {
-			log_errf(-1, __func__, "read failed. ERR : %s", strerror(errno));
-		}
-		if (read(fd[0], &xmllen, sizeof(xmllen)) == -1) {
-			log_errf(-1, __func__, "read failed. ERR : %s", strerror(errno));			
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 		if ((xmlbuf = malloc(xmllen + 1)) == NULL) {
 			log_err(PBSE_SYSTEM, __func__, "malloc failed");
 			return;
 		}
 		xmlbuf[xmllen] = '\0';
-<<<<<<< HEAD
 		if (read(fd[0], xmlbuf, xmllen) == -1) 
 			log_errf(-1, __func__, "read failed. ERR : %s", strerror(errno));
-=======
-		if (read(fd[0], xmlbuf, xmllen) == -1) {
-			log_errf(-1, __func__, "read failed. ERR : %s", strerror(errno));
-		}
->>>>>>> 1f914485208460cd8231cd853664f3a839138d7f
 
 		close(fd[0]);
 
