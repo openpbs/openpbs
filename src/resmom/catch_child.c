@@ -791,10 +791,12 @@ scan_for_exiting(void)
 		if (pjob->ji_grpcache) {
 			if ((is_jattr_set(pjob, JOB_ATR_sandbox)) && (strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 				/* in "sandbox=PRIVATE" mode so run epilogue in PBS_JOBDIR */
-				(void) chdir(jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
+				if (chdir(jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir)) == -1) 
+					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));
 			} else {
 				/* else run in usr's home */
-				(void) chdir(pjob->ji_grpcache->gc_homedir);
+				if (chdir(pjob->ji_grpcache->gc_homedir) == -1) 
+					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));
 			}
 		}
 
@@ -819,7 +821,8 @@ scan_for_exiting(void)
 
 		send_obit(pjob, i);
 		/* restore MOM's home if we are foreground */
-		(void) chdir(mom_home);
+		if (chdir(mom_home) == -1) 
+			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));
 	}
 	if (pjob == NULL)
 		exiting_tasks = 0; /* went through all jobs */

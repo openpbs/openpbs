@@ -156,36 +156,36 @@ class TestPbsReliableJobStartup(TestFunctional):
                                starttime=self.stime)
 
         self.server.accounting_match(
-            msg=".*%s;%s.*exec_host=%s" % (atype, jid, exec_host),
+            msg=r".*%s;%s.*exec_host=%s" % (atype, jid, exec_host),
             regexp=True, n="ALL", max_attempts=3, starttime=self.stime)
 
         self.server.accounting_match(
-            msg=".*%s;%s.*exec_vnode=%s" % (atype, jid, exec_vnode),
+            msg=r".*%s;%s.*exec_vnode=%s" % (atype, jid, exec_vnode),
             regexp=True, n="ALL", max_attempts=3, starttime=self.stime)
 
         self.server.accounting_match(
-            msg=".*%s;%s.*Resource_List\.mem=%s" % (atype, jid,  mem),
+            msg=r".*%s;%s.*Resource_List\.mem=%s" % (atype, jid,  mem),
             regexp=True, n="ALL", max_attempts=3, starttime=self.stime)
 
         self.server.accounting_match(
-            msg=".*%s;%s.*Resource_List\.ncpus=%d" % (atype, jid, ncpus),
+            msg=r".*%s;%s.*Resource_List\.ncpus=%d" % (atype, jid, ncpus),
             regexp=True, n="ALL", max_attempts=3, starttime=self.stime)
 
         self.server.accounting_match(
-            msg=".*%s;%s.*Resource_List\.nodect=%d" % (atype, jid, nodect),
+            msg=r".*%s;%s.*Resource_List\.nodect=%d" % (atype, jid, nodect),
             regexp=True, n="ALL", max_attempts=3, starttime=self.stime)
 
         self.server.accounting_match(
-            msg=".*%s;%s.*Resource_List\.place=%s" % (atype, jid, place),
+            msg=r".*%s;%s.*Resource_List\.place=%s" % (atype, jid, place),
             regexp=True, n="ALL", max_attempts=3, starttime=self.stime)
 
         self.server.accounting_match(
-            msg=".*%s;%s.*Resource_List\.select=%s" % (atype, jid, select),
+            msg=r".*%s;%s.*Resource_List\.select=%s" % (atype, jid, select),
             regexp=True, n="ALL", max_attempts=3, starttime=self.stime)
 
         if (atype != 'c') and (atype != 'S') and (atype != 's'):
             self.server.accounting_match(
-                msg=".*%s;%s.*resources_used\." % (atype, jid),
+                msg=r".*%s;%s.*resources_used\." % (atype, jid),
                 regexp=True, n="ALL", max_attempts=3, starttime=self.stime)
 
     def match_vnode_status(self, vnode_list, state, jobs=None, ncpus=None,
@@ -380,18 +380,19 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(40))\\\")"'
             "(%s:ncpus=2:mem=2097152kb)+" % (self.nC,) + \
             "(%s:mem=1048576kb:ncpus=1+" % (self.nE,) + \
             "%s:mem=1048576kb:ncpus=1)" % (self.nEv0,)
-        self.job1_isel_esc = self.job1_iselect.replace("+", "\+")
+        self.job1_isel_esc = self.job1_iselect.replace(r"+", r"\+")
         self.job1_iexec_host_esc = self.job1_iexec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            r"*", r"\*").replace(r"[", r"\[").replace(r"]", r"\]").replace(
+                    r"+", r"\+")
         self.job1_iexec_vnode_esc = self.job1_iexec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            r"[", r"\[").replace(r"]", r"\]").replace(r"(", r"\(").replace(
+            r")", r"\)").replace(r"+", r"\+")
 
         # expected values version 1 upon successful job launch
         self.job1_select = \
             "1:ncpus=3:mem=2gb+1:ncpus=3:mem=2gb+1:ncpus=2:mem=2gb"
         self.job1_schedselect = self.job1_select
-        self.job1_exec_host = "%s/0*0+%s/0*3+%s/0*0" % (
+        self.job1_exec_host = r"%s/0*0+%s/0*3+%s/0*0" % (
             self.nA, self.nD, self.nE)
         self.job1_exec_vnode = \
             "(%s:mem=1048576kb:ncpus=1+" % (self.nAv0,) + \
@@ -401,18 +402,19 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(40))\\\")"'
             "(%s:mem=1048576kb:ncpus=1+" % (self.nE,) + \
             "%s:mem=1048576kb:ncpus=1)" % (self.nEv0,)
 
-        self.job1_sel_esc = self.job1_select.replace("+", "\+")
+        self.job1_sel_esc = self.job1_select.replace(r"+", r"\+")
         self.job1_exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            r"*", r"\*").replace(r"[", r"\[").replace(r"]", r"\]").replace(
+                    r"+", r"\+")
         self.job1_exec_vnode_esc = self.job1_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            r"[", r"\[").replace(r"]", r"\]").replace(r"(", r"\(").replace(
+            r")", r"\)").replace(r"+", r"\+")
 
         # expected values version 2 upon successful job launch
         self.job1v2_select = \
-            "1:ncpus=3:mem=2gb+1:ncpus=3:mem=2gb+1:ncpus=2:mem=2gb"
+            r"1:ncpus=3:mem=2gb+1:ncpus=3:mem=2gb+1:ncpus=2:mem=2gb"
         self.job1v2_schedselect = self.job1v2_select
-        self.job1v2_exec_host = "%s/0*0+%s/0*3+%s/0*2" % (
+        self.job1v2_exec_host = r"%s/0*0+%s/0*3+%s/0*2" % (
             self.nA, self.nD, self.nC)
         self.job1v2_exec_vnode = \
             "(%s:mem=1048576kb:ncpus=1+" % (self.nAv0,) + \
@@ -421,12 +423,13 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(40))\\\")"'
             "(%s:ncpus=3:mem=2097152kb)+" % (self.nD,) + \
             "(%s:ncpus=2:mem=2097152kb)" % (self.nC,)
 
-        self.job1v2_sel_esc = self.job1v2_select.replace("+", "\+")
+        self.job1v2_sel_esc = self.job1v2_select.replace(r"+", r"\+")
         self.job1v2_exec_host_esc = self.job1v2_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            r"*", r"\*").replace(r"[", r"\[").replace(r"]", r"\]").replace(
+                    r"+", r"\+")
         self.job1v2_exec_vnode_esc = self.job1v2_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            r"[", r"\[").replace(r"]", r"\]").replace(r"(", r"\(").replace(
+            r")", r"\)").replace(r"+", r"\+")
 
         # expected values version 3 upon successful job launch
         self.job1v3_select = \
@@ -444,12 +447,13 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(40))\\\")"'
             "(%s:mem=1048576kb:ncpus=1+" % (self.nE,) + \
             "%s:mem=1048576kb:ncpus=1)" % (self.nEv0,)
 
-        self.job1v3_sel_esc = self.job1v3_select.replace("+", "\+")
+        self.job1v3_sel_esc = self.job1v3_select.replace("+", r"\+")
         self.job1v3_exec_host_esc = self.job1v3_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job1v3_exec_vnode_esc = self.job1v3_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
         # expected values version 4 upon successful job launch
         self.job1v4_select = \
@@ -466,12 +470,13 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(40))\\\")"'
             "%s:ncpus=1)+" % (self.nBv1,) + \
             "(%s:ncpus=2:mem=2097152kb)" % (self.nD,)
 
-        self.job1v4_sel_esc = self.job1v4_select.replace("+", "\+")
+        self.job1v4_sel_esc = self.job1v4_select.replace("+", r"\+")
         self.job1v4_exec_host_esc = self.job1v4_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job1v4_exec_vnode_esc = self.job1v4_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
         # expected values version 5 upon successful job launch
         self.job1v5_select = \
@@ -488,12 +493,13 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(40))\\\")"'
             "%s:ncpus=1)+" % (self.nBv1,) + \
             "(%s:ncpus=2:mem=2097152kb)" % (self.nC,)
 
-        self.job1v5_sel_esc = self.job1v5_select.replace("+", "\+")
+        self.job1v5_sel_esc = self.job1v5_select.replace("+", r"\+")
         self.job1v5_exec_host_esc = self.job1v5_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job1v5_exec_vnode_esc = self.job1v5_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
         # expected values version 6 upon successful job launch
         self.job1v6_select = \
@@ -512,12 +518,13 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(40))\\\")"'
             "(%s:ncpus=2:mem=2097152kb)+" % (self.nC,) + \
             "(%s:mem=1048576kb:ncpus=1)" % (self.nE,)
 
-        self.job1v6_sel_esc = self.job1v6_select.replace("+", "\+")
+        self.job1v6_sel_esc = self.job1v6_select.replace("+", r"\+")
         self.job1v6_exec_host_esc = self.job1v6_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job1v6_exec_vnode_esc = self.job1v6_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
         self.script['job1'] = """
 #PBS -l select=%s
@@ -580,22 +587,25 @@ done
             "(%s:ncpus=1:mem=1048576kb)+" % (self.nC,) + \
             "(%s:ncpus=1:mem=1048576kb)+" % (self.nD,) + \
             "(%s:ncpus=1:mem=1048576kb)" % (self.nE,)
-        self.jobA_isel_esc = self.jobA_iselect.replace("+", "\+")
+        self.jobA_isel_esc = self.jobA_iselect.replace("+", r"\+")
         self.jobA_iexec_host1_esc = self.jobA_iexec_host1.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.jobA_iexec_host2_esc = self.jobA_iexec_host2.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.jobA_iexec_host3_esc = self.jobA_iexec_host3.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.jobA_iexec_vnode1_esc = self.jobA_iexec_vnode1.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
         self.jobA_iexec_vnode2_esc = self.jobA_iexec_vnode2.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
         self.jobA_iexec_vnode3_esc = self.jobA_iexec_vnode3.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
         # expected values version 1 upon successful job launch
         self.jobA_select = \
@@ -620,22 +630,25 @@ done
             "(%s:ncpus=1:mem=1048576kb)+" % (self.nBv1,) + \
             "(%s:ncpus=1:mem=1048576kb)" % (self.nD,)
 
-        self.jobA_sel_esc = self.jobA_select.replace("+", "\+")
+        self.jobA_sel_esc = self.jobA_select.replace("+", r"\+")
         self.jobA_exec_host1_esc = self.jobA_exec_host1.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.jobA_exec_host2_esc = self.jobA_exec_host2.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.jobA_exec_host3_esc = self.jobA_exec_host3.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.jobA_exec_vnode1_esc = self.jobA_exec_vnode1.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
         self.jobA_exec_vnode2_esc = self.jobA_exec_vnode2.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
         self.jobA_exec_vnode3_esc = self.jobA_exec_vnode3.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
         self.script['jobA'] = """
 #PBS -J 1-3
 #PBS -l select=%s
@@ -762,12 +775,13 @@ done
             "(%s:ncpus=0:mem=2097152kb)+" % (self.nC,) + \
             "(%s:mem=1048576kb:ncpus=0+" % (self.nE,) + \
             "%s:mem=1048576kb)" % (self.nEv0,)
-        self.job2_isel_esc = self.job2_iselect.replace("+", "\+")
+        self.job2_isel_esc = self.job2_iselect.replace("+", r"\+")
         self.job2_iexec_host_esc = self.job2_iexec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job2_iexec_vnode_esc = self.job2_iexec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
         # expected values version upon successful job launch
         self.job2_select = \
@@ -788,12 +802,13 @@ done
             "(%s:mem=1048576kb+" % (self.nE,) + \
             "%s:mem=1048576kb)" % (self.nEv0,)
 
-        self.job2_sel_esc = self.job2_select.replace("+", "\+")
+        self.job2_sel_esc = self.job2_select.replace("+", r"\+")
         self.job2_exec_host_esc = self.job2_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job2_exec_vnode_esc = self.job2_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
         self.script['job2'] = \
             "#PBS -l select=" + self.job2_oselect + "\n" + \
@@ -844,19 +859,21 @@ done
             "(%s:mem=1048576kb:ncpus=1+" % (self.nE,) + \
             "%s:mem=1048576kb:ncpus=1)" % (self.nEv0,)
 
-        self.job3_sel_esc = self.job3_select.replace("+", "\+")
+        self.job3_sel_esc = self.job3_select.replace("+", r"\+")
         self.job3_exec_host_esc = self.job3_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job3_exec_vnode_esc = self.job3_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
-        self.job3_isel_esc = self.job3_iselect.replace("+", "\+")
+        self.job3_isel_esc = self.job3_iselect.replace("+", r"\+")
         self.job3_iexec_host_esc = self.job3_iexec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job3_iexec_vnode_esc = self.job3_iexec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
         self.script['job3'] = \
             "#PBS -l select=" + self.job3_oselect + "\n" + \
@@ -905,19 +922,21 @@ done
             "#PBS -l place=" + self.job4_place + "\n" + \
             SLEEP_CMD + " 300\n"
 
-        self.job4_sel_esc = self.job4_select.replace("+", "\+")
+        self.job4_sel_esc = self.job4_select.replace("+", r"\+")
         self.job4_exec_host_esc = self.job4_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job4_exec_vnode_esc = self.job4_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
-        self.job4_isel_esc = self.job4_iselect.replace("+", "\+")
+        self.job4_isel_esc = self.job4_iselect.replace("+", r"\+")
         self.job4_iexec_host_esc = self.job4_iexec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job4_iexec_vnode_esc = self.job4_iexec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
         self.job5_oselect = "ncpus=3:mem=2gb+ncpus=3:mem=2gb+ncpus=2:mem=2gb"
         self.job5_place = "free"
@@ -961,19 +980,21 @@ done
             "#PBS -l place=" + self.job5_place + "\n" + \
             SLEEP_CMD + " 300\n"
 
-        self.job5_sel_esc = self.job5_select.replace("+", "\+")
+        self.job5_sel_esc = self.job5_select.replace("+", r"\+")
         self.job5_exec_host_esc = self.job5_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job5_exec_vnode_esc = self.job5_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
-        self.job5_isel_esc = self.job5_iselect.replace("+", "\+")
+        self.job5_isel_esc = self.job5_iselect.replace("+", r"\+")
         self.job5_iexec_host_esc = self.job5_iexec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job5_iexec_vnode_esc = self.job5_iexec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
         # queuejob hooks used throughout the test
         self.qjob_hook_body = """
@@ -5421,8 +5442,8 @@ pbs_tmrsh %s hostname
             sjid = sub_jobs[idx]
             # Verify mom_logs
             sjid_esc = sjid.replace(
-                "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-                ")", "\)").replace("+", "\+")
+                "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+                ")", r"\)").replace("+", r"\+")
             self.momA.log_match(
                 "Job;%s;job_start_error.+from node %s.+could not JOIN_JOB" % (
                     sjid_esc, self.hostC), n=10, regexp=True)

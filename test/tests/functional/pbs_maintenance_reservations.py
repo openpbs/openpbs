@@ -447,12 +447,13 @@ class TestMaintenanceReservations(TestFunctional):
         if _mom.is_cpuset_mom():
             n = self.server.status(NODE)
             cpuset_nodes = [i['id'] for i in n if i['Mom'] == _mom.hostname]
-            reg_str = '\(%s\[0\]:ncpus=[0-9]+\)' % _host
+            reg_str = r'\(%s\[0\]:ncpus=[0-9]+\)' % _host
             if (len(cpuset_nodes) - 1) > 1:
-                for i in range(1, len(cpuset_nodes)-1):
-                    reg_str += '\+' + '\(%s\[%s\]:ncpus=[0-9]+\)' % (_host, i)
+                for i in range(1, len(cpuset_nodes) - 1):
+                    reg_str += r'\+' + \
+                        r'\(%s\[%s\]:ncpus=[0-9]+\)' % (_host, i)
         else:
-            reg_str = "\(%s:ncpus=[0-9]+\)" % _host
+            reg_str = r"\(%s:ncpus=[0-9]+\)" % _host
         return reg_str
 
     @requirements(num_moms=2)
@@ -479,14 +480,14 @@ class TestMaintenanceReservations(TestFunctional):
 
         rid = self.server.submit(r)
 
-        possibility1 = reg_expr_hostA + '\+' + reg_expr_hostB
-        possibility2 = reg_expr_hostB + '\+' + reg_expr_hostA
+        possibility1 = reg_expr_hostA + r'\+' + reg_expr_hostB
+        possibility2 = reg_expr_hostB + r'\+' + reg_expr_hostA
 
         resv_nodes_re = "%s|%s" % (possibility1, possibility2)
 
-        possibility1 = "host=%s:ncpus=[0-9]+\+host=%s:ncpus=[0-9]+" \
+        possibility1 = r"host=%s:ncpus=[0-9]+\+host=%s:ncpus=[0-9]+" \
                        % (self.momA.shortname, self.momB.shortname)
-        possibility2 = "host=%s:ncpus=[0-9]+\+host=%s:ncpus=[0-9]+" \
+        possibility2 = r"host=%s:ncpus=[0-9]+\+host=%s:ncpus=[0-9]+" \
                        % (self.momB.shortname, self.momA.shortname)
         select_re = "%s|%s" % (possibility1, possibility2)
 

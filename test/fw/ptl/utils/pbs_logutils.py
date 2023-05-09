@@ -1290,7 +1290,7 @@ class PBSSchedulerLog(PBSLogAnalyzer):
                     self.cycle.calendarduration[jid] = \
                         (tm - self.cycle.consider[jid])
                 elif '[' in jid:
-                    arrjid = re.sub("(\[\d+\])", '[]', jid)
+                    arrjid = re.sub(r"(\[\d+\])", '[]', jid)
                     if arrjid in self.cycle.consider:
                         self.cycle.consider[jid] = self.cycle.consider[arrjid]
                         self.cycle.calendarduration[jid] = \

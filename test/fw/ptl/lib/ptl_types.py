@@ -863,8 +863,8 @@ class PbsTypeFGCLimit(object):
     """
     FGC limit entry, of the form:
 
-    ``<limtype>[.<resource>]=\[<entity_type>:<entity_name>=
-    <entity_value>\]``
+    ``<limtype>[.<resource>]=[<entity_type>:<entity_name>=
+    <entity_value>]``
 
     :param attr: FGC limit attribute
     :type attr: str

@@ -346,7 +346,8 @@ fork_to_user(struct batch_request *preq, job *pjob)
 		/* used the good stuff cached in the job structure */
 		useruid = pjob->ji_qs.ji_un.ji_momt.ji_exuid;
 		usergid = pjob->ji_qs.ji_un.ji_momt.ji_exgid;
-		(void) chdir(pjob->ji_grpcache->gc_homedir);
+		if (chdir(pjob->ji_grpcache->gc_homedir) == -1) 
+			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
 		user_rgid = pjob->ji_grpcache->gc_rgid;
 		/* Account ID used to be set her for Cray via acctid(). */
 	} else {
@@ -363,7 +364,8 @@ fork_to_user(struct batch_request *preq, job *pjob)
 				frk_err(PBSE_BADUSER, preq); /* no return */
 			usergid = grpp->gr_gid;
 		}
-		(void) chdir(pwdp->pw_dir); /* change to user`s home directory */
+		if (chdir(pwdp->pw_dir) == -1)  /* change to user`s home directory */
+			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));
 	}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
@@ -2178,7 +2180,8 @@ del_files(struct rq_cpyfile *rqcpf, job *pjob, char **pbadfile)
 			pbs_jobdir = jobdirname(rqcpf->rq_jobid, pjob->ji_grpcache->gc_homedir);
 		else
 			pbs_jobdir = jobdirname(rqcpf->rq_jobid, NULL);
-		chdir(pbs_jobdir);
+		if (chdir(pbs_jobdir) == -1) 
+			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
 	}
 
 	pair = (struct rqfpair *) GET_NEXT(rqcpf->rq_pair);
@@ -3174,7 +3177,8 @@ req_cpyfile(struct batch_request *preq)
 
 	/* chdir to job pbs_jobdir directory if "sandbox=PRIVATE" mode is requested */
 	if (stage_inout.sandbox_private) {
-		chdir(pbs_jobdir);
+		if (chdir(pbs_jobdir) == -1) 
+			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));			
 	}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
@@ -3229,7 +3233,8 @@ req_cpyfile(struct batch_request *preq)
 	if ((dir == STAGE_DIR_IN) && stage_inout.sandbox_private && stage_inout.bad_files) {
 		/* cd to user's home to be out of   */
 		/* the sandbox so it can be deleted */
-		chdir(pwdp->pw_dir);
+		if (chdir(pwdp->pw_dir) == -1) 
+			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));			
 		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid, 0);
 	}
 
@@ -3540,12 +3545,14 @@ mom_checkpoint_job(job *pjob, int abort)
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
 			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL) {
-				(void) chdir(jobdirname(pjob->ji_qs.ji_jobid, pwdp->pw_dir));
+				if (chdir(jobdirname(pjob->ji_qs.ji_jobid, pwdp->pw_dir)) == -1) 
+					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));					
 			}
 		} else {
 			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
-				chdir(pwdp->pw_dir);
+				if (chdir(pwdp->pw_dir) == -1) 
+					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));
 		}
 	}
 #endif
@@ -3588,7 +3595,8 @@ mom_checkpoint_job(job *pjob, int abort)
 	/* Checkpoint successful */
 	/* return to MOM's rightful lair */
 	if (cwdname) {
-		chdir(cwdname);
+		if (chdir(cwdname) == -1) 
+			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
 		free(cwdname);
 	}
 
@@ -3638,7 +3646,8 @@ errout:
 
 	/* return to MOM's rightful lair */
 	if (cwdname) {
-		chdir(cwdname);
+		if (chdir(cwdname) == -1) 
+			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
 		free(cwdname);
 	}
 
@@ -4095,13 +4104,15 @@ mom_restart_job(job *pjob)
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
 			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL) {
-				(void) chdir(jobdirname(pjob->ji_qs.ji_jobid,
-							save_actual_homedir(pwdp, pjob)));
+				if (chdir(jobdirname(pjob->ji_qs.ji_jobid,
+					save_actual_homedir(pwdp, pjob))) == -1) 
+					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));				
 			}
 		} else {
 			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
-				chdir(save_actual_homedir(pwdp, pjob));
+				if (chdir(save_actual_homedir(pwdp, pjob)) == -1) 
+					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));
 		}
 	}
 #else
@@ -4111,11 +4122,14 @@ mom_restart_job(job *pjob)
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
 			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
-				(void) chdir(jobdirname(pjob->ji_qs.ji_jobid, pwdp->pw_dir));
+				if (chdir(jobdirname(pjob->ji_qs.ji_jobid, pwdp->pw_dir)) == -1) 
+					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
 		} else {
 			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
-				chdir(pwdp->pw_dir);
+				if (chdir(pwdp->pw_dir) == -1) {
+					log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));			
+			}
 		}
 	}
 #endif
@@ -4207,7 +4221,8 @@ done:
 
 	/* return to MOM's rightful lair */
 	if (cwdname) {
-		chdir(cwdname);
+		if (chdir(cwdname) == -1) 
+			log_errf(-1, __func__, "chdir failed. ERR : %s", strerror(errno));		
 		free(cwdname);
 	}
 	return rserr;

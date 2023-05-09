@@ -187,7 +187,10 @@ read_password(char *passwd)
 	if (system("stty -echo") != 0)
 		return -1;
 
-	fgets(passwd, MAX_PASSWORD_LEN, stdin);
+	if (fgets(passwd, MAX_PASSWORD_LEN, stdin) == NULL) {
+		fprintf(stderr, "%s : fgets failed", __func__);
+		return -1;
+	}
 
 	if (system("stty echo") != 0)
 		return -1;
@@ -324,7 +327,11 @@ change_ownership(char *path, char *userid)
 	char dirfile[MAXPATHLEN + 1];
 	struct stat stbuf;
 
-	chown(path, pwent->pw_uid, (gid_t) -1);
+	if (chown(path, pwent->pw_uid, (gid_t) -1) == -1) {
+		fprintf(stderr, "%s : chown failed : ERR : %s\n"
+				,__func__, strerror(errno));
+		return -1;
+	}
 	dir = opendir(path);
 	if (dir == NULL) {
 		return -1;
@@ -336,7 +343,12 @@ change_ownership(char *path, char *userid)
 			continue;
 
 		sprintf(dirfile, "%s/%s", path, pdirent->d_name);
-		chown(dirfile, pwent->pw_uid, (gid_t) -1);
+		if (chown(dirfile, pwent->pw_uid, (gid_t) -1) == -1) {
+			fprintf(stderr, "%s : chown failed : ERR : %s\n"
+					,__func__, strerror(errno));
+			fprintf(stderr, "%s : chown failed : ERR : %s\n",__func__, strerror(errno));
+			continue;
+		}
 		stat(dirfile, &stbuf);
 		if (stbuf.st_mode & S_IFDIR) {
 			change_ownership(dirfile, userid);

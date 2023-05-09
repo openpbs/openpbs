@@ -557,7 +557,8 @@ main(int argc, char *argv[])
 						(void) close(fp);
 						return 1;
 					}
-					read(fp, (char *) ajtrk + sizeof(xs), xs - sizeof(xs));
+					if (read(fp, (char *) ajtrk + sizeof(xs), xs - sizeof(xs)) == -1) 
+						fprintf(stderr, "read failed, ERR = %s\n", strerror(errno));
 					free(ajtrk);
 				}
 			}
