@@ -171,7 +171,9 @@ class TestQdel(TestFunctional):
         and running jobs in the list.
         """
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'job_history_enable': 'True'})
+        self.server.manager(
+            MGR_CMD_SET, SERVER, {
+                'job_history_enable': 'True'})
         try:
             j = Job(TEST_USER)
             j.set_sleep_time(5)
@@ -194,11 +196,11 @@ class TestQdel(TestFunctional):
         except PbsDeleteError as e:
             self.assertEqual("qdel: Unknown Job Id " + unknown_jid, e.msg[0])
             self.server.expect(JOB, {'job_state': 'F'}, id=stripped_jid,
-                           extend='x')
+                               extend='x')
             self.server.expect(JOB, {'job_state': 'F'}, id=running_jid,
-                           extend='x')
+                               extend='x')
             self.server.expect(JOB, {'job_state': 'F'}, id=queued_jid,
-                           extend='x')
+                               extend='x')
 
     def test_qdel_with_duplicate_jobids_in_list(self):
         """
@@ -262,13 +264,13 @@ class TestQdel(TestFunctional):
         """
         Test server crash with overlaping array jobs
         """
-        j = Job(TEST_USER,{
+        j = Job(TEST_USER, {
             ATTR_J: '1-20', 'Resource_List.select': 'ncpus=1'})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'B'}, jid)
         subjob1 = jid.replace('[]', '[1-6]')
         subjob2 = jid.replace('[]', '[5-8]')
-        jid_list = [subjob1,subjob2]
+        jid_list = [subjob1, subjob2]
         self.server.delete(jid_list)
         rv = self.server.isUp()
         self.assertTrue(rv, "Server crashed")
