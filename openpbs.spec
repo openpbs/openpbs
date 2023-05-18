@@ -44,7 +44,7 @@
 %endif
 
 %if !%{defined pbs_version}
-%define pbs_version 20.0.0
+%define pbs_version 22.05.11
 %endif
 
 %if !%{defined pbs_release}
@@ -466,7 +466,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %{pbs_prefix}/*
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_rcp
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_iff
-%attr(644, root, root) %{pbs_prefix}/lib*/libpbs.la
+#%attr(644, root, root) %{pbs_prefix}/lib*/libpbs.la
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
 %config(noreplace) %{_sysconfdir}/profile.d/pbs.*
@@ -479,8 +479,8 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{_unitdir}/pbs.service
 %exclude %{pbs_prefix}/libexec/pbs_reload
 %endif
-%exclude %{pbs_prefix}/unsupported/*.pyc
-%exclude %{pbs_prefix}/unsupported/*.pyo
+#%exclude %{pbs_prefix}/unsupported/*.pyc
+#%exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib*/*.a
 %exclude %{pbs_prefix}/include/*
 %doc README.md
@@ -492,7 +492,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %{pbs_prefix}/*
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_rcp
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_iff
-%attr(644, root, root) %{pbs_prefix}/lib*/libpbs.la
+#%attr(644, root, root) %{pbs_prefix}/lib*/libpbs.la
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
 %config(noreplace) %{_sysconfdir}/profile.d/pbs.*
@@ -521,8 +521,8 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbs_server
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
 %exclude %{pbs_prefix}/sbin/pbsfs
-%exclude %{pbs_prefix}/unsupported/*.pyc
-%exclude %{pbs_prefix}/unsupported/*.pyo
+#%exclude %{pbs_prefix}/unsupported/*.pyc
+#%exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib*/*.a
 %exclude %{pbs_prefix}/include/*
 %doc README.md
@@ -533,7 +533,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %dir %{pbs_prefix}
 %{pbs_prefix}/*
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_iff
-%attr(644, root, root) %{pbs_prefix}/lib*/libpbs.la
+#%attr(644, root, root) %{pbs_prefix}/lib*/libpbs.la
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
 %config(noreplace) %{_sysconfdir}/profile.d/pbs.*
@@ -570,8 +570,8 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
 %exclude %{pbs_prefix}/sbin/pbs_upgrade_job
 %exclude %{pbs_prefix}/sbin/pbsfs
-%exclude %{pbs_prefix}/unsupported/*.pyc
-%exclude %{pbs_prefix}/unsupported/*.pyo
+#%exclude %{pbs_prefix}/unsupported/*.pyc
+#%exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{_unitdir}/pbs.service
 %exclude %{pbs_prefix}/lib*/*.a
 %exclude %{pbs_prefix}/include/*
