@@ -163,4 +163,121 @@ class TestQdel(TestFunctional):
         # Upon rerun, finished status should be '92' (Finished)
         a = {'job_state': 'F', 'substate': '92'}
         self.server.expect(JOB, a, extend='x',
-                           offset=1, id=jid, interval=1)
+                           offset=30, id=jid, interval=1)
+
+    def test_qdel_with_list_of_jobids(self):
+        """
+        Test deleting the list of jobids, containing unknown, queued
+        and running jobs in the list.
+        """
+
+        self.server.manager(
+            MGR_CMD_SET, SERVER, {
+                'job_history_enable': 'True'})
+        try:
+            j = Job(TEST_USER)
+            j.set_sleep_time(5)
+            unknown_jid = "100000"
+            jid = self.server.submit(j)
+            stripped_jid = jid.split('.')[0]
+            self.server.expect(JOB, {'job_state': 'R'}, id=stripped_jid)
+            j = Job(TEST_USER)
+            j.set_sleep_time(1000)
+            running_jid = self.server.submit(j)
+            self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+            j = Job(TEST_USER)
+            queued_jid = self.server.submit(j)
+
+            self.server.expect(JOB, {'job_state': 'R'}, id=running_jid)
+            self.server.expect(JOB, {'job_state': 'Q'}, id=queued_jid)
+            job_set = [unknown_jid, running_jid, queued_jid, stripped_jid]
+            self.server.delete(job_set)
+            self.fail("qdel didn't throw 'Unknown job id' error")
+        except PbsDeleteError as e:
+            self.assertEqual("qdel: Unknown Job Id " + unknown_jid, e.msg[0])
+            self.server.expect(JOB, {'job_state': 'F'}, id=stripped_jid,
+                               extend='x')
+            self.server.expect(JOB, {'job_state': 'F'}, id=running_jid,
+                               extend='x')
+            self.server.expect(JOB, {'job_state': 'F'}, id=queued_jid,
+                               extend='x')
+
+    def test_qdel_with_duplicate_jobids_in_list(self):
+        """
+        This tests server crash with duplicate jobids
+        """
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        jid_list = [jid, jid, jid, jid]
+        self.server.delete(jid_list)
+        rv = self.server.isUp()
+        self.assertTrue(rv, "Server crashed")
+        j = Job(TEST_USER)
+        jid1 = self.server.submit(j)
+        jid2 = self.server.submit(j)
+        jid3 = self.server.submit(j)
+        jid4 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        jid_list = [jid1, jid2, jid1, jid2, jid3, jid4, jid4, jid3]
+        self.server.delete(jid_list)
+        rv = self.server.isUp()
+        self.assertTrue(rv, "Server crashed")
+
+    def test_qdel_with_duplicate_array_jobs(self):
+        """
+        Test server crash with duplicate array jobs
+        """
+        j = Job(TEST_USER, {
+            ATTR_J: '1-20', 'Resource_List.select': 'ncpus=1'})
+        jid1 = self.server.submit(j)
+        jid2 = self.server.submit(j)
+        jid3 = self.server.submit(j)
+        jid4 = self.server.submit(j)
+
+        self.server.expect(JOB, {'job_state': 'B'}, jid1)
+        jid_list = [jid1, jid1, jid2, jid1, jid3, jid4, jid3, jid2]
+        self.server.delete(jid_list)
+        rv = self.server.isUp()
+        self.assertTrue(rv, "Server crashed")
+
+    def test_qdel_with_duplicate_array_non_array_jobs(self):
+        """
+        Test server crash with duplicate array and non-array jobs
+        """
+        j = Job(TEST_USER, {
+            ATTR_J: '1-20', 'Resource_List.select': 'ncpus=1'})
+        jid1 = self.server.submit(j)
+        jid2 = self.server.submit(j)
+
+        j = Job(TEST_USER, {'Resource_List.select': 'ncpus=1'})
+        jid3 = self.server.submit(j)
+        jid4 = self.server.submit(j)
+
+        self.server.expect(JOB, {'job_state': 'B'}, jid1)
+        jid_list = [jid1, jid1, jid2, jid1, jid3, jid4, jid3, jid2]
+        self.server.delete(jid_list)
+        rv = self.server.isUp()
+        self.assertTrue(rv, "Server crashed")
+
+    def test_qdel_with_overlaping_array_jobs(self):
+        """
+        Test server crash with overlaping array jobs
+        """
+        j = Job(TEST_USER, {
+            ATTR_J: '1-20', 'Resource_List.select': 'ncpus=1'})
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'B'}, jid)
+        subjob1 = jid.replace('[]', '[1-6]')
+        subjob2 = jid.replace('[]', '[5-8]')
+        jid_list = [subjob1, subjob2]
+        self.server.delete(jid_list)
+        rv = self.server.isUp()
+        self.assertTrue(rv, "Server crashed")
+
+        subjob3 = jid.replace('[]', '[11-18]')
+        subjob4 = jid.replace('[]', '[15-19]')
+        jid_list = [subjob3, subjob4]
+        self.server.delete(jid_list)
+        rv = self.server.isUp()
+        self.assertTrue(rv, "Server crashed")

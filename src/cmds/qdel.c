@@ -216,8 +216,11 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 		mails = 0;
 
 	/* First, delete mail limit number of jobs */
-	numofjobs = (mails <= numids) ? mails : numids;
+	int temp = 0;
+	int diff = 0;
+	numofjobs = temp = (mails <= numids) ? mails : numids;
 	p_delstatus = pbs_deljoblist(connect, jobids, numofjobs, warg);
+	diff = temp - numofjobs;
 	any_failed = process_deljobstat(clusterid, &p_delstatus, &rmtsvr_jobid_list, &nfailed);
 	pbs_delstatfree(p_delstatus);
 	num_deleted += (numofjobs - nfailed);
@@ -237,7 +240,7 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 		*/
 		strcat(warg1, warg);
 		pbs_strncpy(warg, warg1, wargsz);
-		p_delstatus = pbs_deljoblist(connect, &jobids[numofjobs], (numids - numofjobs), warg);
+		p_delstatus = pbs_deljoblist(connect, &jobids[numofjobs + diff], (numids - numofjobs - diff), warg);
 		any_failed_local = process_deljobstat(clusterid, &p_delstatus, &rmtsvr_jobid_list, &nfailed);
 		pbs_delstatfree(p_delstatus);
 		num_deleted += ((numids - numofjobs) - nfailed);
