@@ -67,7 +67,7 @@ fi
 cp -r $pbsdir /tmp/pbs
 cd /tmp/pbs
 ./autogen.sh
-mkdir target
+mkdir -p target
 cd target
 ../configure --prefix=/opt/pbs --enable-ptl ${swig_opt}
 make dist
