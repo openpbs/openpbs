@@ -28,6 +28,11 @@ jobs:
            PKG_INSTALL_CMD: "apt-get -y update ; apt-get -y upgrade ; apt-get install -y python3"
            DOCKER_EXTRA_ARG: "-e DEBIAN_FRONTEND=noninteractive -e LANGUAGE=C.UTF-8 -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8"
            CI_CMD: "./ci --local"
+         "Ubuntu 22.04":
+           OS_TYPE: "ubuntu:22.04"
+           PKG_INSTALL_CMD: "apt-get -y update ; apt-get -y upgrade ; apt-get install -y python3"
+           DOCKER_EXTRA_ARG: "-e DEBIAN_FRONTEND=noninteractive -e LANGUAGE=C.UTF-8 -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8"
+           CI_CMD: "./ci --local"
         "CentOS 7 Sanitize":
            OS_TYPE: "centos:7"
            PKG_INSTALL_CMD: "yum -y install python3"
