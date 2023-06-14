@@ -822,7 +822,7 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 	segv_start_time = segv_last_time = time(NULL);
 
 	opterr = 0;
-	while ((c = getopt(argc, argv, "lL:NI:d:p:c:nt:P")) != EOF) {
+	while ((c = getopt(argc, argv, "lL:NI:d:p:c:nt:")) != EOF) {
 		switch (c) {
 			case 'l':
 #ifdef _POSIX_MEMLOCK
