@@ -54,7 +54,7 @@
 #ifdef PYTHON
 
 #include <pbs_python_private.h> /* private python file  */
-#include <eval.h>		/* For PyEval_EvalCode  */
+#include <Python.h>		/* Includes eval.h for PyEval_EvalCode  */
 #include <pythonrun.h>		/* For Py_SetPythonHome */
 #include <sys/types.h>
 #include <sys/stat.h>
