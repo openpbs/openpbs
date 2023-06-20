@@ -3130,7 +3130,6 @@ finish_exec(job *pjob)
 	cpid = fork_me(-1);
 	if (cpid > 0) {
 		conn_t *conn = NULL;
-		char *s, *d, holdbuf[(2 * MAXPATHLEN) + 5];
 
 		/* the parent side, still the main man, uhh that is MOM */
 
@@ -3259,28 +3258,34 @@ finish_exec(job *pjob)
 			(void) close(ptc);
 			ptc = -1;
 		}
-		if (*pjob->ji_qs.ji_fileprefix != '\0')
-			sprintf(buf, "%s%s%s", path_jobs,
-				pjob->ji_qs.ji_fileprefix, JOB_SCRIPT_SUFFIX);
-		else
-			sprintf(buf, "%s%s%s", path_jobs,
-				pjob->ji_qs.ji_jobid, JOB_SCRIPT_SUFFIX);
-		if (chown(buf, pjob->ji_qs.ji_un.ji_momt.ji_exuid,
-			     pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1) 
-				log_errf(-1, __func__, "chown failed. ERR : %s",strerror(errno));				
 
-		/* add escape in front of brackets */
-		for (s = buf, d = holdbuf; *s && ((d - holdbuf) < sizeof(holdbuf)); s++, d++) {
-			if (*s == '[' || *s == ']')
-				*d++ = '\\';
-			*d = *s;
-		}
-		*d = '\0';
-		snprintf(buf, sizeof(buf), "%s", holdbuf);
-		DBPRT(("shell: %s\n", buf))
 #if SHELL_INVOKE == 1
 		if (is_interactive == 0) {
+			char *s;
+			char *d;
+			char holdbuf[(2 * MAXPATHLEN) + 5];
 			int k;
+
+			if (*pjob->ji_qs.ji_fileprefix != '\0')
+				sprintf(buf, "%s%s%s", path_jobs,
+					pjob->ji_qs.ji_fileprefix, JOB_SCRIPT_SUFFIX);
+			else
+				sprintf(buf, "%s%s%s", path_jobs,
+					pjob->ji_qs.ji_jobid, JOB_SCRIPT_SUFFIX);
+
+			if (chown(buf, pjob->ji_qs.ji_un.ji_momt.ji_exuid,
+					pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1)
+					log_errf(-1, __func__, "chown failed. ERR : %s",strerror(errno));
+
+			/* add escape in front of brackets */
+			for (s = buf, d = holdbuf; *s && ((d - holdbuf) < sizeof(holdbuf)); s++, d++) {
+				if (*s == '[' || *s == ']')
+					*d++ = '\\';
+				*d = *s;
+			}
+			*d = '\0';
+			snprintf(buf, sizeof(buf), "%s", holdbuf);
+			DBPRT(("shell: %s\n", buf))
 
 			/* pass name of shell script on pipe	*/
 			/* will be stdin of shell 		*/
