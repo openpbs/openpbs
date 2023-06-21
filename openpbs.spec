@@ -129,7 +129,9 @@ BuildRequires: libXext-devel
 BuildRequires: libXft-devel
 BuildRequires: fontconfig
 BuildRequires: timezone
+%if ( ( !%{defined sle_version} ) || ( 0%{?sle_version} < 150500 ) )
 BuildRequires: python-xml
+%endif
 %else
 BuildRequires: expat-devel
 BuildRequires: openssl-devel
