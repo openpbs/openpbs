@@ -1090,11 +1090,8 @@ tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 	if (cmd == NULL) {
 		mbox->mbox_size = 0;
 #ifdef HAVE_SYS_EVENTFD_H
-		if (read(mbox->mbox_eventfd, &u, sizeof(uint64_t)) == -1) {
-			tpp_log(LOG_CRIT, __func__, "Unable to read from msg box");
-			tpp_unlock(&mbox->mbox_mutex);
-			return -1;
-		}
+		if (read(mbox->mbox_eventfd, &u, sizeof(uint64_t)) == -1)
+			;
 #else
 		while (tpp_pipe_read(mbox->mbox_pipe[0], &b, sizeof(char)) == sizeof(char))
 			;
