@@ -514,6 +514,13 @@ cput_sum(job *pjob)
 			if (ptask->ti_qs.ti_sid != ps->session)
 				continue;
 
+			/*
+			 * is the owner of this process the job owner?
+			 * prevents random PID matches after reboot/restart
+			 */
+			if (ps->uid != pjob->ji_qs.ji_un.ji_momt.ji_exuid)
+				continue;
+
 			nps++;
 			taskprocs++;
 
