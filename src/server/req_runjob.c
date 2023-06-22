@@ -933,9 +933,10 @@ svr_startjob(job *pjob, struct batch_request *preq)
 
 	if (!(is_jattr_set(pjob, JOB_ATR_hashname)))
 		if (set_jattr_str_slim(pjob, JOB_ATR_hashname, pjob->ji_qs.ji_jobid, NULL))
+			return (PBSE_SYSTEM);
 
-			/* clear Exit_status which may have been set in a hook and requeued */
-			clear_attr(get_jattr(pjob, JOB_ATR_exit_status), &job_attr_def[(int) JOB_ATR_exit_status]);
+	/* clear Exit_status which may have been set in a hook and requeued */
+	clear_attr(get_jattr(pjob, JOB_ATR_exit_status), &job_attr_def[(int) JOB_ATR_exit_status]);
 
 	/* if exec_vnode already set and either (hotstart or checkpoint) */
 	/* then reuseuse the host(s) listed in the current exec_vnode	 */
