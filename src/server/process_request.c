@@ -275,12 +275,37 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 	conn_t *pconn;
 	int rc;
 	int preq_conn;
-	char *user = pbs_conf.pbs_daemon_service_user ? pbs_conf.pbs_daemon_service_user : pbs_current_user;
+	char *auth_user = pbs_conf.pbs_daemon_service_auth_user ? pbs_conf.pbs_daemon_service_auth_user : pbs_conf.pbs_daemon_service_user;
+	char *user = auth_user ? auth_user : pbs_current_user;
+	char *conn_auth_user;
 
-	if ((conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0 || strcmp(conn->cn_username, user) != 0) {
-		rc = PBSE_PERM;
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	conn_auth_user = malloc(strlen(conn->cn_username) + 1 + strlen(conn->cn_hostname) + 1);
+	if (conn_auth_user == NULL) {
+		log_err(errno, __func__, msg_err_malloc);
+		rc = PBSE_SYSTEM;
 		goto rerr;
 	}
+
+	strcpy(conn_auth_user, conn->cn_username);
+	strcat(conn_auth_user, "@");
+	strcat(conn_auth_user, conn->cn_hostname);
+#else
+	conn_auth_user = strdup(conn->cn_username);
+	if (conn_auth_user == NULL) {
+		log_err(errno, __func__, msg_err_malloc);
+		rc = PBSE_SYSTEM;
+		goto rerr;
+	}
+#endif
+
+	if ((conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0 || strcmp(conn_auth_user, user) != 0) {
+		rc = PBSE_PERM;
+		free(conn_auth_user);
+		goto rerr;
+	}
+	free(conn_auth_user);
+
 	if (preq->rq_ind.rq_register_sched.rq_name == NULL) {
 		rc = PBSE_IVALREQ;
 		goto rerr;

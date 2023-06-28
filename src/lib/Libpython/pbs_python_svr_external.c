@@ -71,8 +71,6 @@ extern int _pbs_python_event_mark_readonly(void);
 extern int _pbs_python_event_set(unsigned int hook_event, char *req_user,
 				 char *req_host, hook_input_param_t *req_params, char *perf_label);
 
-extern void _pbs_python_event_unset(void);
-
 extern int _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_params, char *perf_label, char *perf_action);
 
 extern int _pbs_python_event_set_attrval(char *name, char *value);
@@ -245,18 +243,6 @@ pbs_python_event_set(unsigned int hook_event, char *req_user,
 #endif
 }
 
-/**
- * @brief
- * 	This discards the Python event object if set, hopefully freeing up any
- * 	memory allocated to it.
- */
-void
-pbs_python_event_unset(void)
-{
-#ifdef PYTHON
-	_pbs_python_event_unset();
-#endif
-}
 
 /**
  *
@@ -592,6 +578,7 @@ hook_input_param_init(hook_input_param_t *hook_input)
 {
 
 	hook_input->rq_job = NULL;
+	hook_input->rq_postqueuejob = NULL;
 	hook_input->rq_manage = NULL;
 	hook_input->rq_move = NULL;
 	hook_input->rq_prov = NULL;
@@ -618,6 +605,7 @@ void
 hook_output_param_init(hook_output_param_t *hook_output)
 {
 	hook_output->rq_job = NULL;
+	hook_output->rq_postqueuejob = NULL;
 	hook_output->rq_manage = NULL;
 	hook_output->rq_move = NULL;
 	hook_output->rq_prov = NULL;

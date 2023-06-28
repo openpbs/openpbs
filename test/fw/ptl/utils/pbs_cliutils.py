@@ -126,11 +126,11 @@ class CliUtils(object):
         """
         from ptl.utils.pbs_dshutils import DshUtils
 
-        netstat_tag = re.compile("tcp[\s]+[\d]+[\s]+[\d]+[\s]+"
-                                 "(?P<srchost>[\w\*\.]+):(?P<srcport>[\d]+)"
-                                 "[\s]+(?P<desthost>[\.\w\*:]+):"
-                                 "(?P<destport>[\d]+)"
-                                 "[\s]+(?P<state>[\w]+).*")
+        netstat_tag = re.compile(r"tcp[\s]+[\d]+[\s]+[\d]+[\s]+"
+                                 r"(?P<srchost>[\w\*\.]+):(?P<srcport>[\d]+)"
+                                 r"[\s]+(?P<desthost>[\.\w\*:]+):"
+                                 r"(?P<destport>[\d]+)"
+                                 r"[\s]+(?P<state>[\w]+).*")
         du = DshUtils()
         ret = du.run_cmd(hostname, ['netstat', '-at', '--numeric-ports'])
         if ret['rc'] != 0:

@@ -1053,7 +1053,7 @@ class PBSAnonymizer(object):
 
                 # Anonymize IP addresses
                 pattern = re.compile(
-                    "\b*\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b*")
+                    r"\b*\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b*")
                 match_obj = re.search(pattern, line)
                 if match_obj:
                     ip = match_obj.group(0)

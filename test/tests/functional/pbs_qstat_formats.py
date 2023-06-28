@@ -576,13 +576,13 @@ class TestQstatFormats(TestFunctional):
         os.environ["MYVAR3"] = """\\\\'"""
         os.environ["MYVAR4"] = """\\\\\\'"""
         os.environ["MYVAR5"] = """\\\\\\\\\\'"""
-        os.environ["MYVAR6"] = """\,"""
+        os.environ["MYVAR6"] = r"""\,"""
         os.environ["MYVAR7"] = """\\,"""
-        os.environ["MYVAR8"] = """\\\,"""
+        os.environ["MYVAR8"] = r"""\\\,"""
         os.environ["MYVAR9"] = """\\\\,"""
         os.environ["MYVAR10"] = """\\\\\\,"""
         os.environ["MYVAR11"] = """\\\\\\\\\\,"""
-        os.environ["MYVAR12"] = """apple\,delight"""
+        os.environ["MYVAR12"] = r"""apple\,delight"""
 
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'default_qsub_arguments': '-V'})

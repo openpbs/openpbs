@@ -296,7 +296,8 @@ int pe_io_type;
 
 		if (fd_input != 0) {
 			(void) close(STDIN_FILENO);
-			(void) dup(fd_input);
+			if (dup(fd_input) == -1) 
+				log_errf(-1, __func__, "dup failed. ERR : %s", strerror(errno));				
 			(void) close(fd_input);
 		}
 

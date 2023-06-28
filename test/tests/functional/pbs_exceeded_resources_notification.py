@@ -142,7 +142,7 @@ class TestExceededResourcesNotification(TestFunctional):
         j.create_script(body=test)
 
         jid = self.server.submit(j)
-        j_comment = '.* and exceeded resource ncpus \(sum\)'
+        j_comment = r'.* and exceeded resource ncpus \(sum\)'
         self.server.expect(JOB, {ATTR_state: 'F',
                                  ATTR_comment: (MATCH_RE, j_comment),
                                  ATTR_exit_status: -25},
@@ -172,7 +172,7 @@ class TestExceededResourcesNotification(TestFunctional):
         j.create_script(body=test)
 
         jid = self.server.submit(j)
-        j_comment = '.* and exceeded resource ncpus \(burst\)'
+        j_comment = r'.* and exceeded resource ncpus \(burst\)'
         self.server.expect(JOB, {ATTR_state: 'F',
                                  ATTR_comment: (MATCH_RE, j_comment),
                                  ATTR_exit_status: -24},

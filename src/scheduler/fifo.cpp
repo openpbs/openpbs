@@ -2476,9 +2476,11 @@ parse_sched_obj(int connector, struct batch_status *status)
 						priv_dir_update_fail = 1;
 					} else {
 						/* write schedulers pid into lockfile */
-						(void) ftruncate(lockfds, (off_t) 0);
+						if (ftruncate(lockfds, (off_t) 0) == -1) 
+							log_errf(-1, __func__, "ftruncate failed. ERR : %s",strerror(errno));
 						(void) sprintf(log_buffer, "%d\n", getpid());
-						(void) write(lockfds, log_buffer, strlen(log_buffer));
+						if (write(lockfds, log_buffer, strlen(log_buffer)) == -1) 
+							log_errf(-1, __func__, "fwrite failed. ERR : %s",strerror(errno));
 						close(lockfds);
 						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, "reconfigure",
 							   "scheduler priv directory has changed to %s", tmp_priv_dir);

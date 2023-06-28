@@ -55,6 +55,7 @@
 #include "pbs_ifl.h"
 #include "tpp.h"
 #include <stdio.h>
+#include "dedup_jobids.h"
 
 /**
  * @brief	Deallocate a svr_jobid_list_t list
@@ -184,12 +185,17 @@ add_jid_to_list_by_name(char *job_id, char *svrname, svr_jobid_list_t **svr_jobi
 struct batch_deljob_status *
 __pbs_deljoblist(int c, char **jobids, int numjids, const char *extend)
 {
-	int rc;
+	int rc, i;
 	struct batch_reply *reply;
 	struct batch_deljob_status *ret = NULL;
 
 	if ((jobids == NULL) || (*jobids == NULL) || (**jobids == '\0') || c < 0)
 		return NULL;
+
+	char *malloc_track = calloc(1, numjids);
+	/* Deletes duplicate jobids */
+	if (dedup_jobids(jobids, &numjids, malloc_track) != 0)
+		goto end;
 
 	DIS_tcp_funcs();
 
@@ -198,19 +204,19 @@ __pbs_deljoblist(int c, char **jobids, int numjids, const char *extend)
 	    (rc = encode_DIS_ReqExtend(c, extend))) {
 		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 			pbs_errno = PBSE_SYSTEM;
-			return NULL;
+			goto end;
 		}
 		pbs_errno = PBSE_PROTOCOL;
-		return NULL;
+		goto end;
 	}
 
 	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
-		return NULL;
+		goto end;
 	}
 
 	if (c < 0)
-		return NULL;
+		goto end;
 
 	reply = PBSD_rdrpy(c);
 	if (reply == NULL && pbs_errno == PBSE_NONE)
@@ -228,5 +234,13 @@ __pbs_deljoblist(int c, char **jobids, int numjids, const char *extend)
 
 	PBSD_FreeReply(reply);
 
+end:
+	/* We need to free the jobid's that were allocated in dedup_jobids()
+		 * rest of the jobid's are not on heap */
+	for (i = 0; i < numjids; i++)
+		if (malloc_track[i])
+			free(jobids[i]);
+
+	free(malloc_track);
 	return ret;
 }

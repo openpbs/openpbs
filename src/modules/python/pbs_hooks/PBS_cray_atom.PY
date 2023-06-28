@@ -365,6 +365,16 @@ def retry_post(data):
     log_with_caller(pbs.EVENT_DEBUG, 'Job %s registered' % jid)
     return
 
+def get_uid(user):
+    """
+    get uid for the user
+    """
+    try:
+        return pwd.getpwnam(user).pw_uid
+    except:
+        pbs.logmsg(pbs.EVENT_DEBUG, "Error while reading user uid from the"
+                   " machine.")
+        raise RejectError(f"Unable to get uid for {user}")
 
 def handle_execjob_begin():
     """
@@ -373,7 +383,7 @@ def handle_execjob_begin():
     log_function_name()
     event = pbs.event()
     jid = event.job.id
-    uid = pwd.getpwnam(event.job.euser).pw_uid
+    uid = get_uid(event.job.euser)
     log_with_caller(pbs.EVENT_DEBUG4, 'UID is %d' % uid)
     excl = HookHelper.is_it_exclusive(event.job)
     data = {

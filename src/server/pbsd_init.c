@@ -815,6 +815,7 @@ pbsd_init(int type)
 	}
 	print_hooks(0);
 	print_hooks(HOOK_EVENT_QUEUEJOB);
+	print_hooks(HOOK_EVENT_POSTQUEUEJOB);
 	print_hooks(HOOK_EVENT_MODIFYJOB);
 	print_hooks(HOOK_EVENT_RESVSUB);
 	print_hooks(HOOK_EVENT_MODIFYRESV);
@@ -1918,7 +1919,8 @@ call_log_license(struct work_task *ptask)
 	/* write current info to file */
 	fd = open(path_usedlicenses, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 	if (fd != -1) {
-		(void) write(fd, &license_counts.licenses_high_use, sizeof(license_counts.licenses_high_use));
+		if (write(fd, &license_counts.licenses_high_use, sizeof(license_counts.licenses_high_use)) == -1)
+			log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));
 		close(fd);
 	}
 

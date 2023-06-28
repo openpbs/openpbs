@@ -331,6 +331,7 @@ unsigned long hook_action_id = 0;
 pbs_list_head svr_allhooks;
 /* hooks below ignored */
 pbs_list_head svr_queuejob_hooks;
+pbs_list_head svr_postqueuejob_hooks;
 pbs_list_head svr_modifyjob_hooks;
 pbs_list_head svr_resvsub_hooks;
 pbs_list_head svr_modifyresv_hooks;
@@ -7751,9 +7752,12 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 	}
-	freopen(NULL_DEVICE, "r", stdin);
-	freopen(NULL_DEVICE, "w", stdout);
-	freopen(NULL_DEVICE, "w", stderr);
+	if (freopen(NULL_DEVICE, "r", stdin) == NULL) 
+		log_errf(-1, __func__, "freopen failed. ERR : %s", strerror(errno));
+	if (freopen(NULL_DEVICE, "w", stdout) == NULL) 
+		log_errf(-1, __func__, "freopen failed. ERR : %s", strerror(errno));	
+	if (freopen(NULL_DEVICE, "w", stderr) == NULL) 
+		log_errf(-1, __func__, "freopen failed. ERR : %s", strerror(errno));		
 #else  /* DEBUG */
 	setvbuf(stdout, NULL, _IONBF, 0);
 	setvbuf(stderr, NULL, _IONBF, 0);
@@ -7765,8 +7769,10 @@ main(int argc, char *argv[])
 
 	mom_pid = getpid();
 	sprintf(log_buffer, "%d\n", mom_pid);
-	ftruncate(lockfds, 0);
-	write(lockfds, log_buffer, strlen(log_buffer));
+	if (ftruncate(lockfds, 0) == -1) 
+		log_errf(-1, __func__, "ftruncate failed. ERR : %s", strerror(errno));		
+	if (write(lockfds, log_buffer, strlen(log_buffer)) == -1) 
+		log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));		
 
 #ifndef WIN32 /* ------------------------------------------------------------*/
 
@@ -7861,6 +7867,7 @@ main(int argc, char *argv[])
 
 	CLEAR_HEAD(svr_allhooks);
 	CLEAR_HEAD(svr_queuejob_hooks);
+	CLEAR_HEAD(svr_postqueuejob_hooks);
 	CLEAR_HEAD(svr_modifyjob_hooks);
 	CLEAR_HEAD(svr_resvsub_hooks);
 	CLEAR_HEAD(svr_modifyresv_hooks);
@@ -8792,9 +8799,11 @@ main(int argc, char *argv[])
 										  PBS_EVENTCLASS_JOB, LOG_INFO,
 										  pjob->ji_qs.ji_jobid, log_buffer);
 								} else {
-									write(fd, get_jattr_str(pjob, JOB_ATR_Cookie),
-									      strlen(get_jattr_str(pjob, JOB_ATR_Cookie)));
-									write(fd, kill_msg, strlen(kill_msg));
+									if (write(fd, get_jattr_str(pjob, JOB_ATR_Cookie),
+									      strlen(get_jattr_str(pjob, JOB_ATR_Cookie))) == -1) 
+											log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));					
+									if (write(fd, kill_msg, strlen(kill_msg)) == -1) 
+										log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));
 									(void) close(fd);
 								}
 							}
@@ -9548,7 +9557,8 @@ mom_topology(void)
 	int pid;
 
 #ifndef WIN32
-	pipe(fd);
+	if (pipe(fd) == -1) 
+		log_errf(-1, __func__, "pipe API failed. ERR : %s", strerror(errno));
 
 	if ((pid = fork()) == -1) {
 		log_err(PBSE_SYSTEM, __func__, "fork failed");
@@ -9585,9 +9595,12 @@ mom_topology(void)
 		if (ret != 0)
 			ret = -1;
 
-		write(fd[1], &ret, (sizeof(ret)));
-		write(fd[1], &xmllen, (sizeof(xmllen)));
-		write(fd[1], xmlbuf, xmllen);
+		if (write(fd[1], &ret, (sizeof(ret))) == -1) 
+			log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));
+		if (write(fd[1], &xmllen, (sizeof(xmllen))) == -1) 
+			log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));			
+		if (write(fd[1], xmlbuf, xmllen) == -1) 
+			log_errf(-1, __func__, "write failed. ERR : %s", strerror(errno));			
 
 		hwloc_free_xmlbuffer(topology, xmlbuf);
 		hwloc_topology_destroy(topology);
@@ -9596,14 +9609,17 @@ mom_topology(void)
 	} else {
 		close(fd[1]);
 
-		read(fd[0], &ret, sizeof(ret));
-		read(fd[0], &xmllen, sizeof(xmllen));
+		if (read(fd[0], &ret, sizeof(ret)) == -1) 
+			log_errf(-1, __func__, "read failed. ERR : %s", strerror(errno));
+		if (read(fd[0], &xmllen, sizeof(xmllen)) == -1) 
+			log_errf(-1, __func__, "read failed. ERR : %s", strerror(errno));			
 		if ((xmlbuf = malloc(xmllen + 1)) == NULL) {
 			log_err(PBSE_SYSTEM, __func__, "malloc failed");
 			return;
 		}
 		xmlbuf[xmllen] = '\0';
-		read(fd[0], xmlbuf, xmllen);
+		if (read(fd[0], xmlbuf, xmllen) == -1) 
+			log_errf(-1, __func__, "read failed. ERR : %s", strerror(errno));
 
 		close(fd[0]);
 

@@ -220,6 +220,7 @@ struct batch_reply {
  */
 #define PBS_BATCH_Connect 0
 #define PBS_BATCH_QueueJob 1
+#define PBS_BATCH_PostQueueJob 2
 /* Unused -- #define PBS_BATCH_JobCred 2 */
 #define PBS_BATCH_jobscript 3
 #define PBS_BATCH_RdytoCommit 4

@@ -725,7 +725,9 @@ source(int argc, char *argv[])
 #ifdef WIN32
 			(void) send(rem, buf, strlen(buf), 0);
 #else
-			(void) write(rem, buf, strlen(buf));
+			if (write(rem, buf, strlen(buf)) == -1) 
+				errx(-1, __func__, "write failed. ERR : %s",
+						strerror(errno));				
 #endif
 			if (response() < 0)
 				goto next;
@@ -748,7 +750,9 @@ source(int argc, char *argv[])
 #ifdef WIN32
 		(void) send(rem, buf, strlen(buf), 0);
 #else
-		(void) write(rem, buf, strlen(buf));
+		if (write(rem, buf, strlen(buf)) == -1) 
+			errx(-1, __func__, "write failed. ERR : %s",
+					strerror(errno));				
 #endif
 		if (response() < 0)
 			goto next;
@@ -770,14 +774,16 @@ source(int argc, char *argv[])
 				if (result != amt)
 					haderr = result >= 0 ? EIO : errno;
 			}
-			if (haderr)
+			if (haderr) {
 
 #ifdef WIN32
 				(void) send(rem, bp->buf, amt, 0);
 #else
-				(void) write(rem, bp->buf, amt);
+				if (write(rem, bp->buf, amt) == -1) 
+					errx(-1, __func__, "write fail. ERR:%s",
+							strerror(errno));				
 #endif
-			else {
+			} else {
 #ifdef WIN32
 				result = send(rem, bp->buf, amt, 0);
 #else
@@ -811,15 +817,17 @@ source(int argc, char *argv[])
 		}
 #endif /* USELOG */
 
-		if (!haderr)
+		if (!haderr){
 
 #ifdef WIN32
 			(void) send(rem, "", 1, 0);
 #else
-			(void) write(rem, "", 1);
+			if (write(rem, "", 1) == -1) 
+				errx(-1, __func__, "write failed. ERR : %s",strerror(errno));			
 #endif
-		else
+		} else 
 			run_err("%s: %s", name, strerror(haderr));
+		
 		(void) response();
 	}
 }
@@ -864,7 +872,8 @@ rsource(char *name, pbs_stat_struct *statp)
 #ifdef WIN32
 		(void) send(rem, path, strlen(path), 0);
 #else
-		(void) write(rem, path, strlen(path));
+		if (write(rem, path, strlen(path)) == -1) 
+			errx(-1, __func__, "write failed. ERR : %s",strerror(errno));				
 #endif
 		if (response() < 0) {
 			closedir(dirp);
@@ -877,7 +886,8 @@ rsource(char *name, pbs_stat_struct *statp)
 #ifdef WIN32
 	(void) send(rem, path, strlen(path), 0);
 #else
-	(void) write(rem, path, strlen(path));
+	if (write(rem, path, strlen(path)) == -1) 
+		errx(-1, __func__, "write failed. ERR : %s",strerror(errno));		
 #endif
 	if (response() < 0) {
 		closedir(dirp);
@@ -909,7 +919,8 @@ rsource(char *name, pbs_stat_struct *statp)
 #ifdef WIN32
 	(void) send(rem, "E\n", 2, 0);
 #else
-	(void) write(rem, "E\n", 2);
+	if (write(rem, "E\n", 2) == -1) 
+		errx(-1, __func__, "write failed. ERR : %s",strerror(errno));
 #endif
 	(void) response();
 }
@@ -988,7 +999,8 @@ sink(int argc, char *argv[])
 #ifdef WIN32
 	(void) send(rem, "", 1, 0);
 #else
-	(void) write(rem, "", 1);
+	if (write(rem, "", 1) == -1) 
+		errx(-1, __func__, "write failed. ERR : %s",strerror(errno));
 #endif
 	if (pbs_stat(targ, &stb) == 0 && S_ISDIR(stb.st_mode))
 		targisdir = 1;
@@ -1016,8 +1028,10 @@ sink(int argc, char *argv[])
 
 		if (buf[0] == '\01' || buf[0] == '\02') {
 			if (iamremote == 0)
-				(void) write(STDERR_FILENO,
-					     buf + 1, strlen(buf + 1));
+				if ( write(STDERR_FILENO,
+					     buf + 1, strlen(buf + 1)) == -1) 
+					errx(-1, __func__, "write failed. ERR : %s",strerror(errno));
+
 			if (buf[0] == '\02')
 				exit(1);
 			++errs;
@@ -1027,7 +1041,8 @@ sink(int argc, char *argv[])
 #ifdef WIN32
 			(void) send(rem, "", 1, 0);
 #else
-			(void) write(rem, "", 1);
+			if (write(rem, "", 1) == -1) 
+				errx(-1, __func__, "write failed. ERR : %s",strerror(errno));
 #endif
 			return;
 		}
@@ -1059,7 +1074,8 @@ sink(int argc, char *argv[])
 #ifdef WIN32
 			(void) send(rem, "", 1, 0);
 #else
-			(void) write(rem, "", 1);
+			if ( write(rem, "", 1) == -1) 
+				errx(-1, __func__, "write failed. ERR : %s",strerror(errno));
 #endif
 			continue;
 		}
@@ -1163,7 +1179,8 @@ sink(int argc, char *argv[])
 #ifdef WIN32
 		(void) send(rem, "", 1, 0);
 #else
-		(void) write(rem, "", 1);
+		if (write(rem, "", 1) == -1) 
+			errx(-1, __func__, "write failed. ERR : %s",strerror(errno));
 #endif
 		if ((bp = allocbuf(&buffer, ofd, RCP_BUFFER_SIZE)) == NULL) {
 			(void) close(ofd);
@@ -1287,7 +1304,8 @@ sink(int argc, char *argv[])
 #ifdef WIN32
 				(void) send(rem, "", 1, 0);
 #else
-				(void) write(rem, "", 1);
+				if (write(rem, "", 1) == -1) 
+					errx(-1, __func__, "fchown failed. ERR : %s",strerror(errno));
 #endif
 				break;
 			case DISPLAYED:
@@ -1410,7 +1428,8 @@ response()
 			} while (cp < &rbuf[RCP_BUFFER_SIZE] && ch != '\n');
 
 			if (!iamremote)
-				(void) write(STDERR_FILENO, rbuf, cp - rbuf);
+				if (write(STDERR_FILENO, rbuf, cp - rbuf) == -1) 
+					errx(-1, __func__, "fchown failed. ERR : %s",strerror(errno));
 			++errs;
 			if (resp == 1)
 				return (-1);

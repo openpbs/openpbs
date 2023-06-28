@@ -43,7 +43,7 @@ AC_PREREQ([2.63])
 # Use PBS_VERSION to override the version statically defined here. For example:
 # ./configure PBS_VERSION=20.0.0 --prefix=/opt/pbs
 AC_INIT([OpenPBS],
-  [20.0.0],
+  [23.06.06],
   [pbssupport@altair.com],
   [openpbs],
   [http://www.openpbs.org/])

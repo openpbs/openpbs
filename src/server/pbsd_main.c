@@ -865,6 +865,7 @@ main(int argc, char **argv)
 	CLEAR_HEAD(svr_deferred_req);
 	CLEAR_HEAD(svr_allhooks);
 	CLEAR_HEAD(svr_queuejob_hooks);
+	CLEAR_HEAD(svr_postqueuejob_hooks);
 	CLEAR_HEAD(svr_modifyjob_hooks);
 	CLEAR_HEAD(svr_resvsub_hooks);
 	CLEAR_HEAD(svr_modifyresv_hooks);
@@ -1219,7 +1220,8 @@ main(int argc, char **argv)
 
 				snprintf(schedcmd, sizeof(schedcmd), "%s/sbin/pbs_sched &", pbs_conf.pbs_exec_path);
 				snprintf(log_buffer, sizeof(log_buffer), "starting scheduler: %s", schedcmd);
-				(void) system(schedcmd);
+				if (system(schedcmd) == -1) 
+					log_errf(-1, __func__, "system(%s) failed. ERR : %s",schedcmd, strerror(errno));
 
 				log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
 					  PBS_EVENTCLASS_SERVER, LOG_CRIT,
@@ -1672,9 +1674,12 @@ lock_out(int fds, int op)
 		if (fcntl(fds, F_SETLK, &flock) != -1) {
 			if (op == F_WRLCK) {
 				/* if write-lock, record pid in file */
-				(void) ftruncate(fds, (off_t) 0);
+				if (ftruncate(fds, (off_t) 0) == -1)
+					log_errf(-1, __func__, "ftruncate failed. ERR : %s",strerror(errno));
+
 				(void) sprintf(buf, "%d\n", getpid());
-				(void) write(fds, buf, strlen(buf));
+				if (write(fds, buf, strlen(buf)) == -1) 
+					log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));
 			}
 			return;
 		}

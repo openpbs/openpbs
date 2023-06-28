@@ -822,7 +822,7 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 	segv_start_time = segv_last_time = time(NULL);
 
 	opterr = 0;
-	while ((c = getopt(argc, argv, "lL:NI:d:p:c:nt:P")) != EOF) {
+	while ((c = getopt(argc, argv, "lL:NI:d:p:c:nt:")) != EOF) {
 		switch (c) {
 			case 'l':
 #ifdef _POSIX_MEMLOCK
@@ -1039,7 +1039,8 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 		}
 	}
 	lock_out(lockfds, F_WRLCK);
-	freopen(dbfile, "a", stdout);
+	if (freopen(dbfile, "a", stdout) == NULL) 
+		log_errf(-1, __func__, "freopen failed. ERR : %s",strerror(errno));
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	dup2(fileno(stdout), fileno(stderr));
 #else
@@ -1054,12 +1055,15 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 #endif
 	pid = getpid();
 	daemon_protect(0, PBS_DAEMON_PROTECT_ON);
-	freopen("/dev/null", "r", stdin);
+	if (freopen("/dev/null", "r", stdin) == NULL) 
+		log_errf(-1, __func__, "freopen failed. ERR : %s",strerror(errno));
 
 	/* write schedulers pid into lockfile */
-	(void) ftruncate(lockfds, (off_t) 0);
+	if (ftruncate(lockfds, (off_t) 0) == -1) 
+		log_errf(-1, __func__, "ftruncate failed. ERR : %s",strerror(errno));
 	(void) sprintf(log_buffer, "%ld\n", (long) pid);
-	(void) write(lockfds, log_buffer, strlen(log_buffer));
+	if (write(lockfds, log_buffer, strlen(log_buffer)) == -1) 
+		log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));
 
 #ifdef _POSIX_MEMLOCK
 	if (do_mlockall == 1) {

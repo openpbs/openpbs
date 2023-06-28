@@ -47,7 +47,7 @@ class TestPbsHookSetJobEnv(TestFunctional):
     This test suite to make sure hooks properly
     handle environment variables with special characters,
     values, in particular newline (\n), commas (,), semicolons (;),
-    single quotes ('), double quotes ("), and backaslashes (\).
+    single quotes ('), double quotes ("), and backaslashes.
     PRE: Set up currently executing user's environment to have variables
          whose values have the special characters.
          Job A: Submit a job using the -V option (pass current environment)
@@ -177,9 +177,9 @@ class TestPbsHookSetJobEnv(TestFunctional):
         Validate the env variable output in daemon logs
         """
         logutils = PBSLogUtils()
-        logmsg = ["TEST_COMMA=1\,2\,3\,4",
+        logmsg = [r"TEST_COMMA=1\,2\,3\,4",
                   "TEST_SEMICOLON=;",
-                  "TEST_ENCLOSED=\\'\,\\'",
+                  r"TEST_ENCLOSED=\\'\,\\'",
                   "TEST_COLON=:",
                   "TEST_BACKSLASH=\\\\",
                   "TEST_DQUOTE=\\\"",
@@ -196,11 +196,11 @@ class TestPbsHookSetJobEnv(TestFunctional):
                   "TEST_SQUOTE6=loving\\'",
                   "TEST_SPECIAL={}[]()~@#$%^&*!",
                   "TEST_SPECIAL2=<dumb-test_text>",
-                  "TEST_RETURN=\\'3\,",
+                  r"TEST_RETURN=\\'3\,",
                   # Cannot add '\n' here because '\n' is not included in
                   # the items of the list returned by log_lines(), (though
                   # lines are split by '\n')
-                  "4\,",
+                  r"4\,",
                   "5\\',"]
 
         if (daemon == "mom"):
@@ -227,9 +227,9 @@ class TestPbsHookSetJobEnv(TestFunctional):
                 if match:
                     # Dont want the test to pass if there are
                     # unwanted matched for "4\," and "5\\'.
-                    if msg == "TEST_RETURN=\\'3\,":
+                    if msg == r"TEST_RETURN=\\'3\,":
                         ret_linenum = match[0]
-                    if (msg == "4\," and match[0] != (ret_linenum - 1)) or \
+                    if (msg == r"4\," and match[0] != (ret_linenum - 1)) or \
                        (msg == "5\\'" and match[0] != (ret_linenum - 2)):
                         pass
                     else:
@@ -709,7 +709,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "Variable_List is %s" % (j.Variable_List,))
         no hook is present
         """
 
-        os.environ['BROL'] = 'hii\\\haha'
+        os.environ['BROL'] = r'hii\\\haha'
         os.environ['BROL1'] = """'hii
 haa'"""
 
@@ -845,7 +845,7 @@ haa'"""
         """
 
         self.interactive = True
-        os.environ['BROL'] = 'hii\\\haha'
+        os.environ['BROL'] = r'hii\\\haha'
         os.environ['BROL1'] = """'hii
 haa'"""
 

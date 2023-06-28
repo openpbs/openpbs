@@ -113,6 +113,7 @@ struct python_script {
  * 	parameters to the pbs_python_event_set() function.
  *
  * @param[in]	rq_job - maps to a struct rq_quejob batch request.
+ * @param[in]	rq_postqueuejob - resultant struct rq_postqueuejob batch request values.
  * @param[in]	rq_manage - maps to a struct rq_manage batch request.
  * @param[in]	rq_modifyvnode - maps to a struct rq_modifyvnode.
  * @param[in]	rq_move - maps to a struct rq_move batch request.
@@ -139,6 +140,7 @@ struct python_script {
  */
 typedef struct hook_input_param {
 	void *rq_job;
+	void *rq_postqueuejob;
 	void *rq_manage;
 	void *rq_modifyvnode;
 	void *rq_move;
@@ -164,6 +166,7 @@ typedef struct hook_input_param {
  * 	parameters to be filled in by pbs_python_event_to_request() function.
  *
  * @param[out]	rq_job - resultant struct rq_quejob batch request values.
+ * @param[out]	rq_postqueuejob - resultant struct rq_postqueuejob batch request values.
  * @param[out]	rq_manage - resultant struct rq_manage batch request values.
  * @param[out]	rq_move - resultant struct rq_move batch request values.
  * @param[out]	rq_prov - resultant struct prov_vnode_info values.
@@ -185,6 +188,7 @@ typedef struct hook_input_param {
  */
 typedef struct hook_output_param {
 	void *rq_job;
+	void *rq_postqueuejob;
 	void *rq_manage;
 	void *rq_move;
 	void *rq_prov;
@@ -234,6 +238,10 @@ extern int pbs_python_run_code_in_namespace(
 
 extern void pbs_python_ext_free_python_script(
 	struct python_script *py_script);
+extern void	pbs_python_ext_free_code_obj(
+	struct python_script *py_script);
+extern void	pbs_python_ext_free_global_dict(
+	struct python_script *py_script);
 extern int pbs_python_ext_alloc_python_script(
 	const char *script_path,
 	struct python_script **py_script);
@@ -242,6 +250,7 @@ extern void pbs_python_ext_quick_start_interpreter(void);
 extern void pbs_python_ext_quick_shutdown_interpreter(void);
 extern int set_py_progname(void);
 extern int get_py_progname(char **);
+extern void pbs_python_clear_attributes();
 
 /* -- END pbs_python_external.c implementations -- */
 
@@ -454,8 +463,6 @@ extern int pbs_python_event_set(
 	char *req_host,
 	hook_input_param_t *req_params,
 	char *perf_label);
-
-extern void pbs_python_event_unset(void);
 
 extern int pbs_python_event_to_request(unsigned int hook_event,
 				       hook_output_param_t *req_params, char *perf_label, char *perf_action);
