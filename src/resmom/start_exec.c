@@ -3469,8 +3469,14 @@ finish_exec(job *pjob)
 	/* Second, the variables passed with the job.  They may */
 	/* be overwritten with new correct values for this job	*/
 
-	for (j = 0; j < vstrs->as_usedptr; ++j)
+	for (j = 0; j < vstrs->as_usedptr; ++j) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+			/* never set KRB5CCNAME; it would rewrite the correct value */
+			if (strncmp(vstrs->as_string[j], "KRB5CCNAME", strlen("KRB5CCNAME")) == 0)
+				continue;
+#endif
 		bld_env_variables(&(pjob->ji_env), vstrs->as_string[j], NULL);
+	}
 
 	/* .. Next the critical variables: home, path, logname, ... */
 	/* these may replace some passed in with the job	    */
@@ -4751,8 +4757,14 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	/* Next, the variables passed with the job.  They may   */
 	/* be overwritten with new correct values for this job	*/
 
-	for (j = 0; j < vstrs->as_usedptr; ++j)
+	for (j = 0; j < vstrs->as_usedptr; ++j) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+			/* never set KRB5CCNAME; it would rewrite the correct value */
+			if (strncmp(vstrs->as_string[j], "KRB5CCNAME", strlen("KRB5CCNAME")) == 0)
+				continue;
+#endif
 		bld_env_variables(&(pjob->ji_env), vstrs->as_string[j], NULL);
+	}
 
 	/* HOME */
 	bld_env_variables(&(pjob->ji_env), variables_else[0],
