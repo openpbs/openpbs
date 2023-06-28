@@ -322,19 +322,30 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
 	value_is_whitespace = whitespace_only(value);
 	if (vtype == JSON_NULL && value != NULL && !value_is_whitespace) {
 		double val;
+		int val_len;
 		val = strtod(value, &pc);
+		val_len = strlen(value);
 		while (pc) {
 			if (isspace(*pc))
 				pc++;
 			else
 				break;
 		}
-		/* In Python3, value with leading zeroes is
-		 * represented as a string, unless all zeroes (00000...)
-		 * or is part of a decimal number < 1 (0.0001 ... 0.99999).
-		 */
+		/* Here, we check the number is a number in JSON-allowed format */
 		if ((strcmp(pc, "") == 0) &&
-		    ((*(char *) value != '0') || (val < 1))) {
+			(val_len > 0 && ((char *)value)[val_len - 1] != '.') && /* -?[0-9]*\. is string */
+			(
+				(abs(val) < 1 && (
+					(val == 0 && val_len == 1) || /* 0 is number */
+					(val == 0 && val_len == 2 && ((char *)value)[0] == '-') || /* -0 is number */
+					(val >= 0 && val_len > 2 && ((char *)value)[0] != '-' && ((char *)value)[1] == '.' ) || /* 0\.[0-9]+ is number */
+					(val <= 0 && val_len > 3 && ((char *)value)[0] == '-' && ((char *)value)[2] == '.' ) /* -0\.[0-9]+ is number */
+				)) ||
+				(
+					(val >= 1 && val_len > 0 && ((char *)value)[0] != '0') || /* [1-9]+[0-9]*\.?[0-9]* is number */
+					(val <= -1 && val_len > 1 && ((char *)value)[1] != '0') /* -[1-9]+[0-9]*\.?[0-9]* is number */
+				)
+			)) {
 			node->value_type = JSON_NUMERIC;
 			ptr = strdup(value);
 			if (ptr == NULL) {
