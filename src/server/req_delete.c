@@ -559,7 +559,7 @@ req_deletejob(struct batch_request *preq)
 	int rc = 0;
 	int delhist = 0;
 	int err = PBSE_NONE;
-	char **jobids = NULL;
+	char **jobids;
 	int count;
 	int j;
 	struct batch_reply *preply = &preq->rq_reply;
@@ -567,33 +567,25 @@ req_deletejob(struct batch_request *preq)
 	preply->brp_count = 0;
 	int start_jobid = 0;
 	time_t begin_time = time(NULL);
-	void * processed_jobs_idx = NULL;
 
 	if (preq->rq_type == PBS_BATCH_DeleteJobList) {
 
 		if (!preq->rq_ind.rq_deletejoblist.rq_resume) {
 			if (init_deljoblist(preq) != 0) {
-				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,
-					"Error while initializing deljoblist operation (init_deljoblist failed)");
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+						"Error while initializing deljoblist operation (init_deljoblist failed)");
 				req_reject(PBSE_INTERNAL, 0, preq);
-				goto fn_return;
+				return;
 			}
-			processed_jobs_idx = pbs_idx_create(0, 0);
 		} else
 			start_jobid = preq->rq_ind.rq_deletejoblist.jobid_to_resume;
 
 		preply->brp_choice = BATCH_REPLY_CHOICE_Delete;
-		jobids = dup_string_arr(preq->rq_ind.rq_deletejoblist.rq_jobslist);
+		jobids = preq->rq_ind.rq_deletejoblist.rq_jobslist;
 		count = preq->rq_ind.rq_deletejoblist.rq_count;
 	} else {
 		jobids = break_comma_list(preq->rq_ind.rq_delete.rq_objname);
 		count = 1;
-	}
-	if (!jobids) {
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,
-			"Error while copying the list of job ids to be deleted");
-		req_reject(PBSE_INTERNAL, 0, preq);
-		goto fn_return;
 	}
 
 	if (preq->rq_extend && strstr(preq->rq_extend, DELETEHISTORY))
@@ -608,11 +600,6 @@ req_deletejob(struct batch_request *preq)
 		qdel_mail = false;
 
 	for (j = start_jobid; j < count; j++) {
-		snprintf(jid, sizeof(jid), "%s", jobids[j]);
-		if (processed_jobs_idx && find_job(jid) &&
-		    pbs_idx_insert(processed_jobs_idx, jid, NULL) != PBS_IDX_RET_OK) {
-			continue;
-		}
 
 		if (j != start_jobid) {
 			preq->rq_ind.rq_deletejoblist.rq_resume = FALSE;
@@ -624,9 +611,10 @@ req_deletejob(struct batch_request *preq)
 				   "req_delete has been running for %d seconds, Pausing for other requests",
 				   QDEL_BREAKER_SECS);
 			set_task(WORK_Interleave, 0, resume_deletion, preq);
-			goto fn_return;
+			return;
 		}
 
+		snprintf(jid, sizeof(jid), "%s", jobids[j]);
 		parent = chk_job_request(jid, preq, &jt, &err);
 		if (parent == NULL) {
 			pjob = find_job(jid);
@@ -635,7 +623,7 @@ req_deletejob(struct batch_request *preq)
 			if (update_deljob_rply(preq, jid, err)) {
 				if (preq->rq_type == PBS_BATCH_DeleteJobList)
 					req_reject(err, 0, preq); /* note, req_reject is not called for delete job request 2 */
-				goto fn_return;
+				return;
 			} else
 				continue;
 		}
@@ -654,7 +642,7 @@ req_deletejob(struct batch_request *preq)
 			if (delhist)
 				parent->ji_deletehistory = 1;
 			if (req_deletejob2(preq, parent) == 2)
-				goto fn_return;
+				return;
 			continue;
 
 		} else if (jt == IS_ARRAY_Single) {
@@ -665,7 +653,7 @@ req_deletejob(struct batch_request *preq)
 			if (sjst == JOB_STATE_LTR_UNKNOWN) {
 				if (update_deljob_rply(preq, jid, PBSE_IVALREQ)) {
 					req_reject(PBSE_IVALREQ, 0, preq);
-					goto fn_return;
+					return;
 				} else
 					continue;
 			}
@@ -677,13 +665,13 @@ req_deletejob(struct batch_request *preq)
 				}
 				if (update_deljob_rply(preq, jid, PBSE_BADSTATE)) {
 					req_reject(PBSE_BADSTATE, 0, preq);
-					goto fn_return;
+					return;
 				} else
 					continue;
 			} else if (sjst == JOB_STATE_LTR_EXPIRED) {
 				if (update_deljob_rply(preq, jid, PBSE_NOHISTARRAYSUBJOB)) {
 					req_reject(PBSE_NOHISTARRAYSUBJOB, 0, preq);
-					goto fn_return;
+					return;
 				} else
 					continue;
 			} else if (pjob != NULL) {
@@ -693,7 +681,7 @@ req_deletejob(struct batch_request *preq)
 				if (delhist)
 					pjob->ji_deletehistory = 1;
 				if (req_deletejob2(preq, pjob) == 2)
-					goto fn_return;
+					return;
 			} else {
 				update_sj_parent(parent, NULL, jid, sjst, JOB_STATE_LTR_EXPIRED);
 				acct_del_write(jid, parent, preq, 0);
@@ -737,7 +725,7 @@ req_deletejob(struct batch_request *preq)
 						   "req_delete has been running for %d seconds, Pausing for other requests",
 						   QDEL_BREAKER_SECS);
 					set_task(WORK_Interleave, 0, resume_deletion, preq);
-					goto fn_return;
+					return;
 				}
 				pjob = get_subjob_and_state(parent, i, &sjst, NULL);
 				if (sjst == JOB_STATE_LTR_UNKNOWN)
@@ -778,7 +766,7 @@ req_deletejob(struct batch_request *preq)
 					if (req_deletejob2(preq, parent) == 2) {
 						preq->rq_ind.rq_deletejoblist.subjobid_to_resume = parent->ji_ajinfo->tkm_end;
 						++preq->rq_refct;
-						goto fn_return;
+						return;
 					}
 					del_parent = 0;
 				} else if (update_deljob_rply(preq, jid, PBSE_NONE))
@@ -791,7 +779,7 @@ req_deletejob(struct batch_request *preq)
 					if (req_deletejob2(preq, parent) == 2) {
 						preq->rq_ind.rq_deletejoblist.subjobid_to_resume = parent->ji_ajinfo->tkm_end;
 						++preq->rq_refct;
-						goto fn_return;
+						return;
 					}
 				}
 			}
@@ -805,7 +793,7 @@ req_deletejob(struct batch_request *preq)
 		if (range == NULL) {
 			if (update_deljob_rply(preq, jid, PBSE_IVALREQ)) {
 				req_reject(PBSE_IVALREQ, 0, preq);
-				goto fn_return;
+				return;
 			} else
 				continue;
 		}
@@ -879,10 +867,6 @@ req_deletejob(struct batch_request *preq)
 			chk_array_doneness(parent);
 		}
 	}
-
-fn_return:
-	free_string_array(jobids);
-	pbs_idx_destroy(processed_jobs_idx);
 }
 
 /**
