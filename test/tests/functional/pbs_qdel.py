@@ -356,7 +356,6 @@ class TestQdel(TestFunctional):
         self.server.expect(
             JOB, {'job_state': 'F'}, id=jid, extend='x', max_attempts=20)
 
-    @skip("issue 2554")
     @requirements(num_moms=1)
     def test_qdel_same_jobid_nx_array_subjob_03(self):
         """
@@ -396,7 +395,6 @@ class TestQdel(TestFunctional):
         self.server.expect(
             JOB, {'job_state': 'F'}, id=jid, extend='x', max_attempts=20)
 
-    @skip("issue 2554")
     @requirements(num_moms=1)
     def test_qdel_same_jobid_nx_array_subjob_05(self):
         """
@@ -414,7 +412,6 @@ class TestQdel(TestFunctional):
         self.server.expect(
             JOB, {'job_state': 'F'}, id=jid, extend='x', max_attempts=20)
 
-    @skip("issue 2554")
     @requirements(num_moms=1)
     def test_qdel_same_jobid_nx_array_subjob_06(self):
         """
@@ -431,7 +428,6 @@ class TestQdel(TestFunctional):
         self.server.expect(
             JOB, {'job_state': 'F'}, id=jid, extend='x', max_attempts=20)
 
-    @skip("issue 2554")
     @requirements(num_moms=1)
     def test_qdel_same_jobid_nx_array_subjob_07(self):
         """
