@@ -284,7 +284,7 @@ class TestQdel(TestFunctional):
         j.set_sleep_time(job_sleep_time)
         jid = self.server.submit(j)
         array_id = jid.split("[")[0]
-        sjm = re.match('(\d+)-(\d+)(:(\d+))?', sj_range).groups()
+        sjm = re.match(r'(\d+)-(\d+)(:(\d+))?', sj_range).groups()
         sj_range_start = int(sjm[0])
         sj_range_end = int(sjm[1])
         sj_range_step = int(sjm[3]) if sjm[3] else 1
