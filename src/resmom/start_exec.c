@@ -1768,6 +1768,9 @@ record_finish_exec(int sd)
 		if (sjr.sj_reservation == -1)
 			call_hup = HUP_INIT;
 #endif
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		AFSLOG_TERM(ptask);
+#endif
 		(void) sprintf(log_buffer, "job not started, %s %d",
 			       (sjr.sj_code == JOB_EXEC_RETRY) ? "Retry" : "Failure", sjr.sj_code);
 		exec_bail(pjob, sjr.sj_code, log_buffer);
@@ -4671,6 +4674,9 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		 */
 		set_globid(pjob, &sjr);
 		if (sjr.sj_code < 0) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+			AFSLOG_TERM(ptask);
+#endif
 			(void) sprintf(log_buffer, "task not started, %s %s %d",
 				       (sjr.sj_code == JOB_EXEC_RETRY) ? "Retry" : "Failure",
 				       argv[0],
