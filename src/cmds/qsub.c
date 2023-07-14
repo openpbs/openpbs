@@ -2169,8 +2169,6 @@ env_array_to_varlist(char **envp)
 	if ((len > 0) && ((job_env = (char *) malloc(len)) == NULL)) {
 			fprintf(stderr, "env_array_to_varlist: malloc failure errno=%d", errno);
 			return NULL;
-	} else {
-		return NULL;
 	}
 
 	*job_env = '\0';
