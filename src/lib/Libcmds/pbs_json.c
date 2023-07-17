@@ -530,7 +530,8 @@ generate_json(FILE *stream)
  * @retval	0	otherwise
  *
  */
-int is_valid_json_number(char *value) {
+int
+is_valid_json_number(char *value) {
 	double val;
 	int val_len;
 	char *pc = NULL;
