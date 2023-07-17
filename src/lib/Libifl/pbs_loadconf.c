@@ -906,12 +906,8 @@ __pbs_loadconf(int reload)
 		free(value);
 	}
 	if ((gvalue = getenv(PBS_CONF_ENCRYPT_METHOD)) != NULL) {
-		char *value;
-		if (gvalue != NULL && gvalue[0] == '\0') { // allow unsetting the encrypt method
-			value = strdup("");
-		} else {
-			value = convert_string_to_lowercase(gvalue);
-		}
+		char *value = convert_string_to_lowercase(gvalue);
+		ensure_string_not_null(&value); // allow unsetting
 		if (value == NULL)
 			goto err;
 		memset(pbs_conf.encrypt_method, '\0', sizeof(pbs_conf.encrypt_method));

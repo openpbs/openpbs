@@ -289,6 +289,11 @@ char **dup_string_arr(char **strarr);
 void free_string_array(char **arr);
 
 /*
+ * ensure_string_not_null - if string is NULL, allocate an empty string
+ */
+void ensure_string_not_null(char **str);
+
+/*
  * convert_string_to_lowercase - convert string to lower case
  */
 char *convert_string_to_lowercase(char *str);
