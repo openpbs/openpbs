@@ -86,6 +86,7 @@ JsonNode *add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType 
 char *strdup_escape(JsonEscapeType esc_type, const char *str);
 int generate_json(FILE *stream);
 void free_json_node_list();
+int is_valid_json_number(char *value);
 
 #ifdef __cplusplus
 }
