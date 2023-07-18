@@ -83,6 +83,7 @@ libpbs_la_SOURCES = \
 	../Libcmds/batch_status.c \
 	../Libcmds/check_job_script.c \
 	../Libcmds/chk_Jrange.c \
+	../Libcmds/cJSON.c \
 	../Libcmds/ck_job_name.c \
 	../Libcmds/cnt2server.c \
 	../Libcmds/cvtdate.c \

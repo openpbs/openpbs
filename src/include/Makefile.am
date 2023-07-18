@@ -55,6 +55,7 @@ noinst_HEADERS = \
 	basil.h \
 	batch_request.h \
 	bitfield.h \
+	cJSON.h \
 	cmds.h \
 	credential.h \
 	dedup_jobids.h \

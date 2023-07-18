@@ -201,18 +201,18 @@ encode_to_json(struct batch_status *bstat)
 	double value = 0;
 	char *prev_jobid = "";
 
-	if (add_json_node(JSON_OBJECT, JSON_NULL, JSON_NOVALUE, bstat->name, NULL) == NULL)
+	if (add_json_node(JSON_OBJECT, JSON_NULL, bstat->name, NULL))
 		return 1;
 	for (pattr = bstat->attribs; pattr; pattr = pattr->next) {
 		if (strcmp(pattr->name, "resources_available") == 0) {
-			if (add_json_node(JSON_OBJECT, JSON_NULL, JSON_NOVALUE, pattr->name, NULL) == NULL)
+			if (add_json_node(JSON_OBJECT, JSON_NULL, pattr->name, NULL))
 				return 1;
 			for (next = pattr; next;) {
-				if (add_json_node(JSON_VALUE, JSON_NULL, JSON_FULLESCAPE, next->resource, next->value) == NULL)
+				if (add_json_node(JSON_VALUE, JSON_NULL, next->resource, next->value))
 					return 1;
 				if (next->next == NULL || strcmp(next->next->name, "resources_available")) {
 					/* Nothing left in resources_available, close object */
-					if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL))
 						return 1;
 					pattr = next;
 					next = NULL;
@@ -221,7 +221,7 @@ encode_to_json(struct batch_status *bstat)
 				}
 			}
 		} else if (strcmp(pattr->name, "resources_assigned") == 0) {
-			if (add_json_node(JSON_OBJECT, JSON_NULL, JSON_NOVALUE, pattr->name, NULL) == NULL)
+			if (add_json_node(JSON_OBJECT, JSON_NULL, pattr->name, NULL))
 				return 1;
 			for (next = pattr; next;) {
 				str = next->value;
@@ -234,17 +234,17 @@ encode_to_json(struct batch_status *bstat)
 				}
 				/* Adding only non zero values.*/
 				if (value) {
-					if (add_json_node(JSON_VALUE, JSON_NULL, JSON_FULLESCAPE, next->resource, next->value) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_NULL, next->resource, next->value))
 						return 1;
 				} else {
 					if (str[0] != '0') {
-						if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, next->resource, str) == NULL)
+						if (add_json_node(JSON_VALUE, JSON_STRING, next->resource, str))
 							return 1;
 					}
 				}
 				if (next->next == NULL || strcmp(next->next->name, "resources_assigned")) {
 					/* Nothing left in resources_assigned, close object */
-					if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL))
 						return 1;
 					pattr = next;
 					next = NULL;
@@ -253,7 +253,7 @@ encode_to_json(struct batch_status *bstat)
 				}
 			}
 		} else if (strcmp(pattr->name, "jobs") == 0) {
-			if (add_json_node(JSON_ARRAY, JSON_NULL, JSON_NOVALUE, pattr->name, NULL) == NULL)
+			if (add_json_node(JSON_ARRAY, JSON_NULL, pattr->name, NULL))
 				return 1;
 			pc = pc1 = str = pattr->value;
 			while (*pc1) {
@@ -267,19 +267,19 @@ encode_to_json(struct batch_status *bstat)
 				if (pc1)
 					*pc1 = '\0';
 				if (strcmp(pc, prev_jobid) != 0) {
-					if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, NULL, pc) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_STRING, NULL, pc))
 						return 1;
 				}
 				prev_jobid = pc;
 			}
-			if (add_json_node(JSON_ARRAY_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)
+			if (add_json_node(JSON_ARRAY_END, JSON_NULL, NULL, NULL))
 				return 1;
 		} else {
-			if (add_json_node(JSON_VALUE, JSON_NULL, JSON_FULLESCAPE, pattr->name, pattr->value) == NULL)
+			if (add_json_node(JSON_VALUE, JSON_NULL, pattr->name, pattr->value))
 				return 1;
 		}
 	}
-	if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)
+	if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL))
 		return 1;
 	return 0;
 }
@@ -562,63 +562,64 @@ prt_node_summary(char *def_server, struct batch_status *bstatus, int job_summary
 				break;
 
 			case FORMAT_JSON:
-				if (add_json_node(JSON_OBJECT, JSON_NULL, JSON_NOVALUE, name, NULL) == NULL)
+				if (add_json_node(JSON_OBJECT, JSON_NULL, name, NULL))
 					return 1;
-				if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "State", state) == NULL)
+				if (add_json_node(JSON_VALUE, JSON_STRING, "State", state))
 					return 1;
 				if (job_summary) {
 
-					if (add_json_node(JSON_VALUE, JSON_INT, JSON_FULLESCAPE, "Total Jobs", &njobs) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_INT, "Total Jobs", &njobs))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_INT, JSON_FULLESCAPE, "Running Jobs", &run_jobs) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_INT, "Running Jobs", &run_jobs))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_INT, JSON_FULLESCAPE, "Suspended Jobs", &susp_jobs) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_INT, "Suspended Jobs", &susp_jobs))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "mem f/t", mem_info) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_STRING, "mem f/t", mem_info))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "ncpus f/t", ncpus_info) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_STRING, "ncpus f/t", ncpus_info))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "nmics f/t", nmic_info) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_STRING, "nmics f/t", nmic_info))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "ngpus f/t", ngpus_info) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_STRING, "ngpus f/t", ngpus_info))
 						return 1;
-					if (add_json_node(JSON_ARRAY, JSON_NULL, JSON_NOVALUE, "jobs", NULL) == NULL)
+					if (add_json_node(JSON_ARRAY, JSON_NULL, "jobs", NULL))
 						return 1;
 					if (strcmp(jobs, "--") != 0) {
 						pc = strtok(jobs, ",");
 						while (pc != NULL) {
-							node = add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, NULL, pc);
-							if (node == NULL)
+							if (add_json_node(JSON_VALUE, JSON_STRING, NULL, pc))
 								return 1;
 							pc = strtok(NULL, ",");
 						}
 					}
-					if (add_json_node(JSON_ARRAY_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)
+					if (add_json_node(JSON_ARRAY_END, JSON_NULL, NULL, NULL))
 						return 1;
-					if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL))
 						return 1;
 				} else {
 
-					if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "OS", os) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_STRING, "OS", os))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "hardware", hardware) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_STRING, "hardware", hardware))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "host", host) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_STRING, "host", host))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "queue", queue) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_STRING, "queue", queue))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "Memory", mem_info) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_STRING, "Memory", mem_info))
 						return 1;
 					value = atol(ncpus_info);
-					if (add_json_node(JSON_VALUE, JSON_INT, JSON_FULLESCAPE, "ncpus", &value) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_INT, "ncpus", &value))
 						return 1;
 					value = atol(nmic_info);
-					if (add_json_node(JSON_VALUE, JSON_INT, JSON_FULLESCAPE, "nmics", &value) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_INT, "nmics", &value))
 						return 1;
 					value = atol(ngpus_info);
-					if (add_json_node(JSON_VALUE, JSON_INT, JSON_FULLESCAPE, "ngpus", &value) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_INT, "ngpus", &value))
 						return 1;
-					if (add_json_node(JSON_OBJECT_END, JSON_STRING, JSON_FULLESCAPE, "comment", comment) == NULL)
+					if (add_json_node(JSON_VALUE, JSON_STRING, "comment", comment))
+						return 1;
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL))
 						return 1;
 				}
 				break;
@@ -1124,20 +1125,20 @@ main(int argc, char *argv[])
 	/* adding prologue to json output. */
 	if (output_format == FORMAT_JSON) {
 		timenow = time(0);
-		if (add_json_node(JSON_VALUE, JSON_INT, JSON_FULLESCAPE, "timestamp", &timenow) == NULL) {
-			fprintf(stderr, "pbsnodes: out of memory\n");
+		if (add_json_node(JSON_VALUE, JSON_INT, "timestamp", &timenow)) {
+			fprintf(stderr, "pbsnodes: json error\n");
 			exit(1);
 		}
-		if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "pbs_version", PBS_VERSION) == NULL) {
-			fprintf(stderr, "pbsnodes: out of memory\n");
+		if (add_json_node(JSON_VALUE, JSON_STRING, "pbs_version", PBS_VERSION)) {
+			fprintf(stderr, "pbsnodes: json error\n");
 			exit(1);
 		}
-		if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "pbs_server", def_server) == NULL) {
-			fprintf(stderr, "pbsnodes: out of memory\n");
+		if (add_json_node(JSON_VALUE, JSON_STRING, "pbs_server", def_server)) {
+			fprintf(stderr, "pbsnodes: json error\n");
 			exit(1);
 		}
-		if (add_json_node(JSON_OBJECT, JSON_NULL, JSON_NOVALUE, "nodes", NULL) == NULL) {
-			fprintf(stderr, "pbsnodes: out of memory\n");
+		if (add_json_node(JSON_OBJECT, JSON_NULL, "nodes", NULL)) {
+			fprintf(stderr, "pbsnodes: json error\n");
 			exit(1);
 		}
 	}
@@ -1235,12 +1236,12 @@ main(int argc, char *argv[])
 					prt_node(bstat);
 			}
 			if (output_format == FORMAT_JSON) {
-				if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL) {
-					fprintf(stderr, "pbsnodes: out of memory\n");
+				if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)) {
+					fprintf(stderr, "pbsnodes: json error\n");
 					return 1;
 				}
-				generate_json(stdout);
-				free_json_node_list();
+				print_json(stdout);
+				free_json();
 			}
 			pbs_statfree(bstat_head);
 
@@ -1271,8 +1272,18 @@ main(int argc, char *argv[])
 					if (pbs_errno != 0) {
 
 						if (output_format == FORMAT_JSON) {
-							add_json_node(JSON_OBJECT, JSON_NULL, JSON_NOVALUE, *pa, NULL);
-							add_json_node(JSON_OBJECT_END, JSON_STRING, JSON_FULLESCAPE, "Error", pbs_geterrmsg(con));
+							if (add_json_node(JSON_OBJECT, JSON_NULL, *pa, NULL)) {
+								fprintf(stderr, "pbsnodes: json error\n");
+								exit(1);
+							}
+							if (add_json_node(JSON_VALUE, JSON_STRING, "Error", pbs_geterrmsg(con))) {
+								fprintf(stderr, "pbsnodes: json error\n");
+								exit(1);
+							}
+							if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)) {
+								fprintf(stderr, "pbsnodes: json error\n");
+								exit(1);
+							}
 						} else {
 							fprintf(stderr, "Node: %s,  Error: %s\n", *pa, pbs_geterrmsg(con));
 							rc = 1;
@@ -1291,12 +1302,12 @@ main(int argc, char *argv[])
 				}
 			}
 			if (output_format == FORMAT_JSON) {
-				if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL) {
-					fprintf(stderr, "pbsnodes: out of memory\n");
+				if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)) {
+					fprintf(stderr, "pbsnodes: json error\n");
 					exit(1);
 				}
-				generate_json(stdout);
-				free_json_node_list();
+				print_json(stdout);
+				free_json();
 			}
 			if (do_vnodes) {
 				pbs_statfree(bstat_head);
@@ -1352,8 +1363,18 @@ main(int argc, char *argv[])
 				if (!bstat) {
 					if (pbs_errno != 0) {
 						if (output_format == FORMAT_JSON) {
-							add_json_node(JSON_OBJECT, JSON_NULL, JSON_NOVALUE, *pa, NULL);
-							add_json_node(JSON_OBJECT_END, JSON_STRING, JSON_FULLESCAPE, "Error", pbs_geterrmsg(con));
+							if (add_json_node(JSON_OBJECT, JSON_NULL, *pa, NULL)) {
+								fprintf(stderr, "pbsnodes : json error");
+								exit(1);
+							}
+							if (add_json_node(JSON_VALUE, JSON_STRING, "Error", pbs_geterrmsg(con))) {
+								fprintf(stderr, "pbsnodes : json error");
+								exit(1);
+							}
+							if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)) {
+								fprintf(stderr, "pbsnodes : json error");
+								exit(1);
+							}
 						} else {
 							fprintf(stderr, "Node: %s,  Error: %s\n", *pa, pbs_geterrmsg(con));
 							rc = 1;
@@ -1364,12 +1385,12 @@ main(int argc, char *argv[])
 				pa++;
 			}
 			if (output_format == FORMAT_JSON) {
-				if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL) {
-					fprintf(stderr, "pbsnodes : out of memory");
+				if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)) {
+					fprintf(stderr, "pbsnodes : json error");
 					exit(1);
 				}
-				generate_json(stdout);
-				free_json_node_list();
+				print_json(stdout);
+				free_json();
 			}
 			pbs_statfree(bstat_head);
 			break;
