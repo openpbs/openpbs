@@ -1351,6 +1351,22 @@ free_string_array(char **arr)
 
 /**
  * @brief
+ *	ensure_string_not_null - if string is NULL, allocate an empty string
+ *
+ * @param[in]	str - pointer to pointer to string (or to NULL)
+ *
+ * @return	nothing
+ *
+ */
+void
+ensure_string_not_null(char **str)
+{
+	if (*str == NULL)
+		*str = strdup("");
+}
+
+/**
+ * @brief
  *	convert_string_to_lowercase - Convert string to lowercase
  *
  * @param[in]	str - string to be converted
