@@ -304,7 +304,6 @@ prt_node_summary(char *def_server, struct batch_status *bstatus, int job_summary
 	struct batch_status *bstat = NULL;
 	struct attrl *pattr;
 	struct attrl *next;
-	struct JsonNode *node = NULL;
 	char suffixletter[] = " kmgtp?";
 	char *pc;
 	char *pc1;

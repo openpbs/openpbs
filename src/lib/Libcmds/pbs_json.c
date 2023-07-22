@@ -44,8 +44,8 @@
 static cJSON *root = NULL; /* root of cJSON structure */
 static cJSON *node = NULL; /* current node (object or array) */
 static cJSON **np = NULL; /* node path to current node */
-static int np_size;
-static int np_pos;
+static int np_size = 0;
+static int np_pos = -1;
 
 /**
  * @brief
@@ -140,7 +140,7 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, char *key, void *value)
 		return 1;
 
 	if (ntype == JSON_VALUE && value != NULL) {
-		cJSON *jvalue;
+		cJSON *jvalue = NULL;
 
 		if (vtype == JSON_STRING)
 			jvalue = cJSON_CreateString((char *) value);
@@ -171,7 +171,7 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, char *key, void *value)
 	}
 
 	if (ntype == JSON_OBJECT || ntype == JSON_ARRAY) {
-		cJSON *new_node;
+		cJSON *new_node = NULL;
 
 		if (ntype == JSON_OBJECT)
 			new_node = cJSON_CreateObject();
