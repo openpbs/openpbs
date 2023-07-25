@@ -97,7 +97,7 @@
 #include "portability.h"
 #include "pbs_ifl.h"
 #include "pbs_internal.h"
-#include "pbs_json.h"
+#include <cjson/cJSON.h>
 
 /* Field width for Single line summary */
 #define NODE_NAME 15
@@ -145,6 +145,7 @@ static char *output_format_names[] = {"default", "dsv", "json", NULL};
 static int output_format = FORMAT_DEFAULT;
 static int quiet = 0;
 static char *dsv_delim = "|";
+static cJSON *json_nodes = NULL; /* cJSON structure for nodes */
 
 /**
  * @brief
@@ -198,22 +199,24 @@ encode_to_json(struct batch_status *bstat)
 	char *str;
 	char *pc;
 	char *pc1;
-	double value = 0;
 	char *prev_jobid = "";
+	cJSON *json_node;
+	cJSON *json_value;
 
-	if (add_json_node(JSON_OBJECT, JSON_NULL, bstat->name, NULL))
+	if ((json_node = cJSON_CreateObject()) == NULL)
 		return 1;
+	cJSON_AddItemToObject(json_nodes, bstat->name, json_node);
 	for (pattr = bstat->attribs; pattr; pattr = pattr->next) {
 		if (strcmp(pattr->name, "resources_available") == 0) {
-			if (add_json_node(JSON_OBJECT, JSON_NULL, pattr->name, NULL))
+			cJSON *json_resc;
+			if ((json_resc = cJSON_CreateObject()) == NULL)
 				return 1;
+			cJSON_AddItemToObject(json_node, pattr->name, json_resc);
 			for (next = pattr; next;) {
-				if (add_json_node(JSON_VALUE, JSON_NULL, next->resource, next->value))
-					return 1;
+				if ((json_value = cJSON_ParseWithOpts(next->value, NULL, 1)) != NULL ||
+					(json_value = cJSON_CreateString(next->value)) != NULL)
+					cJSON_AddItemToObject(json_resc, next->resource, json_value);
 				if (next->next == NULL || strcmp(next->next->name, "resources_available")) {
-					/* Nothing left in resources_available, close object */
-					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL))
-						return 1;
 					pattr = next;
 					next = NULL;
 				} else {
@@ -221,11 +224,13 @@ encode_to_json(struct batch_status *bstat)
 				}
 			}
 		} else if (strcmp(pattr->name, "resources_assigned") == 0) {
-			if (add_json_node(JSON_OBJECT, JSON_NULL, pattr->name, NULL))
+			cJSON *json_resc;
+			if ((json_resc = cJSON_CreateObject()) == NULL)
 				return 1;
+			cJSON_AddItemToObject(json_node, pattr->name, json_resc);
 			for (next = pattr; next;) {
 				str = next->value;
-				value = strtod(str, &pc);
+				strtod(str, &pc);
 				while (pc) {
 					if (isspace(*pc))
 						pc++;
@@ -233,19 +238,16 @@ encode_to_json(struct batch_status *bstat)
 						break;
 				}
 				/* Adding only non zero values.*/
-				if (value) {
-					if (add_json_node(JSON_VALUE, JSON_NULL, next->resource, next->value))
-						return 1;
-				} else {
-					if (str[0] != '0') {
-						if (add_json_node(JSON_VALUE, JSON_STRING, next->resource, str))
-							return 1;
-					}
+				if ((json_value = cJSON_ParseWithOpts(next->value, NULL, 1)) != NULL ||
+					(json_value = cJSON_CreateString(next->value)) != NULL) {
+					if (cJSON_IsString(json_value) && cJSON_GetStringValue(json_value)[0] != '0')
+						cJSON_AddItemToObject(json_resc, next->resource, json_value);
+					if (cJSON_IsNumber(json_value) && cJSON_GetNumberValue(json_value) != 0)
+						cJSON_AddItemToObject(json_resc, next->resource, json_value);
+					if (cJSON_IsBool(json_value))
+						cJSON_AddItemToObject(json_resc, next->resource, json_value);
 				}
 				if (next->next == NULL || strcmp(next->next->name, "resources_assigned")) {
-					/* Nothing left in resources_assigned, close object */
-					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL))
-						return 1;
 					pattr = next;
 					next = NULL;
 				} else {
@@ -253,8 +255,10 @@ encode_to_json(struct batch_status *bstat)
 				}
 			}
 		} else if (strcmp(pattr->name, "jobs") == 0) {
-			if (add_json_node(JSON_ARRAY, JSON_NULL, pattr->name, NULL))
+			cJSON *json_jobs;
+			if ((json_jobs = cJSON_CreateArray()) == NULL)
 				return 1;
+			cJSON_AddItemToObject(json_node, pattr->name, json_jobs);
 			pc = pc1 = str = pattr->value;
 			while (*pc1) {
 				if (*pc1 != ' ')
@@ -267,20 +271,19 @@ encode_to_json(struct batch_status *bstat)
 				if (pc1)
 					*pc1 = '\0';
 				if (strcmp(pc, prev_jobid) != 0) {
-					if (add_json_node(JSON_VALUE, JSON_STRING, NULL, pc))
+					if ((json_value = cJSON_CreateString(pc)) == NULL)
 						return 1;
+					cJSON_AddItemToArray(json_jobs, json_value);
 				}
 				prev_jobid = pc;
 			}
-			if (add_json_node(JSON_ARRAY_END, JSON_NULL, NULL, NULL))
-				return 1;
 		} else {
-			if (add_json_node(JSON_VALUE, JSON_NULL, pattr->name, pattr->value))
-				return 1;
+			if ((json_value = cJSON_ParseWithOpts(pattr->value, NULL, 1)) != NULL ||
+				(json_value = cJSON_CreateString(pattr->value)) != NULL) {
+				cJSON_AddItemToObject(json_node, pattr->name, json_value);
+			}
 		}
 	}
-	if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL))
-		return 1;
 	return 0;
 }
 
@@ -320,6 +323,9 @@ prt_node_summary(char *def_server, struct batch_status *bstatus, int job_summary
 	long int susp_jobs = 0;
 	long int value = 0;
 	static int done_headers = 0;
+	cJSON *json_node;
+	cJSON *json_jobs;
+	cJSON *json_value;
 
 	if (output_format == FORMAT_DEFAULT && !done_headers) {
 		if (job_summary) {
@@ -561,65 +567,77 @@ prt_node_summary(char *def_server, struct batch_status *bstatus, int job_summary
 				break;
 
 			case FORMAT_JSON:
-				if (add_json_node(JSON_OBJECT, JSON_NULL, name, NULL))
+				if ((json_node = cJSON_CreateObject()) == NULL)
 					return 1;
-				if (add_json_node(JSON_VALUE, JSON_STRING, "State", state))
+				cJSON_AddItemToObject(json_nodes, name, json_node);
+				if ((json_value = cJSON_CreateString(state)) == NULL)
 					return 1;
+				cJSON_AddItemToObject(json_node, "State", json_value);
 				if (job_summary) {
-
-					if (add_json_node(JSON_VALUE, JSON_INT, "Total Jobs", &njobs))
+					if (((json_value = cJSON_CreateNumber((double) njobs)) == NULL))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_INT, "Running Jobs", &run_jobs))
+					cJSON_AddItemToObject(json_node, "Total Jobs", json_value);
+					if (((json_value = cJSON_CreateNumber((double) run_jobs)) == NULL))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_INT, "Suspended Jobs", &susp_jobs))
+					cJSON_AddItemToObject(json_node, "Running Jobs", json_value);
+					if (((json_value = cJSON_CreateNumber((double) susp_jobs)) == NULL))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, "mem f/t", mem_info))
+					cJSON_AddItemToObject(json_node, "Suspended Jobs", json_value);
+					if ((json_value = cJSON_CreateString(mem_info)) == NULL)
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, "ncpus f/t", ncpus_info))
+					cJSON_AddItemToObject(json_node, "mem f/t", json_value);
+					if ((json_value = cJSON_CreateString(ncpus_info)) == NULL)
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, "nmics f/t", nmic_info))
+					cJSON_AddItemToObject(json_node, "ncpus f/t", json_value);
+					if ((json_value = cJSON_CreateString(nmic_info)) == NULL)
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, "ngpus f/t", ngpus_info))
+					cJSON_AddItemToObject(json_node, "nmics f/t", json_value);
+					if ((json_value = cJSON_CreateString(ngpus_info)) == NULL)
 						return 1;
-					if (add_json_node(JSON_ARRAY, JSON_NULL, "jobs", NULL))
+					cJSON_AddItemToObject(json_node, "ngpus f/t", json_value);
+					if ((json_jobs = cJSON_CreateArray()) == NULL)
 						return 1;
+					cJSON_AddItemToObject(json_node, "jobs", json_jobs);
 					if (strcmp(jobs, "--") != 0) {
 						pc = strtok(jobs, ",");
 						while (pc != NULL) {
-							if (add_json_node(JSON_VALUE, JSON_STRING, NULL, pc))
+							if ((json_value = cJSON_CreateString(pc)) == NULL)
 								return 1;
+							cJSON_AddItemToArray(json_jobs, json_value);
 							pc = strtok(NULL, ",");
 						}
 					}
-					if (add_json_node(JSON_ARRAY_END, JSON_NULL, NULL, NULL))
-						return 1;
-					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL))
-						return 1;
 				} else {
-
-					if (add_json_node(JSON_VALUE, JSON_STRING, "OS", os))
+					if ((json_value = cJSON_CreateString(os)) == NULL)
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, "hardware", hardware))
+					cJSON_AddItemToObject(json_node, "OS", json_value);
+					if ((json_value = cJSON_CreateString(hardware)) == NULL)
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, "host", host))
+					cJSON_AddItemToObject(json_node, "hardware", json_value);
+					if ((json_value = cJSON_CreateString(host)) == NULL)
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, "queue", queue))
+					cJSON_AddItemToObject(json_node, "host", json_value);
+					if ((json_value = cJSON_CreateString(queue)) == NULL)
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, "Memory", mem_info))
+					cJSON_AddItemToObject(json_node, "queue", json_value);
+					if ((json_value = cJSON_CreateString(mem_info)) == NULL)
 						return 1;
+					cJSON_AddItemToObject(json_node, "Memory", json_value);
 					value = atol(ncpus_info);
-					if (add_json_node(JSON_VALUE, JSON_INT, "ncpus", &value))
+					if (((json_value = cJSON_CreateNumber((double) value)) == NULL))
 						return 1;
+					cJSON_AddItemToObject(json_node, "ncpus", json_value);
 					value = atol(nmic_info);
-					if (add_json_node(JSON_VALUE, JSON_INT, "nmics", &value))
+					if (((json_value = cJSON_CreateNumber((double) value)) == NULL))
 						return 1;
+					cJSON_AddItemToObject(json_node, "nmics", json_value);
 					value = atol(ngpus_info);
-					if (add_json_node(JSON_VALUE, JSON_INT, "ngpus", &value))
+					if (((json_value = cJSON_CreateNumber((double) value)) == NULL))
 						return 1;
-					if (add_json_node(JSON_VALUE, JSON_STRING, "comment", comment))
+					cJSON_AddItemToObject(json_node, "ngpus", json_value);
+					if ((json_value = cJSON_CreateString(comment)) == NULL)
 						return 1;
-					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL))
-						return 1;
+					cJSON_AddItemToObject(json_node, "comment", json_value);
 				}
 				break;
 			case FORMAT_DEFAULT:
@@ -922,6 +940,8 @@ main(int argc, char *argv[])
 	int long_summary = 0;
 	int format = 0;
 	int prt_summary = 0;
+	static cJSON *json_root = NULL; /* root of cJSON structure */
+	static cJSON *json_value = NULL;
 
 	/*test for real deal or just version and exit*/
 
@@ -1124,22 +1144,30 @@ main(int argc, char *argv[])
 	/* adding prologue to json output. */
 	if (output_format == FORMAT_JSON) {
 		timenow = time(0);
-		if (add_json_node(JSON_VALUE, JSON_INT, "timestamp", &timenow)) {
+		if ((json_root = cJSON_CreateObject()) == NULL) {
 			fprintf(stderr, "pbsnodes: json error\n");
 			exit(1);
 		}
-		if (add_json_node(JSON_VALUE, JSON_STRING, "pbs_version", PBS_VERSION)) {
+		if ((json_value = cJSON_CreateNumber((double) timenow)) == NULL) {
 			fprintf(stderr, "pbsnodes: json error\n");
 			exit(1);
 		}
-		if (add_json_node(JSON_VALUE, JSON_STRING, "pbs_server", def_server)) {
+		cJSON_AddItemToObject(json_root, "timestamp", json_value);
+		if ((json_value = cJSON_CreateString(PBS_VERSION)) == NULL) {
 			fprintf(stderr, "pbsnodes: json error\n");
 			exit(1);
 		}
-		if (add_json_node(JSON_OBJECT, JSON_NULL, "nodes", NULL)) {
+		cJSON_AddItemToObject(json_root, "pbs_version", json_value);
+		if ((json_value = cJSON_CreateString(def_server)) == NULL) {
 			fprintf(stderr, "pbsnodes: json error\n");
 			exit(1);
 		}
+		cJSON_AddItemToObject(json_root, "pbs_server", json_value);
+		if ((json_nodes = cJSON_CreateObject()) == NULL) {
+			fprintf(stderr, "pbsnodes: json error\n");
+			exit(1);
+		}
+		cJSON_AddItemToObject(json_root, "nodes", json_nodes);
 	}
 	switch (oper) {
 
@@ -1235,12 +1263,14 @@ main(int argc, char *argv[])
 					prt_node(bstat);
 			}
 			if (output_format == FORMAT_JSON) {
-				if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)) {
-					fprintf(stderr, "pbsnodes: json error\n");
-					return 1;
+				char *json_out = cJSON_Print(json_root);
+				if (json_out != NULL) {
+					fprintf(stdout, "%s\n", json_out);
+					free(json_out);
+				} else {
+					fprintf(stderr, "cJSON error\n");
 				}
-				print_json(stdout);
-				free_json();
+				cJSON_Delete(json_root);
 			}
 			pbs_statfree(bstat_head);
 
@@ -1271,18 +1301,17 @@ main(int argc, char *argv[])
 					if (pbs_errno != 0) {
 
 						if (output_format == FORMAT_JSON) {
-							if (add_json_node(JSON_OBJECT, JSON_NULL, *pa, NULL)) {
+							cJSON *json_error;
+							if ((json_error = cJSON_CreateObject()) == NULL) {
 								fprintf(stderr, "pbsnodes: json error\n");
 								exit(1);
 							}
-							if (add_json_node(JSON_VALUE, JSON_STRING, "Error", pbs_geterrmsg(con))) {
+							cJSON_AddItemToObject(json_nodes, *pa, json_error);
+							if ((json_value = cJSON_CreateString(pbs_geterrmsg(con))) == NULL) {
 								fprintf(stderr, "pbsnodes: json error\n");
 								exit(1);
 							}
-							if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)) {
-								fprintf(stderr, "pbsnodes: json error\n");
-								exit(1);
-							}
+							cJSON_AddItemToObject(json_error, *pa, json_value);
 						} else {
 							fprintf(stderr, "Node: %s,  Error: %s\n", *pa, pbs_geterrmsg(con));
 							rc = 1;
@@ -1301,12 +1330,14 @@ main(int argc, char *argv[])
 				}
 			}
 			if (output_format == FORMAT_JSON) {
-				if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)) {
-					fprintf(stderr, "pbsnodes: json error\n");
-					exit(1);
+				char *json_out = cJSON_Print(json_root);
+				if (json_out != NULL) {
+					fprintf(stdout, "%s\n", json_out);
+					free(json_out);
+				} else {
+					fprintf(stderr, "cJSON error\n");
 				}
-				print_json(stdout);
-				free_json();
+				cJSON_Delete(json_root);
 			}
 			if (do_vnodes) {
 				pbs_statfree(bstat_head);
@@ -1362,18 +1393,17 @@ main(int argc, char *argv[])
 				if (!bstat) {
 					if (pbs_errno != 0) {
 						if (output_format == FORMAT_JSON) {
-							if (add_json_node(JSON_OBJECT, JSON_NULL, *pa, NULL)) {
-								fprintf(stderr, "pbsnodes : json error");
+							cJSON *json_error;
+							if ((json_error = cJSON_CreateObject()) == NULL) {
+								fprintf(stderr, "pbsnodes: json error\n");
 								exit(1);
 							}
-							if (add_json_node(JSON_VALUE, JSON_STRING, "Error", pbs_geterrmsg(con))) {
-								fprintf(stderr, "pbsnodes : json error");
+							cJSON_AddItemToObject(json_nodes, *pa, json_error);
+							if ((json_value = cJSON_CreateString(pbs_geterrmsg(con))) == NULL) {
+								fprintf(stderr, "pbsnodes: json error\n");
 								exit(1);
 							}
-							if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)) {
-								fprintf(stderr, "pbsnodes : json error");
-								exit(1);
-							}
+							cJSON_AddItemToObject(json_error, *pa, json_value);
 						} else {
 							fprintf(stderr, "Node: %s,  Error: %s\n", *pa, pbs_geterrmsg(con));
 							rc = 1;
@@ -1384,12 +1414,14 @@ main(int argc, char *argv[])
 				pa++;
 			}
 			if (output_format == FORMAT_JSON) {
-				if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)) {
-					fprintf(stderr, "pbsnodes : json error");
-					exit(1);
+				char *json_out = cJSON_Print(json_root);
+				if (json_out != NULL) {
+					fprintf(stdout, "%s\n", json_out);
+					free(json_out);
+				} else {
+					fprintf(stderr, "cJSON error\n");
 				}
-				print_json(stdout);
-				free_json();
+				cJSON_Delete(json_root);
 			}
 			pbs_statfree(bstat_head);
 			break;

@@ -107,8 +107,10 @@ pbsdsh_CPPFLAGS = ${common_cflags}
 pbsdsh_LDADD = ${common_libs}
 pbsdsh_SOURCES = pbsdsh.c ${common_sources}
 
-pbsnodes_CPPFLAGS = ${common_cflags}
-pbsnodes_LDADD = ${common_libs}
+pbsnodes_CPPFLAGS = ${common_cflags} \
+	@cjson_inc@
+pbsnodes_LDADD = ${common_libs} \
+	@cjson_lib@
 pbsnodes_SOURCES = pbsnodes.c ${common_sources}
 
 pbs_attach_CPPFLAGS = ${common_cflags}
@@ -221,8 +223,10 @@ qsig_CPPFLAGS = ${common_cflags}
 qsig_LDADD = ${common_libs}
 qsig_SOURCES = qsig.c ${common_sources}
 
-qstat_CPPFLAGS = ${common_cflags}
-qstat_LDADD = ${common_libs}
+qstat_CPPFLAGS = ${common_cflags} \
+	@cjson_inc@
+qstat_LDADD = ${common_libs} \
+	@cjson_lib@
 qstat_SOURCES = qstat.c ${common_sources}
 
 qstart_CPPFLAGS = ${common_cflags}

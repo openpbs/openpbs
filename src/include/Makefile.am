@@ -55,7 +55,6 @@ noinst_HEADERS = \
 	basil.h \
 	batch_request.h \
 	bitfield.h \
-	cJSON.h \
 	cmds.h \
 	credential.h \
 	dedup_jobids.h \
@@ -87,7 +86,6 @@ noinst_HEADERS = \
 	pbs_idx.h \
 	pbs_internal.h \
 	pbs_reliable.h \
-	pbs_json.h \
 	pbs_license.h \
 	pbs_mpp.h \
 	pbs_nodes.h \

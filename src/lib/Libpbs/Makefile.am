@@ -83,7 +83,6 @@ libpbs_la_SOURCES = \
 	../Libcmds/batch_status.c \
 	../Libcmds/check_job_script.c \
 	../Libcmds/chk_Jrange.c \
-	../Libcmds/cJSON.c \
 	../Libcmds/ck_job_name.c \
 	../Libcmds/cnt2server.c \
 	../Libcmds/cvtdate.c \
@@ -99,7 +98,6 @@ libpbs_la_SOURCES = \
 	../Libcmds/parse_equal.c \
 	../Libcmds/parse_jobid.c \
 	../Libcmds/parse_stage.c \
-	../Libcmds/pbs_json.c \
 	../Libcmds/prepare_path.c \
 	../Libcmds/set_attr.c \
 	../Libcmds/set_resource.c \

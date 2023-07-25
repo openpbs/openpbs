@@ -23,7 +23,7 @@ How to install PBS using the configure script.
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel postgresql-contrib python3-devel tcl-devel \
       tk-devel swig expat-devel openssl-devel libXext libXft \
-      autoconf automake gcc-c++
+      autoconf automake gcc-c++ cjson-devel
 
   For CentOS-7 systems you should run the following command as root:
 
@@ -39,7 +39,7 @@ How to install PBS using the configure script.
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel postgresql-contrib python3-devel tcl-devel \
       tk-devel swig libexpat-devel libopenssl-devel libXext-devel \
-      libXft-devel fontconfig autoconf automake gcc-c++
+      libXft-devel fontconfig autoconf automake gcc-c++ cJSON-devel
 
   For Debian systems you should run the following command as root:
 
@@ -47,7 +47,7 @@ How to install PBS using the configure script.
       libxt-dev libedit-dev libical-dev ncurses-dev perl \
       postgresql-server-dev-all postgresql-contrib python3-dev tcl-dev tk-dev swig \
       libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
-      automake g++
+      automake g++ libcjson-dev
 
   For Ubuntu-18.04 systems you should run the following command as root:
 
@@ -70,12 +70,12 @@ How to install PBS using the configure script.
   For CentOS systems you should run the following command as root:
 
     yum install -y expat libedit postgresql-server postgresql-contrib python3 \
-      sendmail sudo tcl tk libical chkconfig
+      sendmail sudo tcl tk libical chkconfig cjson
 
   For openSUSE systems you should run the following command as root:
 
     zypper install expat libedit postgresql-server postgresql-contrib python3 \
-      sendmail sudo tcl tk libical1
+      sendmail sudo tcl tk libical1 libcjson1
 
   For Debian (jessie) systems you should run the following command as root:
 
@@ -90,7 +90,7 @@ How to install PBS using the configure script.
   For Debian (buster) systems you should run the following command as root:
 
     apt-get install expat libedit2 postgresql python3 postgresql-contrib sendmail-bin \
-      sudo tcl tk libical3
+      sudo tcl tk libical3 libcjson1
 
   For Ubuntu-18.04 systems you should run the following command as root:
 

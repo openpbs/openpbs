@@ -129,6 +129,7 @@ BuildRequires: libXext-devel
 BuildRequires: libXft-devel
 BuildRequires: fontconfig
 BuildRequires: timezone
+BuildRequires: cJSON-devel
 %if ( ( !%{defined sle_version} ) || ( 0%{?sle_version} < 150500 ) )
 BuildRequires: python-xml
 %endif
@@ -137,6 +138,9 @@ BuildRequires: expat-devel
 BuildRequires: openssl-devel
 BuildRequires: libXext
 BuildRequires: libXft
+%if ( ( !%{defined rhel} ) || ( 0%{?rhel} >= 8 ) )
+BuildRequires: cjson-devel
+%endif
 %endif
 
 # Pure python extensions use the 32 bit library path
@@ -184,9 +188,13 @@ Requires: pmix
 Requires: smtp_daemon
 Requires: libhwloc15
 Requires: net-tools
+Requires: libcjson1
 %else
 Requires: smtpdaemon
 Requires: hostname
+%if ( ( !%{defined rhel} ) || ( 0%{?rhel} >= 8 ) )
+Requires: cjson
+%endif
 %endif
 %if 0%{?rhel} >= 7
 Requires: hwloc-libs
@@ -232,8 +240,12 @@ Requires: pmix
 %if %{defined suse_version}
 Requires: libhwloc15
 Requires: net-tools
+Requires: libcjson1
 %else
 Requires: hostname
+%if ( ( !%{defined rhel} ) || ( 0%{?rhel} >= 8 ) )
+Requires: cjson
+%endif
 %endif
 %if 0%{?rhel} >= 7
 Requires: hwloc-libs
@@ -269,6 +281,13 @@ Conflicts: pbs-mom
 Conflicts: pbs-cmds
 Requires: bash
 Requires: python3 >= 3.5
+%if %{defined suse_version}
+Requires: libcjson1
+%else
+%if ( ( !%{defined rhel} ) || ( 0%{?rhel} >= 8 ) )
+Requires: cjson
+%endif
+%endif
 Autoreq: 1
 
 %description %{pbs_client}
