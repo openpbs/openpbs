@@ -57,7 +57,8 @@
 #
 #    This hook is instantiated as follows:
 #        qmgr -c "create hook rapid event=queuejob"
-#        qmgr -c "import hook rapid_inter application/x-python default rapid_inter.py"
+#        qmgr -c "import hook rapid_inter application/x-python default
+#                 rapid_inter.py"
 import pbs
 
 high_priority_queue="high"

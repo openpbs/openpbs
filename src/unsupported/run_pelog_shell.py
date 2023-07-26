@@ -200,8 +200,8 @@ def trace_hook(**kwargs):
         hook_event[pbs.event().type], pbs.event().hook_name,
         trace['line'], trace['module'], trace['exception'], trace['message']
     )
-    rejectmsg = "Hook Error: request rejected as filter hook '%s' encountered " \
-        "an exception. Please inform Admin" % pbs.event().hook_name
+    rejectmsg = "Hook Error: request rejected as filter hook '%s' " \
+        "encountered an exception. Please inform Admin" % pbs.event().hook_name
     if not isinstance(loglevel, int):
         loglevel = pbs.LOG_ERROR
         tracemsg = 'trace_hook() called with invalid argument (loglevel=%s), '\
@@ -218,7 +218,8 @@ def trace_hook(**kwargs):
                 pbs.event().reject(rejectmsg)
         else:
             pbs.event().reject(str(trace_in_reject) + 'Line %s in %s %s:\n%s' %
-                               (trace['line'], trace['module'], trace['exception'], trace['message']))
+                               (trace['line'], trace['module'],
+                                trace['exception'], trace['message']))
 
 
 class JobLog:
@@ -369,7 +370,8 @@ try:
     if 'PBS_HOOK_CONFIG_FILE' in os.environ:
         config_file = os.environ["PBS_HOOK_CONFIG_FILE"]
         config = dict([l.split('#')[0].strip().split('=')
-                       for l in open(config_file, 'r').readlines() if '=' in l])
+                       for l in open(config_file, 'r').readlines()
+                       if '=' in l])
 
         # Set the true/false configurations
         if 'ENABLE_PARALLEL' in list(config.keys()):
@@ -385,9 +387,9 @@ try:
                 DEFAULT_ACTION = RERUN
             else:
                 pbs.logmsg(
-                    pbs.LOG_WARN, '%s;%s;[ERROR] ' %
-                    (hook_name, job.id) + 'DEFAULT_ACTION in %s.ini must be one ' %
-                    (hook_name) + 'of DELETE or RERUN.')
+                    pbs.LOG_WARN, '%s;%s;[ERROR] ' % (hook_name, job.id) +
+                    'DEFAULT_ACTION in %s.ini must be one ' % (hook_name) +
+                    'of DELETE or RERUN.')
         if 'TORQUE_COMPAT' in list(config.keys()):
             TORQUE_COMPAT = config['TORQUE_COMPAT'].lower()[0] in ['t', '1']
 
@@ -426,9 +428,10 @@ try:
             job.Exit_status                 # argv[10]
         ]
     else:  # hook has wrong events added
-        pbs.logmsg(pbs.LOG_WARNING,
-                   '%s;%s;[ERROR] PBS event type %s not supported in this hook.' %
-                   (hook_name, job.id, pbs_event.type))
+        pbs.logmsg(
+            pbs.LOG_WARNING,
+            '%s;%s;[ERROR] PBS event type %s not supported in this hook.' %
+            (hook_name, job.id, pbs_event.type))
         pbs_event.accept()
 
     # Handle empty arguments
@@ -505,7 +508,8 @@ try:
 
         if DEBUG:
             pbs.logmsg(
-                pbs.EVENT_DEBUG2, '%s;%s;[DEBUG2] script %s has appropriate permissions.' %
+                pbs.EVENT_DEBUG2,
+                '%s;%s;[DEBUG2] script %s has appropriate permissions.' %
                 (hook_name, job.id, script))
 
         # change to the correct working directory (PBS_HOME):
@@ -571,9 +575,9 @@ try:
         # If we reach the alarm time - 5 seconds, send a SIGTERM
         if proc.poll() is None:
             pbs.logmsg(
-                pbs.LOG_WARNING, '%s;%s;[WARNING] Terminating %s after %s seconds' %
-                (hook_name, job.id, event, int(
-                    time.time() - start_time)))
+                pbs.LOG_WARNING,
+                '%s;%s;[WARNING] Terminating %s after %s seconds' %
+                (hook_name, job.id, event, int(time.time() - start_time)))
             os.kill(proc.pid, signal.SIGTERM)
             while time.time() < start_time + hook_alarm - 3:
                 if proc.poll() is not None:
@@ -583,9 +587,9 @@ try:
         # If we reach an alarm time - 3 seconds, send a SIGKILL
         if proc.poll() is None:
             pbs.logmsg(
-                pbs.LOG_WARNING, '%s;%s;[WARNING] Killing %s after %s seconds' %
-                (hook_name, job.id, event, int(
-                    time.time() - start_time)))
+                pbs.LOG_WARNING,
+                '%s;%s;[WARNING] Killing %s after %s seconds' %
+                (hook_name, job.id, event, int(time.time() - start_time)))
             os.kill(proc.pid, signal.SIGKILL)
             while time.time() < start_time + hook_alarm - 1:
                 if proc.poll() is not None:

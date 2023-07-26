@@ -103,7 +103,8 @@ class Power:
         """
         if os.path.exists('/proc/cray_xt/cname'):
             return "cray"
-        if os.path.exists('/opt/clmgr/power-service') or os.path.exists('/opt/sgi'):
+        if (os.path.exists('/opt/clmgr/power-service') or
+            os.path.exists('/opt/sgi')):
             return "sgi"
         return "none"
 

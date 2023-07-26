@@ -49,8 +49,8 @@ try:
     def __get_uptime():
         """
         This function will return system uptime in epoch pattern
-        it will find system uptime either reading to '/proc/uptime' file is exists
-        otherwise by using 'uptime' command
+        it will find system uptime either reading to '/proc/uptime' file is
+        exists otherwise by using 'uptime' command
         """
         _boot_time = 0
         if os.path.exists('/proc/uptime'):
@@ -60,11 +60,14 @@ try:
                 time.time() - float(_uptime.readline().split()[0]))
             _uptime.close()
         else:
-            # '/proc/uptime' file not exists, get system uptime from 'uptime' command
-            # here uptime format will be as follow:
-            # <current time> <uptime>, <number of user logged into system>, <load average>
-            # Example: 11:14pm  up 150 days  5:39,  5 users,  load average: 0.07, 0.25, 0.22
-            # from above format the <uptime> will be one of the following format:
+            # '/proc/uptime' file not exists, get system uptime from 'uptime'
+            # command here uptime format will be as follow:
+            # <current time> <uptime>, <number of user logged into system>,
+            # <load average>
+            # Example: 11:14pm  up 150 days  5:39,  5 users,  load average:
+            # 0.07, 0.25, 0.22
+            # from above format the <uptime> will be one of the following
+            # format:
             #
             # 1. up MM min,
             # 	Example 1: up 1 min,

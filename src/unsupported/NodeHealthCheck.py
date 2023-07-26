@@ -151,7 +151,8 @@ class NodeHealthCheck:
                 if not os.path.ismount(os.path.realpath(mnt_pnt)):
                     pbs.logmsg(
                         pbs.EVENT_DEBUG3, "Mount: %s\tAction: %s" %
-                        (mnt_pnt, self.nhc_cfg["mounts"]["mount_points"][mnt_pnt]))
+                        (mnt_pnt,
+                         self.nhc_cfg["mounts"]["mount_points"][mnt_pnt]))
                     return [self.nhc_cfg["mounts"]["mount_points"][mnt_pnt],
                             '%s does not appear to be mounted' % mnt_pnt]
             except Exception as e:
@@ -172,7 +173,8 @@ class NodeHealthCheck:
         else:
             pbs.logmsg(
                 pbs.EVENT_DEBUG3,
-                "I'm not sure how to handle units: %s\nSo I will default to binary" %
+                ("I'm not sure how to handle units: %s\n"
+                 "So I will default to binary") %
                 (self.nhc_cfg["disk_space"]["units"]))
             units = {'kb': 1024, 'mb': 1048576,
                      'gb': 1073741824, 'tb': 1099511627776}
@@ -191,7 +193,8 @@ class NodeHealthCheck:
                         value = int(value[:-2].strip()) * units[key]
                     except Exception as e:
                         pbs.logmsg(
-                            pbs.EVENT_DEBUG, "Error convertion value to int: %s\tkey: %s" %
+                            pbs.EVENT_DEBUG,
+                            "Error convertion value to int: %s\tkey: %s" %
                             (value, key))
                         return False
                     break
@@ -237,11 +240,13 @@ class NodeHealthCheck:
             if isinstance(spaceVal, int):
                 pbs.logmsg(
                     pbs.EVENT_DEBUG3, "Free: %0.2lfgb\tRequested: %0.2lfgb" %
-                    (float(free) / float(gb_unit), float(spaceVal) / float(gb_unit)))
+                    (float(free) / float(gb_unit),
+                     float(spaceVal) / float(gb_unit)))
                 if free < spaceVal:
                     return [
                         self.nhc_cfg["disk_space"]["dirs"][check_dir][1],
-                        '%s failed disk space check. Free: %0.2lfgb\tRequested: %0.2lfgb' %
+                        ('%s failed disk space check. Free: %0.2lfgb\t'
+                         'Requested: %0.2lfgb') %
                         (check_dir,
                             float(free) /
                             float(gb_unit),
@@ -251,7 +256,9 @@ class NodeHealthCheck:
             elif isinstance(spaceVal, (float)):
                 try:
                     pbs.logmsg(
-                        pbs.EVENT_DEBUG3, "Free: %d\tTotal: %d\tUsed: %d\tUsed+Free: %d\tSpaceVal: %d" %
+                        pbs.EVENT_DEBUG3,
+                        ("Free: %d\tTotal: %d\tUsed: %d\tUsed+Free: %d\t"
+                         "SpaceVal: %d") %
                         (free, total, used, used + free, int(spaceVal)))
                     percent = 100 - \
                         int((float(used) / float(used + free)) * 100)
@@ -262,7 +269,8 @@ class NodeHealthCheck:
                     if percent < int(spaceVal):
                         return [
                             self.nhc_cfg["disk_space"]["dirs"][check_dir][1],
-                            '%s failed disk space check. Free: %d%%\tRequested: %d%%' %
+                            ('%s failed disk space check. Free: %d%%\t'
+                             'Requested: %d%%') %
                             (check_dir,
                              percent,
                              int(spaceVal))]
@@ -273,9 +281,11 @@ class NodeHealthCheck:
 
     def ChkDirFilePermissions(self):
         """
-            Returns True if the permissions match. The permissions from python are returned as string with the
-            '0100600'. The last three digits are the file permissions for user,group, world
-            Return action if the permissions don't match and NoFileOrDir if it can't find the file/dir
+            Returns True if the permissions match. The permissions from python
+            are returned as string with the '0100600'. The last three digits
+            are the file permissions for user,group, world Return action if the
+            permissions don't match and NoFileOrDir if it can't find the
+            file/dir
         """
 
         if not self.nhc_cfg["permissions"]["check"]:
@@ -286,21 +296,35 @@ class NodeHealthCheck:
             pbs.logmsg(
                 pbs.EVENT_DEBUG3, "File/Dir: %s\t%s" %
                 (file_dir, str(
-                    self.nhc_cfg["permissions"]["check_dirs_and_files"][file_dir][0])))
+                    self.nhc_cfg["permissions"]["check_dirs_and_files"]
+                    [file_dir][0])))
             try:
                 st = os.stat(file_dir)
                 permissions = oct(st.st_mode)
 
-                if permissions[-len(self.nhc_cfg["permissions"]["check_dirs_and_files"][file_dir][0]):] != str(
-                        self.nhc_cfg["permissions"]["check_dirs_and_files"][file_dir][0]):
-                    pbs.logmsg(pbs.EVENT_DEBUG3,
-                               "Required permissions: %s\tpermissions: %s" % (str(self.nhc_cfg["permissions"]["check_dirs_and_files"][file_dir][0]),
-                                                                              permissions[-len(self.nhc_cfg["permissions"]["check_dirs_and_files"][file_dir][0]):]))
-                    return [self.nhc_cfg["permissions"]["check_dirs_and_files"][file_dir][1],
-                            "File/Dir: %s\tRequired permissions: %s\tpermissions: %s" % (file_dir,
-                                                                                         str(
-                                                                                             self.nhc_cfg["permissions"]["check_dirs_and_files"][file_dir][0]),
-                                                                                         permissions[-len(self.nhc_cfg["permissions"]["check_dirs_and_files"][file_dir][0]):])]
+                if (permissions[-len(self.nhc_cfg["permissions"]
+                                     ["check_dirs_and_files"][file_dir][0]):]
+                        != str(self.nhc_cfg["permissions"]
+                               ["check_dirs_and_files"][file_dir][0])):
+                    pbs.logmsg(
+                        pbs.EVENT_DEBUG3,
+                        "Required permissions: %s\tpermissions: %s" %
+                        (str(self.nhc_cfg["permissions"]
+                             ["check_dirs_and_files"][file_dir][0]),
+                         permissions[-len(self.nhc_cfg["permissions"]
+                                          ["check_dirs_and_files"][file_dir][0]
+                                          ):]))
+                    return ([
+                        self.nhc_cfg["permissions"]["check_dirs_and_files"]
+                        [file_dir][1],
+                        "File/Dir: %s\tRequired permissions: %s\tpermissions: "
+                        "%s" %
+                        (file_dir,
+                         str(self.nhc_cfg["permissions"]
+                             ["check_dirs_and_files"][file_dir][0]),
+                         permissions[-len(self.nhc_cfg["permissions"]
+                                          ["check_dirs_and_files"][file_dir][0]
+                                          ):])])
             except OSError:
                 return [self.nhc_cfg["permissions"]["check_dirs_and_files"]
                         [file_dir][1], "Can not find file/dir: %s" % file_dir]
@@ -317,7 +341,8 @@ class NodeHealthCheck:
         # List all of the processes
         procs = {}
         if platform.uname()[0] == 'Linux':
-            # out, err = subprocess.Popen(['ps', '-Af'], stdout=subprocess.PIPE).communicate()
+            # out, err = subprocess.Popen(
+            #   ['ps', '-Af'], stdout=subprocess.PIPE).communicate()
             out, err = subprocess.Popen(
                 ['top', '-bn1'], stdout=subprocess.PIPE).communicate()
             lines = out.split('\n')
@@ -343,7 +368,8 @@ class NodeHealthCheck:
             if proc not in list(procs.keys()):
                 pbs.logmsg(
                     pbs.EVENT_DEBUG,
-                    "Process: %s is not in the running process list but should be" %
+                    "Process: %s is not in the running process list but "
+                    "should be" %
                     proc)
                 chk_procs['running'].append(proc)
                 if chk_action == "":
@@ -353,7 +379,8 @@ class NodeHealthCheck:
             if proc in list(procs.keys()):
                 pbs.logmsg(
                     pbs.EVENT_DEBUG,
-                    "Process: %s is in the stopped process list but was found to be running" %
+                    "Process: %s is in the stopped process list but was found "
+                    "to be running" %
                     proc)
                 chk_procs['stopped'].append(proc)
                 if chk_action == "":
@@ -364,7 +391,8 @@ class NodeHealthCheck:
                 ",".join(chk_procs['running']), ",".join(chk_procs['stopped']))
             return [
                 chk_action,
-                "CheckProcesses: One or more processes were found which violates the check\n%s" %
+                "CheckProcesses: One or more processes were found which "
+                "violates the check\n%s" %
                 line]
 
         return True
@@ -378,15 +406,19 @@ class NodeHealthCheck:
             file_dir_orig = file_dir
             # Check to see if this is a periodic hook. If so skip pbsuser file
             # touches
-            if pbs.event(
-            ).type == pbs.EXECHOST_PERIODIC and self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig][0] == 'pbsuser':
+            if (pbs.event().type == pbs.EXECHOST_PERIODIC and
+                    self.nhc_cfg["as_user_operations"]["touch_files"]
+                [file_dir_orig][0] == 'pbsuser'):
                 pbs.logmsg(
                     pbs.EVENT_DEBUG3,
-                    "Skipping this check dir: %s, since this is a periodic hook" %
+                    "Skipping this check dir: %s, since this is a periodic "
+                    "hook" %
                     file_dir)
                 continue
 
-#            pbs.logmsg(pbs.EVENT_DEBUG3,"Dir: %s\tUser: %s"%(file_dir,str(self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig][0])))
+#            pbs.logmsg(pbs.EVENT_DEBUG3, "Dir: %s\tUser: %s" %
+#                       (file_dir, str(self.nhc_cfg["as_user_operations"]
+#                        ["touch_files"][file_dir_orig][0])))
 #            pbs.logmsg(pbs.EVENT_DEBUG3,"Job User: %s"%(self.user))
 
             try:
@@ -413,7 +445,8 @@ class NodeHealthCheck:
                 # Check to see what user this test should be run as.
                 # Options: pbsuser or pbsadmin
                 status = ''
-                if self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig][0] == 'pbsadmin':
+                if (self.nhc_cfg["as_user_operations"]["touch_files"]
+                    [file_dir_orig][0] == 'pbsadmin'):
                     pbs.logmsg(pbs.EVENT_DEBUG3,
                                "TouchFileAsAdmin: %s" % (file_dir))
                     if new_file_dir != '':
@@ -423,11 +456,13 @@ class NodeHealthCheck:
                         status = self.TouchFileAsUser(
                             'root', file_dir, file_dir_orig)
 
-                elif self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig][0] == 'pbsuser':
+                elif (self.nhc_cfg["as_user_operations"]["touch_files"]
+                      [file_dir_orig][0] == 'pbsuser'):
                     # Check to see if check is to be written to a specific user
                     # dir
                     pbs.logmsg(
-                        pbs.EVENT_DEBUG3, "TouchFileAsUser: User: %s, Dir: %s" %
+                        pbs.EVENT_DEBUG3,
+                        "TouchFileAsUser: User: %s, Dir: %s" %
                         (self.user, file_dir))
                     if file_dir.find('<userid>') != -1:
                         file_dir = file_dir.replace('<userid>', self.user)
@@ -442,14 +477,19 @@ class NodeHealthCheck:
                 else:
                     pbs.logmsg(
                         pbs.EVENT_DEBUG,
-                        "Unknown User: %s. Please specify either pbsadmin or pbsuser" %
+                        "Unknown User: %s. Please specify either pbsadmin or "
+                        "pbsuser" %
                         (str(
-                            self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig][0])))
+                            self.nhc_cfg["as_user_operations"]["touch_files"]
+                            [file_dir_orig][0])))
                     return [
-                        self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig][1],
-                        "Unknown User: %s. Please specify either pbsadmin or pbsuser" %
+                        self.nhc_cfg["as_user_operations"]["touch_files"]
+                        [file_dir_orig][1],
+                        "Unknown User: %s. Please specify either pbsadmin or "
+                        "pbsuser" %
                         (str(
-                            self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig][0]))]
+                            self.nhc_cfg["as_user_operations"]["touch_files"]
+                            [file_dir_orig][0]))]
 
                 if not status:
                     return status
@@ -458,14 +498,19 @@ class NodeHealthCheck:
                 return [self.nhc_cfg["as_user_operations"]["touch_files"][
                     file_dir_orig][1], 'Can not find file/dir: %s' % file_dir]
             except Exception as e:
-                return [self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig]
-                        [1], 'Encountered an error %s for file/dir: %s' % (e, file_dir)]
+                return [
+                    self.nhc_cfg["as_user_operations"]["touch_files"]
+                    [file_dir_orig][1],
+                    'Encountered an error %s for file/dir: %s' % (e, file_dir)
+                ]
                 # return False
 
         return True
 
     def TouchFileAsUser(self, user, file_dir, file_dir_orig):
-        # file_dir_orig is needed to access the "Warn" or "Offline" information for the file/directory in question from the config file when variable substitution has taken place
+        # file_dir_orig is needed to access the "Warn" or "Offline" information
+        # for the file/directory in question from the config file when variable
+        # substitution has taken place
         # Define the child var
         child = 0
         user_data = None
@@ -519,16 +564,19 @@ class NodeHealthCheck:
             if lines.find('Successfully touched file') == - \
                     1 or lines.find('Failed to remove file') != -1:
                 pbs.logmsg(
-                    pbs.EVENT_DEBUG3, "Failed to touch/remove file in %s as %s" %
+                    pbs.EVENT_DEBUG3,
+                    "Failed to touch/remove file in %s as %s" %
                     (file_dir, user))
                 return [
-                    self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig][1],
+                    self.nhc_cfg["as_user_operations"]["touch_files"]
+                    [file_dir_orig][1],
                     'Failed to touch/remove file for %s in %s' %
                     (user,
                      file_dir)]
             else:
                 pbs.logmsg(
-                    pbs.EVENT_DEBUG3, "Successfully touched and removed file for %s in %s" %
+                    pbs.EVENT_DEBUG3,
+                    "Successfully touched and removed file for %s in %s" %
                     (user, file_dir))
 
         else:
@@ -550,8 +598,9 @@ class NodeHealthCheck:
                     os.chdir(file_dir)
 
                     # Touch a file in the user's home directory
-                    touch_file_name = "__user_%s_jobid_%s_host_%s_pbs_test.txt" % (
-                        user, self.job_id, self.host)
+                    touch_file_name = (
+                        "__user_%s_jobid_%s_host_%s_pbs_test.txt" %
+                        (user, self.job_id, self.host))
                     w.write("Ready to touch file: %s\n" % (touch_file_name))
                     touchFileSuccess = self.TouchFile(touch_file_name)
 
@@ -676,13 +725,16 @@ class NodeHealthCheck:
                     str(comment)),
                     comment))
             myvnode.comment = "-attn_nhc: " + comment
-            # pbs.logmsg(pbs.EVENT_DEBUG,"restart scheduler: %s %s"%(self.host,repr(myvnode.state)))
+            # pbs.logmsg(
+            #     pbs.EVENT_DEBUG, "restart scheduler: %s %s" %
+            #     (self.host, repr(myvnode.state)))
             # pbs.server().scheduler_restart_cycle()
 
             # Check to see if the node should be rebooted
             if status == 'reboot':
                 pbs.logmsg(
-                    pbs.EVENT_DEBUG, "Comment: %s\nOfflined node: %s and rebooted" %
+                    pbs.EVENT_DEBUG,
+                    "Comment: %s\nOfflined node: %s and rebooted" %
                     (comment, self.host))
                 pbs.event().job.rerun()
                 pbs.reboot('reboot')
@@ -691,10 +743,12 @@ class NodeHealthCheck:
                 # The event().reject function ends the script
                 pbs.logmsg(
                     pbs.EVENT_DEBUG,
-                    "Comment: %s\nOfflined node: %s and restarted scheduling cycle" %
+                    "Comment: %s\nOfflined node: %s and restarted scheduling "
+                    "cycle" %
                     (comment,
                      self.host))
-                pbs.event().reject("Offlined node, sent the reboot signal, and restarted scheduling cycle")
+                pbs.event().reject("Offlined node, sent the reboot signal, "
+                                   "and restarted scheduling cycle")
 
             # Reject the job
             pbs.event().reject("Offlined node and restarted scheduling cycle")

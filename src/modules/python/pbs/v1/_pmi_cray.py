@@ -458,13 +458,14 @@ class Pmi:
             seen = True
             try:						# parse the metric list
                 metlist = eval(metstr, {})
-                metrics = dict(metlist[i:i + 2] for i in range(0,
-                                                               len(metlist), 2))
+                metrics = dict(
+                    metlist[i:i + 2] for i in range(0, len(metlist), 2))
                 joules = metrics["energy_used"]
                 energy += joules
-                pbs.logjobmsg(job.id,
-                              'Cray:RUR: {"apid":%s,"apid_energy":%dJ,"job_energy":%dJ}' %
-                              (apid, joules, energy))
+                pbs.logjobmsg(
+                    job.id,
+                    'Cray:RUR: {"apid":%s,"apid_energy":%dJ,"job_energy":%dJ}'
+                    % (apid, joules, energy))
             except Exception as e:
                 pbs.logjobmsg(job.id,
                               "Cray:RUR: energy_used not found: %s" % str(e))
@@ -482,14 +483,16 @@ class Pmi:
             pbs.logjobmsg(job.id, "Cray:RUR: energy %fkWh" % new_energy)
             job.resources_used["energy"] = new_energy
         elif new_energy > old_energy:
-            pbs.logjobmsg(job.id,
-                          "Cray:RUR: energy %fkWh replaces periodic energy %fkWh" %
-                          (new_energy, old_energy))
+            pbs.logjobmsg(
+                job.id,
+                "Cray:RUR: energy %fkWh replaces periodic energy %fkWh" %
+                (new_energy, old_energy))
             job.resources_used["energy"] = new_energy
         else:
-            pbs.logjobmsg(job.id,
-                          "Cray:RUR: energy %fkWh last periodic usage %fkWh" %
-                          (new_energy, old_energy))
+            pbs.logjobmsg(
+                job.id,
+                "Cray:RUR: energy %fkWh last periodic usage %fkWh" %
+                (new_energy, old_energy))
         return True
 
     def _pmi_power_off(self, hosts):
@@ -523,7 +526,8 @@ class Pmi:
                 states = n["data"]["PWR_Attrs"][0]["PWR_AttrValueCapabilities"]
                 for s in states:
                     if int(s) != 0:
-                        cmd = "set_sleep_state_limit --nids " + str(nid) + " --limit " + str(s)
+                        cmd = ("set_sleep_state_limit --nids " + str(nid) +
+                               " --limit " + str(s))
                         launch(func, cmd)
                         sleep_time = random.randint(1, 10)
                         time.sleep(sleep_time)
@@ -542,7 +546,8 @@ class Pmi:
                 states = n["data"]["PWR_Attrs"][0]["PWR_AttrValueCapabilities"]
                 for s in reversed(states):
                     if int(s) != 0:
-                        cmd = "set_sleep_state_limit --nids " + str(nid) + " --limit " + str(s)
+                        cmd = ("set_sleep_state_limit --nids " + str(nid) +
+                               " --limit " + str(s))
                         launch(func, cmd)
                         sleep_time = random.randint(1, 10)
                         time.sleep(sleep_time)

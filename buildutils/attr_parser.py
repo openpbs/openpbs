@@ -122,7 +122,8 @@ def getText(svr_file, ecl_file, defines_file):
     getText function - (writes the data stored in lists to file)
     svr_file - the server side output file
     ecl_file - the output file to be used by the ECL layer
-    defines_file - the output file containing the macro definitions for the index positions
+    defines_file - the output file containing the macro definitions for the
+                   index positions
     '''
     buff = "".join(list_svr)
     for line in buff:
@@ -143,10 +144,14 @@ def do_head(node):
     '''
     alist = node.getElementsByTagName('head')
     for a in alist:
-        list_svr.append ("/*Disclaimer: This is a machine generated file.*/" + '\n')
-        list_svr.append("/*For modifying any attribute change corresponding XML file */" + '\n')
-        list_ecl.append("/*Disclaimer: This is a machine generated file.*/" + '\n')
-        list_ecl.append("/*For modifying any attribute change corresponding XML file */" + '\n')
+        list_svr.append("/*Disclaimer: This is a machine generated file.*/" +
+                        '\n')
+        list_svr.append("/*For modifying any attribute change corresponding "
+                        "XML file */" + '\n')
+        list_ecl.append("/*Disclaimer: This is a machine generated file.*/" +
+                        '\n')
+        list_ecl.append("/*For modifying any attribute change corresponding "
+                        "XML file */" + '\n')
         blist = a.getElementsByTagName('SVR')
         blist_ecl = a.getElementsByTagName('ECL')
         for s in blist:
@@ -216,7 +221,8 @@ def process(master_file, svr_file, ecl_file, defines_file):
     master_file - the Master XML files to process
     svr_file - the server side output file
     ecl_file - the output file to be used by the ECL layer
-    defines_file - the output file containing the macro definitions for the index positions
+    defines_file - the output file containing the macro definitions for the
+                   index positions
     '''
     from xml.dom import minidom
 
@@ -322,7 +328,9 @@ def main(argv):
         usage()
         sys.exit(1)
     try:
-        opts, args = getopt.getopt(argv, "m:s:e:d:h", ["master=", "svr=", "ecl=", "attr=", "help=", "defines="])
+        opts, args = getopt.getopt(
+            argv, "m:s:e:d:h",
+            ["master=", "svr=", "ecl=", "attr=", "help=", "defines="])
     except getopt.error as err:
         print(str(err))
         usage()
@@ -344,7 +352,8 @@ def main(argv):
             sys.exit(1)
 #    Error conditions are checked here.
 
-    if MASTER_FILENAME is None or not os.path.isfile(MASTER_FILENAME) or not os.path.getsize(MASTER_FILENAME) > 0:
+    if (MASTER_FILENAME is None or not os.path.isfile(MASTER_FILENAME) or
+            not os.path.getsize(MASTER_FILENAME) > 0):
         print("Master file not found or data is not present in File")
         sys.exit(1)
 
@@ -387,7 +396,8 @@ def usage():
     """
     Usage (depicts the usage of the script)
     """
-    print("usage: prog -m <MASTER_FILENAME> -s <svr_attr_file> -e <ecl_attr_file> -d <defines_file>")
+    print("usage: prog -m <MASTER_FILENAME> -s <svr_attr_file> "
+          "-e <ecl_attr_file> -d <defines_file>")
 
 
 if __name__ == "__main__":

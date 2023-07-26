@@ -467,7 +467,11 @@ class _vnode():
         if self.state == _pbs_v1.ND_STATE_FREE:
             lst.append('ND_STATE_FREE')
         else:
-            lst = [val for (mask, val) in sorted(_pbs_v1.REVERSE_NODE_STATE.items()) if self.state & mask]
+            lst = [
+                val for (mask, val) in
+                sorted(_pbs_v1.REVERSE_NODE_STATE.items())
+                if self.state & mask
+            ]
         return lst
 
     def extract_state_ints(self):
@@ -476,7 +480,9 @@ class _vnode():
         if self.state == _pbs_v1.ND_STATE_FREE:
             lst.append(_pbs_v1.ND_STATE_FREE)
         else:
-            lst = [mask for (mask, val) in sorted(_pbs_v1.REVERSE_NODE_STATE.items()) if self.state & mask]
+            lst = [mask for (mask, val)
+                   in sorted(_pbs_v1.REVERSE_NODE_STATE.items())
+                   if self.state & mask]
         return lst
 
 _vnode.name = PbsAttributeDescriptor(_vnode, 'name', "", (str,))
@@ -1432,13 +1438,15 @@ class _server_attribute:
     #: m(__init__)
 
     def __str__(self):
-        return "name=%s:resource=%s:value=%s:op=%s:flags=%s:sisters=%s" % self.tup()
+        return ("name=%s:resource=%s:value=%s:op=%s:flags=%s:sisters=%s" %
+                self.tup())
     #: m(__str__)
 
     def __setattr__(self, name, value):
         if _pbs_v1.in_python_mode():
             raise BadAttributeValueError(
-                "'%s' attribute in the server_attribute object is readonly" % (name,))
+                "'%s' attribute in the server_attribute object is readonly"
+                % (name,))
         super().__setattr__(name, value)
     #: m(__setattr__)
 
@@ -1461,7 +1469,8 @@ class _server_attribute:
     #: m(extract_flags_int)
 
     def tup(self):
-        return self.name, self.resource, self.value, self.op, self.flags, self.sisters
+        return (self.name, self.resource, self.value, self.op, self.flags,
+                self.sisters)
     #: m(tup)
 
 _server_attribute._connect_server = PbsAttributeDescriptor(
@@ -1509,7 +1518,8 @@ class _management:
     def __setattr__(self, name, value):
         if _pbs_v1.in_python_mode():
             raise BadAttributeValueError(
-                "'%s' attribute in the management object is readonly" % (name,))
+                "'%s' attribute in the management object is readonly" %
+                (name,))
         super().__setattr__(name, value)
     #: m(__setattr__)
 
