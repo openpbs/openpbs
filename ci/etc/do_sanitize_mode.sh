@@ -48,6 +48,10 @@ dnf config-manager --set-enabled crb
 rpmdev-setuptree
 yum -y install python3-pip sudo which net-tools man-db time.x86_64 procps
 yum-builddep -y ./*.spec
+yum -y install cmake3 git
+rm -rf cJSON
+git clone https://github.com/DaveGamble/cJSON.git
+cd cJSON; mkdir build; cd build; cmake3 .. -DCMAKE_INSTALL_PREFIX=/usr; make; make install; cd ../../
 ./autogen.sh
 rm -rf target-sanitize
 mkdir -p target-sanitize

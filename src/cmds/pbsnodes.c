@@ -242,7 +242,11 @@ encode_to_json(struct batch_status *bstat)
 					(json_value = cJSON_CreateString(next->value)) != NULL) {
 					if (cJSON_IsString(json_value) && cJSON_GetStringValue(json_value)[0] != '0')
 						cJSON_AddItemToObject(json_resc, next->resource, json_value);
+#if CJSON_VERSION_MAJOR <=17 && CJSON_VERSION_MINOR <= 7 && CJSON_VERSION_PATCH < 13
+					if (cJSON_IsNumber(json_value) && json_value->valuedouble != 0)
+#else
 					if (cJSON_IsNumber(json_value) && cJSON_GetNumberValue(json_value) != 0)
+#endif
 						cJSON_AddItemToObject(json_resc, next->resource, json_value);
 					if (cJSON_IsBool(json_value))
 						cJSON_AddItemToObject(json_resc, next->resource, json_value);

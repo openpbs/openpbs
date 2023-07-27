@@ -71,10 +71,6 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     yum -y install python3-pip sudo which net-tools man-db time.x86_64 \
       expat libedit postgresql-server postgresql-contrib python3 \
       sendmail sudo tcl tk libical libasan llvm git
-    yum -y install cmake3
-    rm -rf cJSON
-    git clone https://github.com/DaveGamble/cJSON.git
-    cd cJSON; mkdir build; cd build; cmake3 .. -DCMAKE_INSTALL_PREFIX=/usr; make; make install; cd ../../
     rpmdev-setuptree
     yum-builddep -y ${SPEC_FILE}
     yum -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}' | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
@@ -82,6 +78,10 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
       yum -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
+    yum -y install cmake3
+    rm -rf cJSON
+    git clone https://github.com/DaveGamble/cJSON.git
+    cd cJSON; mkdir build; cd build; cmake3 .. -DCMAKE_INSTALL_PREFIX=/usr; make; make install; cd ../../
   elif [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
     export LANG="C.utf8"
     sed -i -e "s|mirrorlist=|#mirrorlist=|g" /etc/yum.repos.d/CentOS-*
