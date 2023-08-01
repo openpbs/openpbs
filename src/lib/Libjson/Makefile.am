@@ -40,17 +40,9 @@
 #
 
 SUBDIRS = \
-	Libattr \
-	Libdb \
-	Liblog \
-	Libnet \
-	Libifl \
-	Libpbs \
-	Libpython \
-	Libsite \
-	Libsec \
-	Libtpp \
-	Libutil \
-	Libauth \
-	Liblicensing \
-	Libjson
+	cJSON
+
+lib_LTLIBRARIES = libpbsjson.la
+libpbsjson_la_LDFLAGS = -version-info 0:0:0
+libpbsjson_la_LIBADD = cJSON/libpbscjson.la @cjson_lib@
+libpbsjson_la_SOURCES =

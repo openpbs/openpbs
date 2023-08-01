@@ -1,4 +1,3 @@
-
 #
 # Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -37,20 +36,14 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-#
+noinst_LTLIBRARIES = libpbscjson.la
 
-SUBDIRS = \
-	Libattr \
-	Libdb \
-	Liblog \
-	Libnet \
-	Libifl \
-	Libpbs \
-	Libpython \
-	Libsite \
-	Libsec \
-	Libtpp \
-	Libutil \
-	Libauth \
-	Liblicensing \
-	Libjson
+libpbscjson_la_CPPFLAGS = \
+	-I$(top_srcdir)/src/include \
+	@cjson_inc@
+
+libpbscjson_la_LIBADD = \
+	@cjson_lib@
+
+libpbscjson_la_SOURCES = \
+	pbs_cjson.c

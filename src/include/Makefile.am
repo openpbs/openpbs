@@ -94,6 +94,7 @@ noinst_HEADERS = \
 	pbs_share.h \
 	pbs_v1_module_common.i \
 	pbs_version.h \
+	pbs_json.h \
 	placementsets.h \
 	portability.h \
 	port_forwarding.h \

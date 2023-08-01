@@ -63,7 +63,7 @@
 #include "pbs_internal.h"
 #include "libutil.h"
 #include <arpa/inet.h>
-#include <cjson/cJSON.h>
+#include "pbs_json.h"
 
 #if TCL_QSTAT
 #include <sys/stat.h>
@@ -163,8 +163,8 @@ static char *delimiter = "\n";
 static char *prev_resc_name = NULL;
 static int first_stat = 1;
 static int conn;
-static cJSON *json_root = NULL; /* root of cJSON structure */
-static cJSON *json_prev_resc = NULL;
+static json_data *json_root = NULL; /* root of json structure */
+static json_data *json_prev_resc = NULL;
 
 static struct attrl *display_attribs = &basic_attribs[0];
 
@@ -401,7 +401,7 @@ exit_qstat(char *msg)
  *
  */
 void
-prt_attr(char *name, char *resource, char *value, int one_line, cJSON * json_obj)
+prt_attr(char *name, char *resource, char *value, int one_line, json_data * json_obj)
 {
 	int first = 1;
 	int len = 0;
@@ -411,17 +411,16 @@ prt_attr(char *name, char *resource, char *value, int one_line, cJSON * json_obj
 	char *val = NULL;
 	char *buf = NULL;
 	char *temp = NULL;
-	cJSON *json_attr = NULL;
-	cJSON *json_value = NULL;
+	json_data *json_attr = NULL;
 
 	if (value == NULL)
 		return;
 	switch (output_format) {
 		case FORMAT_JSON:
 			if (strcmp(name, ATTR_v) == 0) {
-				if ((json_attr = cJSON_CreateObject()) == NULL)
+				if ((json_attr = pbs_json_create_object()) == NULL)
 					exit_qstat("json error");
-				cJSON_AddItemToObject(json_obj, name, json_attr);
+				pbs_json_insert_item(json_obj, name, json_attr);
 				buf = strdup(value);
 				temp = buf;
 				if (buf == NULL)
@@ -443,9 +442,8 @@ prt_attr(char *name, char *resource, char *value, int one_line, cJSON * json_obj
 						*buf++ = *value++;
 					}
 					*buf = '\0';
-					if ((json_value = cJSON_ParseWithOpts(val, NULL, 1)) != NULL ||
-						(json_value = cJSON_CreateString(val)) != NULL)
-						cJSON_AddItemToObject(json_attr, key, json_value);
+					if (pbs_json_insert_parsed(json_attr, key, val, 0))
+						exit_qstat("json error");
 					if (*value != '\0')
 						value++;
 				}
@@ -456,22 +454,20 @@ prt_attr(char *name, char *resource, char *value, int one_line, cJSON * json_obj
 						prev_resc_name = NULL;
 					}
 					if (prev_resc_name == NULL || strcmp(prev_resc_name, name) != 0) {
-						if ((json_prev_resc = cJSON_CreateObject()) == NULL)
+						if ((json_prev_resc = pbs_json_create_object()) == NULL)
 							exit_qstat("json error");
-						cJSON_AddItemToObject(json_obj, name, json_prev_resc);
+						pbs_json_insert_item(json_obj, name, json_prev_resc);
 						prev_resc_name = name;
 					}
-					if ((json_value = cJSON_ParseWithOpts(value, NULL, 1)) != NULL ||
-						(json_value = cJSON_CreateString(value)) != NULL)
-						cJSON_AddItemToObject(json_prev_resc, resource, json_value);
+					if (pbs_json_insert_parsed(json_prev_resc, resource, value, 0))
+						exit_qstat("json error");
 				} else {
 					if (prev_resc_name) {
 						json_prev_resc = NULL;
 						prev_resc_name = NULL;
 					}
-					if ((json_value = cJSON_ParseWithOpts(value, NULL, 1)) != NULL ||
-						(json_value = cJSON_CreateString(value)) != NULL)
-						cJSON_AddItemToObject(json_obj, name, json_value);
+					if (pbs_json_insert_parsed(json_obj, name, value, 0))
+						exit_qstat("json error");
 				}
 			}
 			break;
@@ -1318,8 +1314,8 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 	char long_name[NAMEL + 1] = {'\0'};
 	char *cmdargs = NULL;
 	char *hpcbp_executable;
-	cJSON *json_jobs = NULL;
-	cJSON *json_job = NULL;
+	json_data *json_jobs = NULL;
+	json_data *json_job = NULL;
 
 	if (wide) {
 		sprintf(format, "%%-%ds %%-%ds %%-%ds  %%%ds %%%ds %%-%ds\n",
@@ -1362,9 +1358,9 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 	}
 
 	if (output_format == FORMAT_JSON && first_stat) {
-		if ((json_jobs = cJSON_CreateObject()) == NULL)
+		if ((json_jobs = pbs_json_create_object()) == NULL)
 			return 1;
-		cJSON_AddItemToObject(json_root, "Jobs", json_jobs);
+		pbs_json_insert_item(json_root, "Jobs", json_jobs);
 		first_stat = 0;
 	}
 	p = status;
@@ -1386,9 +1382,9 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 			if (output_format == FORMAT_DSV || output_format == FORMAT_DEFAULT)
 				printf("Job Id: %s%s", p->name, delimiter);
 			else if (output_format == FORMAT_JSON) {
-				if ((json_job = cJSON_CreateObject()) == NULL)
+				if ((json_job = pbs_json_create_object()) == NULL)
 					return 1;
-				cJSON_AddItemToObject(json_jobs, p->name, json_job);
+				pbs_json_insert_item(json_jobs, p->name, json_job);
 			}
 			a = p->attribs;
 			while (a != NULL) {
@@ -1647,8 +1643,8 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 	char ext[NUML + 1];
 	char *type;
 	char format[80];
-	cJSON *json_queues = NULL;
-	cJSON *json_queue = NULL;
+	json_data *json_queues = NULL;
+	json_data *json_queue = NULL;
 
 	sprintf(format, "%%-%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%-%ds\n",
 		NAMEL, NUML, NUML, 3, 3, NUML,
@@ -1660,9 +1656,9 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 	}
 
 	if (output_format == FORMAT_JSON && first_stat) {
-		if ((json_queues = cJSON_CreateObject()) == NULL)
+		if ((json_queues = pbs_json_create_object()) == NULL)
 			return 1;
-		cJSON_AddItemToObject(json_root, "Queue", json_queues);
+		pbs_json_insert_item(json_root, "Queue", json_queues);
 		first_stat = 0;
 	}
 	p = status;
@@ -1684,9 +1680,9 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 			if (output_format == FORMAT_DSV || output_format == FORMAT_DEFAULT)
 				printf("Queue: %s%s", p->name, delimiter);
 			else if (output_format == FORMAT_JSON) {
-				if ((json_queue = cJSON_CreateObject()) == NULL)
+				if ((json_queue = pbs_json_create_object()) == NULL)
 					return 1;
-				cJSON_AddItemToObject(json_queues, p->name, json_queue);
+				pbs_json_insert_item(json_queues, p->name, json_queue);
 			}
 			a = p->attribs;
 			while (a != NULL) {
@@ -1796,8 +1792,8 @@ display_statserver(struct batch_status *status, int prtheader, int full, int alt
 	char ext[NUML + 1];
 	char *stats;
 	char format[80];
-	cJSON *json_servers = NULL;
-	cJSON *json_server = NULL;
+	json_data *json_servers = NULL;
+	json_data *json_server = NULL;
 
 	sprintf(format, "%%-%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%-%ds\n",
 		NAMEL, NUML, NUML, NUML, NUML, NUML, NUML, NUML, NUML, STATUSL);
@@ -1808,9 +1804,9 @@ display_statserver(struct batch_status *status, int prtheader, int full, int alt
 	}
 
 	if (output_format == FORMAT_JSON && first_stat) {
-		if ((json_servers = cJSON_CreateObject()) == NULL)
+		if ((json_servers = pbs_json_create_object()) == NULL)
 			return 1;
-		cJSON_AddItemToObject(json_root, "Server", json_servers);
+		pbs_json_insert_item(json_root, "Server", json_servers);
 		first_stat = 0;
 	}
 	p = status;
@@ -1829,9 +1825,9 @@ display_statserver(struct batch_status *status, int prtheader, int full, int alt
 			if (output_format == FORMAT_DSV || output_format == FORMAT_DEFAULT)
 				printf("Server: %s%s", p->name, delimiter);
 			else if (output_format == FORMAT_JSON) {
-				if ((json_server = cJSON_CreateObject()) == NULL)
+				if ((json_server = pbs_json_create_object()) == NULL)
 					return 1;
-				cJSON_AddItemToObject(json_servers, p->name, json_server);
+				pbs_json_insert_item(json_servers, p->name, json_server);
 			}
 			a = p->attribs;
 			while (a != NULL) {
@@ -2330,7 +2326,6 @@ main(int argc, char **argv, char **envp) /* qstat */
 	int wide = 0;
 	int format = 0;
 	time_t timenow;
-	cJSON *json_value = NULL;
 
 #if TCL_QSTAT
 	char option[3];
@@ -2746,17 +2741,14 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 		delimiter = "";
 		/* adding prologue to json output. */
 		timenow = time(0);
-		if ((json_root = cJSON_CreateObject()) == NULL)
+		if ((json_root = pbs_json_create_object()) == NULL)
 			exit_qstat("json error");
-		if ((json_value = cJSON_CreateNumber((double) timenow)) == NULL)
+		if (pbs_json_insert_number(json_root, "timestamp", (double) timenow))
 			exit_qstat("json error");
-		cJSON_AddItemToObject(json_root, "timestamp", json_value);
-		if ((json_value = cJSON_CreateString(PBS_VERSION)) == NULL)
+		if (pbs_json_insert_string(json_root, "pbs_version", PBS_VERSION))
 			exit_qstat("json error");
-		cJSON_AddItemToObject(json_root, "pbs_version", json_value);
-		if ((json_value = cJSON_CreateString(def_server)) == NULL)
+		if (pbs_json_insert_string(json_root, "pbs_server", def_server))
 			exit_qstat("json error");
-		cJSON_AddItemToObject(json_root, "pbs_server", json_value);
 	}
 
 	if (optind >= argc) { /* If no arguments, then set defaults */
@@ -3178,14 +3170,9 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 			break;
 	}
 	if (output_format == FORMAT_JSON) {
-		char *json_out = cJSON_Print(json_root);
-		if (json_out != NULL) {
-			fprintf(stdout, "%s\n", json_out);
-			free(json_out);
-		} else {
-			fprintf(stderr, "cJSON error\n");
-		}
-		cJSON_Delete(json_root);
+		if (pbs_json_print(json_root, stdout))
+			fprintf(stderr, "json error\n");
+		pbs_json_delete(json_root);
 	}
 #ifdef NAS /* localmod 071 */
 	tcl_run(tcl_opt);

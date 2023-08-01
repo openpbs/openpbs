@@ -387,6 +387,8 @@ AC_CONFIG_FILES([
 	src/lib/Libauth/gss/Makefile
 	src/lib/Libauth/munge/Makefile
 	src/lib/Liblicensing/Makefile
+	src/lib/Libjson/Makefile
+	src/lib/Libjson/cJSON/Makefile
 	src/lib/Makefile
 	src/modules/Makefile
 	src/modules/python/Makefile
