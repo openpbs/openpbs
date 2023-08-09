@@ -95,6 +95,22 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
       dnf -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
+  elif [ "x${ID}" == "xrocky" -a "x${VERSION_ID}" == "x9.2" ]; then
+    export LANG="C.utf8"
+    dnf -y clean all
+    yum -y install yum-utils
+    dnf -y install 'dnf-command(config-manager)'
+    dnf config-manager --set-enabled crb
+    dnf -y install epel-release
+    dnf -y install python3-pip sudo which net-tools man-db time.x86_64 procps \
+      expat libedit postgresql-server postgresql-contrib python3 \
+      sendmail sudo tcl tk libical libasan llvm git chkconfig
+    dnf -y builddep ${SPEC_FILE}
+    dnf -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}' | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
+    pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
+    if [ "x${BUILD_MODE}" == "xkerberos" ]; then
+      dnf -y install krb5-libs krb5-devel libcom_err libcom_err-devel
+    fi
   elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
     zypper -n ref
     zypper -n install rpmdevtools python3-pip sudo which net-tools man time.x86_64 git

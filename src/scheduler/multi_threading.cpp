@@ -171,6 +171,7 @@ init_multi_threading(int nthreads)
 
 	if (num_threads <= 1) {
 		num_threads = 1;
+		pthread_once(&key_once, create_id_key);
 		return 1; /* main thread will act as the only worker thread */
 	}
 

@@ -1174,6 +1174,8 @@ main(int argc, char *argv[])
 						rc = ret;
 				}
 			}
+			pbs_statfree(bstat_head);
+
 			break;
 
 		case CLEAR:
@@ -1253,6 +1255,8 @@ main(int argc, char *argv[])
 					       get_nstate(bstat), show_nonprint_chars(get_comment(bstat)));
 				}
 			}
+			pbs_statfree(bstat_head);
+
 			break;
 
 		case LISTSP:
@@ -1283,6 +1287,7 @@ main(int argc, char *argv[])
 					} else {
 						prt_node(bstat);
 					}
+					pbs_statfree(bstat);
 				}
 			}
 			if (output_format == FORMAT_JSON) {
@@ -1292,6 +1297,9 @@ main(int argc, char *argv[])
 				}
 				generate_json(stdout);
 				free_json_node_list();
+			}
+			if (do_vnodes) {
+				pbs_statfree(bstat_head);
 			}
 
 			break;

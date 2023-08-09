@@ -23,15 +23,15 @@ jobs:
            PKG_INSTALL_CMD: "apt-get -y update ; apt-get -y upgrade ; apt-get install -y python3"
            DOCKER_EXTRA_ARG: "-e DEBIAN_FRONTEND=noninteractive -e LANGUAGE=C.UTF-8 -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8"
            CI_CMD: "./ci --local"
-        "CentOS 7 Sanitize":
-           OS_TYPE: "centos:7"
+        "Rocky Linux 9 Sanitize":
+           OS_TYPE: "rockylinux/rockylinux:9.2"
            PKG_INSTALL_CMD: "yum -y install python3"
-           DOCKER_EXTRA_ARG: "-e BUILD_MODE=sanitize -e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8"
+           DOCKER_EXTRA_ARG: "-e BUILD_MODE=sanitize"
            CI_CMD: "./ci --local='sanitize'"
-        "CentOS 7 Kerberos":
-           OS_TYPE: "centos:7"
+        "Rocky Linux 9 Kerberos":
+           OS_TYPE: "rockylinux/rockylinux:9.2"
            PKG_INSTALL_CMD: "yum -y install python3"
-           DOCKER_EXTRA_ARG: "-e BUILD_MODE=kerberos -e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8"
+           DOCKER_EXTRA_ARG: "-e BUILD_MODE=kerberos"
            CI_CMD: "./ci --local"
     steps:
     - script: |
