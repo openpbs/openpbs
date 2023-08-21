@@ -853,6 +853,8 @@ mgr_set_attr2(attribute *pattr, void *pidx, attribute_def *pdef, int limit, svra
 	free(new);
 	free(pre_copy);
 	attr_atomic_kill(attr_save, pdef, limit);
+	if (pdef->at_parent == PARENT_TYPE_NODE)
+		((pbsnode *)parent)->nd_modified = 1;
 	return (PBSE_NONE);
 }
 
@@ -2014,10 +2016,8 @@ mgr_node_set(struct batch_request *preq)
 			req_reject(PBSE_UNKNODE, 0, preq);
 			return;
 		}
-	} else {
-		/* Else one and only one vnode */
+	} else /* Else one and only one vnode */
 		pnode = find_nodebyname(nodename);
-	}
 
 	if (pnode == NULL) {
 		req_reject(PBSE_UNKNODE, 0, preq);
@@ -2072,12 +2072,12 @@ mgr_node_set(struct batch_request *preq)
 				rc = 0;
 				if (j == 0) {
 					plist = (svrattrl *) GET_NEXT(unsetlist);
-					rc = mgr_unset_attr(pnode->nd_attr, node_attr_idx, node_attr_def, ND_ATR_LAST, plist,
-							    preq->rq_perm, &bad, (void *) pnode, PARENT_TYPE_NODE, INDIRECT_RES_CHECK);
+					if (plist)
+						rc = mgr_unset_attr(pnode->nd_attr, node_attr_idx, node_attr_def, ND_ATR_LAST, plist, preq->rq_perm, &bad, (void *) pnode, PARENT_TYPE_NODE, INDIRECT_RES_CHECK);
 				} else {
 					plist = (svrattrl *) GET_NEXT(setlist);
-					rc = mgr_set_attr(pnode->nd_attr, node_attr_idx, node_attr_def, ND_ATR_LAST, plist,
-							  preq->rq_perm | ATR_PERM_ALLOW_INDIRECT, &bad, (void *) pnode, ATR_ACTION_ALTER);
+					if (plist)
+						rc = mgr_set_attr(pnode->nd_attr, node_attr_idx, node_attr_def, ND_ATR_LAST, plist, preq->rq_perm | ATR_PERM_ALLOW_INDIRECT, &bad, (void *) pnode, ATR_ACTION_ALTER);
 				}
 				if (rc != 0) {
 					if (numnodes > 1) {
@@ -2124,13 +2124,14 @@ mgr_node_set(struct batch_request *preq)
 						free_attrlist(&setlist);
 						return;
 					}
-				} else { /*modifications succeed for this node*/
+				} else if (plist) { /*modifications succeed for this node*/
 					warnings_update(WARN_ngrp, warn_nodes, &warn_idx, pnode);
 
 					if ((pnode->nd_nsnfree == 0) && (pnode->nd_state == 0))
 						set_vnode_state(pnode, INUSE_JOB, Nd_State_Or);
 
 					mgr_log_attr(msg_man_set, GET_NEXT(preq->rq_ind.rq_manager.rq_attr), PBS_EVENTCLASS_NODE, pnode->nd_name, NULL);
+					pnode->nd_modified = 1;
 				}
 			}
 		}
@@ -2162,9 +2163,8 @@ mgr_node_set(struct batch_request *preq)
 					}
 				}
 			}
-			if (update_mom_only) {
+			if (update_mom_only)
 				break; /* all done */
-			}
 		} else {
 			if (++i == svr_totnodes)
 				break;	      /* all done */
@@ -2435,9 +2435,8 @@ mgr_node_unset(struct batch_request *preq)
 				patr = get_nattr(pnode, ND_ATR_ResourceAvail);
 				prd = &svr_resc_def[RESC_NCPUS];
 				prc = find_resc_entry(patr, prd);
-				if (prc == NULL) {
+				if (prc == NULL)
 					prc = add_resource_entry(patr, prd);
-				}
 				if (!is_attr_set(&prc->rs_value)) {
 					prc->rs_value.at_val.at_long = pnode->nd_ncpus;
 					prc->rs_value.at_flags |= ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
@@ -2459,6 +2458,7 @@ mgr_node_unset(struct batch_request *preq)
 					}
 				}
 
+				pnode->nd_modified = 1;
 				mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_NODE, pnode->nd_name, NULL);
 			}
 		}
@@ -3008,6 +3008,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 		}
 	}
 
+	pnode->nd_modified = 1;
 	if (rtnpnode != NULL)
 		*rtnpnode = pnode;
 	return (ret); /*create completely successful*/

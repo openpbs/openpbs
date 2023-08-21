@@ -298,6 +298,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_nummoms = 0;
 	pnode->nd_svrflags |= NODE_NEWOBJ;
 	pnode->nd_lic_info = NULL;
+	pnode->nd_modified = 0;
 	pnode->nd_moms = (mominfo_t **) calloc(1, sizeof(mominfo_t *));
 	if (pnode->nd_moms == NULL)
 		return (PBSE_SYSTEM);
@@ -387,7 +388,7 @@ subnode_delete(struct pbssubn *psubn)
  * @brief
  * 		Remove the vnode from the list of vnodes of a mom.
  * @see
- * 		effective_node_delete and effective_node_delete
+ * 		effective_node_delete
  *
  * @param[in]	pnode	- Vnode structure
  *
@@ -718,9 +719,12 @@ save_nodes_db_mom(mominfo_t *pmom)
 			continue;
 		}
 
-		if (node_save_db(np) != 0) {
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_WARNING, "nodes", nodeerrtxt);
-			return (-1);
+		if (np->nd_modified) {
+			if (node_save_db(np) != 0) {
+				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_WARNING, "nodes", nodeerrtxt);
+				return (-1);
+			}
+			np->nd_modified = 0;
 		}
 	}
 

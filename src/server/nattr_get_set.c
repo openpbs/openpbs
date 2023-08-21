@@ -169,6 +169,7 @@ set_nattr_generic(struct pbsnode *pnode, int attr_idx, char *val, char *rscn, en
 	if (pnode == NULL || val == NULL)
 		return 1;
 
+	pnode->nd_modified = 1;
 	return set_attr_generic(get_nattr(pnode, attr_idx), &node_attr_def[attr_idx], val, rscn, op);
 }
 
@@ -190,6 +191,7 @@ set_nattr_str_slim(struct pbsnode *pnode, int attr_idx, char *val, char *rscn)
 	if (pnode == NULL || val == NULL)
 		return 1;
 
+	pnode->nd_modified = 1;
 	return set_attr_generic(get_nattr(pnode, attr_idx), &node_attr_def[attr_idx], val, rscn, INTERNAL);
 }
 
@@ -211,6 +213,12 @@ set_nattr_l_slim(struct pbsnode *pnode, int attr_idx, long val, enum batch_op op
 	if (pnode == NULL)
 		return 1;
 
+	if ((attr_idx != ND_ATR_last_state_change_time) && 
+		(attr_idx != ND_ATR_state || 
+		 (val == INUSE_OFFLINE || val == INUSE_OFFLINE_BY_MOM ||
+		  val == INUSE_MAINTENANCE ||val == INUSE_SLEEP ||
+		  val == INUSE_PROV || val == INUSE_WAIT_PROV)))
+		pnode->nd_modified = 1;
 	set_attr_l(get_nattr(pnode, attr_idx), val, op);
 
 	return 0;
@@ -234,6 +242,7 @@ set_nattr_b_slim(struct pbsnode *pnode, int attr_idx, long val, enum batch_op op
 	if (pnode == NULL)
 		return 1;
 
+	pnode->nd_modified = 1;
 	set_attr_b(get_nattr(pnode, attr_idx), val, op);
 
 	return 0;
@@ -257,6 +266,7 @@ set_nattr_c_slim(struct pbsnode *pnode, int attr_idx, char val, enum batch_op op
 	if (pnode == NULL)
 		return 1;
 
+	pnode->nd_modified = 1;
 	set_attr_c(get_nattr(pnode, attr_idx), val, op);
 
 	return 0;
@@ -280,6 +290,7 @@ set_nattr_short_slim(struct pbsnode *pnode, int attr_idx, short val, enum batch_
 	if (pnode == NULL)
 		return 1;
 
+	pnode->nd_modified = 1;
 	set_attr_short(get_nattr(pnode, attr_idx), val, op);
 
 	return 0;
@@ -345,6 +356,7 @@ clear_nattr(struct pbsnode *pnode, int attr_idx)
 void
 set_nattr_jinfo(struct pbsnode *pnode, int attr_idx, struct pbsnode *val)
 {
+	pnode->nd_modified = 1;
 	attribute *attr = get_nattr(pnode, attr_idx);
 	attr->at_val.at_jinfo = val;
 	attr->at_flags = ATR_SET_MOD_MCACHE;

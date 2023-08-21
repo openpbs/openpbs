@@ -6876,6 +6876,7 @@ get_server_hook_results(char *input_file, int *accept_flag, int *reject_flag, ch
 					} else {
 						mgr_log_attr(msg_man_set, plist,
 							     PBS_EVENTCLASS_NODE, pnode->nd_name, NULL);
+						pnode->nd_modified = 1;
 					}
 				}
 				free_svrattrl(plist);

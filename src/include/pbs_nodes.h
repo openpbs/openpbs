@@ -252,6 +252,7 @@ struct pbsnode {
 	int nd_added_to_unlicensed_list; /* To record if the node is added to the list of unlicensed node */
 	pbs_list_link un_lic_link;	 /*Link to unlicense list */
 	int nd_svrflags;		 /* server flags */
+	int nd_modified;
 	attribute nd_attr[ND_ATR_LAST];
 };
 typedef struct pbsnode pbs_node;

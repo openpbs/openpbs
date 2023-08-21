@@ -99,7 +99,7 @@ string_dup(const char *str)
 
 /**
  * @brief
- * 		add a string to a string to a string array only if it is unique
+ * 		add a string to a string array only if it is unique
  *
  * @param[in,out]	str_arr	-	array of strings of unique values
  * @param[in]	str	-	string to add
