@@ -173,10 +173,10 @@ dup_range(range *old_r)
 {
 	range *new_r;
 
-	new_r = new_range(old_r->start, old_r->end, old_r->step, old_r->count, NULL);
-
-	if (new_r == NULL)
+	if (old_r == NULL)
 		return NULL;
+
+	new_r = new_range(old_r->start, old_r->end, old_r->step, old_r->count, NULL);
 
 	return new_r;
 }
@@ -766,8 +766,10 @@ range_to_str(range *r)
  * @retval NULL if not done
  */
 range *
-range_join(range *r1, range *r2)
+range_join(range *r1_in, range *r2_in)
 {
+	range *r1 = dup_range_list(r1_in);
+	range *r2 = dup_range_list(r2_in);
 	range *ri = NULL;
 	range *r3 = NULL;
 	int cur = 0;
@@ -777,33 +779,35 @@ range_join(range *r1, range *r2)
 		cur = range_next_value(ri, -1);
 		while (cur >= 0) {
 			if (range_contains(r1, cur)) {
-			range_remove_value(&r1, cur);
+				range_remove_value(&r1, cur);
+			}
+			if (range_contains(r2, cur)) {
+				range_remove_value(&r2, cur);
+			}
+			cur = range_next_value(ri, cur);
 		}
-		if (range_contains(r2, cur)) {
-			range_remove_value(&r2, cur);
+		/* JOIN r1, r2 and ri in r3*/
+		r3 = dup_range(r1);
+		cur = range_next_value(ri, -1);
+		while (cur >= 0) {
+			range_add_value(&r3, cur, 1);
+			cur = range_next_value(ri, cur);
 		}
-		cur = range_next_value(ri, cur);
-	}
-	/* JOIN r1, r2 and ri in r3*/
-	r3 = dup_range(r1);
-	cur = range_next_value(ri, -1);
-	while (cur >= 0) {
-		range_add_value(&r3, cur, 1);
-		cur = range_next_value(ri, cur);
-	}
-	cur = range_next_value(r2, -1);
-	while (cur >= 0) {
-		range_add_value(&r3, cur, 1);
-		cur = range_next_value(r2, cur);
-	}
-	free_range_list(ri);
+		cur = range_next_value(r2, -1);
+		while (cur >= 0) {
+			range_add_value(&r3, cur, 1);
+			cur = range_next_value(r2, cur);
+		}
+		free_range_list(ri);
 	} else {
 		r3 = dup_range(r1);
 		cur = range_next_value(r2, -1);
 		while (cur >= 0) {
-		range_add_value(&r3, cur, 1);
-		cur = range_next_value(r2, cur);
+			range_add_value(&r3, cur, 1);
+			cur = range_next_value(r2, cur);
 		}
 	}
+	free_range_list(r1);
+	free_range_list(r2);
 	return r3;
 }

@@ -269,6 +269,9 @@ dedup_jobids(char **jobids, int *numjids, char *malloc_track)
 				r3 = range_join(r1, r2);
 				strncpy(temp_range, range_to_str(r3),
 					sizeof(temp_range) - 1);
+				free_range_list(r1);
+				free_range_list(r2);
+				free_range_list(r3);
 			}
 		}
 		/* one for '[', one for ']' and one for '.' */
@@ -302,9 +305,6 @@ err:
 	free(srange_list);
 	pbs_idx_destroy(non_array_jobs_idx);
 	pbs_idx_destroy(array_jobs_idx);
-	free_range_list(r1);
-	free_range_list(r2);
-	free_range_list(r3);
 
 	return ret;
 }
