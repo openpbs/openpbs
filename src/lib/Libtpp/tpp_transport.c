@@ -1621,6 +1621,7 @@ work(void *v)
 
 			conn = alloc_conn(newfd);
 			if (!conn) {
+				tpp_log(LOG_CRIT, __func__, "Allocating socket connection failed.");
 				tpp_sock_close(newfd);
 				return NULL;
 			}

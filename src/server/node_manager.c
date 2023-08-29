@@ -1243,7 +1243,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 
 	/* Write the vnode state change event to server log */
 	last_time_int = (int) vnode_o->nd_attr[(int) ND_ATR_last_state_change_time].at_val.at_long;
-	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO, pnode->nd_name,
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_INFO, pnode->nd_name,
 		   "set_vnode_state;vnode.state=0x%lx vnode_o.state=0x%lx "
 		   "vnode.last_state_change_time=%d vnode_o.last_state_change_time=%d "
 		   "state_bits=0x%lx state_bit_op_type_str=%s state_bit_op_type_enum=%d",
@@ -4191,6 +4191,7 @@ is_request(int stream, int version)
 	unsigned long hook_rescdef_checksum;
 	unsigned long chksum_rescdef;
 	static int reply_send_tm = 0;
+	char *badconstr = "unset";
 
 	CLEAR_HEAD(reported_hooks);
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
@@ -4212,18 +4213,24 @@ is_request(int stream, int version)
 	ipaddr = ntohl(addr->sin_addr.s_addr);
 
 	command = disrsi(stream, &ret);
-	if (ret != DIS_SUCCESS)
+	if (ret != DIS_SUCCESS) {
+		badconstr = "disrsi:command";
 		goto badcon;
+	}
 
 	if (command == IS_HELLOSVR) {
 		port = disrui(stream, &ret);
-		if (ret != DIS_SUCCESS)
+		if (ret != DIS_SUCCESS) {
+			badconstr = "disrui:port";
 			goto badcon;
+		}
 
 		DBPRT(("%s: IS_HELLOSVR addr: %s, port %lu\n", __func__, netaddr(addr), port))
 
-		if ((pmom = tfind2(ipaddr, port, &ipaddrs)) == NULL)
+		if ((pmom = tfind2(ipaddr, port, &ipaddrs)) == NULL) {
+			badconstr = "tfind2:pmom";
 			goto badcon;
+		}
 
 		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
 			   LOG_NOTICE, pmom->mi_host, "Hello from MoM on port=%lu", port);
@@ -4292,7 +4299,8 @@ is_request(int stream, int version)
 		goto found;
 
 badcon:
-	sprintf(log_buffer, "bad attempt to connect from %s", netaddr(addr));
+	sprintf(log_buffer, "bad attempt to connect from %s, reason=%s",
+		netaddr(addr), badconstr);
 	log_err(-1, __func__, log_buffer);
 	stream_eof(stream, 0, NULL);
 	return;
