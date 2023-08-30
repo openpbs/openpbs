@@ -962,8 +962,17 @@ mgr_hook_delete(struct batch_request *preq)
 
 	phook = find_hook(hookname);
 
-	if ((phook == NULL) || phook->pending_delete) {
+	if (phook == NULL) {
 		snprintf(hook_msg, sizeof(hook_msg), "%s does not exist!",
+			 hookname);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
+			  hookname, hook_msg);
+		reply_text(preq, PBSE_HOOKERROR, hook_msg);
+		return;
+	}
+
+	if (phook->pending_delete) {
+		snprintf(hook_msg, sizeof(hook_msg), "%s is pending delete!",
 			 hookname);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
 			  hookname, hook_msg);
