@@ -1283,10 +1283,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	}
 
 	unsigned long bits;
-	if (type == Nd_State_And)
-		bits = ~state_bits;
-	else
-		bits = state_bits;
+	bits = vnode_o->nd_state ^ pnode->nd_state;
 
 	if (bits & INUSE_OFFLINE || bits & INUSE_OFFLINE_BY_MOM ||
 		bits & INUSE_MAINTENANCE || bits & INUSE_SLEEP ||
