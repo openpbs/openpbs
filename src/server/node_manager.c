@@ -1285,9 +1285,9 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	unsigned long bits;
 	bits = vnode_o->nd_state ^ pnode->nd_state;
 
-	if (bits & INUSE_OFFLINE || bits & INUSE_OFFLINE_BY_MOM ||
-		bits & INUSE_MAINTENANCE || bits & INUSE_SLEEP ||
-		bits & INUSE_PROV || bits & INUSE_WAIT_PROV)
+	if (bits & (INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM |
+		    INUSE_MAINTENANCE | INUSE_SLEEP |
+		    INUSE_PROV | INUSE_WAIT_PROV))
 		pnode->nd_modified = 1;
 
 	DBPRT(("%s(%5s): state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
