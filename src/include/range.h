@@ -152,6 +152,8 @@ extern int parse_subjob_index(char *, char **, int *, int *, int *, int *);
  */
 char *range_to_str(range *r);
 
+range * range_join(range *r1, range *r2);
+
 #ifdef __cplusplus
 }
 #endif

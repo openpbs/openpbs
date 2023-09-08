@@ -128,6 +128,7 @@ struct pbs_config pbs_conf = {
 	0,			    /* high resolution timestamp logging */
 	0,			    /* number of scheduler threads */
 	NULL,			    /* default scheduler user */
+	NULL,			    /* default scheduler auth user */
 	{'\0'}			    /* current running user */
 #ifdef WIN32
 	,
@@ -554,6 +555,9 @@ __pbs_loadconf(int reload)
 			} else if (!strcmp(conf_name, PBS_CONF_DAEMON_SERVICE_USER)) {
 				free(pbs_conf.pbs_daemon_service_user);
 				pbs_conf.pbs_daemon_service_user = strdup(conf_value);
+			} else if (!strcmp(conf_name, PBS_CONF_DAEMON_SERVICE_AUTH_USER)) {
+				free(pbs_conf.pbs_daemon_service_auth_user);
+				pbs_conf.pbs_daemon_service_auth_user = strdup(conf_value);
 			}
 			/* iff_path is inferred from pbs_conf.pbs_exec_path - see below */
 		}
@@ -767,6 +771,11 @@ __pbs_loadconf(int reload)
 		pbs_conf.pbs_daemon_service_user = strdup(gvalue);
 	}
 
+	if ((gvalue = getenv(PBS_CONF_DAEMON_SERVICE_AUTH_USER)) != NULL) {
+		free(pbs_conf.pbs_daemon_service_auth_user);
+		pbs_conf.pbs_daemon_service_auth_user = strdup(gvalue);
+	}
+
 #ifdef WIN32
 	if ((gvalue = getenv(PBS_CONF_REMOTE_VIEWER)) != NULL) {
 		free(pbs_conf.pbs_conf_remote_viewer);
@@ -898,6 +907,7 @@ __pbs_loadconf(int reload)
 	}
 	if ((gvalue = getenv(PBS_CONF_ENCRYPT_METHOD)) != NULL) {
 		char *value = convert_string_to_lowercase(gvalue);
+		ensure_string_not_null(&value); // allow unsetting
 		if (value == NULL)
 			goto err;
 		memset(pbs_conf.encrypt_method, '\0', sizeof(pbs_conf.encrypt_method));

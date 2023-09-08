@@ -472,7 +472,7 @@ class BatchUtils(object):
         :type name: str
         :param fmt: Optional formatting string, uses %n for
                     object name, %a for attributes, for example
-                    a format of r'%nE{\}nE{\}t%aE{\}n' will display
+                    a format of r'%nE{}nE{}t%aE{}n' will display
                     objects with their name starting on the first
                     column, a new line, and attributes indented by
                     a tab followed by a new line at the end.
@@ -1528,8 +1528,8 @@ class BatchUtils(object):
         """
         Parse an ``FGC`` limit entry, of the form:
 
-        ``<limtype>[.<resource>]=\[<entity_type>:<entity_name>
-        =<entity_value>\]``
+        ``<limtype>[.<resource>]=[<entity_type>:<entity_name>
+        =<entity_value>]``
 
         :param limstr: FGC limit string
         :type limstr: str or None

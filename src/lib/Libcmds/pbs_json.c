@@ -300,7 +300,6 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
 {
 	int rc = 0;
 	char *ptr = NULL;
-	char *pc = NULL;
 	JsonNode *node = NULL;
 	int value_is_whitespace = 0;
 
@@ -321,20 +320,7 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
 	}
 	value_is_whitespace = whitespace_only(value);
 	if (vtype == JSON_NULL && value != NULL && !value_is_whitespace) {
-		double val;
-		val = strtod(value, &pc);
-		while (pc) {
-			if (isspace(*pc))
-				pc++;
-			else
-				break;
-		}
-		/* In Python3, value with leading zeroes is
-		 * represented as a string, unless all zeroes (00000...)
-		 * or is part of a decimal number < 1 (0.0001 ... 0.99999).
-		 */
-		if ((strcmp(pc, "") == 0) &&
-		    ((*(char *) value != '0') || (val < 1))) {
+		if (is_valid_json_number((char *) value)) {
 			node->value_type = JSON_NUMERIC;
 			ptr = strdup(value);
 			if (ptr == NULL) {
@@ -530,5 +516,51 @@ generate_json(FILE *stream)
 	if (indent != 0)
 		return 1;
 	fprintf(stream, "\n}\n");
+	return 0;
+}
+
+/**
+ * @brief
+ *	check the value is a number in JSON-allowed format
+ *
+ * @param[in] value - value for checking
+ *
+ * @return	int
+ * @retval	1	value is a number
+ * @retval	0	otherwise
+ *
+ */
+int
+is_valid_json_number(char *value) {
+	double val;
+	int val_len;
+	char *pc = NULL;
+	val = strtod(value, &pc);
+	val_len = strlen(value);
+
+	while (pc) {
+		if (isspace(*pc))
+			pc++;
+		else
+			break;
+	}
+
+	if ((strcmp(pc, "") == 0) &&
+		(val_len > 0 && value[val_len - 1] != '.') && /* -?[0-9]*\. is string */
+		(
+			(abs(val) < 1 && (
+				(val == 0 && val_len == 1) || /* 0 is number */
+				(val == 0 && val_len == 2 && value[0] == '-') || /* -0 is number */
+				(val >= 0 && val_len > 2 && value[0] != '-' && value[1] == '.' ) || /* 0\.[0-9]+ is number */
+				(val <= 0 && val_len > 3 && value[0] == '-' && value[2] == '.' ) /* -0\.[0-9]+ is number */
+			)) ||
+			(
+				(val >= 1 && val_len > 0 && value[0] != '0') || /* [1-9]+[0-9]*\.?[0-9]* is number */
+				(val <= -1 && val_len > 1 && value[1] != '0') /* -[1-9]+[0-9]*\.?[0-9]* is number */
+			)
+		)) {
+		return 1;
+	}
+
 	return 0;
 }

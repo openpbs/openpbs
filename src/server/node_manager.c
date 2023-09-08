@@ -1184,9 +1184,8 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	time_now = time(NULL);
 	time_int_val = time_now;
 
-	if (pnode == NULL) {
+	if (pnode == NULL)
 		return;
-	}
 
 	/*
 	 * Allocate space for the modifyvnode hook event params
@@ -1238,17 +1237,18 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	if (pnode->nd_state != get_nattr_long(pnode, ND_ATR_state))
 		set_nattr_l_slim(pnode, ND_ATR_state, pnode->nd_state, SET);
 
-	if (vnode_o->nd_state != pnode->nd_state)
+	if (vnode_o->nd_state != pnode->nd_state) {
 		set_nattr_l_slim(pnode, ND_ATR_last_state_change_time, time_int_val, SET);
 
-	/* Write the vnode state change event to server log */
-	last_time_int = (int) vnode_o->nd_attr[(int) ND_ATR_last_state_change_time].at_val.at_long;
-	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO, pnode->nd_name,
-		   "set_vnode_state;vnode.state=0x%lx vnode_o.state=0x%lx "
-		   "vnode.last_state_change_time=%d vnode_o.last_state_change_time=%d "
-		   "state_bits=0x%lx state_bit_op_type_str=%s state_bit_op_type_enum=%d",
-		   pnode->nd_state, vnode_o->nd_state, time_int_val, last_time_int,
-		   state_bits, get_vnode_state_op(type), type);
+		/* Write the vnode state change event to server log */
+		last_time_int = (int) vnode_o->nd_attr[(int) ND_ATR_last_state_change_time].at_val.at_long;
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_INFO, pnode->nd_name,
+		   	"set_vnode_state;vnode.state=0x%lx vnode_o.state=0x%lx "
+		   	"vnode.last_state_change_time=%d vnode_o.last_state_change_time=%d "
+		   	"state_bits=0x%lx state_bit_op_type_str=%s state_bit_op_type_enum=%d",
+		   	pnode->nd_state, vnode_o->nd_state, time_int_val, last_time_int,
+		   	state_bits, get_vnode_state_op(type), type);
+	}
 
 	if (pnode->nd_state & INUSE_PROV) {
 		if (!(pnode->nd_state & VNODE_UNAVAILABLE) ||
@@ -1281,6 +1281,14 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		 */
 		goto fn_fire_event;
 	}
+
+	unsigned long bits;
+	bits = vnode_o->nd_state ^ pnode->nd_state;
+
+	if (bits & (INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM |
+		    INUSE_MAINTENANCE | INUSE_SLEEP |
+		    INUSE_PROV | INUSE_WAIT_PROV))
+		pnode->nd_modified = 1;
 
 	DBPRT(("%s(%5s): state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
 	       vnode_o->nd_state, pnode->nd_state))
@@ -3483,9 +3491,8 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 		 * current vnode's parent mom be the incoming node,
 		 * which is what cross_link_mom_node() does.
 		 */
-		if ((i = cross_link_mom_vnode(pnode, pmom)) != 0) {
+		if ((i = cross_link_mom_vnode(pnode, pmom)) != 0)
 			return (i);
-		}
 	}
 
 	/*
@@ -3888,6 +3895,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 		set_vnode_state(pnode,
 				~states_to_clear,
 				Nd_State_And);
+		pnode->nd_modified = 1;
 		return 0;
 	} else {
 		snprintf(log_buffer, sizeof(log_buffer),
@@ -4191,6 +4199,7 @@ is_request(int stream, int version)
 	unsigned long hook_rescdef_checksum;
 	unsigned long chksum_rescdef;
 	static int reply_send_tm = 0;
+	char *badconstr = "unset";
 
 	CLEAR_HEAD(reported_hooks);
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
@@ -4212,18 +4221,24 @@ is_request(int stream, int version)
 	ipaddr = ntohl(addr->sin_addr.s_addr);
 
 	command = disrsi(stream, &ret);
-	if (ret != DIS_SUCCESS)
+	if (ret != DIS_SUCCESS) {
+		badconstr = "disrsi:command";
 		goto badcon;
+	}
 
 	if (command == IS_HELLOSVR) {
 		port = disrui(stream, &ret);
-		if (ret != DIS_SUCCESS)
+		if (ret != DIS_SUCCESS) {
+			badconstr = "disrui:port";
 			goto badcon;
+		}
 
 		DBPRT(("%s: IS_HELLOSVR addr: %s, port %lu\n", __func__, netaddr(addr), port))
 
-		if ((pmom = tfind2(ipaddr, port, &ipaddrs)) == NULL)
+		if ((pmom = tfind2(ipaddr, port, &ipaddrs)) == NULL) {
+			badconstr = "tfind2:pmom";
 			goto badcon;
+		}
 
 		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
 			   LOG_NOTICE, pmom->mi_host, "Hello from MoM on port=%lu", port);
@@ -4292,7 +4307,8 @@ is_request(int stream, int version)
 		goto found;
 
 badcon:
-	sprintf(log_buffer, "bad attempt to connect from %s", netaddr(addr));
+	sprintf(log_buffer, "bad attempt to connect from %s, reason=%s",
+		netaddr(addr), badconstr);
 	log_err(-1, __func__, log_buffer);
 	stream_eof(stream, 0, NULL);
 	return;
@@ -4692,14 +4708,14 @@ found:
 
 					if (is_nattr_set(np, ND_ATR_version) == 0 || strcmp(psvrmom->msr_pbs_ver, get_nattr_str(np, ND_ATR_version)) != 0) {
 						free_nattr(np, ND_ATR_version);
-						set_nattr_str_slim(np, ND_ATR_version, psvrmom->msr_pbs_ver, NULL);
+						if (!set_nattr_str_slim(np, ND_ATR_version, psvrmom->msr_pbs_ver, NULL))
+							np->nd_modified = 1;
 					}
 				}
 			}
 
-			if (made_new_vnodes || cr_node) {
+			if (made_new_vnodes || cr_node)
 				save_nodes_db(1, pmom); /* update the node database */
-			}
 
 			if (command_orig == IS_REGISTERMOM) {
 				/* Mom is acknowledging the info sent by the Server */

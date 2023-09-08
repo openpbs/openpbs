@@ -404,10 +404,18 @@ recov_node_cb(pbs_db_obj_info_t *dbobj, int *refreshed)
 	struct pbsnode *pnode = NULL;
 	pbs_db_node_info_t *dbnode = dbobj->pbs_db_un.pbs_db_node;
 	int load_type = 0;
+	extern time_t time_now;
 
 	*refreshed = 0;
-	if ((pnode = pbsd_init_node(dbnode, load_type)) != NULL)
+	if ((pnode = pbsd_init_node(dbnode, load_type)) != NULL) {
 		*refreshed = 1;
+		pnode->nd_state = dbnode->nd_state;
+		if (pnode->nd_state != get_nattr_long(pnode, ND_ATR_state)) {
+			set_nattr_l_slim(pnode, ND_ATR_state, pnode->nd_state, SET);
+			set_nattr_l_slim(pnode, ND_ATR_last_state_change_time, time_now, SET);
+		}
+		pnode->nd_modified = 0;
+	}
 
 	free_db_attr_list(&dbnode->db_attr_list);
 	if (pnode == NULL)

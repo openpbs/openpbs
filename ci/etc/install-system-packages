@@ -160,7 +160,7 @@ elif [ "x${ID}" == "xubuntu" ]; then
     expect cpanminus locales-all dnsutils tzdata vim bc file \
     systemd systemd-sysv sysvinit-utils libcap2-bin rsyslog libpam-dev \
     openssh-server openssh-client valgrind llvm gdb rsync wget ccache \
-    python python-pip
+    python3 python3-pip cpanminus
   if [ "x${ID}" == "xubuntu" -a "x${VERSION_ID}" == "x16.04" ]; then
     wget -qO - https://package.perforce.com/perforce.pubkey | apt-key add - &&
       echo 'deb http://package.perforce.com/apt/ubuntu/ xenial release' >/etc/apt/sources.list.d/perforce.list

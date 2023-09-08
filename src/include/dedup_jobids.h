@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2021 Altair Engineering, Inc.
+ * Copyright (C) 1994-2023 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -37,58 +37,16 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef _PBS_JSON_H
-#define _PBS_JSON_H
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <ctype.h>
+#include "list_link.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
-typedef enum {
-	JSON_NULL,
-	JSON_STRING,
-	JSON_INT,
-	JSON_FLOAT,
-	JSON_NUMERIC
-} JsonValueType;
-
-typedef enum {
-	JSON_NOVALUE,
-	JSON_ESCAPE,	 /* the value may be partially escaped */
-	JSON_FULLESCAPE, /* escape all the necessary chars */
-} JsonEscapeType;
-
-typedef enum {
-	JSON_VALUE,
-	JSON_OBJECT,
-	JSON_OBJECT_END,
-	JSON_ARRAY,
-	JSON_ARRAY_END,
-} JsonNodeType;
-
-typedef struct JsonNode JsonNode;
-
-struct JsonNode {
-	JsonNodeType node_type;
-	JsonValueType value_type;
-	char *key;
-	union {
-		char *string;
-		long int inumber;
-		double fnumber;
-	} value;
+struct array_job_range_list {
+	char *range;
+	struct array_job_range_list *next;
 };
+typedef struct array_job_range_list array_job_range_list;
 
-JsonNode *add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, char *key, void *value);
-char *strdup_escape(JsonEscapeType esc_type, const char *str);
-int generate_json(FILE *stream);
-void free_json_node_list();
-int is_valid_json_number(char *value);
-
-#ifdef __cplusplus
-}
-#endif
-#endif /* _PBS_JSON_H */
+int is_array_job(char *id);
+array_job_range_list * new_job_range(void);
+void free_array_job_range_list(array_job_range_list *head);
+int dedup_jobids(char **jobids, int *numjids, char *malloc_track);

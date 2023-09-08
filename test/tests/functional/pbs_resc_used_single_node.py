@@ -227,7 +227,7 @@ e.job.resources_used["stra"] = '"glad,elated","happy"'
         s = self.server.accounting_match(
             "E;%s;.*%s'{.*}'.*" % (jid, acctlog_match), regexp=True, n=100)
         self.assertTrue(s)
-        acctlog_match = 'resources_used.stra=\"glad\,elated\"\,\"happy\"'
+        acctlog_match = r'resources_used.stra=\"glad\,elated\"\,\"happy\"'
         s = self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
         self.assertTrue(s)

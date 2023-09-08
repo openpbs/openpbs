@@ -62,7 +62,7 @@ class TestJobArrayComment(TestFunctional):
             "import re\n"
             "e = pbs.event()\n"
             "jid = str(e.job.id)\n"
-            "if re.match(r'[0-9]*\[[057]\]', jid):\n"
+            r"if re.match(r'[0-9]*\[[057]\]', jid):\n"
             "    e.job.delete()\n"
             "    e.reject()\n"
             "else:\n"

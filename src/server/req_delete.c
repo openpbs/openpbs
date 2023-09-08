@@ -284,14 +284,13 @@ update_deljob_rply(struct batch_request *preq, char *jid, int errcode)
 	}
 
 	idx = preply->brp_un.brp_deletejoblist.undeleted_job_idx;
-	if (jid) {
+	if (jid)
 		if (pbs_idx_find(idx, (void **) &jid, (void **) &data, NULL) == PBS_IDX_RET_OK)
 			pbs_idx_delete(idx, jid);
 		else
 			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 				   "job %s has already been deleted from delete job list", jid);
-
-	} else
+	else
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 			  __func__, "update_deljob_rply invoked with empty job id");
 
@@ -527,9 +526,11 @@ delete_pending_arrayjobs(struct batch_request *preq)
 	idx = preply->brp_un.brp_deletejoblist.undeleted_job_idx;
 
 	while (pbs_idx_find(idx, (void **) &jid, (void **) &data, &idx_ctx) == PBS_IDX_RET_OK) {
-		if (jid && (is_job_array(jid) == IS_ARRAY_ArrayJob))
+		int job_type = is_job_array(jid);
+		if (jid && (((job_type == IS_ARRAY_ArrayJob) || (job_type == IS_ARRAY_Range) || (job_type == IS_ARRAY_Single))))
 			pbs_idx_delete(idx, jid);
 	}
+
 	pbs_idx_free_ctx(idx_ctx);
 
 	return all_jobs_deleted(preply);
@@ -904,9 +905,8 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 
 	/* active job is being deleted by delete job batch request */
 	pjob->ji_terminated = 1;
-	if ((preq->rq_user != NULL) && (preq->rq_host != NULL)) {
+	if ((preq->rq_user != NULL) && (preq->rq_host != NULL))
 		sprintf(by_user, "%s@%s", preq->rq_user, preq->rq_host);
-	}
 
 	if ((preq->rq_extend && strstr(preq->rq_extend, FORCE)))
 		forcedel = 1;
@@ -1661,12 +1661,11 @@ resend:
 
 	acct_del_write(pjob->ji_qs.ji_jobid, pjob, preq_clt, 0);
 
-	if (preq_clt->rq_parentbr) {
+	if (preq_clt->rq_parentbr)
 		reply_ack(preq_clt);
-	} else {
+	else
 		if (update_deljob_rply(preq_clt, pjob->ji_qs.ji_jobid, PBSE_NONE))
 			reply_ack(preq_clt); /* dont need it, reply now */
-	}
 
 	if (auxcode == JOB_SUBSTATE_TERM) {
 		/* Mom running a site supplied Terminate Job script   */

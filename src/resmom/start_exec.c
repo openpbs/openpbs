@@ -575,9 +575,11 @@ open_pty(job *pjob)
 
 		FDMOVE(pts);
 
-		(void) fchmod(pts, 0620);
-		(void) fchown(pts, pjob->ji_qs.ji_un.ji_momt.ji_exuid,
-			      pjob->ji_qs.ji_un.ji_momt.ji_exgid);
+		if (fchmod(pts, 0620) == -1) 
+			log_errf(-1, __func__, "fchmod failed. ERR : %s",strerror(errno));				
+		if (fchown(pts, pjob->ji_qs.ji_un.ji_momt.ji_exuid,
+			      pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1) 
+			log_errf(-1, __func__, "fchown failed. ERR : %s",strerror(errno));		
 #if defined(__osf__)
 		(void) ioctl(pts, TIOCSCTTY, 0); /* make controlling */
 #endif
@@ -666,19 +668,22 @@ open_std_out_err(job *pjob)
 		sprintf(log_buffer,
 			"Direct write is requested for job: %s, but the destination is not usecp-able from %s\n",
 			pjob->ji_qs.ji_jobid, pjob->ji_hosts[pjob->ji_nodeid].hn_host);
-		write(file_err, log_buffer, strlen(log_buffer));
+		if (write(file_err, log_buffer, strlen(log_buffer)) == -1) 
+			log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));			
 	}
 
 	FDMOVE(file_out); /* make sure descriptor > 2       */
 	FDMOVE(file_err); /* so don't clobber stdin/out/err */
 	if (file_out != 1) {
 		(void) close(1);
-		(void) dup(file_out);
+		if (dup(file_out) == -1) 
+			log_errf(-1, __func__, "dup failed. ERR : %s",strerror(errno));		
 		(void) close(file_out);
 	}
 	if (file_err != 2) {
 		(void) close(2);
-		(void) dup(file_err);
+		if (dup(file_err) == -1) 
+			log_errf(-1, __func__, "dup failed. ERR : %s",strerror(errno));		
 		(void) close(file_err);
 	}
 	return 0;
@@ -912,7 +917,8 @@ impersonate_user(uid_t uid, gid_t gid)
 	/* most systems */
 	if ((setegid(gid) == -1) ||
 	    (seteuid(uid) == -1)) {
-		(void) setegid(pbsgroup);
+		if (setegid(pbsgroup) == -1) 
+			log_errf(-1, __func__, "setegid to pbs group failed. ERR : %s",strerror(errno));		
 		return -1;
 	}
 #elif defined(HAVE_SETRESUID) && defined(HAVE_SETRESGID)
@@ -932,7 +938,8 @@ revert_from_user(void)
 {
 #if defined(HAVE_SETEUID)
 	/* most systems */
-	(void) seteuid(0);
+	if (seteuid(0) == -1) 
+		log_errf(-1, __func__, "seteuid failed. ERR : %s",strerror(errno));	
 #elif defined(HAVE_SETRESUID)
 	(void) setresuid(-1, 0, -1);
 #else
@@ -942,7 +949,8 @@ revert_from_user(void)
 	(void) initgroups("root", pbsgroup);
 #endif
 #if defined(HAVE_SETEGID)
-	(void) setegid(pbsgroup);
+	if (setegid(pbsgroup) == -1) 
+		log_errf(-1, __func__, "setegid to pbs group failed. ERR : %s",strerror(errno));		
 #elif defined(HAVE_SETRESGID)
 	(void) setresgid(-1, pbsgroup, -1);
 #else
@@ -1759,6 +1767,9 @@ record_finish_exec(int sd)
 		/* we couldn't get a reservation so refresh the inventory */
 		if (sjr.sj_reservation == -1)
 			call_hup = HUP_INIT;
+#endif
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		AFSLOG_TERM(ptask);
 #endif
 		(void) sprintf(log_buffer, "job not started, %s %d",
 			       (sjr.sj_code == JOB_EXEC_RETRY) ? "Retry" : "Failure", sjr.sj_code);
@@ -3122,7 +3133,6 @@ finish_exec(job *pjob)
 	cpid = fork_me(-1);
 	if (cpid > 0) {
 		conn_t *conn = NULL;
-		char *s, *d, holdbuf[(2 * MAXPATHLEN) + 5];
 
 		/* the parent side, still the main man, uhh that is MOM */
 
@@ -3251,27 +3261,34 @@ finish_exec(job *pjob)
 			(void) close(ptc);
 			ptc = -1;
 		}
-		if (*pjob->ji_qs.ji_fileprefix != '\0')
-			sprintf(buf, "%s%s%s", path_jobs,
-				pjob->ji_qs.ji_fileprefix, JOB_SCRIPT_SUFFIX);
-		else
-			sprintf(buf, "%s%s%s", path_jobs,
-				pjob->ji_qs.ji_jobid, JOB_SCRIPT_SUFFIX);
-		(void) chown(buf, pjob->ji_qs.ji_un.ji_momt.ji_exuid,
-			     pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 
-		/* add escape in front of brackets */
-		for (s = buf, d = holdbuf; *s && ((d - holdbuf) < sizeof(holdbuf)); s++, d++) {
-			if (*s == '[' || *s == ']')
-				*d++ = '\\';
-			*d = *s;
-		}
-		*d = '\0';
-		snprintf(buf, sizeof(buf), "%s", holdbuf);
-		DBPRT(("shell: %s\n", buf))
 #if SHELL_INVOKE == 1
 		if (is_interactive == 0) {
+			char *s;
+			char *d;
+			char holdbuf[(2 * MAXPATHLEN) + 5];
 			int k;
+
+			if (*pjob->ji_qs.ji_fileprefix != '\0')
+				sprintf(buf, "%s%s%s", path_jobs,
+					pjob->ji_qs.ji_fileprefix, JOB_SCRIPT_SUFFIX);
+			else
+				sprintf(buf, "%s%s%s", path_jobs,
+					pjob->ji_qs.ji_jobid, JOB_SCRIPT_SUFFIX);
+
+			if (chown(buf, pjob->ji_qs.ji_un.ji_momt.ji_exuid,
+					pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1)
+					log_errf(-1, __func__, "chown failed. ERR : %s",strerror(errno));
+
+			/* add escape in front of brackets */
+			for (s = buf, d = holdbuf; *s && ((d - holdbuf) < sizeof(holdbuf)); s++, d++) {
+				if (*s == '[' || *s == ']')
+					*d++ = '\\';
+				*d = *s;
+			}
+			*d = '\0';
+			snprintf(buf, sizeof(buf), "%s", holdbuf);
+			DBPRT(("shell: %s\n", buf))
 
 			/* pass name of shell script on pipe	*/
 			/* will be stdin of shell 		*/
@@ -3455,8 +3472,14 @@ finish_exec(job *pjob)
 	/* Second, the variables passed with the job.  They may */
 	/* be overwritten with new correct values for this job	*/
 
-	for (j = 0; j < vstrs->as_usedptr; ++j)
+	for (j = 0; j < vstrs->as_usedptr; ++j) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+			/* never set KRB5CCNAME; it would rewrite the correct value */
+			if (strncmp(vstrs->as_string[j], "KRB5CCNAME", strlen("KRB5CCNAME")) == 0)
+				continue;
+#endif
 		bld_env_variables(&(pjob->ji_env), vstrs->as_string[j], NULL);
+	}
 
 	/* .. Next the critical variables: home, path, logname, ... */
 	/* these may replace some passed in with the job	    */
@@ -3935,16 +3958,20 @@ finish_exec(job *pjob)
 
 				/* change pty back to available after */
 				/* job is done */
-				(void) chmod(pts_name, 0666);
-				(void) chown(pts_name, 0, 0);
+				if (chmod(pts_name, 0666) == -1) 
+					log_errf(-1, __func__, "chmod failed. ERR : %s",strerror(errno));			
+				if (chown(pts_name, 0, 0) == -1) 
+					log_errf(-1, __func__, "chown failed. ERR : %s",strerror(errno));		
 				exit(0);
 			}
 		} else { /* error */
 			log_err(errno, __func__, "cannot fork nanny");
 
 			/* change pty back to available */
-			(void) chmod(pts_name, 0666);
-			(void) chown(pts_name, 0, 0);
+			if (chmod(pts_name, 0666) == -1) 
+				log_errf(-1, __func__, "chmod failed. ERR : %s",strerror(errno));		
+			if (chown(pts_name, 0, 0) == -1) 
+				log_errf(-1, __func__, "chown failed. ERR : %s",strerror(errno));			
 
 			starter_return(upfds, downfds, JOB_EXEC_RETRY, &sjr);
 		}
@@ -3995,7 +4022,8 @@ finish_exec(job *pjob)
 			FDMOVE(script_in); /* make sure descriptor > 2       */
 			if (script_in != 0) {
 				close(0);
-				dup(script_in);
+				if (dup(script_in) == -1) 
+					log_errf(-1, __func__, "dup failed. ERR : %s",strerror(errno));			
 				close(script_in);
 			}
 		}
@@ -4652,6 +4680,9 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		 */
 		set_globid(pjob, &sjr);
 		if (sjr.sj_code < 0) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+			AFSLOG_TERM(ptask);
+#endif
 			(void) sprintf(log_buffer, "task not started, %s %s %d",
 				       (sjr.sj_code == JOB_EXEC_RETRY) ? "Retry" : "Failure",
 				       argv[0],
@@ -4732,8 +4763,14 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	/* Next, the variables passed with the job.  They may   */
 	/* be overwritten with new correct values for this job	*/
 
-	for (j = 0; j < vstrs->as_usedptr; ++j)
+	for (j = 0; j < vstrs->as_usedptr; ++j) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+			/* never set KRB5CCNAME; it would rewrite the correct value */
+			if (strncmp(vstrs->as_string[j], "KRB5CCNAME", strlen("KRB5CCNAME")) == 0)
+				continue;
+#endif
 		bld_env_variables(&(pjob->ji_env), vstrs->as_string[j], NULL);
+	}
 
 	/* HOME */
 	bld_env_variables(&(pjob->ji_env), variables_else[0],
@@ -5015,10 +5052,12 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 			if (fd > 2)
 				(void) close(fd);
 
-			write(1, get_jattr_str(pjob, JOB_ATR_Cookie),
-			      strlen(get_jattr_str(pjob, JOB_ATR_Cookie)));
-			write(2, get_jattr_str(pjob, JOB_ATR_Cookie),
-			      strlen(get_jattr_str(pjob, JOB_ATR_Cookie)));
+			if (write(1, get_jattr_str(pjob, JOB_ATR_Cookie),
+			      strlen(get_jattr_str(pjob, JOB_ATR_Cookie))) == -1) 
+				log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));			
+			if ( write(2, get_jattr_str(pjob, JOB_ATR_Cookie),
+			      strlen(get_jattr_str(pjob, JOB_ATR_Cookie))) == -1) 
+				log_errf(-1, __func__, "write failed. ERR : %s",strerror(errno));			
 		}
 	} else if (is_jattr_set(pjob, JOB_ATR_interactive) && get_jattr_long(pjob, JOB_ATR_interactive) > 0) {
 		/* interactive job, single node, write to pty */

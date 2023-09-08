@@ -317,7 +317,7 @@ else:
         self.server.accounting_match("E;%s;.*%s.*" % (jid, acctlog_match),
                                      regexp=True, n=100, existence=False)
 
-        acctlog_match = 'resources_used.stra=\"glad\,elated\"\,\"happy\"'
+        acctlog_match = r'resources_used.stra=\"glad\,elated\"\,\"happy\"'
         self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
 
@@ -488,7 +488,7 @@ else:
         self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
 
-        acctlog_match = 'resources_used.stra=\"glad\,elated\"\,\"happy\"'
+        acctlog_match = r'resources_used.stra=\"glad\,elated\"\,\"happy\"'
         self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
 
@@ -644,11 +644,11 @@ for jk in e.job_list.keys():
                 "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
 
             acctlog_match = "resources_used.foo_str3='%s'" % (
-                foo_str3_dict_out_str.replace('.', '\.').
-                replace("#$%^&*@", "\#\$\%\^\&\*\@"))
+                foo_str3_dict_out_str.replace('.', r'\.').
+                replace("#$%^&*@", r"\#\$\%\^\&\*\@"))
             self.server.accounting_match(
                 "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-            acctlog_match = 'resources_used.stra=\"glad\,elated\"\,\"happy\"'
+            acctlog_match = r'resources_used.stra=\"glad\,elated\"\,\"happy\"'
             self.server.accounting_match(
                 "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
 
@@ -1124,7 +1124,7 @@ else:
         #    "E;%s;.*%s.*" % (subjob1, acctlog_match), regexp=True, n=100)
         # self.assertTrue(s)
 
-        acctlog_match = 'resources_used.stra=\"glad\,elated\"\,\"happy\"'
+        acctlog_match = r'resources_used.stra=\"glad\,elated\"\,\"happy\"'
         # s = self.server.accounting_match(
         #    "E;%s;.*%s.*" % (subjob1, acctlog_match), regexp=True, n=100)
         # self.assertTrue(s)

@@ -57,6 +57,7 @@ noinst_HEADERS = \
 	bitfield.h \
 	cmds.h \
 	credential.h \
+	dedup_jobids.h \
 	dis.h \
 	grunt.h \
 	hook_func.h \

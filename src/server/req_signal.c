@@ -649,6 +649,7 @@ set_admin_suspend(job *pjob, int set_remove_nstate)
 						set_vnode_state(pnode, ~INUSE_MAINTENANCE, Nd_State_And);
 				}
 			}
+			pnode->nd_modified = 1;
 		}
 		chunk = parse_plus_spec_r(last, &last, &hasprn);
 	}

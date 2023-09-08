@@ -218,11 +218,14 @@ proc_get_btime(void)
 		return;
 
 	while (!feof(fp)) {
-		fscanf(fp, "%s", label);
+		if (fscanf(fp, "%s", label) == EOF) 
+			log_errf(-1, __func__, "fscanf failed. ERR : %s", strerror(errno));
 		if (strcmp(label, "btime")) {
-			fscanf(fp, "%*[^\n]%*c");
+			if (fscanf(fp, "%*[^\n]%*c") == EOF) 
+				log_errf(-1, __func__, "fscanf failed. ERR : %s", strerror(errno));				
 		} else {
-			fscanf(fp, "%u", &linux_time);
+			if (fscanf(fp, "%u", &linux_time)) 
+				log_errf(-1, __func__, "fscanf failed. ERR : %s", strerror(errno));				
 			fclose(fp);
 			return;
 		}
@@ -509,6 +512,13 @@ cput_sum(job *pjob)
 
 			/* is this process part of the task? */
 			if (ptask->ti_qs.ti_sid != ps->session)
+				continue;
+
+			/*
+			 * is the owner of this process the job owner?
+			 * prevents random PID matches after reboot/restart
+			 */
+			if (ps->uid != pjob->ji_qs.ji_un.ji_momt.ji_exuid)
 				continue;
 
 			nps++;

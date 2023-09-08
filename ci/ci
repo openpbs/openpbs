@@ -588,12 +588,17 @@ def check_prerequisites():
         log_error("docker not found in PATH")
         sys.exit(1)
 
+    def version_tuple(s: str):
+        return tuple(int(x) for x in s.split("."))
+
     try:
         version = subprocess.run(
             ["docker", "--version"], stdout=subprocess.PIPE)
         version = re.findall(r'\s*([\d.]+)', version.stdout.decode('utf-8'))
-        if int(version[0].replace(".", "")) < int(MACROS['REQ_DOCKER_VERSION']):
-            print("Docker version less than minimum required 17.12.0")
+        req_version = MACROS['REQ_DOCKER_VERSION']
+        if version_tuple(version[0]) < version_tuple(req_version):
+            print(version[0])
+            print("Docker version less than minimum required " + req_version)
             sys.exit(1)
     except:
         log_error("Failed to get docker version")

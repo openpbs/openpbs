@@ -182,16 +182,17 @@ time.sleep(20)
 
         # values to use when matching accounting logs
         self.job1_exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+            "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace(
+                    "+", r"\+")
         self.job1_exec_vnode_esc = self.job1_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
         self.job1_sel_esc = self.job1_select.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
         self.job1_new_exec_vnode_esc = self.job1_new_exec_vnode.replace(
-            "[", "\[").replace("]", "\]").replace("(", "\(").replace(
-            ")", "\)").replace("+", "\+")
+            "[", r"\[").replace("]", r"\]").replace("(", r"\(").replace(
+            ")", r"\)").replace("+", r"\+")
 
     def tearDown(self):
         for host in [self.h0, self.h1]:
@@ -317,7 +318,7 @@ time.sleep(20)
 
         # Check if sister mom updated its internal nodes table after release
         self.moms.values()[1].log_match('Job;%s;updated nodes info' % jid1,
-                                        starttime=before_release-1)
+                                        starttime=before_release - 1)
 
         # Check the cpuset for the job after releasing self.n3
         cset_after = self.du.cat(self.n1, cset_file)
@@ -434,20 +435,20 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         # Check account update ('u') record
         msg0 = ".*%s;%s.*exec_host=%s" % ('u', jid, self.job1_exec_host_esc)
         msg1 = ".*exec_vnode=%s" % self.job1_exec_vnode_esc
-        msg2 = ".*Resource_List\.mem=%s" % '3gb'
-        msg3 = ".*Resource_List\.ncpus=%d" % 9
-        msg4 = ".*Resource_List\.place=%s" % self.job1_place
-        msg5 = ".*Resource_List\.select=%s.*" % self.job1_sel_esc
+        msg2 = r".*Resource_List\.mem=%s" % '3gb'
+        msg3 = r".*Resource_List\.ncpus=%d" % 9
+        msg4 = r".*Resource_List\.place=%s" % self.job1_place
+        msg5 = r".*Resource_List\.select=%s.*" % self.job1_sel_esc
         msg = msg0 + msg1 + msg2 + msg3 + msg4 + msg5
         self.server.accounting_match(msg=msg, regexp=True, n="ALL",
                                      starttime=stime)
         # Check to make sure 'c' (next) record got generated
         msg0 = ".*%s;%s.*exec_host=%s" % ('c', jid, self.job1_new_exec_host)
         msg1 = ".*exec_vnode=%s" % self.job1_new_exec_vnode_esc
-        msg2 = ".*Resource_List\.mem=%s" % '1048576kb'
-        msg3 = ".*Resource_List\.ncpus=%d" % 1
-        msg4 = ".*Resource_List\.place=%s" % self.job1_place
-        msg5 = ".*Resource_List\.select=%s.*" % self.job1_newsel
+        msg2 = r".*Resource_List\.mem=%s" % '1048576kb'
+        msg3 = r".*Resource_List\.ncpus=%d" % 1
+        msg4 = r".*Resource_List\.place=%s" % self.job1_place
+        msg5 = r".*Resource_List\.select=%s.*" % self.job1_newsel
         msg = msg0 + msg1 + msg2 + msg3 + msg4 + msg5
         self.server.accounting_match(msg=msg, regexp=True, n="ALL",
                                      starttime=stime)

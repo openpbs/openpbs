@@ -43,8 +43,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <errno.h>
 #include "server_limits.h"
 #include "pbs_ifl.h"
+#include "log.h"
 
 /**
  * @brief
@@ -95,15 +97,16 @@ daemon_protect(pid_t pid, enum PBS_Daemon_Protect action)
 	 */
 	snprintf(fname, MAXPATHLEN, oom_protect_new.oom_path, pid);
 	if ((fd = open(fname, O_WRONLY | O_TRUNC)) != -1) {
-		write(fd, oom_protect_new.oom_value[(int) action], strlen(oom_protect_new.oom_value[(int) action]));
-
+		if (write(fd, oom_protect_new.oom_value[(int) action], strlen(oom_protect_new.oom_value[(int) action])) == -1) 
+				log_errf(-1, __func__, "write failed. ERR: %s", strerror(errno));
 	} else {
 
 		/* failed to open "oom_score_adj", now try "oom_adj" */
 		/* found in older Linux kernels			     */
 		snprintf(fname, MAXPATHLEN, oom_protect_old.oom_path, pid);
 		if ((fd = open(fname, O_WRONLY | O_TRUNC)) != -1) {
-			write(fd, oom_protect_old.oom_value[(int) action], strlen(oom_protect_old.oom_value[(int) action]));
+			if (write(fd, oom_protect_old.oom_value[(int) action], strlen(oom_protect_old.oom_value[(int) action])) == -1) 
+				log_errf(-1, __func__, "write failed. ERR: %s", strerror(errno));
 		}
 	}
 	if (fd != -1)
