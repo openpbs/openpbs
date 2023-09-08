@@ -39,10 +39,8 @@
 
 %module pbs_ifl
 
-%begin %{    
-#ifndef PY_SSIZE_T_CLEAN
-#define PY_SSIZE_T_CLEAN
-#endif
+%begin %{
+#include <pbs_python_private.h>
 %}
 
 %{

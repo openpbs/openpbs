@@ -39,9 +39,7 @@
 
 #include <pbs_config.h>
 #include <wchar.h>
-#ifndef PY_SSIZE_T_CLEAN
-#define PY_SSIZE_T_CLEAN
-#endif
+#include <pbs_python_private.h>
 #include <Python.h>
 #include "pbs_ifl.h"
 #include "pbs_internal.h"

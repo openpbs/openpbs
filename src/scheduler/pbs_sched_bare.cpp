@@ -45,9 +45,7 @@
 #include <stdio.h>
 
 #ifdef PYTHON
-#ifndef PY_SSIZE_T_CLEAN
-#define PY_SSIZE_T_CLEAN
-#endif
+#include <pbs_python_private.h>
 #include <Python.h>
 #include <pythonrun.h>
 #include <wchar.h>
