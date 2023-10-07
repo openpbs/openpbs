@@ -409,7 +409,7 @@ recov_node_cb(pbs_db_obj_info_t *dbobj, int *refreshed)
 	*refreshed = 0;
 	if ((pnode = pbsd_init_node(dbnode, load_type)) != NULL) {
 		*refreshed = 1;
-		pnode->nd_state = dbnode->nd_state;
+		pnode->nd_state |= (dbnode->nd_state & INUSE_NOAUTO_MASK);
 		if (pnode->nd_state != get_nattr_long(pnode, ND_ATR_state)) {
 			set_nattr_l_slim(pnode, ND_ATR_state, pnode->nd_state, SET);
 			set_nattr_l_slim(pnode, ND_ATR_last_state_change_time, time_now, SET);

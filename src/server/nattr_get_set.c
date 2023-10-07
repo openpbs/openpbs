@@ -214,10 +214,7 @@ set_nattr_l_slim(struct pbsnode *pnode, int attr_idx, long val, enum batch_op op
 		return 1;
 
 	if ((attr_idx != ND_ATR_last_state_change_time) && 
-		(attr_idx != ND_ATR_state || 
-		 (val == INUSE_OFFLINE || val == INUSE_OFFLINE_BY_MOM ||
-		  val == INUSE_MAINTENANCE ||val == INUSE_SLEEP ||
-		  val == INUSE_PROV || val == INUSE_WAIT_PROV)))
+		(attr_idx != ND_ATR_state || (val & INUSE_NOAUTO_MASK)))
 		pnode->nd_modified = 1;
 	set_attr_l(get_nattr(pnode, attr_idx), val, op);
 
