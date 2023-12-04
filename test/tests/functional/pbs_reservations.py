@@ -51,6 +51,19 @@ class TestReservations(TestFunctional):
     reservations
     """
 
+    def setUp(self):
+        super().setUp()
+        self._submitted_reservations = []
+        # self.server.manager(MGR_CMD_SET, SERVER, {'log_events': '8191'})
+
+    def tearDown(self):
+        for rid in self._submitted_reservations:
+            try:
+                self.server.delete(rid)
+            except PbsDeleteError:
+                pass
+        super().tearDown()
+
     def get_tz(self):
         if 'PBS_TZID' in self.conf:
             tzone = self.conf['PBS_TZID']
@@ -96,7 +109,11 @@ class TestReservations(TestFunctional):
             a.update(extra_attrs)
         r = Reservation(user, a)
 
-        return self.server.submit(r)
+        rid = self.server.submit(r)
+        if rid:
+            self._submitted_reservations.append(rid)
+
+        return rid
 
     def submit_asap_reservation(self, user, jid, extra_attrs=None):
         """
@@ -113,7 +130,11 @@ class TestReservations(TestFunctional):
         # So, unset these attributes from the reservation instance.
         r.unset_attributes(['reserve_start', 'reserve_end'])
 
-        return self.server.submit(r)
+        rid = self.server.submit(r)
+        if rid:
+            self._submitted_reservations.append(rid)
+
+        return rid
 
     def submit_job(self, set_attrib=None, sleep=100, job_running=False):
         """
@@ -1016,6 +1037,53 @@ class TestReservations(TestFunctional):
             mom_name = self.server.status(NODE)[1]['id']
         self.server.expect(NODE, {'state': 'resv-exclusive'},
                            id=mom_name)
+
+    def test_resv_exclusive_after_node_offlined(self):
+        """
+        Test if the set of reserved nodes correctly goes into the
+        resv-exclusive state if a node in the initially confirmed reservation
+        is offlined and the reservation is only reconfirmed and assigned new
+        nodes when the reservation is starting.
+        """
+        a = {'reserve_retry_time': 3600}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {'resources_available.ncpus': 1, 'sharing': 'default_excl'}
+        self.mom.create_vnodes(a, num=6)
+
+        now = int(time.time())
+        start = now + 30
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='4:ncpus=1',
+                                      place='excl',
+                                      start=start,
+                                      end=start + 3600)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_nodes = self.server.reservations[rid].get_vnodes()
+        self.logger.info("RESV_NODES: %s", resv_nodes)
+
+        self.server.manager(MGR_CMD_SET, NODE, {'state': 'offline'},
+                            id=resv_nodes[0])
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED')}
+        self.server.expect(RESV, a, id=rid)
+
+        sleep_time = start - int(time.time())
+        self.logger.info('Waiting %d seconds till resv starts' % sleep_time)
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid, offset=sleep_time)
+
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_nodes = self.server.reservations[rid].get_vnodes()
+        self.logger.info("RESV_NODES: %s", resv_nodes)
+
+        for n in resv_nodes:
+            self.server.expect(NODE, {'state': 'resv-exclusive'},
+                id=n, max_attempts=1)
 
     def test_multiple_asap_resv(self):
         """

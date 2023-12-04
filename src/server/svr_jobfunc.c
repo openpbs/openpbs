@@ -3395,6 +3395,10 @@ resv_setResvState(resc_resv *presv, int state, int sub)
 	    (presv->ri_qs.ri_substate == sub))
 		return;
 
+	DBPRT(("resv_name=%s, o_state=%d, o_sub=%d, state=%d, sub=%d",
+	       presv->ri_qs.ri_resvID, presv->ri_qs.ri_state, presv->ri_qs.ri_substate,
+	       state, sub))
+
 	presv->ri_qs.ri_state = state;
 	presv->ri_qs.ri_substate = sub;
 

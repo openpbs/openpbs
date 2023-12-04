@@ -535,6 +535,9 @@ req_confirmresv(struct batch_request *preq)
 	is_being_altered = presv->ri_alter.ra_flags;
 	is_confirmed = (presv->ri_qs.ri_substate == RESV_CONFIRMED) ? 1 : 0;
 
+	DBPRT(("resv_name=%s, is_degraded=%d, is_being_altered=%d, is_confirmed=%d",
+	       presv->ri_qs.ri_resvID, is_degraded, is_being_altered, is_confirmed));
+
 	presv->rep_sched_count++;
 
 	/* Check if preq is coming from scheduler */
@@ -761,7 +764,7 @@ req_confirmresv(struct batch_request *preq)
 	 * and the reservation to the associated vnodes.
 	 */
 	if (is_being_altered) {
-		if ((is_being_altered & RESV_SELECT_MODIFIED) && presv->ri_qs.ri_stime < time_now) {
+		if ((is_being_altered & RESV_SELECT_MODIFIED) && presv->ri_qs.ri_stime <= time_now) {
 			/* If we are both degraded and ralter -lselect, we are fine.  We will have unset ri_giveback above */
 			if (presv->ri_giveback) {
 				set_resc_assigned((void *) presv, 1, DECR);
@@ -773,11 +776,15 @@ req_confirmresv(struct batch_request *preq)
 	}
 	rc = assign_resv_resc(presv, next_execvnode, FALSE);
 
-	if (presv->ri_qs.ri_stime < time_now) {
+	DBPRT(("resv_name=%s, rc=%d, is_degraded=%d, stime=%ld, now=%ld",
+	       presv->ri_qs.ri_resvID, is_degraded, rc, presv->ri_qs.ri_stime, time_now));
+
+	if (presv->ri_qs.ri_stime <= time_now) {
 		if (is_degraded || is_being_altered & RESV_SELECT_MODIFIED) {
 			if (presv->ri_giveback == 0) {
 				set_resc_assigned((void *) presv, 1, INCR);
 				presv->ri_giveback = 1;
+				resv_exclusive_handler(presv);
 			}
 		}
 	}
