@@ -1083,7 +1083,7 @@ class TestReservations(TestFunctional):
 
         for n in resv_nodes:
             self.server.expect(NODE, {'state': 'resv-exclusive'},
-                id=n, max_attempts=1)
+                               id=n, max_attempts=1)
 
     def test_multiple_asap_resv(self):
         """
