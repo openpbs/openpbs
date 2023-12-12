@@ -62,14 +62,14 @@ pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
 	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	$(top_builddir)/src/lib/Liblicensing/liblicensing.la \
+	@KRB5_LIBS@ \
 	@expat_lib@ \
 	@libz_lib@ \
 	@libical_lib@ \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
 	-lssl \
-	-lcrypto \
-	@KRB5_LIBS@
+	-lcrypto
 
 pbs_server_bin_SOURCES = \
 	accounting.c \

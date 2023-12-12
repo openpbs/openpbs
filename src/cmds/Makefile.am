@@ -96,9 +96,9 @@ common_libs = \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
+	@KRB5_LIBS@ \
 	-lpthread \
-	@socket_lib@ \
-	@KRB5_LIBS@
+	@socket_lib@
 
 common_sources = \
 	$(top_srcdir)/src/lib/Libcmds/cmds_common.c

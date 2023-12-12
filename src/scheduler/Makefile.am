@@ -57,11 +57,11 @@ common_libs = \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
+	@KRB5_LIBS@ \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
 	@libz_lib@ \
-	@libical_lib@ \
-	@KRB5_LIBS@
+	@libical_lib@
 
 libpbs_sched_a_CPPFLAGS = ${common_cflags}
 
