@@ -264,6 +264,8 @@ __pbs_client_thread_init_thread_context_single_threaded(void)
 	ptr->th_pbs_tcp_interrupt = 0;
 	ptr->th_pbs_tcp_errno = 0;
 
+	ptr->th_pbs_errno = 0;
+
 	dis_init_tables();
 
 	single_threaded_init_done = 1;
@@ -493,6 +495,8 @@ __pbs_client_thread_init_thread_context(void)
 	ptr->th_pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_SHORT;
 	ptr->th_pbs_tcp_interrupt = 0;
 	ptr->th_pbs_tcp_errno = 0;
+
+	ptr->th_pbs_errno = 0;
 
 	/* initialize any elements of the ptr */
 	ptr->th_dis_buffer = calloc(1, dis_buffsize); /* defined in tcp_dis.c */

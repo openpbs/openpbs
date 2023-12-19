@@ -3,6 +3,12 @@
 
 How to install PBS using the configure script.
 
+0. Disable SELinux.
+
+  OpenPBS does not support SELinux. With SELinux enabled, initial start fails
+    with datastore permission error. You can also define proper policy but it is
+    out of scope of this guide.
+
 1. Install the prerequisite packages for building PBS.
 
   For CentOS-8 systems you should configure and enable powertools
@@ -64,7 +70,7 @@ How to install PBS using the configure script.
   For CentOS systems you should run the following command as root:
 
     yum install -y expat libedit postgresql-server postgresql-contrib python3 \
-      sendmail sudo tcl tk libical
+      sendmail sudo tcl tk libical chkconfig
 
   For openSUSE systems you should run the following command as root:
 

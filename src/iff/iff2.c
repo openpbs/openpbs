@@ -163,6 +163,17 @@ main(int argc, char *argv[], char *envp[])
 	if ((servport = atoi(argv[++optind])) <= 0)
 		return (1);
 
+	/* set single threaded mode */
+	pbs_client_thread_set_single_threaded_mode();
+	/* disable attribute verification */
+	set_no_attribute_verification();
+
+	/* initialize the thread context */
+	if (pbs_client_thread_init_thread_context() != 0) {
+		fprintf(stderr, "pbs_iff: thread initialization failed\n");
+		return (1);
+	}
+
 	for (i = 0; i < PBS_IFF_MAX_CONN_RETRIES; i++) {
 		sock = client_to_svr_extend(hostaddr, (unsigned int) servport, 1, cln_hostaddr);
 		if (sock != PBS_NET_RC_RETRY)
@@ -176,16 +187,6 @@ main(int argc, char *argv[], char *envp[])
 		return (4);
 	}
 
-	/* set single threaded mode */
-	pbs_client_thread_set_single_threaded_mode();
-	/* disable attribute verification */
-	set_no_attribute_verification();
-
-	/* initialize the thread context */
-	if (pbs_client_thread_init_thread_context() != 0) {
-		fprintf(stderr, "pbs_iff: thread initialization failed\n");
-		return (1);
-	}
 	DIS_tcp_funcs();
 
 	/* setup connection level thread context */

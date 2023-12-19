@@ -84,6 +84,11 @@
 #include "pbs_internal.h"
 #include "portability.h"
 
+#ifdef __SANITIZE_ADDRESS__
+#include <sanitizer/common_interface_defs.h>
+pid_t pid_sanitizer = -1;
+#endif
+
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 #include "renew_creds.h"
 #include <krb5.h>
@@ -167,6 +172,30 @@ extern char *set_homedir_to_local_default(job *, char *);
 #define STAGEOUT_FAILURE 65
 #define SUSPEND 1
 #define RESUME 0
+
+#ifdef __SANITIZE_ADDRESS__
+/**
+ * @brief
+ * 	__lsan_is_turned_off() - disable leak sanitizer for running process
+ *  based on pid_sanitizer. If pid_sanitizer is zero, lsan is disabled.
+ *  This is used for disabling lsan in child process in case of changing
+ *  uid/gid of the child process. The sanitizer can not handle functions
+ *  like setuid() and fails with not being able to connect to the thread.
+ *
+ * @return 	int
+ * @retval	1	disable LSAN
+ * @retval	0	enable LSAN
+ *
+ */
+int __attribute__((used))
+__lsan_is_turned_off(void)
+{
+	if (pid_sanitizer)
+		return 0;
+
+	return 1;
+}
+#endif
 
 /**
  * @brief
@@ -325,6 +354,12 @@ fork_to_user(struct batch_request *preq, job *pjob)
 	static char buf[MAXPATHLEN + 1];
 
 	pid = fork_me(preq->rq_conn);
+
+#ifdef __SANITIZE_ADDRESS__
+	/* see the comment of __lsan_is_turned_off() */
+	pid_sanitizer = pid;
+#endif
+
 	if (pid > 0) {
 		if (preq->prot == PROT_TCP)
 			free_br(preq); /* parent - note leave connection open   */

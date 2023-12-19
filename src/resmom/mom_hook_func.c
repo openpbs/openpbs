@@ -1289,7 +1289,22 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			}
 		}
 
+#ifdef __SANITIZE_ADDRESS__
+		/*
+		 * Ignore ASAN link order for pbs_python because Python bin
+		 * is not compiled with ASAN. There are also some leaks in the Python
+		 * library so ignore them by setting exitcode to 0.
+		 */
+		char *env_asan[] =
+		{
+				"ASAN_OPTIONS=verify_asan_link_order=0",
+				"LSAN_OPTIONS=exitcode=0",
+				NULL
+		};
+		execve(pypath, arg, env_asan);
+#else
 		execve(pypath, arg, environ);
+#endif
 	run_hook_exit:
 		if (fp != NULL) {
 			fclose(fp);

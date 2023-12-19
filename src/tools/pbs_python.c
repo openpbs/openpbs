@@ -1570,7 +1570,7 @@ main(int argc, char *argv[], char *envp[])
 					pc2 = in_data + 2;
 					while (isspace(*pc2))
 						pc2++;
-					memccpy(dirname, pc2, '\0', MAXPATHLEN);
+					pbs_strncpy(dirname, pc2, MAXPATHLEN);
 					if ((pc = strrchr(dirname, ';')))
 						*pc = '\0';
 					if (chdir(dirname) == -1) {

@@ -115,12 +115,18 @@ pbs_python_CPPFLAGS =  \
 	@PYTHON_INCLUDES@
 
 pbs_python_LDADD = \
-	$(top_builddir)/src/lib/Libpython/libpbspython.a \
+	$(top_builddir)/src/lib/Libpbs/libpbs.la \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libattr/libattr.a \
-	${common_libs} \
+	$(top_builddir)/src/lib/Libutil/libutil.a \
+	$(top_builddir)/src/lib/Libnet/libnet.a \
+	$(top_builddir)/src/lib/Libsec/libsec.a \
+	$(top_builddir)/src/lib/Libpython/libpbspython.a \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@
+	-lpthread \
+	@socket_lib@ \
+	@KRB5_LIBS@
 
 pbs_python_SOURCES = \
 	$(top_srcdir)/src/server/resc_attr.c \

@@ -166,6 +166,9 @@ Conflicts: pbspro-server-ohpc
 Conflicts: pbs
 Conflicts: pbs-mom
 Conflicts: pbs-cmds
+%if %{defined rhel}
+Requires: chkconfig
+%endif
 Requires: bash
 Requires: expat
 Requires: libedit
@@ -217,6 +220,9 @@ Conflicts: pbspro-server-ohpc
 Conflicts: pbs
 Conflicts: pbs-mom
 Conflicts: pbs-cmds
+%if %{defined rhel}
+Requires: chkconfig
+%endif
 Requires: bash
 Requires: expat
 Requires: python3 >= 3.5

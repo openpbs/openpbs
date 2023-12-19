@@ -119,6 +119,9 @@ main(int argc, char *argv[], char *envp[])
 	int fd;
 	int c;
 
+	cur_xy.x = -1;
+	cur_xy.y = -1;
+
 	/*the real deal or output pbs_version and exit?*/
 	PRINT_VERSION_AND_EXIT(argc, argv);
 

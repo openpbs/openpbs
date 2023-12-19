@@ -366,6 +366,7 @@ handle_resv(char *resv_id, char *server, int how)
 	}
 
 	display(bstat, how);
+	pbs_statfree(bstat);
 }
 
 /*

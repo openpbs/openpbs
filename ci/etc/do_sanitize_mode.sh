@@ -40,11 +40,13 @@
 PBS_DIR=$(readlink -f $0 | awk -F'/ci/' '{print $1}')
 cd ${PBS_DIR}
 
+[ -f /sys/fs/selinux/enforce ] && echo 0 > /sys/fs/selinux/enforce
 yum clean all
 yum -y update
 yum -y install yum-utils epel-release rpmdevtools libasan llvm
+dnf config-manager --set-enabled crb
 rpmdev-setuptree
-yum -y install python3-pip sudo which net-tools man-db time.x86_64
+yum -y install python3-pip sudo which net-tools man-db time.x86_64 procps
 yum-builddep -y ./*.spec
 ./autogen.sh
 rm -rf target-sanitize
@@ -64,4 +66,9 @@ set +e
 set -e
 pbs_config --make-ug
 cd /opt/ptl/tests/
+# Ignore address sanitizer link order because of
+# importing pbs python modules (like pbs and pbs_ifl) in ptl.
+# The problem is that original Python bin is not compiled with ASAN.
+# This will not affect pbs service as it has its own env.
+export ASAN_OPTIONS=verify_asan_link_order=0
 pbs_benchpress --tags=smoke

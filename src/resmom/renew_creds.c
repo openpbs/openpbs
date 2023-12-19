@@ -65,6 +65,7 @@
 #include "attribute.h"
 #include "resource.h"
 #include "resmon.h"
+#include "libutil.h"
 
 #include "tpp.h"
 #include "pbs_error.h"
@@ -263,7 +264,7 @@ static int
 init_ticket(struct krb_holder *ticket, job *pjob, int cred_action)
 {
 	int ret;
-	char buf[LOG_BUF_SIZE];
+	char buf[LOG_BUF_SIZE * 2];
 
 	if ((ret = krb5_init_context(&ticket->context)) != 0) {
 		log_err(ret, __func__, "Failed to initialize context.");
@@ -273,8 +274,8 @@ init_ticket(struct krb_holder *ticket, job *pjob, int cred_action)
 	switch (cred_action) {
 		case CRED_SINGLESHOT:
 		case CRED_RENEWAL:
-			if ((ret = get_renewed_creds(ticket, buf, LOG_BUF_SIZE)) != 0) {
-				char buf2[LOG_BUF_SIZE * 2];
+			if ((ret = get_renewed_creds(ticket, buf, sizeof(buf))) != 0) {
+				char buf2[LOG_BUF_SIZE * 3];
 
 				krb5_free_context(ticket->context);
 				snprintf(buf2, sizeof(buf2), "get_renewed_creds returned %d, %s", ret, buf);
@@ -765,7 +766,7 @@ get_job_info_from_principal(const char *principal, const char *jobid, eexec_job_
 		return PBS_KRB5_ERR_INTERNAL;
 
 	char login[PBS_MAXUSER + 1];
-	strncpy(login, principal, PBS_MAXUSER + 1);
+	pbs_strncpy(login, principal, PBS_MAXUSER + 1);
 	char *c = strchr(login, '@');
 	if (c != NULL)
 		*c = '\0';
