@@ -740,7 +740,11 @@ pbsv1mod_meth_logmsg(PyObject *self, PyObject *args, PyObject *kwds)
 	int severity = -1;
 	int eventtype = -1;
 	char *emsg = NULL;
+#ifdef PY_SSIZE_T_CLEAN
+	Py_ssize_t emsg_len = 0;
+#else
 	int emsg_len = 0;
+#endif
 
 	/* The use of "s#" below is to allow embedded NULLs, to guarantee */
 	/* something will get printed and not get an exception */
@@ -821,7 +825,11 @@ pbsv1mod_meth_logjobmsg(PyObject *self, PyObject *args, PyObject *kwds)
 
 	char *jobid = NULL;
 	char *msg = NULL;
+#ifdef PY_SSIZE_T_CLEAN
+	Py_ssize_t msg_len = 0;
+#else
 	int msg_len = 0;
+#endif
 
 	/* The use of "s#" below is to allow embedded NULLs, to guarantee */
 	/* something will get printed and not get an exception */

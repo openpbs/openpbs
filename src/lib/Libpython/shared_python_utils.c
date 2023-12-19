@@ -39,6 +39,7 @@
 
 #include <pbs_config.h>
 #include <wchar.h>
+#include <pbs_python_private.h>
 #include <Python.h>
 #include "pbs_ifl.h"
 #include "pbs_internal.h"

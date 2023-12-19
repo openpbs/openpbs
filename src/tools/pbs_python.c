@@ -63,6 +63,7 @@
  */
 #include <pbs_config.h>
 
+#include <pbs_python_private.h>
 #include <Python.h>
 
 #include <pbs_ifl.h>
@@ -1569,7 +1570,7 @@ main(int argc, char *argv[], char *envp[])
 					pc2 = in_data + 2;
 					while (isspace(*pc2))
 						pc2++;
-					strncpy(dirname, pc2, MAXPATHLEN);
+					memccpy(dirname, pc2, '\0', MAXPATHLEN);
 					if ((pc = strrchr(dirname, ';')))
 						*pc = '\0';
 					if (chdir(dirname) == -1) {

@@ -39,6 +39,10 @@
 
 %module pbs_ifl
 
+%begin %{
+#include <pbs_python_private.h>
+%}
+
 %{
 #include "pbs_ifl.h"
 #include "pbs_error.h"
