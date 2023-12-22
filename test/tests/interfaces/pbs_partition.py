@@ -73,7 +73,7 @@ class TestPartition(TestInterfaces):
         :param user: one of the pre-defined set of users
         :type user: :py:class:`~ptl.lib.pbs_testlib.PbsUser`
         """
-        if obj_name is "QUEUE":
+        if obj_name == "QUEUE":
             if mgr_cmd == MGR_CMD_CREATE:
                 if q_type is None:
                     attr = {'partition': partition}
@@ -97,8 +97,8 @@ class TestPartition(TestInterfaces):
                        "MGR_CMD_[CREATE/SET/UNSET] value for mgr_cmd when "
                        "pbs object is queue")
                 self.assertTrue(False, msg)
-        elif obj_name is "NODE":
-            if name is "Q1":
+        elif obj_name == "NODE":
+            if name == "Q1":
                 name = self.mom.shortname
             attr = {'partition': partition}
             if mgr_cmd == MGR_CMD_SET:

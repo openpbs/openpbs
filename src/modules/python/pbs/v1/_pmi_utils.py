@@ -67,7 +67,7 @@ def _pbs_conf(confvar):
 
         try:
             fp = open(pbsconf)
-        except:
+        except OSError:
             pbs.logmsg(pbs.DEBUG, "%s: Unable to open conf file." % pbsconf)
             return None
         else:

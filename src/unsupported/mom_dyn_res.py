@@ -60,7 +60,8 @@
 #
 #    3. Install this hook as:
 #       qmgr -c "create hook mom_dyn_res event=exechost_periodic,freq=30"
-#       qmgr -c "import hook mom_dyn_res application/x-python default mom_dyn_res.py"
+#       qmgr -c "import hook mom_dyn_res application/x-python default
+#                mom_dyn_res.py"
 #
 # NOTE:
 #    Update the dyn_res[] array below to include any other custom resources

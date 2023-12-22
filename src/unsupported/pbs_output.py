@@ -75,7 +75,7 @@ def outname(jobid):
         with open(confile, "r") as fp:
             for line in fp:
                 line = line.strip()
-                if line is "":
+                if line == "":
                     continue
                 var, _, val = line.partition('=')
                 if var == home:

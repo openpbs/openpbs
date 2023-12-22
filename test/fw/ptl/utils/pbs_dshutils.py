@@ -1657,7 +1657,7 @@ class DshUtils(object):
 
         # Changes specific to python
         # Use PBS Python if available before looking for system Python
-        if exe is 'python3':
+        if exe == 'python3':
             pbs_conf = self.parse_pbs_config(hostname)
             py_path = os.path.join(pbs_conf['PBS_EXEC'], 'python',
                                    'bin', 'python')

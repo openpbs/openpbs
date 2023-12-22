@@ -67,9 +67,9 @@ class TestNodePartition(TestInterfaces):
         :type user: :py:class:`~ptl.lib.pbs_testlib.PbsUser`
         """
         attr = {'partition': partition}
-        if mgr_cmd is "MGR_CMD_SET":
+        if mgr_cmd == "MGR_CMD_SET":
             self.server.manager(MGR_CMD_SET, NODE, attr, id=n_name, runas=user)
-        elif mgr_cmd is "MGR_CMD_UNSET":
+        elif mgr_cmd == "MGR_CMD_UNSET":
             self.server.manager(MGR_CMD_UNSET, NODE,
                                 "partition", id=n_name, runas=user)
         else:
