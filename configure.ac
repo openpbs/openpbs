@@ -334,6 +334,7 @@ PBS_AC_WITH_LIBZ
 PBS_AC_ENABLE_PTL
 PBS_AC_SYSTEMD_UNITDIR
 PBS_AC_PATCH_LIBTOOL
+PBS_AC_WITH_CJSON
 
 AC_CONFIG_FILES([
 	openpbs.spec
@@ -386,6 +387,8 @@ AC_CONFIG_FILES([
 	src/lib/Libauth/gss/Makefile
 	src/lib/Libauth/munge/Makefile
 	src/lib/Liblicensing/Makefile
+	src/lib/Libjson/Makefile
+	src/lib/Libjson/cJSON/Makefile
 	src/lib/Makefile
 	src/modules/Makefile
 	src/modules/python/Makefile

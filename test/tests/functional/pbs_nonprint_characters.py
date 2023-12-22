@@ -585,7 +585,19 @@ sleep 5
         rc += 1
         self.logger.info('json output is valid')
         # Check msg is in output
+        # cJSON uses different ANSI escape codes (like '\u001b')
+        # we need to recode to check chars are preserved
+        out_esc = []
         for m in ret['out']:
+            b = m.encode('utf-8')
+            tmp = b.decode('unicode_escape')
+            for ch in self.npcat:
+                if ch in self.npch_exclude:
+                    continue
+                if ch in tmp:
+                    tmp = tmp.replace(ch, self.npcat[ch])
+            out_esc.append(tmp)
+        for m in out_esc:
             if m.find(msg) != -1:
                 self.logger.info('Found \"%s\" in json output' % msg)
                 rc += 1
@@ -614,14 +626,6 @@ sleep 5
             else:
                 a = {ATTR_v: r"var1=\'A\,B\,%s\,C\,D\'" % ch}
             msg = 'A,B,%s,C,D' % self.npcat[ch]
-            npch_msg = {
-                '\x08': 'A,B,\\b,C,D',
-                '\x09': 'A,B,\\t,C,D',
-                '\x0C': 'A,B,\\f,C,D',
-                '\x0D': 'A,B,\\r,C,D'
-            }
-            if ch in npch_msg:
-                msg = npch_msg[ch]
             script = ['env | grep var1']
             script += ['sleep 5']
             jid = self.create_and_submit_job(attribs=a, content=script)
@@ -1101,16 +1105,6 @@ e.env["LAUNCH_NONPRINT"] = "CD"
             cmd = [self.pbsnodes_cmd, '-C', '%s' % comment, self.mom.shortname]
             self.du.run_cmd(self.server.hostname, cmd=cmd, sudo=True)
             comm1 = 'h%sd' % self.npcat[ch]
-            if ch in self.npch_asis:
-                comm1 = 'h%sd' % ch
-            json_msg = {
-                '\x08': 'h\\bd',
-                '\x09': 'h\\td',
-                '\x0C': 'h\\fd',
-                '\x0D': 'h\\rd'
-            }
-            if ch in json_msg:
-                comm1 = json_msg[ch]
             # Check json output
             rc = self.find_in_json_valid('nodes', comm1, None)
             self.assertGreaterEqual(rc, 2)
