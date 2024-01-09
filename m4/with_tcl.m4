@@ -50,9 +50,18 @@ AC_DEFUN([PBS_AC_WITH_TCL],
     tcl_dir=["$with_tcl"],
     tcl_dir=["/usr"]
   )
+  AC_ARG_WITH([tk],
+    AS_HELP_STRING([--with-tk=DIR],
+      [Specify the directory where Tk is installed.]
+    )
+  )
+  AS_IF([test "x$with_tk" != "x"],
+    tk_dir=["$with_tk"],
+    tk_dir=["/usr"]
+  )
   AC_MSG_CHECKING([for Tcl])
-  AS_IF([test -r "$tcl_dir/lib64/tclConfig.sh"],
-    [. "$tcl_dir/lib64/tclConfig.sh"],
+  AS_IF([test -r "$tcl_dir/tclConfig.sh"],
+    [. "$tcl_dir/tclConfig.sh"],
     AS_IF([test -r "$tcl_dir/lib/tclConfig.sh"],
       [. "$tcl_dir/lib/tclConfig.sh"],
       AS_IF([test -r "$tcl_dir/lib/x86_64-linux-gnu/tclConfig.sh"],
@@ -66,8 +75,8 @@ AC_DEFUN([PBS_AC_WITH_TCL],
   [tcl_version="$TCL_VERSION"]
   AC_SUBST(tcl_version)
   AC_MSG_CHECKING([for Tk])
-  AS_IF([test -r "$tcl_dir/lib64/tkConfig.sh"],
-    [. "$tcl_dir/lib64/tkConfig.sh"],
+  AS_IF([test -r "$tk_dir/tkConfig.sh"],
+    [. "$tk_dir/tkConfig.sh"],
     AS_IF([test -r "$tcl_dir/lib/tkConfig.sh"],
       [. "$tcl_dir/lib/tkConfig.sh"],
       AS_IF([test -r "$tcl_dir/lib/x86_64-linux-gnu/tkConfig.sh"],
