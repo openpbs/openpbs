@@ -169,6 +169,7 @@ pbs_upgrade_job_SOURCES = pbs_upgrade_job.c
 pbs_wish_CPPFLAGS = \
 	${common_cflags} \
 	@libz_inc@ \
+	@tcl_inc@ \
 	@tk_inc@
 
 pbs_wish_LDADD = \
