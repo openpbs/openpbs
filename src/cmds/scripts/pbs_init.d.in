@@ -645,6 +645,10 @@ conf=${PBS_CONF_FILE:-@PBS_CONF_FILE@}
 # re-apply saved env variables
 . "${env_save}"
 
+# get PATH
+. "${PBS_HOME}/pbs_environment"
+export PATH
+
 rm -f "${env_save}"
 
 if [ -z "${PBS_EXEC}" ]; then
