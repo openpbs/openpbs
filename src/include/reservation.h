@@ -220,7 +220,7 @@ struct resc_resv {
 		time_t ri_duration;			   /* reservation duration */
 		time_t ri_tactive;			   /* time reservation became active */
 		int ri_svrflags;			   /* server flags */
-		char ri_resvID[PBS_MAXSVRRESVID + 1];	   /* reservation identifier */
+		char ri_resvID[PBS_MAXSVRRESVID];	   /* reservation identifier */
 		char ri_fileprefix[PBS_RESVBASE + 1];	   /* reservation file prefix */
 		char ri_queue[PBS_MAXQRESVNAME + 1];	   /* queue used by reservation */
 	} ri_qs;

@@ -103,7 +103,8 @@ class Power:
         """
         if os.path.exists('/proc/cray_xt/cname'):
             return "cray"
-        if os.path.exists('/opt/clmgr/power-service') or os.path.exists('/opt/sgi'):
+        if (os.path.exists('/opt/clmgr/power-service') or
+            os.path.exists('/opt/sgi')):
             return "sgi"
         return "none"
 
@@ -160,7 +161,7 @@ class Power:
                 for h in hosts:
                     try:
                         pbs.event().vnode_list[h].current_eoe = profile_name
-                    except:
+                    except Exception:
                         pass
             return ret
         except BackendError as e:
@@ -174,7 +175,7 @@ class Power:
                     mynode.resources_available["eoe"] = names
                     pbs.logmsg(pbs.LOG_WARNING,
                                "PMI:activate: set eoe: %s" % names)
-                except:
+                except Exception:
                     pass
             raise BackendError(e)
         except InternalError as e:
@@ -194,7 +195,7 @@ class Power:
             for h in _get_vnode_names(job):
                 try:
                     pbs.event().vnode_list[h].current_eoe = None
-                except:
+                except Exception:
                     pass
         return self.__pmi._deactivate_profile(job)
 

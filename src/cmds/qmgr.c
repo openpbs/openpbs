@@ -503,6 +503,9 @@ params_import(char *attrs, struct attropl **attrlist, int doper)
 		/* value ok */
 		attrlist_add(attrlist, INPUT_FILE_PARAM, strlen(INPUT_FILE_PARAM), v,
 			     strlen(v));
+		if (strlen(v) > 0) {
+			free(v);
+		}
 
 		if (EOL(*e)) {
 			return 0; /* end of line */
@@ -647,6 +650,9 @@ params_export(char *attrs, struct attropl **attrlist, int doper)
 		/* value ok */
 		attrlist_add(attrlist, OUTPUT_FILE_PARAM, strlen(OUTPUT_FILE_PARAM), v,
 			     strlen(v));
+		if (strlen(v) > 0) {
+			free(v);
+		}
 
 		if (EOL(*e)) {
 			return 0; /* end of line */
@@ -905,6 +911,7 @@ main(int argc, char **argv)
 			if (aopt && errflg)
 				clean_up_and_exit(2);
 		}
+		PBS_free_aopl(attribs);
 		/*
 		 * Deallocate the memory for the variable name whose memory
 		 * is allocated originally in the function parse
@@ -1460,6 +1467,8 @@ is_reservation_queue(int sd, char *qname)
 		}
 		if (resv_queue->name != NULL)
 			free(resv_queue->name);
+		if (resv_queue->value != NULL)
+			free(resv_queue->value);
 		free(resv_queue);
 	}
 	if (bs == NULL)
@@ -1702,6 +1711,9 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 							if ((rfm != NULL) && (strcmp(rfm, "") != 0)) {
 								printf("set resource %s flag = %s\n", status->name, rfm);
 							}
+							if (rfm != NULL) {
+								free(rfm);
+							}
 							attr = attr->next;
 							continue;
 						}
@@ -1800,6 +1812,9 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 						if ((rfm != NULL) && (strcmp(rfm, "") != 0)) {
 							printf("%*s", indent_len, " ");
 							printf("flag = %s\n", rfm);
+						}
+						if (rfm != NULL) {
+							free(rfm);
 						}
 					}
 					attr = attr->next;
@@ -2248,6 +2263,7 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 							ss = pbs_statque(sp->s_connect, NULL, NULL, NULL);
 							if (ss != NULL) {
 								display(MGR_OBJ_QUEUE, MGR_OBJ_SERVER, NULL, ss, TRUE, sp);
+								pbs_statfree(ss);
 							} else if (pbs_errno != PBSE_NONE) {
 								break;
 							}
@@ -2676,6 +2692,7 @@ get_request(char **request)
 	char quote;		  /* Either ' or " */
 	char *cur_line = NULL;	  /* Pointer to the current line */
 	int line_len = 0;	  /* Length of the line buffer */
+	char *ret;
 
 #ifdef QMGR_HAVE_HIST
 	if (qmgr_hist_enabled == 1) {
@@ -2716,13 +2733,17 @@ get_request(char **request)
 
 				start_time = time(0);
 				ll = 0;
-				if ((cur_line = pbs_fgets(&cur_line, &ll, stdin)) == NULL) {
+				if ((ret = pbs_fgets(&cur_line, &ll, stdin)) == NULL) {
 					if (line != NULL) {
 						free(line);
 						line = NULL;
 					}
+					if (cur_line != NULL) {
+						free(cur_line);
+					}
 					return EOF;
 				}
+				cur_line = ret;
 				ll = strlen(cur_line);
 				if (cur_line[ll - 1] == '\n') {
 					/* remove newline */

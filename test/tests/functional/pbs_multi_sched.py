@@ -1282,7 +1282,7 @@ class TestMultipleSchedulers(TestFunctional):
         if numnode in range(9, 11):
             a['resources_available.switch'] = 'B'
             a['partition'] = 'P2'
-        if numnode is 11:
+        if numnode == 11:
             a['partition'] = 'P2'
         return {**attrib, **a}
 

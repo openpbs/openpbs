@@ -1,5 +1,5 @@
-#!/bin/bash -xe
 
+#
 # Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -37,42 +37,39 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-PBS_DIR=$(readlink -f $0 | awk -F'/ci/' '{print $1}')
-cd ${PBS_DIR}
+#
 
-[ -f /sys/fs/selinux/enforce ] && echo 0 > /sys/fs/selinux/enforce
-yum clean all
-yum -y update
-yum -y install yum-utils epel-release rpmdevtools libasan llvm
-dnf config-manager --set-enabled crb
-rpmdev-setuptree
-yum -y install python3-pip sudo which net-tools man-db time.x86_64 procps
-yum-builddep -y ./*.spec
-yum -y install cmake3 git
-rm -rf cJSON
-git clone https://github.com/DaveGamble/cJSON.git
-cd cJSON; mkdir build; cd build; cmake3 .. -DCMAKE_INSTALL_PREFIX=/usr; make; make install; cd ../../
-./autogen.sh
-rm -rf target-sanitize
-mkdir -p target-sanitize
-cd target-sanitize
-../configure
-make dist
-cp -fv *.tar.gz /root/rpmbuild/SOURCES/
-CFLAGS="-g -O2 -Wall -Werror -fsanitize=address -fno-omit-frame-pointer" CXXFLAGS="-g -O2 -Wall -Werror -fsanitize=address -fno-omit-frame-pointer" rpmbuild -bb --with ptl *.spec
-yum -y install /root/rpmbuild/RPMS/x86_64/*-server-??.*.x86_64.rpm
-yum -y install /root/rpmbuild/RPMS/x86_64/*-debuginfo-??.*.x86_64.rpm
-yum -y install /root/rpmbuild/RPMS/x86_64/*-ptl-??.*.x86_64.rpm
-sed -i "s@PBS_START_MOM=0@PBS_START_MOM=1@" /etc/pbs.conf
-/etc/init.d/pbs start
-set +e
-. /etc/profile.d/ptl.sh
-set -e
-pbs_config --make-ug
-cd /opt/ptl/tests/
-# Ignore address sanitizer link order because of
-# importing pbs python modules (like pbs and pbs_ifl) in ptl.
-# The problem is that original Python bin is not compiled with ASAN.
-# This will not affect pbs service as it has its own env.
-export ASAN_OPTIONS=verify_asan_link_order=0
-pbs_benchpress --tags=smoke
+AC_DEFUN([PBS_AC_WITH_CJSON],
+[
+  AC_ARG_WITH([cjson],
+    AS_HELP_STRING([--with-cjson=DIR],
+      [Specify the directory where cJSON is installed.]
+    )
+  )
+  [cjson_dir="$with_cjson"]
+  AC_MSG_CHECKING([for cJSON])
+  AS_IF(
+    [test "$cjson_dir" = ""],
+    AC_CHECK_HEADER([cjson/cJSON.h], [], AC_MSG_ERROR([cJSON headers not found.])),
+    [test -r "$cjson_dir/include/cjson/cJSON.h"],
+    [cjson_inc="-I$cjson_dir/include"],
+    AC_MSG_ERROR([cJSON headers not found.])
+  )
+  AS_IF(
+    [test "$cjson_dir" = ""],
+    # Using system installed cjson
+    AC_CHECK_LIB([cjson], [cJSON_Parse],
+      [cjson_lib="-lcjson"],
+      AC_MSG_ERROR([cJSON shared object library not found.])),
+    # Using developer installed cJSON
+    [test -r "${cjson_dir}/lib64/libcjson.so"],
+    [cjson_lib="-L${cjson_dir}/lib64 -lcjson"],
+    [test -r "${cjson_dir}/lib/libcjson.so"],
+    [cjson_lib="-L${cjson_dir}/lib -lcjson"],
+    AC_MSG_ERROR([cJSON library not found.])
+  )
+  AC_MSG_RESULT([$cjson_dir])
+  AC_SUBST(cjson_inc)
+  AC_SUBST(cjson_lib)
+  AC_DEFINE([CJSON], [], [Defined when cjson is available])
+])

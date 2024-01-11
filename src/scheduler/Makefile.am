@@ -52,11 +52,11 @@ common_cflags = \
 common_libs = \
 	$(builddir)/libpbs_sched.a \
 	$(builddir)/libschedharness.a \
+	$(top_builddir)/src/lib/Libpbs/libpbs.la \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
-	$(top_builddir)/src/lib/Libpbs/libpbs.la \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
 	@libz_lib@ \

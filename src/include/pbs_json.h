@@ -45,48 +45,19 @@ extern "C" {
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
-typedef enum {
-	JSON_NULL,
-	JSON_STRING,
-	JSON_INT,
-	JSON_FLOAT,
-	JSON_NUMERIC
-} JsonValueType;
+typedef void json_data;
 
-typedef enum {
-	JSON_NOVALUE,
-	JSON_ESCAPE,	 /* the value may be partially escaped */
-	JSON_FULLESCAPE, /* escape all the necessary chars */
-} JsonEscapeType;
+json_data *pbs_json_create_object();
+json_data *pbs_json_create_array();
 
-typedef enum {
-	JSON_VALUE,
-	JSON_OBJECT,
-	JSON_OBJECT_END,
-	JSON_ARRAY,
-	JSON_ARRAY_END,
-} JsonNodeType;
+void pbs_json_insert_item(json_data *parent, char *key, json_data *value);
+int pbs_json_insert_string(json_data *parent, char *key, char *value);
+int pbs_json_insert_number(json_data *parent, char *key, double value);
+int pbs_json_insert_parsed(json_data *parent, char *key, char *value, int ignore_empty);
 
-typedef struct JsonNode JsonNode;
-
-struct JsonNode {
-	JsonNodeType node_type;
-	JsonValueType value_type;
-	char *key;
-	union {
-		char *string;
-		long int inumber;
-		double fnumber;
-	} value;
-};
-
-JsonNode *add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, char *key, void *value);
-char *strdup_escape(JsonEscapeType esc_type, const char *str);
-int generate_json(FILE *stream);
-void free_json_node_list();
-int is_valid_json_number(char *value);
+int pbs_json_print(json_data *data, FILE *stream);
+void pbs_json_delete(json_data *data);
 
 #ifdef __cplusplus
 }

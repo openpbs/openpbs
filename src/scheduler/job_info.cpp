@@ -87,6 +87,7 @@
 #include <pbs_config.h>
 
 #ifdef PYTHON
+#include <pbs_python_private.h>
 #include <Python.h>
 #endif
 

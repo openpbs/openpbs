@@ -1212,7 +1212,7 @@ class BatchUtils(object):
 
         elif op == IFL_RALTER:
             if isinstance(attrs, dict):
-                if 'extend' in attrs and attrs['extend'] is 'force':
+                if 'extend' in attrs and attrs['extend'] == 'force':
                     ret.append('-Wforce')
                     del attrs['extend']
 

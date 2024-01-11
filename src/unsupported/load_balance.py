@@ -52,7 +52,8 @@
 #
 # To instantiate this hook, specify the following:
 #    qmgr -c "create hook load_balance event=exechost_periodic,freq=10"
-#    qmgr -c "import hook load_balance application/x-python default load_balance.py"
+#    qmgr -c "import hook load_balance application/x-python default
+#             load_balance.py"
 
 import os
 import re

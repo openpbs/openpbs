@@ -111,14 +111,18 @@ class PbsAttributeDescriptor():
 
     Some things to note are:
       - All attributes values are ensured to be an instance of value_type
-      - if read_only is set then any attempt to set will raise BadAttributeValueError
-      - Add the attribute name to the dictionary 'attributes' on the instance if
-        it exists.
+      - if read_only is set then any attempt to set will raise
+        BadAttributeValueError
+      - Add the attribute name to the dictionary 'attributes' on the instance
+        if it exists.
       - Since a Descriptor is a class level object, to maintain unique values
         across instances, we maintain an internal dictionary.
     """
 
-    def __init__(self, cls, name, default_value, value_type=None, resc_attr=None, is_entity=0):
+    def __init__(
+        self, cls, name, default_value, value_type=None, resc_attr=None,
+        is_entity=0
+    ):
         """
         """
 
@@ -223,7 +227,8 @@ class PbsAttributeDescriptor():
             #                             or parent object is an entity type
             set_value = value
         else:
-            if self._is_resource and isinstance(value, str) and (value[0] == "@"):
+            if (self._is_resource and isinstance(value, str)
+                    and value[0] == "@"):
                 # an indirect resource
                 set_value = value
             else:
@@ -633,9 +638,9 @@ def replace_char_not_before(str, chr, repl_substr, chr_after_list):
     end_index = l - 1
     s = ""
     while i < l:
-        if (str[i] != chr) or \
-            ((i > 0) and (str[i - 1] == chr) and (str[i] in chr_after_list)) or \
-                ((i < end_index) and (str[i + 1] in chr_after_list)):
+        if ((str[i] != chr) or
+            ((i > 0) and (str[i - 1] == chr) and (str[i] in chr_after_list)) or
+                ((i < end_index) and (str[i + 1] in chr_after_list))):
             s += str[i]
         else:
             s += repl_substr
@@ -687,7 +692,8 @@ class pbs_env(dict):
             double_stx = "\x02\x02"
             double_etx = "\x03\x03"
             value1 = value.replace(
-                esc_char + esc_char, double_stx).replace(esc_char + ",", double_etx)
+                esc_char + esc_char, double_stx).replace(
+                esc_char + ",", double_etx)
             vals = value1.split(",")
             ev = {}
             for v in vals:
@@ -702,11 +708,13 @@ class pbs_env(dict):
                     if isinstance(e[1], str):
                         if (_pbs_v1.get_python_daemon_name() != "pbs_python") \
                                 or (sys.platform != "win32"):
-                            # replace \ with \\ if not used to escape special chars
-                            # note: no need to do this under a Windows mom since
-                            #       backslash is recognized as path character
-                            vue = replace_char_not_before(e[1],
-                                                          '\\', '\\\\', [',', '\'', '\"', '\\'])
+                            # replace \ with \\ if not used to escape special
+                            # chars
+                            # note: no need to do this under a Windows mom
+                            #       since backslash is recognized as path
+                            #       character
+                            vue = replace_char_not_before(
+                                e[1], '\\', '\\\\', [',', '\'', '\"', '\\'])
                     ev.update({e[0]: vue})
         else:
             ev = value
@@ -736,7 +744,7 @@ class pbs_env(dict):
         """String representation of the object"""
         rv = ""
         for k in self.keys():
-            if self[k] != None:
+            if self[k] is not None:
                 rv += "%s=%s," % (k, self[k])
         return rv.rstrip(",")
     #: m(__str__)
@@ -785,7 +793,7 @@ class pbs_bool(_generic_attr):
     def __cmp__(self, value):
         iself = int(str(self))
 
-        if value == None:
+        if value is None:
             return 1
 
         ivalue = int(value)
@@ -1036,10 +1044,10 @@ class select(_generic_attr):
             pbs.select value mapping to:
                 "7:ncpus=3:mem=1gb+2:ncpus=2:mem=2gb+3:ncpus=1:mem=3gb"
             as for the first chunk, the initial single chunk of
-            "1:ncpus=3:mem=1gb" is left as is, with the "50%" increase applied to
-            the remaining chunks "4:ncpus=3:mem=1gb", and then added back to the
-            single chunk to make 7, while chunks 2 and 3 are increased to 2 and 3,
-            respectively.
+            "1:ncpus=3:mem=1gb" is left as is, with the "50%" increase applied
+            to the remaining chunks "4:ncpus=3:mem=1gb", and then added back to
+            the single chunk to make 7, while chunks 2 and 3 are increased to 2
+            and 3, respectively.
         """
         increment = None
         percent_inc = None
@@ -1078,7 +1086,8 @@ class select(_generic_attr):
                     chunk_ct = int(subchunk)
 
                     if i == 0:
-                        chunk_ct -= 1  # don't touch the first chunk which lands in MS
+                        # don't touch the first chunk which lands in MS
+                        chunk_ct -= 1
 
                     if chunk_ct <= 0:
                         num = 0
@@ -1309,7 +1318,7 @@ class hold_types(_generic_attr):
     """
     Represents the Hold_Types attribute of a job.
     Format: pbs.hold_types(<hold_type_str>)
-                where <hold_type_str> is one of "u", "o", "s",  or ("n" or "p").
+            where <hold_type_str> is one of "u", "o", "s",  or ("n" or "p").
 
     """
     _derived_types = (_generic_attr,)
@@ -1440,7 +1449,8 @@ class range(_generic_attr):
 class state_count(_generic_attr):
     """
     Represents a set of job-related state counters.
-    Format: pbs.state_count("Transit:<U> Queued:<V> Held:<W> Running:<X> Exiting:<Y> Begun:<Z>")
+    Format: pbs.state_count("Transit:<U> Queued:<V> Held:<W> Running:<X> "
+                            "Exiting:<Y> Begun:<Z>")
     """
     _derived_types = (_generic_attr,)
 
@@ -1454,7 +1464,8 @@ class state_count(_generic_attr):
 class license_count(_generic_attr):
     """
     Represents a set of licensing-related counters.
-    Format: pbs.license_count("Avail_Global:<W> Avail_Local:<X> Used:<Y> High_Use:<Z>")
+    Format: pbs.license_count("Avail_Global:<W> Avail_Local:<X> Used:<Y> "
+                              "High_Use:<Z>")
     """
     _derived_types = (_generic_attr,)
 
@@ -1601,7 +1612,7 @@ class pbs_resource():
             if resc == '_name' or resc == '_has_value':
                 continue
             v = getattr(self, resc)
-            if (v != None) or (v == ""):
+            if (v is not None) or (v == ""):
                 str_v = str(v)
                 if (str_v.find("\"") == -1) and (str_v.find(",") != -1):
                     rv.append("%s=\"%s\"" % (resc, v))
@@ -1665,8 +1676,8 @@ class pbs_resource():
             for resc in pbs_resource.attributes:
                 rescl = resc.lower()
                 if namel == rescl:
-                    # Need to use the matched name stored in PBS Python resource
-                    # table, to avoid resource ambiguity later on.
+                    # Need to use the matched name stored in PBS Python
+                    # resource table, to avoid resource ambiguity later on.
                     name = resc
                     found = True
 
@@ -1705,7 +1716,7 @@ class pbs_resource():
             if resc == '_name' or resc == '_has_value':
                 continue
             v = getattr(self, resc)
-            if v != None:
+            if v is not None:
                 rv.append(resc)
         #
         return rv
@@ -1720,7 +1731,8 @@ pbs_resource._name = PbsAttributeDescriptor(pbs_resource, '_name',
 class vchunk():
     """
     This represents a resource chunk assigned to a job.
-    Format: pbs.vchunk("<vnodeN>:<res1>=<val1>:<res2>=<val2>:...:<resN>=<valN>")
+    Format: pbs.vchunk("<vnodeN>:<res1>=<val1>:<res2>=<val2>:...:"
+                       "<resN>=<valN>")
          where vnodeN is a name of a vnode.
     """
 
@@ -1748,10 +1760,10 @@ class exec_vnode(_generic_attr):
             ev.chunks returns an array of pbs.vchunk job objects representing
             that will show:
             ev.chunks[0].vnode_name = 'vnodeA'
-            ev.chunks[0].vnode_resources = {  'ncpus' : N, 'mem' : pbs.size('X') }
+            ev.chunks[0].vnode_resources = {'ncpus': N, 'mem': pbs.size('X')}
 
             ev.chunks[1].vnode_name = 'vnodeB'
-            ev.chunks[1].vnode_resources = {  'ncpus' : P, 'mem' : pbs.size('Y') }
+            ev.chunks[1].vnode_resources = {'ncpus': P, 'mem': pbs.size('Y')}
             ev.chunks[1].vnode_name = 'vnodeC'
             ev.chunks[1].vnode_resources = {  'mem' : pbs.size('Z') }
 

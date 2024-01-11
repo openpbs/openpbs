@@ -48,7 +48,7 @@
 #include "server.h"
 #include "pbs_nodes.h"
 #include "pbs_sched.h"
-#include "pbs_python_private.h"
+#include <pbs_python_private.h>
 #include <Python.h>
 
 #define PBS_V1_COMMON_MODULE_DEFINE_STUB_FUNCS 1

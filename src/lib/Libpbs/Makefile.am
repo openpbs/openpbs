@@ -98,7 +98,6 @@ libpbs_la_SOURCES = \
 	../Libcmds/parse_equal.c \
 	../Libcmds/parse_jobid.c \
 	../Libcmds/parse_stage.c \
-	../Libcmds/pbs_json.c \
 	../Libcmds/prepare_path.c \
 	../Libcmds/set_attr.c \
 	../Libcmds/set_resource.c \

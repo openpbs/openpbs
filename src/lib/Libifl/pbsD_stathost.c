@@ -960,6 +960,8 @@ __pbs_stathost(int con, const char *hid, struct attrl *attrib, const char *exten
 	}
 
 	pbs_statfree(bstatus); /* free info returned by pbs_statvnodes() */
+	for (i = 0; i < consumable_size; ++i)
+		free((consum + i)->cons_resource);
 	free(consum);
 	consum = NULL;
 	consumable_size = 0;

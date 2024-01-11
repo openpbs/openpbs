@@ -6420,7 +6420,8 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         # Below variable is being used for the accounting log match
         # which is currently blocked on PTL bug PP-596.
         # new_exec_host_esc = self.job1_exec_host.replace(
-        # "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+        # "*", r"\*").replace("[", r"\[").replace("]", r"\]").replace("+",
+        # r"\+")
 
         new_exec_vnode = self.job1_exec_vnode.replace(
             "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")

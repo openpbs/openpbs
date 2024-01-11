@@ -219,7 +219,7 @@ class PTLJsonData(object):
                     r_count = str(count)
                     m_case = data_json['testsuites'][tsname]['testcases']
                     m = m_case[tcname]['results'][r_count]['measurements']
-                    if j_data['results'][r_count]['status'] is not "PASS":
+                    if j_data['results'][r_count]['status'] != "PASS":
                         test_status = "FAIL"
                     m_sum = []
                     for i in range(len(m)):

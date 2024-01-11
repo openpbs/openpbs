@@ -126,7 +126,7 @@ class TestQstatFormats(TestFunctional):
             # qstat -F json output does not
             # print the 'id' attribute. Its value
             # is printed instead.
-            if key is 'id':
+            if key == 'id':
                 qstat_attrs.append(str(val))
             else:
                 # Extract keys coming after '.' in 'qstat -f' output so they

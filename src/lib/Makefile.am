@@ -52,4 +52,5 @@ SUBDIRS = \
 	Libtpp \
 	Libutil \
 	Libauth \
-	Liblicensing
+	Liblicensing \
+	Libjson

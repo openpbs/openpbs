@@ -367,6 +367,7 @@ print_db_job(char *id, int no_attributes)
 		printf("\n");
 	}
 
+	free_attrlist(&dbjob.db_attr_list.attrs);
 	return 0;
 }
 #endif
@@ -522,7 +523,7 @@ main(int argc, char *argv[])
 
 		/* If not asked for displaying of script, execute below code */
 		if (!display_script) {
-			svrattrl *pal, *pali;
+			svrattrl *pal, *pali, *ppal;
 			char *state = "";
 			char *substate = "";
 			char *errbuf = malloc(1024);
@@ -580,10 +581,15 @@ main(int argc, char *argv[])
 				pali = GET_NEXT(pal->al_link);
 				while (pali != NULL) {
 					print_attr(pali);
-					if (pali->al_link.ll_next == NULL)
+					if (pali->al_link.ll_next == NULL) {
+						free(pali);
 						break;
+					}
+					ppal = pali;
 					pali = GET_NEXT(pali->al_link);
+					free(ppal);
 				}
+				free(pal);
 			}
 
 			(void) close(fp);
@@ -642,6 +648,7 @@ main(int argc, char *argv[])
 			if (job_id)
 				free(job_id);
 			closedir(dirp);
+			free(errbuf);
 		}
 		/* if asked for displaying of script, execute below code  (for mom-side) */
 		else {

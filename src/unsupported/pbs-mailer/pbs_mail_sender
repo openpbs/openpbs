@@ -91,7 +91,7 @@ class Daemon(object):
 
         try:
             os.remove(self.pidfile)
-        except:
+        except OSError:
             pass
 
     def status(self):
@@ -108,7 +108,7 @@ class Daemon(object):
 
         try:
             os.kill(pid, 0)
-        except:
+        except Exception:
             self.delPID()
             return None
 

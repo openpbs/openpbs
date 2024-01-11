@@ -57,7 +57,8 @@
 #
 #    This hook is instantiated as follows:
 #        qmgr -c "create hook rapid event=queuejob"
-#        qmgr -c "import hook rapid_inter application/x-python default rapid_inter.py"
+#        qmgr -c "import hook rapid_inter application/x-python default
+#                 rapid_inter.py"
 import pbs
 
 high_priority_queue="high"
@@ -65,7 +66,7 @@ high_priority_queue="high"
 e = pbs.event()
 if e.job.interactive:
     high = pbs.server().queue(high_priority_queue)
-    if high != None:
+    if high is not None:
         e.job.queue = high
         pbs.logmsg(pbs.LOG_DEBUG, "quick start interactive job")
         pbs.server().scheduler_restart_cycle()

@@ -300,7 +300,7 @@ class Fairshare(object):
         Helper method to revert scheduler's fairshare tree.
         """
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
-        if self.sc_name is not 'default':
+        if self.sc_name != 'default':
             cmd += ['-I', self.sc_name]
         self.du.run_cmd(self.hostname, cmd=cmd, runas=self.user)
 
@@ -411,7 +411,7 @@ class Fairshare(object):
             return False
 
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs')]
-        if self.sc_name is not 'default':
+        if self.sc_name != 'default':
             cmd += ['-I', self.sc_name]
         cmd += ['-s', name, str(usage)]
         ret = self.du.run_cmd(self.hostname, cmd, runas=self.user)
@@ -444,7 +444,7 @@ class Fairshare(object):
             name2 = str(name2)
 
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs')]
-        if self.sc_name is not 'default':
+        if self.sc_name != 'default':
             cmd += ['-I', self.sc_name]
         cmd += ['-c', name1, name2]
         ret = self.du.run_cmd(self.hostname, cmd, runas=self.user)
