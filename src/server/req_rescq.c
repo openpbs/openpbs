@@ -777,7 +777,7 @@ req_confirmresv(struct batch_request *preq)
 	rc = assign_resv_resc(presv, next_execvnode, FALSE);
 
 	DBPRT(("resv_name=%s, rc=%d, is_degraded=%d, stime=%ld, now=%ld",
-	       presv->ri_qs.ri_resvID, is_degraded, rc, presv->ri_qs.ri_stime, time_now));
+	       presv->ri_qs.ri_resvID, rc, is_degraded, presv->ri_qs.ri_stime, time_now));
 
 	if (presv->ri_qs.ri_stime <= time_now) {
 		if (is_degraded || is_being_altered & RESV_SELECT_MODIFIED) {
