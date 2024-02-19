@@ -414,6 +414,7 @@ process_request(int sfds)
 	conn_t *conn;
 #ifndef PBS_MOM
 	int access_by_krb;
+	int access_allowed;
 #endif
 
 	time_now = time(NULL);
@@ -569,9 +570,9 @@ process_request(int sfds)
 
 	access_by_krb = 0;
 
-	/* FIXME: Do we need realm check for all auth ? */
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if (conn->cn_credid != NULL &&
+	if (request->rq_type != PBS_BATCH_Connect &&
+	    conn->cn_credid != NULL &&
 	    conn->cn_auth_config != NULL &&
 	    conn->cn_auth_config->auth_method != NULL &&
 	    strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
@@ -596,7 +597,9 @@ process_request(int sfds)
 #endif
 
 	/* is the request from a host acceptable to the server */
-	if (access_by_krb == 0 && get_sattr_long(SVR_ATR_acl_host_enable)) {
+	if (request->rq_type != PBS_BATCH_Connect &&
+	    access_by_krb == 0 &&
+	    get_sattr_long(SVR_ATR_acl_host_enable)) {
 		/* acl enabled, check it; always allow myself	*/
 
 		struct pbsnode *isanode = NULL;
@@ -608,9 +611,33 @@ process_request(int sfds)
 		}
 
 		if (isanode == NULL) {
-			if ((acl_check(get_sattr(SVR_ATR_acl_hosts),
-				       request->rq_host, ACL_Host) == 0) &&
-			    (strcasecmp(server_host, request->rq_host) != 0)) {
+			pbs_net_t addr;
+			char ip[PBS_MAXIP + 1];
+
+			addr = get_hostaddr(request->rq_host);
+			if (snprintf(ip, PBS_MAXIP + 1, "%ld.%ld.%ld.%ld",
+			    (addr & 0xff000000) >> 24,
+			    (addr & 0x00ff0000) >> 16,
+			    (addr & 0x0000ff00) >> 8,
+			    (addr & 0x000000ff)) <= 0) {
+				addr = 0;
+			}
+
+			access_allowed = 0;
+
+			if (acl_check(get_sattr(SVR_ATR_acl_hosts), request->rq_host, ACL_Host)) {
+				access_allowed = 1;
+			}
+
+			if (addr != 0 && acl_check(get_sattr(SVR_ATR_acl_hosts), ip, ACL_Subnet)) {
+				access_allowed = 1;
+			}
+
+			if (strcasecmp(server_host, request->rq_host) == 0) {
+				access_allowed = 1;
+			}
+
+			if (access_allowed == 0) {
 				req_reject(PBSE_BADHOST, 0, request);
 				close_client(sfds);
 				return;

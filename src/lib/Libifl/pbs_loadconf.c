@@ -129,6 +129,7 @@ struct pbs_config pbs_conf = {
 	0,			    /* number of scheduler threads */
 	NULL,			    /* default scheduler user */
 	NULL,			    /* default scheduler auth user */
+	NULL,			    /* privileged auth user */
 	{'\0'}			    /* current running user */
 #ifdef WIN32
 	,
@@ -558,6 +559,9 @@ __pbs_loadconf(int reload)
 			} else if (!strcmp(conf_name, PBS_CONF_DAEMON_SERVICE_AUTH_USER)) {
 				free(pbs_conf.pbs_daemon_service_auth_user);
 				pbs_conf.pbs_daemon_service_auth_user = strdup(conf_value);
+			 }else if (!strcmp(conf_name, PBS_CONF_PRIVILEGED_AUTH_USER)) {
+				free(pbs_conf.pbs_privileged_auth_user);
+				pbs_conf.pbs_privileged_auth_user = strdup(conf_value);
 			}
 			/* iff_path is inferred from pbs_conf.pbs_exec_path - see below */
 		}
@@ -774,6 +778,11 @@ __pbs_loadconf(int reload)
 	if ((gvalue = getenv(PBS_CONF_DAEMON_SERVICE_AUTH_USER)) != NULL) {
 		free(pbs_conf.pbs_daemon_service_auth_user);
 		pbs_conf.pbs_daemon_service_auth_user = strdup(gvalue);
+	}
+
+	if ((gvalue = getenv(PBS_CONF_PRIVILEGED_AUTH_USER)) != NULL) {
+		free(pbs_conf.pbs_privileged_auth_user);
+		pbs_conf.pbs_privileged_auth_user = strdup(gvalue);
 	}
 
 #ifdef WIN32

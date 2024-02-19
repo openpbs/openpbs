@@ -249,6 +249,15 @@ svr_get_privilege(char *user, char *host)
 		}
 	}
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	char *privil_auth_user = pbs_conf.pbs_privileged_auth_user ? pbs_conf.pbs_privileged_auth_user : NULL;
+	if (privil_auth_user) {
+		if (strcmp(uh, privil_auth_user) == 0) {
+			is_root = 1;
+		}
+	}
+#endif
+
 #ifdef PBS_ROOT_ALWAYS_ADMIN
 	if (is_root)
 		return (priv | ATR_DFLAG_MGRD | ATR_DFLAG_MGWR | ATR_DFLAG_OPRD | ATR_DFLAG_OPWR);

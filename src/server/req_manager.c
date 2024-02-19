@@ -201,6 +201,19 @@ char *host;
 		if (is_local != 0)
 			return (TRUE);
 	}
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	char *privil_auth_user = pbs_conf.pbs_privileged_auth_user ? pbs_conf.pbs_privileged_auth_user : NULL;
+	char uh[PBS_MAXUSER + PBS_MAXHOSTNAME + 2];
+	if (privil_auth_user) {
+		strcpy(uh, user);
+		strcat(uh, "@");
+		strcat(uh, host);
+
+		if (strcmp(uh, privil_auth_user) == 0) {
+			return (TRUE);
+		}
+	}
+#endif
 	return (FALSE);
 }
 

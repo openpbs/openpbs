@@ -636,6 +636,7 @@ void free_attr(attribute_def *attr_def, attribute *pattr, int attr_idx);
 #define ACL_Host 1
 #define ACL_User 2
 #define ACL_Group 3
+#define ACL_Subnet 4
 
 #ifdef __cplusplus
 }

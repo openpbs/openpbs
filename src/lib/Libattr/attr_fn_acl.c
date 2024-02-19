@@ -50,6 +50,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #include "pbs_ifl.h"
 #include "list_link.h"
 #include "attribute.h"
@@ -90,6 +91,7 @@
 static int hacl_match(const char *can, const char *master);
 static int gacl_match(const char *can, const char *master);
 static int user_match(const char *can, const char *master);
+static int sacl_match(const char *can, const char *master);
 static int host_order(char *old, char *new);
 static int user_order(char *old, char *new);
 static int group_order(char *old, char *new);
@@ -221,6 +223,9 @@ acl_check(attribute *pattr, char *name, int type)
 			break;
 		case ACL_Group:
 			match_func = gacl_match;
+			break;
+		case ACL_Subnet:
+			match_func = sacl_match;
 			break;
 		default:
 			match_func = (int (*)(const char *, const char *)) strcmp;
@@ -719,6 +724,75 @@ gacl_match(const char *can, const char *master)
 
 	return (1);
 #endif
+}
+
+/**
+ * @brief
+ * 	subnet acl order match - match two strings: ip and subnet with mask
+ *  in short or long version
+ *
+ * @param[in] can - Canidate string (first parameter) is a ip string.
+ * @param[in] master -  Master string (2nd parameter) is an entry from a host acl.
+ *
+ * Strings match if ip is in subnet.
+ *
+ * @return	int
+ * @retval	0	if strings match
+ * @retval	1	if not
+ *
+ */
+
+static int
+sacl_match(const char *can, const char *master)
+{
+	struct in_addr addr;
+	uint32_t ip;
+	uint32_t subnet;
+	uint32_t mask;
+	char tmpsubnet[PBS_MAXIP + 1];
+	char *delimiter;
+	int len;
+	int short_mask;
+
+	/* check and convert candidate to numeric IP */
+	if (inet_pton(AF_INET, can, &addr) == 0)
+		return 1;
+	ip = ntohl(addr.s_addr);
+
+	/* split master to subnet and mask */
+	if ((delimiter = strchr(master, '/')) == NULL)
+		return 1;
+
+	if (*(delimiter + 1) == '\0')
+		return 1;
+
+	len = delimiter - master;
+	if (len > PBS_MAXIP)
+		return 1;
+
+	/* get subnet */
+	strncpy(tmpsubnet, master, len);
+	tmpsubnet[len] = '\0';
+	if (inet_pton(AF_INET, tmpsubnet, &addr) == 0)
+		return 1;
+	subnet = ntohl(addr.s_addr);
+
+	/* get mask */
+	if (strchr(delimiter + 1, '.')) {
+		/* long mask */
+		if (inet_pton(AF_INET, delimiter + 1, &addr) == 0)
+			return 1;
+		mask = ntohl(addr.s_addr);
+	} else {
+		/* short mask */
+		short_mask = atoi(delimiter + 1);
+		mask = short_mask ? ~0 << (32 - short_mask) : 0;
+	}
+
+	if (mask == 0)
+		return 1;
+
+	return ! ((ip & mask) == (subnet & mask));
 }
 
 /**
