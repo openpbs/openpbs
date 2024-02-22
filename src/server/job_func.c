@@ -2024,6 +2024,7 @@ resv_exclusive_handler(resc_resv *presv)
 		 * or reservation requests exclusive and node does not ignore
 		 * exclusive.
 		 */
+		DBPRT(("node=%s, share_node=%d, share_resv=%d", pnl->vnode->nd_name, share_node, share_resv));
 		if ((share_node == VNS_FORCE_EXCL) || (share_node == VNS_FORCE_EXCLHOST) ||
 		    ((share_node != VNS_IGNORE_EXCL) && (share_resv == VNS_FORCE_EXCL)) ||
 		    (((share_node == VNS_DFLT_EXCL) || (share_node == VNS_DFLT_EXCLHOST)) && (share_resv != VNS_IGNORE_EXCL))) {
