@@ -307,6 +307,9 @@ enum part_flags { PART_refig,
 #define VNODE_UNAVAILABLE (INUSE_STALE | INUSE_OFFLINE | INUSE_DOWN | \
 			   INUSE_DELETED | INUSE_UNKNOWN | INUSE_UNRESOLVABLE | INUSE_OFFLINE_BY_MOM | INUSE_MAINTENANCE | INUSE_SLEEP)
 
+/* states that are set by the admin OR cannot be determined on the fly */
+#define INUSE_NOAUTO_MASK (INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM | INUSE_MAINTENANCE | INUSE_SLEEP | INUSE_PROV | INUSE_WAIT_PROV)
+
 /* the following are used in Mom's internal state			*/
 #define MOM_STATE_DOWN INUSE_DOWN
 #define MOM_STATE_BUSY INUSE_BUSY
