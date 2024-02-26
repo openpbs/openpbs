@@ -360,9 +360,6 @@ pbsd_init(int type)
 
 	/* The following is code to reduce security risks                */
 
-	if (setup_env(pbs_conf.pbs_environment) == -1)
-		return (-1);
-
 	log_supported_auth_methods(pbs_conf.supported_auth_methods);
 
 	i = getgid();

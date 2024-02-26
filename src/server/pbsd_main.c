@@ -1164,6 +1164,12 @@ main(int argc, char **argv)
 		return (1);
 	}
 
+	if (setup_env(pbs_conf.pbs_environment) == -1) {
+		fprintf(stderr, "%s\n", "Setup environment failed");
+		stop_db();
+		return (3);
+	}
+
 	/* set tpp config */
 	rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_server_port_dis, pbs_conf.pbs_leaf_routers);
 	free(nodename);
