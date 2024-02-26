@@ -215,6 +215,10 @@ susystem(char *s,
 #else
 	int status;
 	pid_t pid;
+	
+	static char ok_chars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_:/@\\ ";
+	if (strspn(s, ok_chars) != strlen(s))
+		_exit(1);
 
 	pid = fork();
 	switch (pid) {
