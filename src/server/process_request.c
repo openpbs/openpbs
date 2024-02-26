@@ -413,7 +413,6 @@ process_request(int sfds)
 	struct batch_request *request;
 	conn_t *conn;
 #ifndef PBS_MOM
-	int access_by_krb;
 	int access_allowed;
 #endif
 
