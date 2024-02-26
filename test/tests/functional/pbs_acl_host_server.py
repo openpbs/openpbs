@@ -41,7 +41,7 @@
 from tests.functional import *
 
 
-class Test_acl_subnet(TestFunctional):
+class Test_acl_host_server(TestFunctional):
     """
     This test suite is for testing the subnets in server's
     attribute acl_hosts. This test requires remote client.

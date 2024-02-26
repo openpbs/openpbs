@@ -749,7 +749,7 @@ sacl_match(const char *can, const char *master)
 	uint32_t ip;
 	uint32_t subnet;
 	uint32_t mask;
-	char tmpsubnet[PBS_MAXIP + 1];
+	char tmpsubnet[PBS_MAXIP_LEN + 1];
 	char *delimiter;
 	int len;
 	int short_mask;
@@ -767,7 +767,7 @@ sacl_match(const char *can, const char *master)
 		return 1;
 
 	len = delimiter - master;
-	if (len > PBS_MAXIP)
+	if (len > PBS_MAXIP_LEN)
 		return 1;
 
 	/* get subnet */
@@ -786,6 +786,8 @@ sacl_match(const char *can, const char *master)
 	} else {
 		/* short mask */
 		short_mask = atoi(delimiter + 1);
+		if (short_mask < 0 || short_mask > 32)
+			return 1;
 		mask = short_mask ? ~0 << (32 - short_mask) : 0;
 	}
 

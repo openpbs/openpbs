@@ -568,38 +568,8 @@ process_request(int sfds)
 		return;
 	}
 
-	access_by_krb = 0;
-
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if (request->rq_type != PBS_BATCH_Connect &&
-	    conn->cn_credid != NULL &&
-	    conn->cn_auth_config != NULL &&
-	    conn->cn_auth_config->auth_method != NULL &&
-	    strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
-		strcpy(request->rq_user, conn->cn_username);
-		strcpy(request->rq_host, conn->cn_hostname);
-
-		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
-			   "", msg_auth_request, request->rq_type, request->rq_user,
-			   request->rq_host, conn->cn_physhost, sfds);
-
-		if (get_sattr_long(SVR_ATR_acl_krb_realm_enable)) {
-			if (acl_check(get_sattr(SVR_ATR_acl_krb_realms), conn->cn_credid, ACL_Host) == 0) {
-				req_reject(PBSE_PERM, 0, request);
-				close_client(sfds);
-				return;
-			}
-		}
-
-		/* this principal is allowed to access the server */
-		access_by_krb = 1;
-	}
-#endif
-
 	/* is the request from a host acceptable to the server */
-	if (request->rq_type != PBS_BATCH_Connect &&
-	    access_by_krb == 0 &&
-	    get_sattr_long(SVR_ATR_acl_host_enable)) {
+	if (get_sattr_long(SVR_ATR_acl_host_enable)) {
 		/* acl enabled, check it; always allow myself	*/
 
 		struct pbsnode *isanode = NULL;
@@ -612,10 +582,10 @@ process_request(int sfds)
 
 		if (isanode == NULL) {
 			pbs_net_t addr;
-			char ip[PBS_MAXIP + 1];
+			char ip[PBS_MAXIP_LEN + 1];
 
 			addr = get_hostaddr(request->rq_host);
-			if (snprintf(ip, PBS_MAXIP + 1, "%ld.%ld.%ld.%ld",
+			if (snprintf(ip, PBS_MAXIP_LEN + 1, "%ld.%ld.%ld.%ld",
 			    (addr & 0xff000000) >> 24,
 			    (addr & 0x00ff0000) >> 16,
 			    (addr & 0x0000ff00) >> 8,
@@ -644,6 +614,41 @@ process_request(int sfds)
 			}
 		}
 	}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	if (conn->cn_credid != NULL &&
+	    conn->cn_auth_config != NULL &&
+	    conn->cn_auth_config->auth_method != NULL &&
+	    strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
+
+		access_allowed = 0;
+
+		if (strcasecmp(server_host, request->rq_host)) {
+			/* always allow myself */
+			access_allowed = 1;
+		}
+
+		if (acl_check(get_sattr(SVR_ATR_acl_krb_realms), conn->cn_credid, ACL_Host)) {
+			access_allowed = 1;
+		}
+
+		/*
+		 * copy principal to request structure
+		 * so authenticate_user() can proceed
+		 */
+		strcpy(request->rq_user, conn->cn_username);
+		strcpy(request->rq_host, conn->cn_hostname);
+
+		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
+			   "", msg_auth_request, request->rq_type, request->rq_user,
+			   request->rq_host, conn->cn_physhost, sfds);
+
+		if (access_allowed == 0) {
+			req_reject(PBSE_PERM, 0, request);
+			close_client(sfds);
+		}
+	}
+#endif
 
 	/*
 	 * determine source (user client or another server) of request.

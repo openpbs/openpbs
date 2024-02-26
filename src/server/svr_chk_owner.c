@@ -251,7 +251,8 @@ svr_get_privilege(char *user, char *host)
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	char *privil_auth_user = pbs_conf.pbs_privileged_auth_user ? pbs_conf.pbs_privileged_auth_user : NULL;
-	if (privil_auth_user) {
+	if (privil_auth_user &&
+	    is_string_in_arr(pbs_conf.supported_auth_methods, AUTH_GSS_NAME)) {
 		if (strcmp(uh, privil_auth_user) == 0) {
 			is_root = 1;
 		}
