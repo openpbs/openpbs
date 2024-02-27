@@ -313,7 +313,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_SCHED_THREADS	"PBS_SCHED_THREADS"
 #define PBS_CONF_DAEMON_SERVICE_USER "PBS_DAEMON_SERVICE_USER"
 #define PBS_CONF_DAEMON_SERVICE_AUTH_USER "PBS_DAEMON_SERVICE_AUTH_USER"
-#define PBS_CONF_PRIVILEGED_AUTH_USER "PBS_PRIVILEGED_AUTH_USER" /* e.g.: used for gss/krb and krb principal is expected */
+#define PBS_CONF_PRIVILEGED_AUTH_USER "PBS_PRIVILEGED_AUTH_USER" /* e.g.: used for gss/krb and krb host principal (host/<fqdn>@<REALM>) is expected */
 #ifdef WIN32
 #define PBS_CONF_REMOTE_VIEWER "PBS_REMOTE_VIEWER"	/* Executable for remote viewer application alongwith its launch options, for PBS GUI jobs */
 #endif

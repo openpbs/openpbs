@@ -622,12 +622,16 @@ process_request(int sfds)
 
 		access_allowed = 0;
 
-		if (strcasecmp(server_host, request->rq_host)) {
+		if (strcasecmp(server_host, request->rq_host) == 0) {
 			/* always allow myself */
 			access_allowed = 1;
 		}
 
-		if (acl_check(get_sattr(SVR_ATR_acl_krb_realms), conn->cn_credid, ACL_Host)) {
+		if (get_sattr_long(SVR_ATR_acl_krb_realm_enable)) {
+			if (acl_check(get_sattr(SVR_ATR_acl_krb_realms), conn->cn_credid, ACL_Host)) {
+				access_allowed = 1;
+			}
+		} else {
 			access_allowed = 1;
 		}
 
@@ -645,6 +649,7 @@ process_request(int sfds)
 		if (access_allowed == 0) {
 			req_reject(PBSE_PERM, 0, request);
 			close_client(sfds);
+			return;
 		}
 	}
 #endif
