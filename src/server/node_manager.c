@@ -3647,8 +3647,13 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 							/* server restart */
 							prs->rs_value.at_flags &= ~ATR_VFLAG_DEFLT;
 							post_attr_set(&prs->rs_value);
-							if (psrp->vna_val[0] != '\0')
+							if (psrp->vna_val[0] != '\0') {
 								prs->rs_value.at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODIFY);
+							} else {
+								prs->rs_defin->rs_free(&prs->rs_value);
+								delete_link(&prs->rs_link);
+								free(prs);
+							}
 						} else
 							prs->rs_value.at_flags |= ATR_VFLAG_DEFLT;
 						if (strcasecmp("ncpus", resc) == 0) {
@@ -3781,6 +3786,22 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 				/* (i.e. qmgr). */
 				/* if from_hook, we override values */
 				/* set externally. */
+
+				if (from_hook) {
+					if (node_attr_def[j].at_action &&
+					    (bad = node_attr_def[j].at_action(pattr, pnode, ATR_ACTION_ALTER))) {
+						snprintf(log_buffer, sizeof(log_buffer),
+						    "Error %d setting attribute %s "
+						    "in %s for vnode %s",
+						    bad, psrp->vna_name,
+						    UPDATE_FROM_MOM_HOOK,
+						    pnode->nd_name);
+						log_event(PBSEVENT_SYSTEM,
+						    PBS_EVENTCLASS_NODE, LOG_WARNING,
+						    pmom->mi_host, log_buffer);
+						continue;
+					}
+				}
 
 				bad = set_attr_generic(pattr, &node_attr_def[j], psrp->vna_val, NULL, INTERNAL);
 				if (bad != 0) {
