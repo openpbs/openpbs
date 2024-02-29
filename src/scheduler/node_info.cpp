@@ -3001,10 +3001,16 @@ is_vnode_eligible(node_info *node, resource_resv *resresv,
 	if (node == NULL || resresv == NULL || pl == NULL || err == NULL)
 		return false;
 
+	bool job_in_maintenance_resv = false;
+	if (resresv->job && resresv->job->resv)
+		if (resresv->job->resv->name[0] == 'M')
+			job_in_maintenance_resv = true;
+
 	/* A node is invalid for an exclusive job if jobs/resvs are running on it
+	 * except if the job is a maintenance reservation
 	 * NOTE: this check must be the first check or exclhost may break
 	 */
-	if (is_excl(pl, node->sharing) &&
+	if (!job_in_maintenance_resv && is_excl(pl, node->sharing) &&
 	    (node->num_jobs > 0 || node->num_run_resv > 0)) {
 		set_schd_error_codes(err, NOT_RUN, NODE_NOT_EXCL);
 		set_schd_error_arg(err, ARG1, resresv->is_job ? "Job" : "Reservation");
