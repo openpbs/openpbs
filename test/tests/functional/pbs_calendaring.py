@@ -228,3 +228,133 @@ class TestCalendaring(TestFunctional):
         est_time = job3[0]['estimated.start_time']
         est_time = time.mktime(time.strptime(est_time, '%c'))
         self.assertAlmostEqual(end_time, est_time, delta=1)
+
+    def test_zero_resource_pushes_topjob(self):
+        """
+        This test case tests the scenario where a job that requests zero
+        instance of a resource as the last resource in the select statement
+        pushes the start time of top jobs
+        """
+        attrs = {'resources_available.ncpus': 4}
+        self.mom.create_vnodes(attrib=attrs, num=5,
+                               sharednode=False)
+
+        attr = {ATTR_RESC_TYPE: 'long', ATTR_RESC_FLAG: 'hn'}
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='ngpus')
+
+        resources = self.scheduler.sched_config['resources']
+        resources = resources[:-1] + ', ngpus, zz\"'
+        a = {'job_sort_key': '"job_priority HIGH ALL"',
+             'resources': resources,
+             'strict_ordering': 'True ALL'}
+        self.scheduler.set_sched_config(a)
+
+        a = {'Resource_List.select': '2:ncpus=4',
+             'Resource_List.walltime': '1:00:00',
+             'Resource_List.place': 'vscatter'}
+
+        j = Job(TEST_USER)
+        j.set_attributes(a)
+        jid1 = self.server.submit(j)
+
+        j = Job(TEST_USER)
+        j.set_attributes(a)
+        jid2 = self.server.submit(j)
+
+        a = {'Resource_List.select': '5:ncpus=4',
+             'Resource_List.walltime': '1:00:00',
+             ATTR_p: "1000",
+             'Resource_List.place': 'vscatter'}
+
+        j = Job(TEST_USER)
+        j.set_attributes(a)
+        jid3 = self.server.submit(j)
+
+        a = {'Resource_List.select': '1:ncpus=4',
+             'Resource_List.walltime': '24:00:01',
+             'Resource_List.place': 'vscatter'}
+
+        j = Job(TEST_USER)
+        j.set_attributes(a)
+        jid4 = self.server.submit(j)
+
+        a = {'Resource_List.select': '1:ncpus=4:ngpus=0',
+             'Resource_List.walltime': '24:00:01',
+             'Resource_List.place': 'vscatter'}
+
+        j = Job(TEST_USER)
+        j.set_attributes(a)
+        jid5 = self.server.submit(j)
+
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid3)
+        c = "Not Running: Job would conflict with reservation or top job"
+        self.server.expect(JOB, {ATTR_state: 'Q', ATTR_comment: c}, id=jid4)
+        self.server.expect(JOB, {ATTR_state: 'Q', ATTR_comment: c}, id=jid5)
+
+    def test_zero_resource_job_conflict_resv(self):
+        """
+        This test case tests the scenario where a job that requests zero
+        instance of a resource as the last resource in the select statement
+        pushes the start time of reservations
+        """
+        attrs = {'resources_available.ncpus': 4}
+        self.mom.create_vnodes(attrib=attrs, num=5,
+                               sharednode=False)
+
+        attr = {ATTR_RESC_TYPE: 'long', ATTR_RESC_FLAG: 'hn'}
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='ngpus')
+
+        resources = self.scheduler.sched_config['resources']
+        resources = resources[:-1] + ', ngpus, zz\"'
+        a = {'job_sort_key': '"job_priority HIGH ALL"',
+             'resources': resources,
+             'strict_ordering': 'True ALL'}
+        self.scheduler.set_sched_config(a)
+
+        a = {'Resource_List.select': '2:ncpus=4',
+             'Resource_List.walltime': '1:00:00',
+             'Resource_List.place': 'vscatter'}
+
+        j = Job(TEST_USER)
+        j.set_attributes(a)
+        jid1 = self.server.submit(j)
+
+        j = Job(TEST_USER)
+        j.set_attributes(a)
+        jid2 = self.server.submit(j)
+
+        now = int(time.time())
+        a = {'Resource_List.select': '5:ncpus=4',
+             'reserve_start': now + 3610,
+             'reserve_end': now + 6610,
+             'Resource_List.place': 'vscatter'}
+
+        r = Reservation(TEST_USER)
+        r.set_attributes(a)
+        rid = self.server.submit(r)
+        exp = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp, id=rid)
+
+        a = {'Resource_List.select': '1:ncpus=4',
+             'Resource_List.walltime': '24:00:01',
+             'Resource_List.place': 'vscatter'}
+
+        j = Job(TEST_USER)
+        j.set_attributes(a)
+        jid3 = self.server.submit(j)
+
+        a = {'Resource_List.select': '1:ncpus=4:ngpus=0',
+             'Resource_List.walltime': '24:00:01',
+             'Resource_List.place': 'vscatter'}
+
+        j = Job(TEST_USER)
+        j.set_attributes(a)
+        jid4 = self.server.submit(j)
+
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+        c = "Not Running: Job would conflict with reservation or top job"
+        self.server.expect(JOB, {ATTR_state: 'Q', ATTR_comment: c}, id=jid3)
+        self.server.expect(JOB, {ATTR_state: 'Q', ATTR_comment: c}, id=jid4)
