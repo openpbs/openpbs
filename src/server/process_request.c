@@ -413,7 +413,7 @@ process_request(int sfds)
 	struct batch_request *request;
 	conn_t *conn;
 #ifndef PBS_MOM
-	int access_by_krb;
+	int access_allowed;
 #endif
 
 	time_now = time(NULL);
@@ -567,36 +567,8 @@ process_request(int sfds)
 		return;
 	}
 
-	access_by_krb = 0;
-
-	/* FIXME: Do we need realm check for all auth ? */
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if (conn->cn_credid != NULL &&
-	    conn->cn_auth_config != NULL &&
-	    conn->cn_auth_config->auth_method != NULL &&
-	    strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
-		strcpy(request->rq_user, conn->cn_username);
-		strcpy(request->rq_host, conn->cn_hostname);
-
-		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
-			   "", msg_auth_request, request->rq_type, request->rq_user,
-			   request->rq_host, conn->cn_physhost, sfds);
-
-		if (get_sattr_long(SVR_ATR_acl_krb_realm_enable)) {
-			if (acl_check(get_sattr(SVR_ATR_acl_krb_realms), conn->cn_credid, ACL_Host) == 0) {
-				req_reject(PBSE_PERM, 0, request);
-				close_client(sfds);
-				return;
-			}
-		}
-
-		/* this principal is allowed to access the server */
-		access_by_krb = 1;
-	}
-#endif
-
 	/* is the request from a host acceptable to the server */
-	if (access_by_krb == 0 && get_sattr_long(SVR_ATR_acl_host_enable)) {
+	if (get_sattr_long(SVR_ATR_acl_host_enable)) {
 		/* acl enabled, check it; always allow myself	*/
 
 		struct pbsnode *isanode = NULL;
@@ -608,15 +580,79 @@ process_request(int sfds)
 		}
 
 		if (isanode == NULL) {
-			if ((acl_check(get_sattr(SVR_ATR_acl_hosts),
-				       request->rq_host, ACL_Host) == 0) &&
-			    (strcasecmp(server_host, request->rq_host) != 0)) {
+			pbs_net_t addr;
+			char ip[PBS_MAXIP_LEN + 1];
+
+			addr = get_hostaddr(request->rq_host);
+			if (snprintf(ip, PBS_MAXIP_LEN + 1, "%ld.%ld.%ld.%ld",
+			    (addr & 0xff000000) >> 24,
+			    (addr & 0x00ff0000) >> 16,
+			    (addr & 0x0000ff00) >> 8,
+			    (addr & 0x000000ff)) <= 0) {
+				addr = 0;
+			}
+
+			access_allowed = 0;
+
+			if (acl_check(get_sattr(SVR_ATR_acl_hosts), request->rq_host, ACL_Host)) {
+				access_allowed = 1;
+			}
+
+			if (addr != 0 && acl_check(get_sattr(SVR_ATR_acl_hosts), ip, ACL_Subnet)) {
+				access_allowed = 1;
+			}
+
+			if (strcasecmp(server_host, request->rq_host) == 0) {
+				access_allowed = 1;
+			}
+
+			if (access_allowed == 0) {
 				req_reject(PBSE_BADHOST, 0, request);
 				close_client(sfds);
 				return;
 			}
 		}
 	}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	if (conn->cn_credid != NULL &&
+	    conn->cn_auth_config != NULL &&
+	    conn->cn_auth_config->auth_method != NULL &&
+	    strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
+
+		access_allowed = 0;
+
+		if (strcasecmp(server_host, request->rq_host) == 0) {
+			/* always allow myself */
+			access_allowed = 1;
+		}
+
+		if (get_sattr_long(SVR_ATR_acl_krb_realm_enable)) {
+			if (acl_check(get_sattr(SVR_ATR_acl_krb_realms), conn->cn_credid, ACL_Host)) {
+				access_allowed = 1;
+			}
+		} else {
+			access_allowed = 1;
+		}
+
+		/*
+		 * copy principal to request structure
+		 * so authenticate_user() can proceed
+		 */
+		strcpy(request->rq_user, conn->cn_username);
+		strcpy(request->rq_host, conn->cn_hostname);
+
+		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
+			   "", msg_auth_request, request->rq_type, request->rq_user,
+			   request->rq_host, conn->cn_physhost, sfds);
+
+		if (access_allowed == 0) {
+			req_reject(PBSE_PERM, 0, request);
+			close_client(sfds);
+			return;
+		}
+	}
+#endif
 
 	/*
 	 * determine source (user client or another server) of request.
