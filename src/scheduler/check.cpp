@@ -1225,6 +1225,7 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 		      enum sched_error_code fail_code, schd_error *perr)
 {
 	long long num_chunk = SCHD_INFINITY;
+	long long match_chunk = SCHD_INFINITY;
 
 	int any_fail = 0;
 	schd_error *prev_err = NULL;
@@ -1247,7 +1248,12 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 			if (res == NULL)
 				continue;
 
-			num_chunk = match_resource(res, resreq, flags, fail_code, err);
+			match_chunk = match_resource(res, resreq, flags, fail_code, err);
+
+			if (num_chunk == SCHD_INFINITY)
+				num_chunk = match_chunk;
+			else if (match_chunk != SCHD_INFINITY && match_chunk < num_chunk)
+				num_chunk = match_chunk;
 
 			if (num_chunk == 0) {
 				any_fail = 1;
@@ -1286,6 +1292,7 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 		      unsigned int flags, enum sched_error_code fail_code, schd_error *perr)
 {
 	long long num_chunk = SCHD_INFINITY;
+	long long match_chunk = SCHD_INFINITY;
 
 	int any_fail = 0;
 	schd_error *prev_err = NULL;
@@ -1305,7 +1312,12 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 		if (res == NULL)
 			continue;
 
-		num_chunk = match_resource(res, resreq, flags, fail_code, err);
+		match_chunk = match_resource(res, resreq, flags, fail_code, err);
+
+		if (num_chunk == SCHD_INFINITY)
+			num_chunk = match_chunk;
+		else if (match_chunk != SCHD_INFINITY && match_chunk < num_chunk)
+			num_chunk = match_chunk;
 
 		if (num_chunk == 0) {
 			any_fail = 1;
