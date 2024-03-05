@@ -1359,8 +1359,12 @@ pbsd_init_job(job *pjob, int type)
 			case JOB_SUBSTATE_SYNCHOLD:
 			case JOB_SUBSTATE_DEPNHOLD:
 			case JOB_SUBSTATE_WAITING:
-			case JOB_SUBSTATE_PRERUN:
 				if (pbsd_init_reque(pjob, CHANGE_STATE) == -1)
+					return -1;
+				break;
+
+			case JOB_SUBSTATE_PRERUN:
+				if (pbsd_init_reque(pjob, KEEP_STATE) == -1)
 					return -1;
 				break;
 
@@ -1589,8 +1593,6 @@ pbsd_init_reque(job *pjob, int change_state)
 	int newsubstate;
 	int rc;
 
-	sprintf(logbuf, msg_init_substate, get_job_substate(pjob));
-
 	/* re-enqueue the job into the queue it was in */
 
 	if (change_state) {
@@ -1607,6 +1609,7 @@ pbsd_init_reque(job *pjob, int change_state)
 	post_attr_set(get_jattr(pjob, JOB_ATR_substate));
 
 	if ((rc = svr_enquejob(pjob, NULL)) == 0) {
+		sprintf(logbuf, msg_init_substate, get_job_substate(pjob));
 		(void) strcat(logbuf, msg_init_queued);
 		(void) strcat(logbuf, pjob->ji_qs.ji_queue);
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_DEBUG,
