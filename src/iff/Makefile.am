@@ -50,9 +50,9 @@ pbs_iff_LDADD = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
+	@KRB5_LIBS@ \
 	-lpthread \
 	@socket_lib@ \
-	@libz_lib@ \
-	@KRB5_LIBS@
+	@libz_lib@
 
 pbs_iff_SOURCES = iff2.c $(top_srcdir)/src/lib/Libcmds/cmds_common.c

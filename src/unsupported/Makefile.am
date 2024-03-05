@@ -80,7 +80,7 @@ pbs_rmget_LDADD = \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	-lpthread \
-	@libz_lib@ \
-	@KRB5_LIBS@
+	@KRB5_LIBS@ \
+	@libz_lib@
 
 pbs_rmget_SOURCES = pbs_rmget.c

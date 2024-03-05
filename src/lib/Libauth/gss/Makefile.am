@@ -49,8 +49,8 @@ libauth_gss_la_CPPFLAGS = \
 libauth_gss_la_LDFLAGS = -version-info 0:0:0
 
 libauth_gss_la_LIBADD= \
-	-lpthread \
-	@KRB5_LIBS@
+	@KRB5_LIBS@ \
+	-lpthread
 
 libauth_gss_la_SOURCES = \
 	pbs_gss.c

@@ -68,9 +68,9 @@ common_libs = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
+	@KRB5_LIBS@ \
 	-lpthread \
-	@socket_lib@ \
-	@KRB5_LIBS@
+	@socket_lib@
 
 pbs_sleep_LDFLAGS = -all-static
 pbs_sleep_SOURCES = pbs_sleep.c
@@ -152,8 +152,8 @@ pbs_tclsh_LDADD = \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	-lpthread \
-	@socket_lib@ \
 	@KRB5_LIBS@ \
+	@socket_lib@ \
 	@libz_lib@ \
 	@tcl_lib@
 
@@ -179,8 +179,8 @@ pbs_wish_LDADD = \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	-lpthread \
-	@socket_lib@ \
 	@KRB5_LIBS@ \
+	@socket_lib@ \
 	@libz_lib@ \
 	@tk_lib@
 
