@@ -1249,8 +1249,13 @@ add_transport_conn(phy_conn_t *conn)
 				tpp_log(LOG_CRIT, __func__, "Multiplexing failed");
 				return -1;
 			}
-			if (the_post_connect_handler)
-				the_post_connect_handler(fd, NULL, conn->ctx, conn->extra);
+			if (the_post_connect_handler) {
+				if (the_post_connect_handler(fd, NULL, conn->ctx, conn->extra)) {
+					/* e.g.: the tpp_handle_auth_handshake could have failed */
+					tpp_log(LOG_CRIT, __func__, "the_post_connect_handler failed");
+					return -1;
+				}
+			}
 		}
 	} else if (conn->net_state == TPP_CONN_CONNECTED) { /* accepted socket */
 		/* since we connected, remove EM_OUT from the list and add EM_IN */
@@ -1590,8 +1595,14 @@ work(void *v)
 							/* connected, finally!!! */
 							conn->net_state = TPP_CONN_CONNECTED;
 
-							if (the_post_connect_handler)
-								the_post_connect_handler(conn->sock_fd, NULL, conn->ctx, conn->extra);
+							if (the_post_connect_handler) {
+								if (the_post_connect_handler(conn->sock_fd, NULL, conn->ctx, conn->extra)) {
+									/* e.g.: the tpp_handle_auth_handshake could have failed */
+									TPP_DBPRT("phy_con %d disconnected", conn->sock_fd);
+									handle_disconnect(conn);
+									continue;
+								}
+							}
 							TPP_DBPRT("phy_con %d connected", conn->sock_fd);
 						}
 
