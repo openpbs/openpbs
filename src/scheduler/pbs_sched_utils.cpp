@@ -554,7 +554,7 @@ open_server_conns(void)
 				goto unmask_continue;
 		}
 		clust_secondary_sock = pbs_connect(NULL);
-		if (clust_secondary_sock < 0)
+		if (clust_secondary_sock < 0 || clust_primary_sock == clust_secondary_sock)
 			goto unmask_continue;
 
 		if (pbs_register_sched(sc_name, clust_primary_sock, clust_secondary_sock) != 0) {
