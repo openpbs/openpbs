@@ -40,73 +40,33 @@
 
 from tests.functional import *
 
-hook_body_modifyjob = """
-import pbs
-e = pbs.event()
-j = e.job
-select = "1:ncpus=1:mem=10m"
-j.Resource_List['ncpus'] = None
-j.Resource_List['select'] = pbs.select(select)
-j.comment = "Modified this job"
-"""
-
-hook_body_node_res_unset = """
+hook_body_node_attr_alter = """
 import pbs
 e = pbs.event()
 vnl = pbs.event().vnode_list
 local_node = pbs.get_local_nodename()
-vnl[local_node].resources_available["foo"] = None
+vnl[local_node].Mom = None
+vnl[local_node].Port = 123
 """
 
 
-class TestHookUnsetRes(TestFunctional):
+class TestHookSetAttr(TestFunctional):
 
-    def test_modifyjob_hook(self):
+    def test_node_ro_attr_hook(self):
         """
-        Unsetting ncpus, that is ['ncpus'] = None, in modifyjob hook
+        Try to alter RO node attributes from hook and check
+        the attributes are protected to the write.
         """
-        hook_name = "myhook"
-        a = {'event': 'modifyjob', 'enabled': 'True'}
-        rv = self.server.create_import_hook(
-            hook_name, a, hook_body_modifyjob, overwrite=True)
-        self.assertTrue(rv)
-        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
-        j = Job(TEST_USER, attrs={
-                'Resource_List.select': '1:ncpus=1', ATTR_h: None})
-        jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'H'}, id=jid)
-        self.server.alterjob(jid, {'Resource_List.ncpus': '2'})
-
-    def test_node_res_unset_hook(self):
-        """
-        Unsetting custom node resource via hook and test
-        the resource can be set again on the node.
-        """
-        a = {'type': 'string', 'flag': 'h'}
-        r = 'foo'
-        self.server.manager(MGR_CMD_CREATE, RSC, a, id=r)
-
-        vnode = self.mom.shortname
-        self.server.manager(
-            MGR_CMD_SET, NODE,
-            {'resources_available.foo': 'bar'},
-            id=vnode,
-            runas=ROOT_USER)
-
-        hook_name = "node_res_unset"
+        hook_name = "node_attr_ro"
         a = {'event': 'exechost_periodic',
              'enabled': 'True',
-             'freq': 10}
+             'freq': 3}
         rv = self.server.create_import_hook(
-            hook_name, a, hook_body_node_res_unset, overwrite=True)
+            hook_name, a, hook_body_node_attr_alter, overwrite=True)
         self.assertTrue(rv)
 
-        msg = 'resource resources_available.foo= per mom hook request'
+        msg = 'Error 15003 setting attribute Mom in update from mom hook'
         self.server.log_match(msg, starttime=time.time())
 
-        rc = self.server.manager(
-            MGR_CMD_SET, NODE,
-            {'resources_available.foo': 'bar'},
-            id=vnode,
-            runas=ROOT_USER)
-        self.assertEqual(rc, 0)
+        msg = 'Error 15003 setting attribute Port in update from mom hook'
+        self.server.log_match(msg, starttime=time.time())
