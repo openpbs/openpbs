@@ -151,6 +151,9 @@ extern long resv_retry_time;
 #define SOFT_WALLTIME "soft_walltime"
 #define MCAST_WAIT_TM 2
 
+
+#define ESTIMATED_DELAY_NODES_UP 60 /* delay reservation reconf at boot until nodes expected up */
+
 /*
  * Server failover role
  */

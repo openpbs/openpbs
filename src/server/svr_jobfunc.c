@@ -136,6 +136,7 @@ extern long svr_history_duration;
 /* Work Task Handlers */
 
 extern void resv_retry_handler(struct work_task *);
+extern long determine_resv_retry(resc_resv *);
 
 /* external functions */
 extern void free_job_work_tasks(job *);
@@ -618,8 +619,8 @@ svr_setjobstate(job *pjob, char newstate, int newsubstate)
 		}
 	}
 
-	if (pjob->newobj) /* object was never saved/loaded before, so new object */
-	{
+	if (pjob->newobj) {
+		/* object was never saved/loaded before, so new object */
 		return 0;
 	}
 
@@ -2705,6 +2706,8 @@ Time4resvFinish(struct work_task *ptask)
 		int rcount = get_rattr_long(presv, RESV_ATR_resv_count);
 
 		DBPRT(("reached end of occurrence %d/%d\n", ridx, rcount))
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID,
+				       "reached end of occurrence %d/%d", ridx, rcount);
 
 		/* When recovering past the last occurrence the standing reservation is purged
 		 * in a manner similar to an advance reservation
@@ -2807,6 +2810,7 @@ Time4occurrenceFinish(resc_resv *presv)
 	int sub = 0;
 	int rc = 0;
 	int rcount_adjusted = 0;
+	char *execvnodes_orig = NULL;
 	char *execvnodes = NULL;
 	char *newxc = NULL;
 	char **short_xc = NULL;
@@ -2927,8 +2931,15 @@ Time4occurrenceFinish(resc_resv *presv)
 		DBPRT(("stdg_resv: next occurrence start = %s", ctime(&next)))
 		DBPRT(("stdg_resv: next occurrence end   = %s", ctime(&dtend)))
 	}
-	DBPRT(("stdg_resv: execvnodes sequence   = %s\n", get_rattr_str(presv, RESV_ATR_resv_execvnodes)))
-	execvnodes = strdup(get_rattr_str(presv, RESV_ATR_resv_execvnodes));
+	if (is_rattr_set(presv, RESV_ATR_resv_execvnodes))
+		execvnodes_orig = get_rattr_str(presv, RESV_ATR_resv_execvnodes);
+	if (execvnodes_orig != NULL) {
+		DBPRT(("stdg_resv: execvnodes sequence   = %s\n", execvnodes_orig))
+		execvnodes = strdup(execvnodes_orig);
+	} else {
+		DBPRT(("stdg_resv: execvnodes sequence missing"))
+		;
+	}
 	short_xc = (char **) unroll_execvnode_seq(execvnodes, &tofree);
 
 	/* when a reservation is reconfirmed, the 'count' of occurrences may differ
@@ -2940,7 +2951,14 @@ Time4occurrenceFinish(resc_resv *presv)
 	/* The reservation index starts at 1 but the short_xc array at 0. Occurrence 1
 	 * is therefore given by array element 0.
 	 */
-	newxc = strdup(short_xc[ridx - rcount_adjusted - 1]);
+	if (ridx - rcount_adjusted >= 1 && short_xc != NULL)
+		newxc = strdup(short_xc[ridx - rcount_adjusted - 1]);
+	else {
+		newxc = NULL;
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID,
+		           "%s: attempt to find vnodes for for occurence %d failed; using empty set",
+		           __func__, ridx);
+	}
 
 	/* clean up helper variables */
 	free(short_xc);
@@ -2996,6 +3014,11 @@ Time4occurrenceFinish(resc_resv *presv)
 	if (rc != PBSE_NONE) {
 		sprintf(log_buffer, "problem assigning resource to reservation occurrence (%d)", rc);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
+		resv_setResvState(presv, RESV_DEGRADED, RESV_DEGRADED);
+		/* avoid skipping a reconfirmation */
+		presv->ri_degraded_time = newstart;
+		force_resv_retry(presv, determine_resv_retry(presv));
+		resv_save_db(presv);
 		return;
 	}
 
@@ -3003,12 +3026,18 @@ Time4occurrenceFinish(resc_resv *presv)
 	if ((rc = gen_task_Time4resv(presv)) != 0) {
 		sprintf(log_buffer, "problem generating task Time for occurrence (%d)", rc);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
+		resv_setResvState(presv, RESV_DEGRADED, RESV_DEGRADED);
+		/* avoid skipping a reconfirmation */
+		presv->ri_degraded_time = newstart;
+		force_resv_retry(presv, determine_resv_retry(presv));
+		resv_save_db(presv);
 		return;
 	}
 	/* add task to handle the end of the next occurrence */
 	if ((rc = gen_task_EndResvWindow(presv)) != 0) {
 		(void) resv_purge(presv);
-		sprintf(log_buffer, "problem generating reservation end task for occurrence (%d)", rc);
+		sprintf(log_buffer, "problem generating reservation end task for occurrence (%d); "
+		        "purging reservation", rc);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
 		return;
 	}
@@ -3415,9 +3444,10 @@ resv_setResvState(resc_resv *presv, int state, int sub)
  * 		in degraded mode and needs to have nodes replaced.
  *
  * @param[in]	ptask	-	work task structure which contains reservation.
+ * @param[in]	forced 	- 	whether to neuter scheduler call if ri_vnodes_down is 0
  */
 void
-resv_retry_handler(struct work_task *ptask)
+resv_retry_handler2(struct work_task *ptask, int forced)
 {
 	resc_resv *presv = ptask->wt_parm1;
 
@@ -3428,11 +3458,39 @@ resv_retry_handler(struct work_task *ptask)
 	 * a change in the system setup or a recovery) then no action is required as
 	 * the handler vnode_available takes care of updating the reservation state
 	 */
-	if (presv->ri_vnodes_down == 0)
+	if (!forced && presv->ri_vnodes_down == 0)
 		return;
 
 	/* Notify scheduler that a reservation needs to be reconfirmed */
 	notify_scheds_about_resv(SCH_SCHEDULE_RESV_RECONFIRM, presv);
+}
+
+/**
+ * @brief
+ * 		Set a scheduler flag to initiate a scheduling cycle when a reservation is
+ * 		in degraded mode and needs to have nodes replaced.
+ *		this version will only kick scheduler if ri_vnodes_down > 0
+ *
+ * @param[in]	ptask	-	work task structure which contains reservation.
+ */
+void
+resv_retry_handler(struct work_task *ptask)
+{
+	resv_retry_handler2(ptask, 0);
+}
+
+/**
+ * @brief
+ * 		Set a scheduler flag to initiate a scheduling cycle when a reservation is
+ * 		in degraded mode and needs to have nodes replaced.
+ *		this version will also kick scheduler if ri_vnodes_down is 0
+ *
+ * @param[in]	ptask	-	work task structure which contains reservation.
+ */
+void
+resv_retry_handler_forced(struct work_task *ptask)
+{
+	resv_retry_handler2(ptask, 1);
 }
 
 /**
@@ -3872,6 +3930,9 @@ remove_deleted_resvs(void)
 
 				append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 			}
+		} else if (presv->ri_qs.ri_state == RESV_DELETING_JOBS) {
+				/* this will set up the task to finally move it to RESV_FINISHED */
+				delete_occurrence_jobs(presv);
 		}
 		presv = nxresv;
 	}
@@ -3879,10 +3940,67 @@ remove_deleted_resvs(void)
 
 /**
  * @brief
- * 	add_resv_beginEnd_tasks - for each reservation not in state
- *	RESV_FINISHED add to "task_list_timed" the "begin" and
- *	"end" reservation tasks as appropriate.  Function used
- *	in "pbsd_init" code
+ *  	degrade_corrupted_confirmed_resvs - Walk the server's "svr_allresvs"
+ *  	list and cause to be degraded any reservation whose state
+ *  	is marked RESV_CONFIRMED but is missing resv_nodes or resv_execvnodes.
+ *  	Function used in "pbsd_init" code
+ *
+ * @return Nothing
+ */
+void
+degrade_corrupted_confirmed_resvs(void)
+{
+	int is_degraded = 0;
+	resc_resv *presv, *nxresv;
+	long retry_time = 0;
+	char *str_time;
+
+	presv = (resc_resv *) GET_NEXT(svr_allresvs);
+	while (presv) {
+		nxresv = (resc_resv *) GET_NEXT(presv->ri_allresvs);
+		/* if corrupted and already degraded we still need to set a retry time for the scheduler to be prodded again */
+		if (presv->ri_qs.ri_state == RESV_CONFIRMED || presv->ri_qs.ri_state == RESV_DEGRADED) {
+			if (get_rattr_long(presv, RESV_ATR_resv_standing))
+				if (!(is_rattr_set(presv, RESV_ATR_resv_execvnodes))
+				    || get_rattr_str(presv, RESV_ATR_resv_execvnodes) == NULL)
+                    is_degraded = 1;
+            if (!(is_rattr_set(presv, RESV_ATR_resv_nodes)) || get_rattr_str(presv, RESV_ATR_resv_nodes) == NULL)
+                is_degraded = 1;
+		} else if (presv->ri_qs.ri_state == RESV_FINISHED && get_rattr_long(presv, RESV_ATR_resv_standing))
+            if (get_rattr_long(presv, RESV_ATR_resv_idx) < get_rattr_long(presv, RESV_ATR_resv_count))
+                /* should never keep a standing reservation in RESV_FINISHED state for anything but the last occurrence */
+                /* if we don't degrade it then remove_deleted_resvs may create a task to nuke it */
+                is_degraded = 1;
+        if (is_degraded) {
+			resv_setResvState(presv, RESV_DEGRADED, RESV_DEGRADED);
+			/* there is no point in trying to reconfirm it immediately at server start,
+			 * since the nodes will not have reported as free yet.
+			 * One minute is a reasonable time to try, but jobs may already have filled
+			 * some nodes by then. Tough luck, but it's the best we can do. It beats
+			 * waiting for the default 600 seconds.
+			 */
+			retry_time = determine_resv_retry(presv);
+			if (time_now + 60 < retry_time)
+				retry_time = time_now + 60;
+			str_time = ctime(&retry_time);
+			if (str_time == NULL)
+				str_time = "";
+			presv->ri_degraded_time = get_rattr_long(presv, RESV_ATR_start);
+			/* bogus value, but avoid skipping a reconfirmation */
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID,
+			           "Reservation with corrupted nodes, degrading with retry time set to %s", str_time);
+			force_resv_retry(presv, retry_time);
+		}
+		presv = nxresv;
+	}
+}
+
+/**
+ * @brief
+ *  	add_resv_beginEnd_tasks - for each reservation not in state
+ *  	RESV_FINISHED add to "task_list_timed" the "begin" and
+ *  	"end" reservation tasks as appropriate.  Function used
+ *  	in "pbsd_init" code
  *
  * @return	none
  */

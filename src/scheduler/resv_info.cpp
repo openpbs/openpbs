@@ -268,7 +268,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 		if (resresv->resv->is_standing &&
 		    (resresv->resv->resv_state != RESV_UNCONFIRMED)) {
 			resource_resv *resresv_ocr = NULL; /* the occurrence's resource_resv */
-			char *execvnodes_seq;		   /* confirmed execvnodes sequence string */
+			char *execvnodes_seq = NULL;		   /* confirmed execvnodes sequence string */
 			char **execvnode_ptr = NULL;
 			char **tofree = NULL;
 			resource_resv **tmp = NULL;
@@ -285,6 +285,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 			 * Note that resv_idx starts at 1 on the first occurrence and not 0.
 			 */
 			occr_idx = resresv->resv->resv_idx;
+			/* string_dup returns NULL when input is NULL pointer */
 			execvnodes_seq = string_dup(resresv->resv->execvnodes_seq);
 			/* the error handling for the string duplication returning NULL is
 			 * combined with the following assignment, because get_execvnodes_count
@@ -294,13 +295,14 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 			/* this should happen only if the execvnodes_seq are corrupted. In such
 			 * case, we ignore the reservation and move on to the next one
 			 */
+			/* -- modified, let's just process it with empty execvnode and degrade it
+			*/
 			if (occr_count == 0) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-					  resresv->name, "Error processing standing reservation");
-				free(execvnodes_seq);
-				sinfo->num_resvs--;
-				delete resresv;
-				continue;
+					  resresv->name, "Error processing standing reservation, degrading it");
+				if  (resresv->resv->resv_state != RESV_RUNNING
+				         && resresv->resv->resv_state != RESV_DELETING_JOBS)
+					resresv->resv->resv_state = RESV_DEGRADED;
 			}
 			/* unroll_execvnode_seq will destroy the first argument that is passed
 			 * to it by calling tokenizing functions, hence, it has to be duplicated
@@ -405,8 +407,17 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 						resresv_ocr->select = new selspec(*resresv_ocr->resv->select_standing);
 					}
 
-					resresv_ocr->resv->orig_nspec_arr = parse_execvnode(
-						execvnode_ptr[degraded_idx - 1], sinfo, resresv_ocr->select);
+					if (degraded_idx >= 1 && degraded_idx <= occr_count)
+						resresv_ocr->resv->orig_nspec_arr = parse_execvnode(
+							execvnode_ptr[degraded_idx - 1], sinfo, resresv_ocr->select);
+					else {
+						resresv_ocr->resv->orig_nspec_arr = {};
+						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV,
+						           LOG_INFO, resresv->name,
+						           "%s: occurence %d has no execvnodes, using empty vector",
+						           __func__, j + 1);
+					}
+
 					resresv_ocr->nspec_arr = combine_nspec_array(resresv_ocr->resv->orig_nspec_arr);
 					resresv_ocr->ninfo_arr = create_node_array_from_nspec(resresv_ocr->nspec_arr);
 					resresv_ocr->resv->resv_nodes = create_resv_nodes(
@@ -914,11 +925,12 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 	resource_resv **tmp_resresv = NULL;
 
 	char **occr_execvnodes_arr = NULL;
+	int occr_execvnodes_count = 0;
 	char **tofree = NULL;
 	int occr_count = 1;
 	int have_alter_request = 0;
 	int i;
-	int j;
+	int j, j_adjusted;
 	schd_error *err;
 
 	if (sinfo == NULL)
@@ -1002,6 +1014,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 					/* "tofree" is a pointer array to a list of unique execvnodes. It is
 					 * safely freed exclusively by calling free_execvnode_seq
 					 */
+					occr_execvnodes_count = get_execvnodes_count(nresv->resv->execvnodes_seq);
 					occr_execvnodes_arr = unroll_execvnode_seq(
 						nresv->resv->execvnodes_seq, &tofree);
 					if (occr_execvnodes_arr == NULL) {
@@ -1023,6 +1036,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						return -1;
 					}
 					*occr_execvnodes_arr = nresv->resv->execvnodes_seq;
+					occr_execvnodes_count = 1;
 				}
 
 				/* Iterate over all occurrences (would be 1 for advance reservations)
@@ -1068,7 +1082,19 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 					}
 					release_nodes(nresv_copy);
 
-					nresv_copy->resv->orig_nspec_arr = parse_execvnode(occr_execvnodes_arr[j], sinfo, nresv_copy->select);
+					j_adjusted = j - (occr_count - occr_execvnodes_count);
+
+					if (j_adjusted >= 0 && j_adjusted < occr_execvnodes_count) {
+						nresv_copy->resv->orig_nspec_arr =
+							parse_execvnode(occr_execvnodes_arr[j_adjusted], sinfo, nresv_copy->select);
+					} else {
+						nresv_copy->resv->orig_nspec_arr = {};
+						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV,
+						           LOG_INFO, nresv->name,
+						           "%s: occurence %d has no execvnodes, using empty vector",
+						           __func__, j + 1);
+					}
+
 					nresv_copy->nspec_arr = combine_nspec_array(nresv_copy->resv->orig_nspec_arr);
 					nresv_copy->ninfo_arr = create_node_array_from_nspec(nresv_copy->nspec_arr);
 					nresv_copy->resv->resv_nodes = create_resv_nodes(nresv_copy->nspec_arr, sinfo);
@@ -1912,7 +1938,7 @@ create_resv_nodes(std::vector<nspec *> &nspec_arr, server_info *sinfo)
 void
 release_running_resv_nodes(resource_resv *resv, server_info *sinfo)
 {
-	if (resv == NULL || sinfo == NULL)
+	if (resv == NULL || sinfo == NULL || resv->ninfo_arr == NULL)
 		return;
 	if (resv->resv->is_running && (resv->resv->resv_substate == RESV_DEGRADED || resv->resv->resv_state == RESV_BEING_ALTERED)) {
 		auto resv_nodes = resv->ninfo_arr;
