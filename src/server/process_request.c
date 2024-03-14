@@ -326,15 +326,13 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 				rc = PBSE_BADHOST;
 				goto rerr;
 			}
-		}
-		else if (are_primary == FAILOVER_SECONDARY) {
+		} else if (are_primary == FAILOVER_SECONDARY) {
 			addr = get_hostaddr(pbs_conf.pbs_secondary);
 			if (addr != conn->cn_addr) {
 				rc = PBSE_BADHOST;
 				goto rerr;
 			}
-		}
-		else {
+		} else {
 			rc = PBSE_BADHOST;
 			goto rerr;
 		}
@@ -593,10 +591,10 @@ process_request(int sfds)
 
 			addr = get_hostaddr(request->rq_host);
 			if (snprintf(ip, PBS_MAXIP_LEN + 1, "%ld.%ld.%ld.%ld",
-			    (addr & 0xff000000) >> 24,
-			    (addr & 0x00ff0000) >> 16,
-			    (addr & 0x0000ff00) >> 8,
-			    (addr & 0x000000ff)) <= 0) {
+				     (addr & 0xff000000) >> 24,
+				     (addr & 0x00ff0000) >> 16,
+				     (addr & 0x0000ff00) >> 8,
+				     (addr & 0x000000ff)) <= 0) {
 				addr = 0;
 			}
 
