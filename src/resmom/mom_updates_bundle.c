@@ -744,6 +744,13 @@ get_job_update(job *pjob)
 							 job_attr_def[JOB_ATR_substate].at_name, NULL, ATR_ENCODE_CLIENT, NULL);
 	}
 
+	/*
+	 * walltime must be set before encoded_used because in case of rerun
+	 * job without used walltime, the Resource_List.walltime could be used
+	 * as used.walltime for scheduling/calendaring.
+	 */
+	update_walltime(pjob);
+
 	encode_used(pjob, &prused->ru_attr);
 
 	/* Now add certain others as required for updating at the Server */
