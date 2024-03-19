@@ -745,9 +745,9 @@ get_job_update(job *pjob)
 	}
 
 	/*
-	 * walltime must be set before encoded_used because in case of rerun
-	 * job without used walltime, the Resource_List.walltime could be used
-	 * as used.walltime for scheduling/calendaring.
+	 * The update_walltime() ensures the walltime is always set before encode_used().
+	 * A job without used walltime could occur in the first seconds of a job.
+	 * This ensures the used walltime is set even if the elapsed time is zero.
 	 */
 	update_walltime(pjob);
 

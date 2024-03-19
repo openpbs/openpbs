@@ -48,7 +48,7 @@ if e.type == pbs.EXECJOB_BEGIN:
     e.job.resources_used["foo"] = 123
     if e.job.run_count == 1:
         for v in e.vnode_list:
-            if (v == "%s"):
+            if v == "%s":
                 e.vnode_list[v].state = pbs.ND_OFFLINE
         e.job.rerun()
         e.reject("reruen job")
@@ -99,7 +99,7 @@ class TestSchedRerun(TestFunctional):
 
         a = {'reserve_start': now + 60,
              'reserve_end': now + 7200}
-        h = [self.momB.shortname]
+        h = [self.hostB]
         r = Reservation(TEST_USER, attrs=a, hosts=h)
 
         self.server.submit(r)
