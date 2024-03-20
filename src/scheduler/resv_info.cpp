@@ -285,7 +285,6 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 			 * Note that resv_idx starts at 1 on the first occurrence and not 0.
 			 */
 			occr_idx = resresv->resv->resv_idx;
-			/* string_dup returns NULL when input is NULL pointer */
 			execvnodes_seq = string_dup(resresv->resv->execvnodes_seq);
 			/* the error handling for the string duplication returning NULL is
 			 * combined with the following assignment, because get_execvnodes_count
@@ -295,8 +294,6 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 			/* this should happen only if the execvnodes_seq are corrupted. In such
 			 * case, we ignore the reservation and move on to the next one
 			 */
-			/* -- modified, let's just process it with empty execvnode and degrade it
-			*/
 			if (occr_count == 0) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
 					  resresv->name, "Error processing standing reservation, degrading it");
@@ -412,10 +409,10 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 							execvnode_ptr[degraded_idx - 1], sinfo, resresv_ocr->select);
 					else {
 						resresv_ocr->resv->orig_nspec_arr = {};
-						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV,
-						           LOG_INFO, resresv->name,
-						           "%s: occurence %d has no execvnodes, using empty vector",
-						           __func__, j + 1);
+						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV,
+							   LOG_DEBUG, resresv->name,
+							   "%s: occurence %d has no execvnodes, using empty vector",
+							   __func__, j + 1);
 					}
 
 					resresv_ocr->nspec_arr = combine_nspec_array(resresv_ocr->resv->orig_nspec_arr);
@@ -1089,10 +1086,10 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 							parse_execvnode(occr_execvnodes_arr[j_adjusted], sinfo, nresv_copy->select);
 					} else {
 						nresv_copy->resv->orig_nspec_arr = {};
-						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV,
-						           LOG_INFO, nresv->name,
-						           "%s: occurence %d has no execvnodes, using empty vector",
-						           __func__, j + 1);
+						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV,
+							   LOG_DEBUG, nresv->name,
+							   "%s: occurence %d has no execvnodes, using empty vector",
+							   __func__, j + 1);
 					}
 
 					nresv_copy->nspec_arr = combine_nspec_array(nresv_copy->resv->orig_nspec_arr);

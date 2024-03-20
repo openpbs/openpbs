@@ -8234,8 +8234,6 @@ static void
 set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 {
 	long degraded_time;
-	char *execvnodes = NULL;
-	int occurrence = -1;
 
 	if ((degraded_time = get_rattr_long(presv, RESV_ATR_resv_standing)) == 0)
 		presv->ri_degraded_time = degraded_time;
@@ -8258,6 +8256,9 @@ set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 		 * string for debugging purposes
 		 */
 		if (get_rattr_long(presv, RESV_ATR_resv_standing)) {
+			char *execvnodes = NULL;
+			int occurrence = -1;
+
 			if (is_rattr_set(presv, RESV_ATR_resv_execvnodes))
 				execvnodes = get_rattr_str(presv, RESV_ATR_resv_execvnodes);
 			if (execvnodes == NULL)

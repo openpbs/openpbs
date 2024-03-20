@@ -3961,17 +3961,16 @@ degrade_corrupted_confirmed_resvs(void)
 		/* if corrupted and already degraded we still need to set a retry time for the scheduler to be prodded again */
 		if (presv->ri_qs.ri_state == RESV_CONFIRMED || presv->ri_qs.ri_state == RESV_DEGRADED) {
 			if (get_rattr_long(presv, RESV_ATR_resv_standing))
-				if (!(is_rattr_set(presv, RESV_ATR_resv_execvnodes))
-				    || get_rattr_str(presv, RESV_ATR_resv_execvnodes) == NULL)
-                    is_degraded = 1;
-            if (!(is_rattr_set(presv, RESV_ATR_resv_nodes)) || get_rattr_str(presv, RESV_ATR_resv_nodes) == NULL)
-                is_degraded = 1;
+				if (!(is_rattr_set(presv, RESV_ATR_resv_execvnodes)) || get_rattr_str(presv, RESV_ATR_resv_execvnodes) == NULL)
+					is_degraded = 1;
+			if (!(is_rattr_set(presv, RESV_ATR_resv_nodes)) || get_rattr_str(presv, RESV_ATR_resv_nodes) == NULL)
+				is_degraded = 1;
 		} else if (presv->ri_qs.ri_state == RESV_FINISHED && get_rattr_long(presv, RESV_ATR_resv_standing))
-            if (get_rattr_long(presv, RESV_ATR_resv_idx) < get_rattr_long(presv, RESV_ATR_resv_count))
-                /* should never keep a standing reservation in RESV_FINISHED state for anything but the last occurrence */
-                /* if we don't degrade it then remove_deleted_resvs may create a task to nuke it */
-                is_degraded = 1;
-        if (is_degraded) {
+			if (get_rattr_long(presv, RESV_ATR_resv_idx) < get_rattr_long(presv, RESV_ATR_resv_count))
+				/* should never keep a standing reservation in RESV_FINISHED state for anything but the last occurrence */
+				/* if we don't degrade it then remove_deleted_resvs may create a task to nuke it */
+				is_degraded = 1;
+		if (is_degraded) {
 			resv_setResvState(presv, RESV_DEGRADED, RESV_DEGRADED);
 			/* there is no point in trying to reconfirm it immediately at server start,
 			 * since the nodes will not have reported as free yet.
@@ -3988,7 +3987,7 @@ degrade_corrupted_confirmed_resvs(void)
 			presv->ri_degraded_time = get_rattr_long(presv, RESV_ATR_start);
 			/* bogus value, but avoid skipping a reconfirmation */
 			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID,
-			           "Reservation with corrupted nodes, degrading with retry time set to %s", str_time);
+				   "Reservation with corrupted nodes, degrading with retry time set to %s", str_time);
 			force_resv_retry(presv, retry_time);
 		}
 		presv = nxresv;
