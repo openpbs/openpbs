@@ -41,21 +41,6 @@
 from tests.functional import *
 
 
-hook_body = """
-import pbs
-e = pbs.event()
-if e.type == pbs.EXECJOB_BEGIN:
-    e.job.resources_used["foo"] = 123
-    if e.job.run_count == 1:
-        for v in e.vnode_list:
-            if v == "%s":
-                e.vnode_list[v].state = pbs.ND_OFFLINE
-        e.job.rerun()
-        e.reject("reruen job")
-e.accept()
-"""
-
-
 class TestSchedRerun(TestFunctional):
     """
     Tests to verify scheduling of rerun jobs.
@@ -90,11 +75,25 @@ class TestSchedRerun(TestFunctional):
         r = 'foo'
         self.server.manager(MGR_CMD_CREATE, RSC, a, id=r)
 
+        hook_body = f"""
+import pbs
+e = pbs.event()
+if e.type == pbs.EXECJOB_BEGIN:
+    e.job.resources_used["foo"] = 123
+    if e.job.run_count == 1:
+        for v in e.vnode_list:
+            if v == "{self.hostA}":
+                e.vnode_list[v].state = pbs.ND_OFFLINE
+        e.job.rerun()
+        e.reject("rerun job")
+e.accept()
+"""
+
         hook_name = "rerun_job"
         a = {'event': 'execjob_begin',
              'enabled': 'True'}
         rv = self.server.create_import_hook(
-            hook_name, a, hook_body % self.hostA, overwrite=True)
+            hook_name, a, hook_body, overwrite=True)
         self.assertTrue(rv)
 
         a = {'reserve_start': now + 60,
