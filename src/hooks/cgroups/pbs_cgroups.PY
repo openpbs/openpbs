@@ -3976,7 +3976,9 @@ class CgroupUtils(object):
         for filename in glob.glob(pattern):
             try:
                 with open(filename, 'r') as desc:
-                    entries = desc.readline().split(' ')
+                    line = desc.readline()
+                    # valid columns are \(.+\) or [^\s]+
+                    entries = re.split(r'\s+(\(.+\)|[^\s]+)\s+', line)
                     if int(entries[5]) != sid:
                         continue
                     if check_tasks:
