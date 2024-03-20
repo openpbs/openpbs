@@ -3881,7 +3881,7 @@ class CgroupUtils(object):
             # Note: some versions prepend "Version=", other versions
             # add a more precise version in parentheses after a space
             out_split = stringified_output(out).splitlines()
-            ver = int(re.sub(r'Version=\D*(\d+)', r'\1',
+            ver = int(re.sub(r'Version=\D*(\d+).*', r'\1',
                              out_split[0].split()[0]))
         except Exception:
             # Note we also get here if we can't decode an int version
