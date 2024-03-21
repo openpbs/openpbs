@@ -62,6 +62,8 @@
 #include <signal.h>
 #include "tpp_internal.h"
 
+#define INVALID_THREAD_ID ((pthread_t)-1)
+
 #ifdef WIN32
 
 /**
@@ -890,7 +892,7 @@ tpp_invalidate_thrd_handle(pthread_t *thrd)
 	thrd->thHandle = INVALID_HANDLE_VALUE;
 	thrd->thId = -1;
 #else
-	*thrd = -1; /* initialize to -1 */
+	*thrd = INVALID_THREAD_ID; /* initialize to an invalid value */
 #endif
 }
 
@@ -914,7 +916,7 @@ int
 tpp_is_valid_thrd(pthread_t thrd)
 {
 #ifndef WIN32
-	if (thrd != -1)
+	if (thrd != INVALID_THREAD_ID)
 		return 1;
 #else
 	if (thrd.thHandle != INVALID_HANDLE_VALUE)
