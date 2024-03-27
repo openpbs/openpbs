@@ -1343,6 +1343,8 @@ vnode_available(struct pbsnode *np)
 	resc_resv *presv;
 	struct resvinfo *rinfp;
 	struct resvinfo *rinfp_hd = NULL;
+	char *execvnodes = NULL;
+	int occurrence = -1;
 
 	if (np == NULL)
 		return;
@@ -1395,11 +1397,23 @@ vnode_available(struct pbsnode *np)
 			 */
 			/* If a standing reservation we print the execvnodes sequence
 			 * string for debugging purposes */
-			if (get_rattr_long(presv, RESV_ATR_resv_standing))
-				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-					   presv->ri_qs.ri_resvID, "execvnodes sequence %s", get_rattr_str(presv, RESV_ATR_resv_execvnodes));
-			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-				   presv->ri_qs.ri_resvID, "vnodes in occurrence: %d; ", presv->ri_vnodect);
+			if (get_rattr_long(presv, RESV_ATR_resv_standing)) {
+				if (is_rattr_set(presv, RESV_ATR_resv_execvnodes))
+					execvnodes = get_rattr_str(presv, RESV_ATR_resv_execvnodes);
+				if (execvnodes == NULL)
+					execvnodes = "";
+ 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+				           presv->ri_qs.ri_resvID, "execvnodes sequence: %s", execvnodes);
+				if (is_rattr_set(presv, RESV_ATR_resv_idx))
+					occurrence = get_rattr_long(presv, RESV_ATR_resv_idx);
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+				           presv->ri_qs.ri_resvID, "vnodes in occurrence %d: %d; ",
+				           occurrence, presv->ri_vnodect);
+			} else {
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+			           presv->ri_qs.ri_resvID, "vnodes in reservation: %d; ",
+			           presv->ri_vnodect);
+			}
 		}
 	}
 
@@ -1439,6 +1453,8 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 	long degraded_time;
 	long resv_start_time;
 	long retry_time;
+	char *execvnodes = NULL;
+	int occurrence = -1;
 
 	if (np == NULL)
 		return;
@@ -1508,14 +1524,27 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 			if (presv->ri_vnodes_down > presv->ri_vnodect) {
 				/* If a standing reservation we print the execvnodes sequence
 				 * string for debugging purposes */
-				if (get_rattr_arst(presv, RESV_ATR_resv_standing))
-					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-						   presv->ri_qs.ri_resvID, " execvnodes sequence %s",
-						   get_rattr_str(presv, RESV_ATR_resv_execvnodes));
-				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-					   presv->ri_qs.ri_resvID,
-					   "vnodes in occurrence: %d; unavailable vnodes in reservation: %d",
-					   presv->ri_vnodect, presv->ri_vnodes_down);
+				if (get_rattr_arst(presv, RESV_ATR_resv_standing)) {
+					if (is_rattr_set(presv, RESV_ATR_resv_execvnodes))
+						execvnodes = get_rattr_str(presv, RESV_ATR_resv_execvnodes);
+					if (execvnodes == NULL)
+						execvnodes = "";
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+						   presv->ri_qs.ri_resvID, "execvnodes sequence: %s",
+						   execvnodes);
+					if (is_rattr_set(presv, RESV_ATR_resv_idx))
+						occurrence = get_rattr_long(presv, RESV_ATR_resv_idx);
+ 					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+					           presv->ri_qs.ri_resvID,
+					           "vnodes in occurrence %d: %d;"
+					           " unavailable vnodes in reservation: %d",
+					           occurrence, presv->ri_vnodect, presv->ri_vnodes_down);
+				} else {
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+ 					   presv->ri_qs.ri_resvID,
+					   "vnodes in reservation: %d; unavailable vnodes in reservation: %d",
+ 					   presv->ri_vnodect, presv->ri_vnodes_down);
+				}
 			}
 			presv->ri_vnodes_down++;
 		}
@@ -1553,6 +1582,7 @@ find_vnode_in_resvs(struct pbsnode *np, enum vnode_degraded_op degraded_op)
 	pbsnode_list_t *pl;
 	int match = 0;
 	int is_degraded = 0;
+	long retry_time;
 
 	if (np == NULL)
 		return NULL;
@@ -1607,12 +1637,41 @@ find_vnode_in_resvs(struct pbsnode *np, enum vnode_degraded_op degraded_op)
 			 * happen as the reservation should have been confirmed and the nodes
 			 * been assigned to it
 			 */
-			if (is_rattr_set(presv, RESV_ATR_resv_execvnodes) == 0) {
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_NOTICE,
-					  presv->ri_qs.ri_resvID, "Reservation's execvnodes_seq are corrupted");
-				continue;
-			}
-			is_degraded = find_degraded_occurrence(presv, np, degraded_op);
+			if (!is_rattr_set(presv, RESV_ATR_resv_execvnodes)) {
+				is_degraded = 1;
+				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_NOTICE,
+				           presv->ri_qs.ri_resvID,
+				           "%s: Reservation's execvnodes_seq are corrupted, degrading it",
+				           __func__);
+				if (presv->ri_qs.ri_substate != RESV_DEGRADED) {
+					if (presv->ri_qs.ri_state == RESV_RUNNING
+					    || presv->ri_qs.ri_state == RESV_DELETING_JOBS) {
+						/*
+						** leave it as is, rely on resv_vnodes to run jobs in it;
+						** once this occurrence finally finishes
+						** we will re-evaluate whether to reconfirm next occurrence.
+						** Still set substate to degraded now to alert site admins
+						*/
+						resv_setResvState(presv, presv->ri_qs.ri_state, RESV_DEGRADED);
+					} else {
+						resv_setResvState(presv, RESV_DEGRADED, RESV_DEGRADED);
+						retry_time = determine_resv_retry(presv);
+						/* if server just came up wait 'some time' for nodes to come up */
+						if (time_now + ESTIMATED_DELAY_NODES_UP < retry_time)
+							retry_time = time_now + ESTIMATED_DELAY_NODES_UP;
+						/* bogus value for degraded_time, but avoid skipping a reconfirmation */
+						presv->ri_degraded_time = get_rattr_long(presv, RESV_ATR_start);
+						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID,
+						           "%s: Reservation with corrupted nodes, setting up reconfirmation",
+						           __func__);
+						force_resv_retry(presv, retry_time);
+					}
+				}
+				/* the reservation is degraded but we cannot associate it with the node */
+ 				continue;
+			} else {
+				is_degraded = find_degraded_occurrence(presv, np, degraded_op);
+ 			}
 
 			/* If no occurrence is degraded move on to the next reservation */
 			if (is_degraded == 0)
@@ -1677,7 +1736,7 @@ find_degraded_occurrence(resc_resv *presv, struct pbsnode *np,
 	char **tofree = NULL;
 	char *rrule;
 	char *tz;
-	char *execvnodes;
+	char *execvnodes = NULL;
 	long dtstart;
 	long occr_time;
 	long curr_degraded_time;
@@ -1697,9 +1756,9 @@ find_degraded_occurrence(resc_resv *presv, struct pbsnode *np,
 	rrule = get_rattr_str(presv, RESV_ATR_resv_rrule);
 	tz = get_rattr_str(presv, RESV_ATR_resv_timezone);
 	dtstart = get_rattr_long(presv, RESV_ATR_start);
-	execvnodes = get_rattr_str(presv, RESV_ATR_resv_execvnodes);
-
-	if ((short_execvnodes_seq = strdup(execvnodes)) == NULL)
+	if (is_rattr_set(presv, RESV_ATR_resv_execvnodes))
+		execvnodes = get_rattr_str(presv, RESV_ATR_resv_execvnodes);
+	if (execvnodes == NULL || (short_execvnodes_seq = strdup(execvnodes)) == NULL)
 		return -1;
 	execvnodes_seq = unroll_execvnode_seq(short_execvnodes_seq, &tofree);
 	/* If an error occurred during unrolling, this reservation is ignored */
@@ -1721,6 +1780,12 @@ find_degraded_occurrence(resc_resv *presv, struct pbsnode *np,
 
 	/* Search for a match for this node in each occurrence's execvnode */
 	for (i = ridx_adjusted - 1, j = 1; i < rcount_adjusted; i++, j++) {
+		if (i < 0) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID,
+				       "%s: attempt to find vnodes for for occurence %d failed; skipping",
+		           __func__, j);
+			continue;
+		}
 		if (find_vnode_in_execvnode(execvnodes_seq[i], np->nd_name)) {
 			occr_found = 1;
 			if (degraded_op == Set_Degraded_Time) {
@@ -1801,7 +1866,7 @@ unset_resv_retry(resc_resv *presv)
 	if (presv == NULL)
 		return;
 
-	if (is_rattr_set(presv, RESV_ATR_retry) == 0)
+	if (!is_rattr_set(presv, RESV_ATR_retry))
 		return;
 
 	set_rattr_l_slim(presv, RESV_ATR_retry, 0, SET);
@@ -1820,16 +1885,19 @@ unset_resv_retry(resc_resv *presv)
  *
  * @param[in]	presv	-	The reservation to process
  * @param[in]	retry_time	-	The retry time to set
+ * @param[in]	forced  - determines which handler we call
+ * 
  *
  * @return	void
  *
  * @par MT-safe: No
  */
 void
-set_resv_retry(resc_resv *presv, long retry_time)
+set_resv_retry2(resc_resv *presv, long retry_time, int forced)
 {
 	struct work_task *pwt;
-	extern void resv_retry_handler(struct work_task * ptask);
+	extern void resv_retry_handler(struct work_task *ptask);
+	extern void resv_retry_handler_forced(struct work_task *ptask);
 	char *msg;
 	char *str_time;
 
@@ -1846,20 +1914,65 @@ set_resv_retry(resc_resv *presv, long retry_time)
 	presv->ri_resv_retry = retry_time;
 
 	str_time = ctime(&retry_time);
-	if (str_time != NULL) {
-		str_time[strlen(str_time) - 1] = '\0';
-		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, msg, str_time);
-	}
+	if (str_time == NULL)
+		str_time = "";
+	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, msg, str_time);
 
 	/* Set a work task to initiate a scheduling cycle when the time to check
 	 * for alternate nodes to assign the reservation comes
 	 */
-	if ((pwt = set_task(WORK_Timed, retry_time, resv_retry_handler, presv)) != NULL) {
+	if ((pwt = set_task(WORK_Timed, retry_time, forced ? resv_retry_handler_forced : resv_retry_handler, presv)) != NULL) {
 		/* set things so that the reservation going away will result in
 		 * any "yet to be processed" work tasks also going away
 		 */
 		append_link(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
 	}
+}
+
+/**
+ * @brief
+ * 		Set reservation retry attributes and variables.
+ * 		The reservation attribute RESV_ATR_retry is recovered upon a server
+ * 		restart. The field ri_resv_retry is not.
+ * 		If RESV_ATR_retry is set, we add that already existing time as the
+ * 		event time, otherwise we compute the event time
+ *
+ *      This one will only kick a reconfirmation if ri_vnodes_down is positive
+ *
+ * @param[in]	presv	-	The reservation to process
+ * @param[in]	retry_time	-	The retry time to set
+ *
+ * @return	void
+ *
+ * @par MT-safe: No
+ */
+void
+set_resv_retry(resc_resv *presv, long retry_time)
+{
+	set_resv_retry2(presv, retry_time, 0);
+}
+
+/**
+ * @brief
+ * 		Set reservation retry attributes and variables.
+ * 		The reservation attribute RESV_ATR_retry is recovered upon a server
+ * 		restart. The field ri_resv_retry is not.
+ * 		If RESV_ATR_retry is set, we add that already existing time as the
+ * 		event time, otherwise we compute the event time
+ *
+ *      This will always kick a reconfirmation
+ *
+ * @param[in]	presv	-	The reservation to process
+ * @param[in]	retry_time	-	The retry time to set
+ *
+ * @return	void
+ *
+ * @par MT-safe: No
+ */
+void
+force_resv_retry(resc_resv *presv, long retry_time)
+{
+	set_resv_retry2(presv, retry_time, 1);
 }
 
 /**
@@ -6312,7 +6425,7 @@ end:
 
 /**
  * @brief update node state based on the job sharing type
- * and node sharing type. For instance; 
+ * and node sharing type. For instance:
  * node-state is set to exclusive if either of them are exclusive.
  * 
  * @param[in,out] pnode - node for which state is updated
@@ -8142,14 +8255,29 @@ set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 		/* If a standing reservation we print the execvnodes sequence
 		 * string for debugging purposes
 		 */
-		if (get_rattr_long(presv, RESV_ATR_resv_standing))
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-				   presv->ri_qs.ri_resvID, " execvnodes sequence %s",
-				   get_rattr_str(presv, RESV_ATR_resv_execvnodes));
+		if (get_rattr_long(presv, RESV_ATR_resv_standing)) {
+			char *execvnodes = NULL;
+			int occurrence = -1;
 
-		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-			   presv->ri_qs.ri_resvID, "vnodes in occurrence: %d; unavailable vnodes in reservation: %d",
-			   presv->ri_vnodect, presv->ri_vnodes_down);
+			if (is_rattr_set(presv, RESV_ATR_resv_execvnodes))
+				execvnodes = get_rattr_str(presv, RESV_ATR_resv_execvnodes);
+			if (execvnodes == NULL)
+				execvnodes = "";
+ 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+			           presv->ri_qs.ri_resvID, "execvnodes sequence: %s",
+			           execvnodes);
+			if (is_rattr_set(presv, RESV_ATR_resv_idx))
+				occurrence = get_rattr_long(presv, RESV_ATR_resv_idx);
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+			           presv->ri_qs.ri_resvID, "vnodes in occurrence %d: %d; "
+			           "unavailable vnodes in reservation: %d",
+			           occurrence, presv->ri_vnodect, presv->ri_vnodes_down);
+		} else {
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+			           presv->ri_qs.ri_resvID, "vnodes in reservation: %d; "
+			           "unavailable vnodes in reservation: %d",
+			           presv->ri_vnodect, presv->ri_vnodes_down);
+		}
 	}
 	presv->ri_vnodes_down++;
 }

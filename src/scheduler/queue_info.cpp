@@ -781,15 +781,17 @@ queue_info::queue_info(queue_info &oqinfo, server_info *nsinfo) : name(oqinfo.na
 
 	if (oqinfo.resv != NULL) {
 		resv = find_resource_resv_by_indrank(nsinfo->resvs, oqinfo.resv->resresv_ind, oqinfo.resv->rank);
-		if (!resv->resv->is_standing) {
-			/* just incase we we didn't set the reservation cross pointer */
-			resv->resv->resv_queue = this;
-		} else {
-			/* For standing reservations, we need to restore the resv_queue pointers for all occurrences */
-			int i;
-			for (i = 0; server->resvs[i] != NULL; i++) {
-				if (server->resvs[i]->name == resv->name)
-					server->resvs[i]->resv->resv_queue = this;
+		if (resv != NULL) {
+			if (!resv->resv->is_standing) {
+				/* just incase we we didn't set the reservation cross pointer */
+				resv->resv->resv_queue = this;
+			} else {
+				/* For standing reservations, we need to restore the resv_queue pointers for all occurrences */
+				int i;
+				for (i = 0; server->resvs[i] != NULL; i++) {
+					if (server->resvs[i]->name == resv->name)
+						server->resvs[i]->resv->resv_queue = this;
+				}
 			}
 		}
 	} else

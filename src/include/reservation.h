@@ -295,6 +295,7 @@ extern void set_idle_delete_task(resc_resv *presv);
 extern int change_enableORstart(resc_resv *, int, char *);
 extern void unset_resv_retry(resc_resv *);
 extern void set_resv_retry(resc_resv *, long);
+extern void force_resv_retry(resc_resv *, long);
 extern void eval_resvState(resc_resv *, enum resvState_discrim, int, int *, int *);
 extern void free_resvNodes(resc_resv *);
 extern int act_resv_add_owner(attribute *, void *, int);
@@ -303,6 +304,7 @@ extern void resv_free(resc_resv *);
 extern void set_old_subUniverse(resc_resv *);
 extern int assign_resv_resc(resc_resv *, char *, int);
 extern void resv_exclusive_handler(resc_resv *);
+extern void resv_exclusive_handler_forced(resc_resv *);
 extern long determine_resv_retry(resc_resv *presv);
 
 extern resc_resv *resv_recov_db(char *resvid, resc_resv *presv);
