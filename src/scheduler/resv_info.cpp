@@ -409,9 +409,9 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 							execvnode_ptr[degraded_idx - 1], sinfo, resresv_ocr->select);
 					else {
 						resresv_ocr->resv->orig_nspec_arr = {};
-						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV,
-							   LOG_DEBUG, resresv->name,
-							   "%s: occurence %d has no execvnodes, using empty vector",
+						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV,
+							   LOG_INFO, resresv->name,
+							   "%s: occurence %d has no execvnodes, proceeding without assigned resources",
 							   __func__, j + 1);
 					}
 
@@ -1086,9 +1086,9 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 							parse_execvnode(occr_execvnodes_arr[j_adjusted], sinfo, nresv_copy->select);
 					} else {
 						nresv_copy->resv->orig_nspec_arr = {};
-						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV,
-							   LOG_DEBUG, nresv->name,
-							   "%s: occurence %d has no execvnodes, using empty vector",
+						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV,
+							   LOG_INFO, nresv->name,
+							   "%s: occurence %d has no execvnodes, proceeding without assigned resources",
 							   __func__, j + 1);
 					}
 
