@@ -734,6 +734,7 @@ pbsd_init(int type)
 	 */
 
 	remove_deleted_resvs();
+	degrade_corrupted_confirmed_resvs();
 	add_resv_beginEnd_tasks();
 
 	resv_timer_init();
