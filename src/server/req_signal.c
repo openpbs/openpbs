@@ -408,17 +408,15 @@ issue_signal_task(struct work_task *pwt)
 {
 	struct batch_request *newreq;
 	void *func;
-	char *jobid;
 	job *pjob;
 	int rc;
-
 
 	newreq = (struct batch_request *) pwt->wt_parm1;
 	func = pwt->wt_parm2;
 
 	pjob = find_job(newreq->rq_ind.rq_signal.rq_jid);
 	if (pjob) {
-		if (rc = relay_to_mom(pjob, newreq, func)) {
+		if ((rc = relay_to_mom(pjob, newreq, func)) != PBSE_NONE) {
 			sprintf(log_buffer, "Issue signal error (%d)", rc);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
 				pjob->ji_qs.ji_jobid, log_buffer);
