@@ -1627,19 +1627,27 @@ resend:
 				return;
 			}
 			/* 2nd try, use SIGTERM */
-			rc = issue_signal(pjob, sigt, post_delete_mom1, preq_clt);
-			if (rc == 0)
-				return; /* will be back when replies */
-			goto resend;
-		} else if (rc == PBSE_UNKJOBID) {
-
-			if (check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) {
-				/* This means the job has trigerred to run again,
-				 try deleting again! */
-				rc = issue_signal(pjob, sigtj, post_delete_mom1, preq_clt);
+			/* prevent infinite loop, try 10 times only */
+			if (preq_clt->rq_reply.brp_count < 10) {
+				preq_clt->rq_reply.brp_count++;
+				rc = delayed_issue_signal(pjob, sigt, post_delete_mom1, preq_clt, 5);
 				if (rc == 0)
 					return; /* will be back when replies */
 				goto resend;
+			}
+		} else if (rc == PBSE_UNKJOBID) {
+			if (check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) {
+				/* This means the job has trigerred to run again,
+				 try deleting again! */
+
+				/* prevent infinite loop, try 10 times only */
+				if (preq_clt->rq_reply.brp_count < 10) {
+					preq_clt->rq_reply.brp_count++;
+					rc = delayed_issue_signal(pjob, sigtj, post_delete_mom1, preq_clt, 5);
+					if (rc == 0)
+						return; /* will be back when replies */
+					goto resend;
+				}
 			}
 
 			/* MOM claims no knowledge, so just purge it */

@@ -1098,6 +1098,7 @@ extern int site_acl_check(job *, pbs_queue *);
 
 #ifdef _WORK_TASK_H
 extern int issue_signal(job *, char *, void (*)(struct work_task *), void *);
+extern int delayed_issue_signal(job *pjob, char *signame, void (*func)(struct work_task *), void *extra, int delay);
 extern void on_job_exit(struct work_task *);
 #endif /* _WORK_TASK_H */
 

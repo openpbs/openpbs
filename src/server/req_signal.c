@@ -87,6 +87,7 @@ int create_resreleased(job *pjob);
 extern char *msg_momreject;
 extern char *msg_signal_job;
 extern job *chk_job_request(char *, struct batch_request *, int *, int *);
+extern time_t time_now;
 
 /**
  * @brief
@@ -393,6 +394,76 @@ issue_signal(job *pjob, char *signame, void (*func)(struct work_task *), void *e
 	return (relay_to_mom(pjob, newreq, func));
 
 	/* when MOM replies, we just free the request structure */
+}
+
+/**
+ * @brief
+ * 		issue_signal_task - task to send signal to a job
+ *
+ * @param[in,out]	pwt	-	work_task which contains Signal Job Request and post function
+ */
+
+static void
+issue_signal_task(struct work_task *pwt)
+{
+	struct batch_request *newreq;
+	void *func;
+	char *jobid;
+	job *pjob;
+	int rc;
+
+
+	newreq = (struct batch_request *) pwt->wt_parm1;
+	func = pwt->wt_parm2;
+
+	pjob = find_job(newreq->rq_ind.rq_signal.rq_jid);
+	if (pjob) {
+		if (rc = relay_to_mom(pjob, newreq, func)) {
+			sprintf(log_buffer, "Issue signal error (%d)", rc);
+			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
+				pjob->ji_qs.ji_jobid, log_buffer);
+		}
+	}
+}
+
+/**
+ * @brief
+ * 		delayed_issue_signal - send an internally generated signal to a running job
+ *
+ * @param[in,out]	pjob	-	running job
+ * @param[in]	signame	-	name of the signal to send
+ * @param[in]	func	-	function pointer taking work_task structure as argument.
+ * @param[in]	extra	-	extra parameter to be stored in sig request
+ * @param[in]	delay	-	pointer to the nested batch_request (if any)
+ *
+ * @return	int
+ * @retval	0	- success
+ * @retval	non-zero	- error code
+ */
+
+int
+delayed_issue_signal(job *pjob, char *signame, void (*func)(struct work_task *), void *extra, int delay)
+{
+	struct work_task *pwt;
+	struct batch_request *newreq;
+
+	/* build up a Signal Job batch request */
+
+	if ((newreq = alloc_br(PBS_BATCH_SignalJob)) == NULL) {
+		log_err(PBSE_SYSTEM, __func__, "Failed to allocate batch request");
+		return PBSE_SYSTEM;
+	}
+
+	newreq->rq_extra = extra;
+
+	strcpy(newreq->rq_ind.rq_signal.rq_jid, pjob->ji_qs.ji_jobid);
+	strncpy(newreq->rq_ind.rq_signal.rq_signame, signame, PBS_SIGNAMESZ);
+
+	pwt = set_task(WORK_Timed, time_now + delay,
+		issue_signal_task, newreq);
+	pwt->wt_parm2 = func;
+
+	return PBSE_NONE;
 }
 
 /**
