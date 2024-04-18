@@ -837,7 +837,7 @@ tpp_transport_connect_spl(char *hostname, int delay, void *ctx, int *ret_tfd, vo
 	if (!conn->conn_params) {
 		tpp_log(LOG_CRIT, __func__, "Out of memory allocating connection params");
 		if (tpp_write_lock(&cons_array_lock))
-			return NULL;
+			return -1;
 		conns_array[fd].slot_state = TPP_SLOT_FREE;
 		conns_array[fd].conn = NULL;
 		tpp_unlock_rwlock(&cons_array_lock);
