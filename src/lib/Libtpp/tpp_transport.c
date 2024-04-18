@@ -154,7 +154,6 @@ static char tpp_instr_flag_file[_POSIX_PATH_MAX] = "/PBS/flags/tpp_instrumentati
 
 static thrd_data_t **thrd_pool; /* array of threads - holds the thread pool */
 static int num_threads;		/* number of threads in the thread pool */
-static int last_thrd = -1;	/* global index to rotate work amongst threads */
 static int max_con = MAX_CON;	/* nfiles */
 
 static struct tpp_config *tpp_conf; /* store a pointer to the tpp_config supplied */
@@ -836,7 +835,13 @@ tpp_transport_connect_spl(char *hostname, int delay, void *ctx, int *ret_tfd, vo
 
 	conn->conn_params = calloc(1, sizeof(conn_param_t));
 	if (!conn->conn_params) {
-		free(conn);
+		tpp_log(LOG_CRIT, __func__, "Out of memory allocating connection params");
+		if (tpp_write_lock(&cons_array_lock))
+			return NULL;
+		conns_array[fd].slot_state = TPP_SLOT_FREE;
+		conns_array[fd].conn = NULL;
+		tpp_unlock_rwlock(&cons_array_lock);
+		free_phy_conn(conn);
 		tpp_sock_close(fd);
 		free(host);
 		return -1;
@@ -1120,6 +1125,7 @@ assign_to_worker(int tfd, int delay, thrd_data_t *td)
 {
 	int slot_state;
 	phy_conn_t *conn;
+	int thrd_index = 0;
 
 	conn = get_transport_atomic(tfd, &slot_state);
 	if (conn == NULL || slot_state != TPP_SLOT_BUSY)
@@ -1129,20 +1135,13 @@ assign_to_worker(int tfd, int delay, thrd_data_t *td)
 		tpp_log(LOG_CRIT, __func__, "ERROR! tfd=%d conn_td=%p, conn_td_index=%d, thrd_td=%p, thrd_td_index=%d", tfd, conn->td, conn->td->thrd_index, td, td ? td->thrd_index : -1);
 
 	if (td == NULL) {
-		int iters = 0;
-
 		if (tpp_lock(&thrd_array_lock)) {
 			return 1;
 		}
 		/* find a thread index to assign to, since none provided */
-		do {
-			last_thrd++;
-			if (last_thrd >= num_threads) {
-				last_thrd = 0;
-				iters++;
-			}
-		} while (thrd_pool[last_thrd]->listen_fd != -1 && iters < 2);
-		conn->td = thrd_pool[last_thrd];
+		if (num_threads > 1)
+			thrd_index = 1 + (tfd % (num_threads - 1));
+		conn->td = thrd_pool[thrd_index];
 		tpp_unlock(&thrd_array_lock);
 	} else
 		conn->td = td;
@@ -1642,7 +1641,12 @@ work(void *v)
 			conn->conn_params = calloc(1, sizeof(conn_param_t));
 			if (!conn->conn_params) {
 				tpp_log(LOG_CRIT, __func__, "Out of memory allocating connection params");
-				free(conn);
+				if (tpp_write_lock(&cons_array_lock))
+					return NULL;
+				conns_array[newfd].slot_state = TPP_SLOT_FREE;
+				conns_array[newfd].conn = NULL;
+				tpp_unlock_rwlock(&cons_array_lock);
+				free_phy_conn(conn);
 				tpp_sock_close(newfd);
 				return NULL;
 			}
