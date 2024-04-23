@@ -432,7 +432,7 @@ issue_signal_task(struct work_task *pwt)
  * @param[in]	signame	-	name of the signal to send
  * @param[in]	func	-	function pointer taking work_task structure as argument.
  * @param[in]	extra	-	extra parameter to be stored in sig request
- * @param[in]	delay	-	pointer to the nested batch_request (if any)
+ * @param[in]	delay	-	the signal is sent after <delay> seconds
  *
  * @return	int
  * @retval	0	- success
