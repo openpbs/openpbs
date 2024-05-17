@@ -3884,6 +3884,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 	int num_run = 0;
 	int rc = 1;
 	int event_initialized = 0;
+	conn_t *conn = NULL;
+	char *hostname = NULL;
 
 	if (!svr_interp_data.interp_started) {
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
@@ -4038,7 +4040,12 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			num_run++;
 			continue;
 		}
-		rc = server_process_hooks(preq->rq_type, preq->rq_user, preq->rq_host, phook,
+		if (preq->rq_conn >= 0 && (conn = get_conn(preq->rq_conn)) != NULL) {
+			hostname = conn->cn_physhost;
+		} else {
+			hostname = preq->rq_host;
+		}
+		rc = server_process_hooks(preq->rq_type, preq->rq_user, hostname, phook,
 					  hook_event, pjob, &req_ptr, hook_msg, msg_len, pyinter_func,
 					  &num_run, &event_initialized);
 		pbs_python_ext_free_global_dict(phook->script);
