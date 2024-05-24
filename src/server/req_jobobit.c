@@ -1483,7 +1483,7 @@ job_obit(ruu *pruu, int stream)
 		local_exitstatus = get_jattr_long(pjob, JOB_ATR_exit_status);
 
 	if ((local_exitstatus == JOB_EXEC_HOOK_RERUN || local_exitstatus == JOB_EXEC_HOOK_DELETE) &&
-	    exitstatus != JOB_EXEC_FAILHOOK_RERUN && exitstatus != JOB_EXEC_FAILHOOK_DELETE && exitstatus < 0)
+	    exitstatus != JOB_EXEC_FAILHOOK_RERUN && exitstatus != JOB_EXEC_FAILHOOK_DELETE)
 		exitstatus = local_exitstatus;
 	else
 		set_jattr_l_slim(pjob, JOB_ATR_exit_status, exitstatus, SET);
