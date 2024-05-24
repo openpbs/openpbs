@@ -2769,6 +2769,13 @@ class NodeUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Taking vnode(s) offline' %
                    caller_name())
+        # Check the offline file is present and skip if the node
+        # is already offline (to reduce server traffic)
+        if os.path.isfile(self.offline_file):
+            pbs.logmsg(pbs.EVENT_DEBUG2,
+                       '%s: Offline file already exists, skipping' %
+                       caller_name())
+            return
         # Attempt to take vnodes that match this host offline
         # Assume vnode names resemble self.hostname[#]
         (vnode_comments, failure) = \
@@ -2804,11 +2811,6 @@ class NodeUtils(object):
         # is brought back online
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Offline file: %s' %
                    (caller_name(), self.offline_file))
-        if os.path.isfile(self.offline_file):
-            pbs.logmsg(pbs.EVENT_DEBUG2,
-                       '%s: Offline file already exists, not overwriting' %
-                       caller_name())
-            return
         try:
             # Write a timestamp so that exechost_periodic can avoid
             # cleaning up before this event has sent updates to server
