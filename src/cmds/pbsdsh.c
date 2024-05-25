@@ -187,7 +187,7 @@ int find_hostline(char *host)
         char line[HOST_NAME_MAX], *cp;
         int i, host_hit=0;
         for (i = 0; (cp = fgets(line, sizeof(line), fp)) != NULL; i++) {
-                if (host_hit=host_match(line, host))
+                if ((host_hit=host_match(line, host))==1)
                         break;
         }
         fclose(fp);
