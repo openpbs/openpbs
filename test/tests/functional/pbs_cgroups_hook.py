@@ -2951,10 +2951,19 @@ if %s e.job.in_ms_mom():
         bs = {'job_state': 'F'}
         self.server.expect(JOB, bs, jid, extend='x', offset=1)
 
-        # since the job delete action was purposefully bent out of shape,
-        # node state might stay busy for some time
-        # retry until it works -- this is for the sanity of the next
-        # test
+        if not confirmed_frozen:
+            self.cgroup_recreate_nodes()
+            self.skipTest('Could not confirm freeze/thaw worked')
+
+        return passed
+
+    def cgroup_recreate_nodes(self):
+        """
+        Since the job delete action was purposefully bent out of shape,
+        node state might stay busy for some time
+        retry until it works -- this is for the sanity of the next
+        test
+        """
         for count in range(30):
             try:
                 self.server.manager(MGR_CMD_DELETE, NODE, None, "")
@@ -2974,10 +2983,20 @@ if %s e.job.in_ms_mom():
             self.server.expect(NODE, {'state': 'free'},
                                id=host, interval=3)
 
-        if not confirmed_frozen:
-            self.skipTest('Could not confirm freeze/thaw worked')
-
-        return passed
+    def test_cgroup_offline_node_preserve_comment(self):
+        """
+        Test to verify that offlined node that is bring back online
+        preserves custom comment.
+        """
+        a = {'comment': "foo bar"}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.hosts_list[0])
+        name = 'CGROUP7.1'
+        vn_per_numa = 'false'
+        rv = self.cgroup_offline_node(name, vn_per_numa)
+        self.assertTrue(rv)
+        a = {'comment': "foo bar"}
+        self.server.expect(NODE, a, id=self.hosts_list[0])
+        self.cgroup_recreate_nodes()
 
     def test_cgroup_offline_node(self):
         """
@@ -2989,6 +3008,7 @@ if %s e.job.in_ms_mom():
         vn_per_numa = 'false'
         rv = self.cgroup_offline_node(name, vn_per_numa)
         self.assertTrue(rv)
+        self.cgroup_recreate_nodes()
 
     def test_cgroup_offline_node_vnpernuma(self):
         """
@@ -3004,6 +3024,7 @@ if %s e.job.in_ms_mom():
         vn_per_numa = 'true'
         rv = self.cgroup_offline_node(name, vn_per_numa)
         self.assertTrue(rv)
+        self.cgroup_recreate_nodes()
 
     @requirements(num_moms=2)
     def test_cgroup_cpuset_host_excluded(self):

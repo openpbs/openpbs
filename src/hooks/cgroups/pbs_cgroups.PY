@@ -2769,14 +2769,37 @@ class NodeUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Taking vnode(s) offline' %
                    caller_name())
+        # Check the offline file is present and skip if the node
+        # is already offline (to reduce server traffic)
+        if os.path.isfile(self.offline_file):
+            pbs.logmsg(pbs.EVENT_DEBUG2,
+                       '%s: Offline file already exists, skipping' %
+                       caller_name())
+            return
         # Attempt to take vnodes that match this host offline
         # Assume vnode names resemble self.hostname[#]
+        (vnode_comments, failure) = \
+            fetch_vnode_comments(pbs.event().vnode_list.keys(),
+                                 timeout=self.cfg['server_timeout'])
+        if failure:
+            pbs.logmsg(pbs.EVENT_ERROR,
+                       '%s: Failed contacting server for vnode comments'
+                       % caller_name())
+            pbs.logmsg(pbs.EVENT_ERROR, '%s: Not bringing vnodes offline'
+                       % caller_name())
+            return
         match_found = False
         for vnode_name in pbs.event().vnode_list:
             if (vnode_name == self.hostname or
                     re.match(self.hostname + r'\[.*\]', vnode_name)):
                 pbs.event().vnode_list[vnode_name].state = pbs.ND_OFFLINE
-                pbs.event().vnode_list[vnode_name].comment = self.offline_msg
+                vnode_comment = vnode_comments[vnode_name]
+                if vnode_comment:
+                    if not self.offline_msg in vnode_comment:
+                        vnode_comment += " " + self.offline_msg
+                else:
+                    vnode_comment = self.offline_msg
+                pbs.event().vnode_list[vnode_name].comment = vnode_comment
                 pbs.logmsg(pbs.EVENT_DEBUG2, '%s: %s; offlining %s' %
                            (caller_name(), self.offline_msg, vnode_name))
                 match_found = True
@@ -2788,11 +2811,6 @@ class NodeUtils(object):
         # is brought back online
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Offline file: %s' %
                    (caller_name(), self.offline_file))
-        if os.path.isfile(self.offline_file):
-            pbs.logmsg(pbs.EVENT_DEBUG2,
-                       '%s: Offline file already exists, not overwriting' %
-                       caller_name())
-            return
         try:
             # Write a timestamp so that exechost_periodic can avoid
             # cleaning up before this event has sent updates to server
@@ -2845,14 +2863,18 @@ class NodeUtils(object):
             return
         # Bring vnodes online that this hook has taken offline
         for vnode_name in vnode_comments:
-            if vnode_comments[vnode_name] != self.offline_msg:
+            if not self.offline_msg in vnode_comments[vnode_name]:
                 pbs.logmsg(pbs.EVENT_DEBUG, ('%s: Comment for vnode %s '
                                              + 'was not set by this hook')
                            % (caller_name(), vnode_name))
                 continue
             vnode = pbs.event().vnode_list[vnode_name]
             vnode.state = pbs.ND_FREE
-            vnode.comment = None
+            vnode_comment = vnode_comments[vnode_name]\
+                .replace(self.offline_msg, "").strip()
+            if len(vnode_comment) == 0:
+                vnode_comment = None
+            vnode.comment = vnode_comment
             pbs.logmsg(pbs.EVENT_DEBUG,
                        '%s: Vnode %s will be brought back online' %
                        (caller_name(), vnode_name))
