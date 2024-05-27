@@ -108,6 +108,7 @@ extern void unset_job_history_duration(void);
 extern void unset_max_job_sequence_id(void);
 extern void force_qsub_daemons_update(void);
 extern void unset_node_fail_requeue(void);
+extern void unset_resend_term_delay(void);
 extern pbs_sched *sched_alloc(char *sched_name);
 extern void sched_free(pbs_sched *psched);
 extern int sched_delete(pbs_sched *psched);
@@ -1483,6 +1484,9 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 		} else if (strcasecmp(plist->al_name,
 				      ATTR_nodefailrq) == 0) {
 			unset_node_fail_requeue();
+		} else if (strcasecmp(plist->al_name,
+				      ATTR_resendtermdelay) == 0) {
+			unset_resend_term_delay();
 		} else if (strcasecmp(plist->al_name,
 				      ATTR_jobscript_max_size) == 0) {
 			unset_jobscript_max_size();

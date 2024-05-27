@@ -220,6 +220,9 @@ init_server_attrs()
 	set_sattr_l_slim(SVR_ATR_NodeFailReq, PBS_NODE_FAIL_REQUEUE_DEFAULT, SET);
 	(get_sattr(SVR_ATR_NodeFailReq))->at_flags |= ATR_VFLAG_DEFLT;
 
+	set_sattr_l_slim(SVR_ATR_ResendTermDelay, PBS_RESEND_TERM_DELAY_DEFAULT, SET);
+	(get_sattr(SVR_ATR_ResendTermDelay))->at_flags |= ATR_VFLAG_DEFLT;
+
 	set_sattr_l_slim(SVR_ATR_maxarraysize, PBS_MAX_ARRAY_JOB_DFL, SET);
 	(get_sattr(SVR_ATR_maxarraysize))->at_flags |= ATR_VFLAG_DEFLT;
 

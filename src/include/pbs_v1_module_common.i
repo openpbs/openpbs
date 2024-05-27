@@ -342,6 +342,16 @@ unset_node_fail_requeue(void) {
 }
 
 int
+set_resend_term_delay(attribute *pattr, void *pobject, int actmode) {
+	return (PBSE_NONE);
+}
+
+void
+unset_resend_term_delay(void) {
+	return;
+}
+
+int
 action_node_partition(attribute *pattr, void *pobject, int actmode) {
 	return (PBSE_NONE);
 }

@@ -146,6 +146,11 @@ long long svr_max_job_sequence_id = SVR_MAX_JOB_SEQ_NUM_DEFAULT; /* default max 
 long node_fail_requeue = PBS_NODE_FAIL_REQUEUE_DEFAULT; /* default value for node_fail_requeue 310 */
 
 /*
+ * Added for resend_term_delay
+ */
+long resend_term_delay = PBS_RESEND_TERM_DELAY_DEFAULT; /* default value for resend_term_delay 5 */
+
+/*
  * Added for jobscript_max_size
  */
 struct attribute attr_jobscript_max_size; /* to store default size value for jobscript_max_size */
@@ -956,6 +961,73 @@ unset_node_fail_requeue(void)
 	sprintf(log_buffer,
 		"node_fail_requeue reverting back to default val %ld",
 		node_fail_requeue);
+	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+		  LOG_NOTICE, msg_daemonname, log_buffer);
+}
+
+/*
+ *
+ * @brief
+ *	Set resend_term_delay attribute.
+ *
+ * @par Functionality:
+ *	This function sets the resend_term_delay server attribute.
+ *	resend_term_delay can not be < 0 and > 1800.
+ *
+ * @param[in]	pattr	-	ptr to attribute
+ * @param[in]	pobject	-	pointer to some parent object.(required but unused here)
+ * @param[in]	actmode	-	the action to take (e.g. ATR_ACTION_ALTER)
+ *
+ * @return	int
+ * @retval	PBSE_NONE
+ *
+ */
+int
+set_resend_term_delay(attribute *pattr, void *pobject, int actmode)
+{
+	if (actmode == ATR_ACTION_FREE)
+		return (PBSE_NONE);
+
+	if ((actmode == ATR_ACTION_ALTER) ||
+	    (actmode == ATR_ACTION_RECOV)) {
+
+		if (pattr->at_val.at_long >= 0 && pattr->at_val.at_long <= 1800) {
+			resend_term_delay = pattr->at_val.at_long;
+		} else {
+			return (PBSE_BADATVAL);
+		}
+		sprintf(log_buffer,
+			"resend_term_delay value changed to %ld",
+			resend_term_delay);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			  LOG_NOTICE, msg_daemonname, log_buffer);
+	}
+
+	return (PBSE_NONE);
+}
+
+/*
+ *
+ * @brief
+ *	Unset resend_term_delay attribute.
+ *
+ * @par Functionality:
+ *	This function unsets the resend_term_delay server attribute
+ *	by reverting it back to it's default value.
+ *
+ * @param[in]	void
+ *
+ * @return	void
+ *
+ */
+void
+unset_resend_term_delay(void)
+{
+	resend_term_delay = PBS_RESEND_TERM_DELAY_DEFAULT;
+
+	sprintf(log_buffer,
+		"resend_term_delay reverting back to default val %ld",
+		resend_term_delay);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 		  LOG_NOTICE, msg_daemonname, log_buffer);
 }
