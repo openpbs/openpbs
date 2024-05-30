@@ -936,7 +936,9 @@ svr_startjob(job *pjob, struct batch_request *preq)
 			return (PBSE_SYSTEM);
 
 	/* clear Exit_status which may have been set in a hook and requeued */
-	clear_attr(get_jattr(pjob, JOB_ATR_exit_status), &job_attr_def[(int) JOB_ATR_exit_status]);
+	if (job_delete_attr(pjob, JOB_ATR_exit_status)) {
+		return PBSE_SYSTEM;
+	}
 
 	/* if exec_vnode already set and either (hotstart or checkpoint) */
 	/* then reuseuse the host(s) listed in the current exec_vnode	 */

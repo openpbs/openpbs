@@ -121,7 +121,7 @@ db_prepare_job_sqls(void *conn)
 
 	snprintf(conn_sql, MAX_SQL_LENGTH, "update pbs.job set "
 					   "ji_savetm = localtimestamp,"
-					   "attributes = attributes - hstore($2::text[]) "
+					   "attributes = attributes - $2::text[] "
 					   "where ji_jobid = $1");
 	if (db_prepare_stmt(conn, STMT_REMOVE_JOBATTRS, conn_sql, 2) != 0)
 		return -1;

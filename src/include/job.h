@@ -995,6 +995,7 @@ extern char *lookup_variable(void *, int, char *);
 extern void issue_track(job *);
 extern void issue_delete(job *);
 extern int job_abt(job *, char *);
+extern int job_delete_attr(job *, int);
 extern job *job_alloc(void);
 extern void job_free(job *);
 extern int modify_job_attr(job *, svrattrl *, int, int *);
