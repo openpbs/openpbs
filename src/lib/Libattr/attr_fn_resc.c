@@ -126,6 +126,11 @@ decode_resc(attribute *patr, char *name, char *rescn, char *val)
 	if (!(patr->at_flags & ATR_VFLAG_SET))
 		CLEAR_HEAD(patr->at_val.at_list);
 
+	/* check the resource name is not nasty e.g.: from user input */
+	if (verify_resc_name(rescn)) {
+		return (PBSE_BADATVAL);
+	}
+
 	prdef = find_resc_def(svr_resc_def, rescn);
 	if (prdef == NULL) {
 		/*
