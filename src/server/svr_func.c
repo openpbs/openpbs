@@ -146,11 +146,6 @@ long long svr_max_job_sequence_id = SVR_MAX_JOB_SEQ_NUM_DEFAULT; /* default max 
 long node_fail_requeue = PBS_NODE_FAIL_REQUEUE_DEFAULT; /* default value for node_fail_requeue 310 */
 
 /*
- * Added for resend_term_delay
- */
-long resend_term_delay = PBS_RESEND_TERM_DELAY_DEFAULT; /* default value for resend_term_delay 5 */
-
-/*
  * Added for jobscript_max_size
  */
 struct attribute attr_jobscript_max_size; /* to store default size value for jobscript_max_size */
@@ -992,15 +987,13 @@ set_resend_term_delay(attribute *pattr, void *pobject, int actmode)
 	    (actmode == ATR_ACTION_RECOV)) {
 
 		if (pattr->at_val.at_long >= 0 && pattr->at_val.at_long <= 1800) {
-			resend_term_delay = pattr->at_val.at_long;
+			set_sattr_l_slim(SVR_ATR_ResendTermDelay, pattr->at_val.at_long, SET);
 		} else {
 			return (PBSE_BADATVAL);
 		}
-		sprintf(log_buffer,
-			"resend_term_delay value changed to %ld",
-			resend_term_delay);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			  LOG_NOTICE, msg_daemonname, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_NOTICE, msg_daemonname, "resend_term_delay value changed to %ld",
+			pattr->at_val.at_long);
 	}
 
 	return (PBSE_NONE);
@@ -1023,13 +1016,12 @@ set_resend_term_delay(attribute *pattr, void *pobject, int actmode)
 void
 unset_resend_term_delay(void)
 {
-	resend_term_delay = PBS_RESEND_TERM_DELAY_DEFAULT;
-
-	sprintf(log_buffer,
+	set_sattr_l_slim(SVR_ATR_ResendTermDelay,
+		PBS_RESEND_TERM_DELAY_DEFAULT, SET);
+	log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+		LOG_NOTICE, msg_daemonname,
 		"resend_term_delay reverting back to default val %ld",
-		resend_term_delay);
-	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-		  LOG_NOTICE, msg_daemonname, log_buffer);
+		PBS_RESEND_TERM_DELAY_DEFAULT);
 }
 
 /**

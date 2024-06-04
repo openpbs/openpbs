@@ -95,7 +95,6 @@ extern char *msg_also_deleted_job_history;
 extern char *msg_err_malloc;
 extern struct server server;
 extern time_t time_now;
-extern long resend_term_delay;
 
 /* External functions */
 
@@ -1631,7 +1630,8 @@ resend:
 			/* prevent infinite loop, try 10 times only */
 			if (preq_clt->rq_reply.brp_count < 10) {
 				preq_clt->rq_reply.brp_count++;
-				rc = delayed_issue_signal(pjob, sigt, post_delete_mom1, preq_clt, resend_term_delay);
+				rc = delayed_issue_signal(pjob, sigt, post_delete_mom1,
+					preq_clt, get_sattr_long(SVR_ATR_ResendTermDelay));
 				if (rc == 0)
 					return; /* will be back when replies */
 				goto resend;
@@ -1644,7 +1644,8 @@ resend:
 				/* prevent infinite loop, try 10 times only */
 				if (preq_clt->rq_reply.brp_count < 10) {
 					preq_clt->rq_reply.brp_count++;
-					rc = delayed_issue_signal(pjob, sigtj, post_delete_mom1, preq_clt, resend_term_delay);
+					rc = delayed_issue_signal(pjob, sigtj, post_delete_mom1,
+						preq_clt, get_sattr_long(SVR_ATR_ResendTermDelay));
 					if (rc == 0)
 						return; /* will be back when replies */
 					goto resend;
