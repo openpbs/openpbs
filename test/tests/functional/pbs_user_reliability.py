@@ -48,6 +48,15 @@ class Test_user_reliability(TestFunctional):
     This test suite is for testing the user reliability workflow feature.
     """
 
+    def setUp(self):
+        TestFunctional.setUp(self)
+        if len(self.moms) > 1:
+            self.fakeuser = 'fakeuser'
+            momB = self.moms.values()[1]
+            cmd = ['useradd', '-d', '/tmp', self.fakeuser]
+            ret = self.du.run_cmd(momB.hostname, cmd=cmd, sudo=True)
+            self.assertTrue(ret['rc'] in [0, 9])  # 9 is already existing user
+
     def test_create_resv_from_job_using_runjob_hook(self):
         """
         This test is for creating a reservation out of a job using runjob hook.
@@ -265,3 +274,57 @@ j.create_resv_from_job=1
         msg = "qalter: Cannot modify attribute while job running  "
         msg += "create_resv_from_job"
         self.assertIn(msg, c.exception.msg[0])
+
+    @requirements(num_moms=2)
+    def test_validate_user_allow(self):
+        """
+        This test that non-valid user can submit a job if
+        validate_user is disabled. Mom will report the problem.
+        """
+        self.logger.info("len moms = %d" % (len(self.moms)))
+        if len(self.moms) < 2:
+            usage_string = 'test requires 2 MoMs as input, ' + \
+                           'use -p "servers=M1,moms=M1:M2"'
+            self.skip_test(usage_string)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'validate_user': False})
+
+        momA = self.moms.values()[0]
+        momB = self.moms.values()[1]
+
+        qsub_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                'bin', 'qsub')
+        select = f'-l select=1:host={momA.hostname}'
+        cmd = [qsub_cmd, select, '--', momB.sleep_cmd, '100']
+        ret = self.du.run_cmd(momB.hostname, cmd=cmd, runas=self.fakeuser)
+        self.assertEquals(ret['rc'], 0)
+        momA.log_match("No Password Entry for User")
+
+    @requirements(num_moms=2)
+    def test_validate_user_deny(self):
+        """
+        This test that non-valid user can not submit a job if
+        validate_user is enabled on the server.
+        """
+        self.logger.info("len moms = %d" % (len(self.moms)))
+        if len(self.moms) < 2:
+            usage_string = 'test requires 2 MoMs as input, ' + \
+                           'use -p "servers=M1,moms=M1:M2"'
+            self.skip_test(usage_string)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'validate_user': True})
+
+        momB = self.moms.values()[1]
+
+        qsub_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                'bin', 'qsub')
+        cmd = [qsub_cmd, '--', momB.sleep_cmd, '100']
+        ret = self.du.run_cmd(momB.hostname, cmd=cmd, runas=self.fakeuser)
+        self.assertEquals(ret['err'][0], "qsub: Unauthorized Request ")
+
+    def tearDown(self):
+        if self.fakeuser is not None and len(self.moms) > 1:
+            momB = self.moms.values()[1]
+            cmd = ['userdel', '-f', self.fakeuser]
+            self.du.run_cmd(momB.hostname, cmd=cmd, sudo=True)
+        TestFunctional.tearDown(self)

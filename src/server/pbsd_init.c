@@ -250,6 +250,7 @@ init_server_attrs()
 	set_sattr_l_slim(SVR_ATR_has_runjob_hook, 0, SET);
 	set_sattr_l_slim(SVR_ATR_log_events, SVR_LOG_DFLT, SET);
 	*log_event_mask = get_sattr_long(SVR_ATR_log_events);
+	set_sattr_l_slim(SVR_ATR_ValidUser, 0, SET);
 	set_sattr_str_slim(SVR_ATR_mailer, SENDMAIL_CMD, NULL);
 	set_sattr_str_slim(SVR_ATR_mailfrom, PBS_DEFAULT_MAIL, NULL);
 	set_sattr_l_slim(SVR_ATR_query_others, 1, SET);

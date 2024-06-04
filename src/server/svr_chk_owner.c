@@ -68,6 +68,7 @@
 #include "net_connect.h"
 
 #include <unistd.h>
+#include <pwd.h>
 
 #include "job.h"
 #include "reservation.h"
@@ -116,6 +117,18 @@ svr_chk_owner(struct batch_request *preq, job *pjob)
 	extern int ruserok(const char *rhost, int suser, const char *ruser,
 			   const char *luser);
 
+	/*
+	 * Get job owner name without "@host"
+	 */
+	get_jobowner(get_jattr_str(pjob, JOB_ATR_job_owner), owner);
+
+	/* check the user's account is valid on the server */
+	if (get_sattr_long(SVR_ATR_ValidUser)) {
+		if (getpwnam(owner) == NULL) {
+			return -1;
+		}
+	}
+
 	/* Are the owner and requestor the same? */
 	snprintf(rmtuser, sizeof(rmtuser), "%s", get_jattr_str(pjob, JOB_ATR_job_owner));
 	pu = rmtuser;
@@ -140,10 +153,8 @@ svr_chk_owner(struct batch_request *preq, job *pjob)
 	(void) strncpy(rmtuser, pu, PBS_MAXUSER);
 
 	/*
-	 * Get job owner name without "@host" and then map to "local" name.
+	 * map to "local" name.
 	 */
-
-	get_jobowner(get_jattr_str(pjob, JOB_ATR_job_owner), owner);
 	pu = site_map_user(owner, get_hostPart(get_jattr_str(pjob, JOB_ATR_job_owner)));
 
 	if (get_sattr_long(SVR_ATR_FlatUID)) {
@@ -543,6 +554,15 @@ svr_chk_ownerResv(struct batch_request *preq, resc_resv *presv)
 	char *pu;
 	char rmtuser[PBS_MAXUSER + 1];
 
+	get_jobowner(get_rattr_str(presv, RESV_ATR_resv_owner), owner);
+
+	/* check the user's account is valid on the server */
+	if (get_sattr_long(SVR_ATR_ValidUser)) {
+		if (getpwnam(owner) == NULL) {
+			return -1;
+		}
+	}
+
 	/* map user@host to "local" name */
 
 	pu = site_map_user(preq->rq_user, preq->rq_host);
@@ -550,7 +570,6 @@ svr_chk_ownerResv(struct batch_request *preq, resc_resv *presv)
 		return (-1);
 	(void) strncpy(rmtuser, pu, PBS_MAXUSER);
 
-	get_jobowner(get_rattr_str(presv, RESV_ATR_resv_owner), owner);
 	host = get_hostPart(get_rattr_str(presv, RESV_ATR_resv_owner));
 	pu = site_map_user(owner, host);
 

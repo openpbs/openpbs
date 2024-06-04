@@ -287,6 +287,7 @@ extern "C" {
 #define ATTR_status "server_state"
 #define ATTR_syscost "system_cost"
 #define ATTR_FlatUID "flatuid"
+#define ATTR_valid_user "validate_user"
 #define ATTR_ResvEnable "resv_enable"
 #define ATTR_aclResvgren "acl_resv_group_enable"
 #define ATTR_aclResvgroup "acl_resv_groups"
