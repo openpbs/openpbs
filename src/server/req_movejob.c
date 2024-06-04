@@ -196,6 +196,8 @@ req_orderjob(struct batch_request *req)
 	long long rank;
 	int rc;
 	char tmpqn[PBS_MAXQUEUENAME + 1];
+	conn_t *conn = NULL;
+	char *physhost = NULL;
 
 	if ((pjob1 = chk_job_request(req->rq_ind.rq_move.rq_jid, req, &jt1, NULL)) == NULL)
 		return;
@@ -223,10 +225,18 @@ req_orderjob(struct batch_request *req)
 
 		/* Jobs are in different queues */
 
-		if ((rc = svr_chkque(pjob1, pjob2->ji_qhdr, get_jattr_str(pjob1, JOB_ATR_submit_host),
+		conn = get_conn(req->rq_conn);
+		if (conn) {
+			physhost = conn->cn_physhost;
+		}
+
+		if ((rc = svr_chkque(pjob1, pjob2->ji_qhdr,
+				     get_jattr_str(pjob1, JOB_ATR_submit_host),
+				     physhost,
 				     MOVE_TYPE_Order)) ||
 		    (rc = svr_chkque(pjob2, pjob1->ji_qhdr,
 				     get_jattr_str(pjob2, JOB_ATR_submit_host),
+				     physhost,
 				     MOVE_TYPE_Order))) {
 			req_reject(rc, 0, req);
 			return;

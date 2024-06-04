@@ -303,6 +303,7 @@ req_quejob(struct batch_request *preq)
 	resource_def *prdefplc;
 	resource *presc;
 	conn_t *conn = NULL;
+	char *physhost = NULL;
 #else
 	mom_hook_input_t hook_input;
 	mom_hook_output_t hook_output;
@@ -968,6 +969,10 @@ req_quejob(struct batch_request *preq)
 		}
 	}
 
+	if (conn) {
+		physhost = conn->cn_physhost;
+	}
+
 	/*
 	 * See if the job is qualified to go into the requested queue.
 	 * Note, if an execution queue, then ji_qs.ji_un.ji_exect is set up
@@ -976,7 +981,7 @@ req_quejob(struct batch_request *preq)
 	 * job structure and attributes already set up.
 	 */
 
-	rc = svr_chkque(pj, pque, get_jattr_str(pj, JOB_ATR_submit_host), MOVE_TYPE_Move);
+	rc = svr_chkque(pj, pque, get_jattr_str(pj, JOB_ATR_submit_host), physhost, MOVE_TYPE_Move);
 	if (rc) {
 		if (pj->ji_clterrmsg)
 			reply_text(preq, rc, pj->ji_clterrmsg);

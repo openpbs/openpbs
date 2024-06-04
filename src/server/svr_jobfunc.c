@@ -1067,7 +1067,8 @@ chk_resc_limits(attribute *pattr, pbs_queue *pque)
  * 		set_objexid() will be called to set a uid/gid/name if not already set
  *
  * @param[in]	pjob	-	job structure
- * @param[in]	hostname	-	host machine
+ * @param[in]	submithost	-	job's submit machine
+ * @param[in]	hostname	-	host machine issued this check
  * @param[in]	mtype	-	MOVE_TYPE_* type;  see server_limits.h
  *
  * @return	int
@@ -1076,7 +1077,7 @@ chk_resc_limits(attribute *pattr, pbs_queue *pque)
  */
 
 int
-svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
+svr_chkque(job *pjob, pbs_queue *pque, char *submithost, char *hostname, int mtype)
 {
 	int i;
 
@@ -1157,8 +1158,10 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 	/* 4. If enabled, check the queue's host ACL */
 
 	if (get_qattr_long(pque, QA_ATR_AclHostEnabled))
-		if (acl_check(get_qattr(pque, QA_ATR_AclHost),
-			      hostname, ACL_Host) == 0)
+		if ((acl_check(get_qattr(pque, QA_ATR_AclHost),
+			      submithost, ACL_Host) == 0) &&
+			(acl_check(get_qattr(pque, QA_ATR_AclHost),
+			      hostname, ACL_Host) == 0))
 			if (mtype != MOVE_TYPE_MgrMv) /* ok if mgr */
 				return (PBSE_BADHOST);
 
