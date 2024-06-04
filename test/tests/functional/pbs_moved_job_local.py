@@ -51,20 +51,21 @@ class TestMovedJobLocal(TestFunctional):
         This test suite verifies that job can be moved
         into queue with acl_host_enabled.
         """
+        queue = 'testq'
         a = {'queue_type': 'Execution',
              'enabled': 'True',
              'started': 'True',
              'acl_host_enable': 'True',
              'acl_hosts': self.servers.keys()[0]}
-        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='testq')
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id=queue)
         a = {'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER)
         jid = self.server.submit(j)
-        self.server.movejob(jid, 'testq', runas=TEST_USER)
+        self.server.movejob(jid, queue, runas=TEST_USER)
         a = {'scheduling': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
-        self.server.expect(JOB, {ATTR_queue: 'testq', 'job_state': 'R'},
+        self.server.expect(JOB, {ATTR_queue: queue, 'job_state': 'R'},
                            attrop=PTL_AND)
 
     def test_moved_job_acl_hosts_denial(self):
@@ -72,17 +73,18 @@ class TestMovedJobLocal(TestFunctional):
         This test suite verifies that job can not be moved
         into queue with acl_host_enabled without the right hostname.
         """
+        queue = 'testq'
         a = {'queue_type': 'Execution',
              'enabled': 'True',
              'started': 'True',
              'acl_host_enable': 'True',
              'acl_hosts': 'foo'}
-        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='testq')
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id=queue)
         a = {'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         err = "Access from host not allowed, or unknown host " + jid
         with self.assertRaises(PbsMoveError) as e:
-            self.server.movejob(jid, 'testq', runas=TEST_USER)
+            self.server.movejob(jid, queue, runas=TEST_USER)
         self.assertIn(err, e.exception.msg[0])
