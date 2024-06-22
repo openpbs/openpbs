@@ -537,6 +537,7 @@ void
 open_server_conns(void)
 {
 	sigset_t prevsigs;
+	sigset_t tmpsigs;
 
 	while (1) {
 		sigemptyset(&prevsigs);
@@ -568,11 +569,19 @@ open_server_conns(void)
 		break;
 
 	unmask_continue:
-		if (sigprocmask(SIG_SETMASK, &prevsigs, NULL) == -1)
+		tmpsigs = prevsigs;
+		/* allow blocked signals while waiting for connection */
+		for (auto &sig : sigstoblock) {
+			sigdelset(&tmpsigs, sig);
+		}
+
+		if (sigprocmask(SIG_SETMASK, &tmpsigs, NULL) == -1)
 			log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 
 		/* wait for 2s for not to burn too much CPU, and then retry connection */
 		sleep(2);
+		if (sigprocmask(SIG_SETMASK, &prevsigs, NULL) == -1)
+			log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 		continue;
 	}
 	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED,
