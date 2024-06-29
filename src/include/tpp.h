@@ -131,6 +131,8 @@ extern int tpp_eom(int);
 extern int tpp_bind(unsigned int);
 extern int tpp_poll(void);
 extern void tpp_terminate(void);
+extern void tpp_atfork_prepare(void);
+extern void tpp_atfork_parent(void);
 extern void tpp_shutdown(void);
 extern struct sockaddr_in *tpp_getaddr(int);
 extern void tpp_add_close_func(int, void (*func)(int));
