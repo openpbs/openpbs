@@ -2546,6 +2546,8 @@ class NodeUtils(object):
         vnode_msg_cpu = '%s: vnode_list[%s].resources_available[ncpus] = %d'
         vnode_msg_mem = '%s: vnode_list[%s].resources_available[mem] = %s'
 
+        host_resc_avail['diag_messages'] = ''
+
         if not vnodes:
             # memory (global for host)
             mem = self.get_memory_on_node(ignore_reserved=False)
@@ -3040,6 +3042,33 @@ class CgroupUtils(object):
             # tough luck for user, but not fatal to system
             # Note: sometimes normal (e.g. interactive jobs)
             pass
+
+    def set_diag_messages(self, resc_used, msg, concate):
+        """
+        Sets the 'diag_messages' resource to msg. A json format of msg
+        is required in order to merge msgs from sis moms and primary mom.
+        Settting concate=true concates multiple string values of the
+        same dict key into one.
+        """
+        try:
+            json_msg = json.loads(msg)
+        except Exception:
+            json_msg = {}
+        if 'diag_messages' not in resc_used.keys():
+            resc_used['diag_messages'] = json.dumps(json_msg)
+        elif concate:
+            try:
+                json_resc = json.loads(resc_used['diag_messages'])
+            except Exception:
+                json_resc = {}
+            for k in json_msg.keys():
+                if k in json_resc.keys() and not json_msg[k] in json_resc[k]:
+                    json_resc[k] += ', %s' % json_msg[k]
+                else:
+                    json_resc[k] = json_msg[k]
+            resc_used['diag_messages'] = json.dumps(json_resc)
+        else:
+            resc_used['diag_messages'] = json.dumps(json_msg)
 
     def _target_subsystems(self):
         """
@@ -4932,6 +4961,11 @@ class CgroupUtils(object):
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Job %s is not running' %
                        (caller_name(), jobid))
             return
+        if pbs.event().type == pbs.EXECHOST_PERIODIC or \
+           pbs.event().type == pbs.EXECJOB_EPILOGUE:
+            # Initialize diag_messages in order to be able
+            # to merge msgs only from sisters
+            self.set_diag_messages(resc_used, '{}', True)
         # Sort the subsystems so that we consistently look at the subsystems
         # in the same order every time
         self.subsystems.sort()
@@ -4960,6 +4994,13 @@ class CgroupUtils(object):
                             self.write_to_stderr(pbs.event().job,
                                                  "Cgroup mem limit "
                                                  "exceeded: %s\n" % (err_msg))
+                        if pbs.event().type == pbs.EXECHOST_PERIODIC or \
+                           pbs.event().type == pbs.EXECJOB_EPILOGUE:
+                            self.set_diag_messages(resc_used, '{"%s":'
+                                                   '"Cgroup mem limit '
+                                                   'exceeded"}'
+                                                   % pbs.get_local_nodename(),
+                                                   True)
             elif subsys == 'memsw':
                 max_vmem = self._get_max_memsw_usage(jobid)
                 if max_vmem is None:
@@ -4986,6 +5027,13 @@ class CgroupUtils(object):
                             self.write_to_stderr(pbs.event().job,
                                                  "Cgroup memsw limit "
                                                  "exceeded: %s" % (err_msg))
+                        if pbs.event().type == pbs.EXECHOST_PERIODIC or \
+                           pbs.event().type == pbs.EXECJOB_EPILOGUE:
+                            self.set_diag_messages(resc_used, '{"%s":'
+                                                   '"Cgroup memsw limit '
+                                                   'exceeded"}'
+                                                   % pbs.get_local_nodename(),
+                                                   True)
             elif subsys == 'hugetlb':
                 max_hpmem = self._get_max_hugetlb_usage(jobid)
                 if max_hpmem is None:
@@ -5006,6 +5054,13 @@ class CgroupUtils(object):
                         self.write_to_stderr(pbs.event().job,
                                              "Cgroup hugetlb limit "
                                              "exceeded: %s" % (err_msg))
+                    if pbs.event().type == pbs.EXECHOST_PERIODIC or \
+                       pbs.event().type == pbs.EXECJOB_EPILOGUE:
+                        self.set_diag_messages(resc_used, '{"%s":'
+                                               '"Cgroup hugetlb limit '
+                                               'exceeded"}'
+                                               % pbs.get_local_nodename(),
+                                               True)
                 resc_used['hpmem'] = pbs.size(convert_size(max_hpmem, 'kb'))
                 pbs.logjobmsg(jobid, '%s: Hugepage usage: %s' %
                               (caller_name(), resc_used['hpmem']))
