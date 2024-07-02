@@ -1023,6 +1023,23 @@
       </member_verify_function>
    </attributes>
    <attributes>
+      <member_index>SVR_ATR_ResendTermDelay</member_index>
+      <member_name>ATTR_resendtermdelay</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>set_resend_term_delay</member_at_action>
+      <member_at_flags>NO_USER_SET</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_SERVER</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
       <member_index>SVR_ATR_ReqCredEnable</member_index>
       <member_name>ATTR_ReqCredEnable</member_name>
       <member_at_decode>decode_b</member_at_decode>
