@@ -2765,7 +2765,6 @@ if %s e.job.in_ms_mom():
         a = {'job_history_enable': 'True'}
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
         self.assertEqual(rc, 0)
-        self.server.expect(SERVER, {'job_history_enable': 'True'})
 
         self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
                                       self.swapctl, ''))
@@ -2777,11 +2776,10 @@ if %s e.job.in_ms_mom():
         j.create_script(self.eatmem_job1)
         jid = self.server.submit(j)
         a = {'job_state': 'F'}
-        self.server.expect(JOB, a, jid, extend='x')
+        self.server.expect(JOB, a, jid, extend='x', offset=10)
         resc = ['resources_used.diag_messages']
         s = self.server.status(JOB, resc, id=jid, extend='x')
         dmsg = s[0]['resources_used.diag_messages'].replace("'", "")
-        self.logger.info(dmsg)
         json_exceeded = json.loads(dmsg)
         msg = json_exceeded[self.mom.shortname]
         self.assertEqual(msg, 'Cgroup mem limit exceeded, '

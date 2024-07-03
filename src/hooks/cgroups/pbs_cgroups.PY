@@ -3054,16 +3054,16 @@ class CgroupUtils(object):
             json_msg = json.loads(msg)
         except Exception:
             json_msg = {}
-        if 'diag_messages' not in resc_used.keys():
+        if 'diag_messages' not in resc_used:
             resc_used['diag_messages'] = json.dumps(json_msg)
         elif concate:
             try:
                 json_resc = json.loads(resc_used['diag_messages'])
             except Exception:
                 json_resc = {}
-            for k in json_msg.keys():
+            for k in json_msg:
                 if k in json_resc.keys() and not json_msg[k] in json_resc[k]:
-                    json_resc[k] += ', %s' % json_msg[k]
+                    json_resc[k] += f", {json_msg[k]}"
                 else:
                     json_resc[k] = json_msg[k]
             resc_used['diag_messages'] = json.dumps(json_resc)
@@ -4961,8 +4961,7 @@ class CgroupUtils(object):
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Job %s is not running' %
                        (caller_name(), jobid))
             return
-        if pbs.event().type == pbs.EXECHOST_PERIODIC or \
-           pbs.event().type == pbs.EXECJOB_EPILOGUE:
+        if pbs.event().type in [pbs.EXECHOST_PERIODIC, pbs.EXECJOB_EPILOGUE]:
             # Initialize diag_messages in order to be able
             # to merge msgs only from sisters
             self.set_diag_messages(resc_used, '{}', True)
@@ -4994,8 +4993,8 @@ class CgroupUtils(object):
                             self.write_to_stderr(pbs.event().job,
                                                  "Cgroup mem limit "
                                                  "exceeded: %s\n" % (err_msg))
-                        if pbs.event().type == pbs.EXECHOST_PERIODIC or \
-                           pbs.event().type == pbs.EXECJOB_EPILOGUE:
+                        if pbs.event().type in \
+                           [pbs.EXECHOST_PERIODIC, pbs.EXECJOB_EPILOGUE]:
                             self.set_diag_messages(resc_used, '{"%s":'
                                                    '"Cgroup mem limit '
                                                    'exceeded"}'
@@ -5027,8 +5026,8 @@ class CgroupUtils(object):
                             self.write_to_stderr(pbs.event().job,
                                                  "Cgroup memsw limit "
                                                  "exceeded: %s" % (err_msg))
-                        if pbs.event().type == pbs.EXECHOST_PERIODIC or \
-                           pbs.event().type == pbs.EXECJOB_EPILOGUE:
+                        if pbs.event().type in \
+                           [pbs.EXECHOST_PERIODIC, pbs.EXECJOB_EPILOGUE]:
                             self.set_diag_messages(resc_used, '{"%s":'
                                                    '"Cgroup memsw limit '
                                                    'exceeded"}'
@@ -5054,8 +5053,8 @@ class CgroupUtils(object):
                         self.write_to_stderr(pbs.event().job,
                                              "Cgroup hugetlb limit "
                                              "exceeded: %s" % (err_msg))
-                    if pbs.event().type == pbs.EXECHOST_PERIODIC or \
-                       pbs.event().type == pbs.EXECJOB_EPILOGUE:
+                    if pbs.event().type in \
+                       [pbs.EXECHOST_PERIODIC, pbs.EXECJOB_EPILOGUE]:
                         self.set_diag_messages(resc_used, '{"%s":'
                                                '"Cgroup hugetlb limit '
                                                'exceeded"}'
