@@ -202,7 +202,6 @@ conns_array_type_t *conns_array = NULL; /* array of physical connections */
 int conns_array_size = 0;		/* the size of physical connection array */
 pthread_rwlock_t cons_array_lock;	/* rwlock used to synchronize array ops */
 pthread_mutex_t thrd_array_lock;	/* mutex used to synchronize thrd assignment */
-pthread_mutex_t tpp_fork_lock;      /* mutex taken when forking may not be safe */
 
 /* function forward declarations */
 static void *work(void *v);
@@ -214,52 +213,6 @@ static void free_phy_conn(phy_conn_t *conn);
 static void handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data);
 static short add_pkt(phy_conn_t *conn);
 static phy_conn_t *get_transport_atomic(int tfd, int *slot_state);
-
-/**
- * @brief
- *	Fork handler called before fork().
- *
- * @par Functionality
- *	Locks the tpp_fork_lock. Blocks until the lock in unlocked.
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: No
- *
- */
-void
-tpp_atfork_prepare() {
-	if (tpp_terminated_in_child == 1) {
-		return;
-	}
-	if (tpp_conf->node_type == TPP_LEAF_NODE || tpp_conf->node_type == TPP_LEAF_NODE_LISTEN) {
-		tpp_lock(&tpp_fork_lock);
-	}
-}
-
-/**
- * @brief
- *	Fork handler called after fork() in parrent.
- *
- * @par Functionality
- *	Unlocks the tpp_fork_lock.
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: No
- *
- */
-void
-tpp_atfork_parent() {
-	if (tpp_terminated_in_child == 1) {
-		return;
-	}
-	if (tpp_conf->node_type == TPP_LEAF_NODE || tpp_conf->node_type == TPP_LEAF_NODE_LISTEN) {
-		tpp_unlock(&tpp_fork_lock);
-	}
-}
 
 /**
  * @brief
@@ -532,10 +485,6 @@ tpp_transport_init(struct tpp_config *conf)
 		if (conf->numthreads != 1) {
 			tpp_log(LOG_CRIT, NULL, "Leaves should start exactly one thread");
 			return -1;
-		if (tpp_init_lock(&tpp_fork_lock)) {
-			tpp_log(LOG_CRIT, __func__, "Init tpp_fork_lock failed");
-			return -1;
-		}
 		}
 	} else {
 		if (conf->numthreads < 2) {
@@ -1543,12 +1492,6 @@ work(void *v)
 #endif
 	tpp_log(LOG_CRIT, NULL, "Thread ready");
 
-	if ((tpp_conf->node_type == TPP_LEAF_NODE || tpp_conf->node_type == TPP_LEAF_NODE_LISTEN)
-		&& tpp_lock(&tpp_fork_lock)) {
-		tpp_log(LOG_ERR, __func__, "Locking tpp_fork_lock failed");
-		return NULL;
-	}
-
 	/* start processing loop */
 	for (;;) {
 		int nfds;
@@ -1573,19 +1516,8 @@ work(void *v)
 				timeout = timeout * 1000; /* milliseconds */
 			}
 
-			if (tpp_conf->node_type == TPP_LEAF_NODE || tpp_conf->node_type == TPP_LEAF_NODE_LISTEN) {
-				tpp_unlock(&tpp_fork_lock);
-			}
-
 			errno = 0;
 			nfds = tpp_em_wait(td->em_context, &events, timeout);
-
-			if ((tpp_conf->node_type == TPP_LEAF_NODE || tpp_conf->node_type == TPP_LEAF_NODE_LISTEN)
-				&& tpp_lock(&tpp_fork_lock)) {
-				tpp_log(LOG_ERR, __func__, "Locking tpp_fork_lock failed");
-				return NULL;
-			}
-
 			if (nfds <= 0) {
 				if (!(errno == EINTR || errno == EINPROGRESS || errno == EAGAIN || errno == 0)) {
 					tpp_log(LOG_ERR, __func__, "em_wait() error, errno=%d", errno);
@@ -1678,9 +1610,6 @@ work(void *v)
 						TPP_DBPRT("Connected, Removed EM_OUT and added EM_IN to ev_mask, now=%x", conn->ev_mask);
 						if (tpp_em_mod_fd(conn->td->em_context, conn->sock_fd, conn->ev_mask) == -1) {
 							tpp_log(LOG_ERR, __func__, "Multiplexing failed");
-							if (tpp_conf->node_type == TPP_LEAF_NODE || tpp_conf->node_type == TPP_LEAF_NODE_LISTEN) {
-								tpp_unlock(&tpp_fork_lock);
-							}
 							return NULL;
 						}
 						send_data(conn);
@@ -1704,9 +1633,6 @@ work(void *v)
 			if (!conn) {
 				tpp_log(LOG_CRIT, __func__, "Allocating socket connection failed.");
 				tpp_sock_close(newfd);
-				if (tpp_conf->node_type == TPP_LEAF_NODE || tpp_conf->node_type == TPP_LEAF_NODE_LISTEN) {
-					tpp_unlock(&tpp_fork_lock);
-				}
 				return NULL;
 			}
 
@@ -1715,9 +1641,6 @@ work(void *v)
 			conn->conn_params = calloc(1, sizeof(conn_param_t));
 			if (!conn->conn_params) {
 				tpp_log(LOG_CRIT, __func__, "Out of memory allocating connection params");
-				if (tpp_conf->node_type == TPP_LEAF_NODE || tpp_conf->node_type == TPP_LEAF_NODE_LISTEN) {
-					tpp_unlock(&tpp_fork_lock);
-				}
 				if (tpp_write_lock(&cons_array_lock))
 					return NULL;
 				conns_array[newfd].slot_state = TPP_SLOT_FREE;
@@ -1737,9 +1660,6 @@ work(void *v)
 			 **/
 			assign_to_worker(newfd, 0, NULL); /* time 0 means no delay */
 		}
-	}
-	if (tpp_conf->node_type == TPP_LEAF_NODE || tpp_conf->node_type == TPP_LEAF_NODE_LISTEN) {
-		tpp_unlock(&tpp_fork_lock);
 	}
 	return NULL;
 }
@@ -2209,10 +2129,6 @@ tpp_transport_terminate()
 	 * main process.
 	 *
 	 */
-
-	if (tpp_conf->node_type == TPP_LEAF_NODE || tpp_conf->node_type == TPP_LEAF_NODE_LISTEN) {
-		tpp_unlock(&tpp_fork_lock);
-	}
 
 	for (i = 0; i < num_threads; i++) {
 		if (thrd_pool[i]->listen_fd > -1)

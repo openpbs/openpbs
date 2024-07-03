@@ -697,7 +697,7 @@ tpp_init(struct tpp_config *cnf)
 	 */
 
 	/* for unix, set a pthread_atfork handler */
-	if (pthread_atfork(tpp_atfork_prepare, tpp_atfork_parent, tpp_terminate)) {
+	if (pthread_atfork(NULL, NULL, tpp_terminate)) {
 		tpp_log(LOG_CRIT, __func__, "TPP client atfork handler registration failed");
 		return -1;
 	}
