@@ -210,9 +210,13 @@ host_match(char *line, char *host)
 
 int find_hostline(char *host)
 {
-	if (NULL == getenv("PBS_NODEFILE")) return -1;
+	if (NULL == host) 
+		return -1;
+	if (NULL == getenv("PBS_NODEFILE")) 
+		return -1;
 	FILE *fp = fopen(getenv("PBS_NODEFILE"),"r");
-	if (NULL == fp) return -1;
+	if (NULL == fp) 
+		return -1;
 	
         char line[HOST_NAME_MAX], *cp;
         int i, host_hit = 0;
@@ -221,7 +225,8 @@ int find_hostline(char *host)
                         break;
         }
         fclose(fp);
-        if (host_hit) return i;
+        if (host_hit) 
+		return i;
         return -1;
 
 }
