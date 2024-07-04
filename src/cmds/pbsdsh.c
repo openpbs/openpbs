@@ -122,8 +122,9 @@ host_match(char *line, char *host)
 	int len = strlen(line);
 	static char domain[PBS_MAXHOSTNAME + 1];
 	char fullhost[PBS_MAXHOSTNAME + 1];
-	static struct in_addr addr;
-	static int addrvalid = -1;
+	struct in_addr addr;
+        memset(&addr,0,sizeof(addr));
+        int addrvalid = -1;
 
 	if (line[len - 1] == '\n')
 		line[len - 1] = '\0';
