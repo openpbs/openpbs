@@ -95,24 +95,28 @@ bailout(int sig)
 	fire_phasers = sig;
 }
 
+
 /**
  * @brief
- *	wait_for_task - wait for all spawned tasks to
- *	a. have the spawn acknowledged, and
- *	b. the task to terminate and return the obit with the exit status
+ *      Check the host to a line read from PBS_NODEFILE.
+ *      The PBS_NODEFILE will contain node names.  We want to be able
+ *      to accept IP addresses for the host.
+ * 
+ * @param[in] line - line from PBS_NODEFILE
  *
- * @param[in] first - first event index to consider
- * @param[in] nspawned - number of tasks spawned
- *
- * @return - Void
- *
+ * @return      Error code
+ * @retval      1 - Success i.e matched
+ * @retval      0 - Failure i.e not matched
+ * 
  */
-
 
 int
 host_match(char *line, char *host)
 {
-	if (NULL == host ) return 0;
+	if (NULL == host) 
+		return 0;
+	if (NULL == line)
+		return 0;
 	int len = strlen(line);
 	static char domain[PBS_MAXHOSTNAME + 1];
 	char fullhost[PBS_MAXHOSTNAME + 1];
@@ -177,6 +181,20 @@ host_match(char *line, char *host)
 	return 0;
 }
 
+/**
+ * @brief
+ *      find_hostline - check a if a hostname has a entry in PBS_NODEFILE
+ *     	 it calls host_match to do a match, does more that str operations;
+ *      
+ * 
+ * @param[in] first - the hostname to match
+ * 
+ * @return - 
+ * @retval      1 - Success i.e matched
+ * @retval      0 - Failure i.e not matched
+ *
+ */
+
 
 int find_hostline(char *host)
 {
@@ -196,6 +214,20 @@ int find_hostline(char *host)
 
 }
 
+
+
+/**
+ * @brief
+ *      wait_for_task - wait for all spawned tasks to
+ *      a. have the spawn acknowledged, and
+ *      b. the task to terminate and return the obit with the exit status
+ * 
+ * @param[in] first - first event index to consider
+ * @param[in] nspawned - number of tasks spawned
+ * 
+ * @return - Void
+ *
+ */
 
 void
 wait_for_task(int first, int *nspawned)
