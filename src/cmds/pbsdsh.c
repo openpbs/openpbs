@@ -37,6 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
+
+
 /**
  * @file	pbs_dsh.c
  * @brief
@@ -135,17 +137,26 @@ host_match(char *line, char *host)
 	}
 
 	if (addrvalid) { /* compare IP addresses */
-		struct hostent *hp = gethostbyname(line);
-		int i;
-
-		if (hp == NULL)
-			return 0;
-
-		for (i = 0; hp->h_addr_list[i]; i++) {
-			if (memcmp(&addr, hp->h_addr_list[i],
-				   hp->h_length) == 0)
-				return 1;
+	 	
+		struct addrinfo hints, *res, *p;	 
+		int status;
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_INET; /* IPv6 not supported */ 
+		hints.ai_socktype = SOCK_STREAM;
+		
+		if ((status = getaddrinfo(line,NULL,&hints,&res)) != 0) {
+			perror("getaddrinfo");
+			exit(255);
 		}
+	
+		for(p = res; p;p = p->ai_next) {
+			struct sockaddr_in *s_in_entry = (struct sockaddr_in *) p->ai_addr;
+			if (memcmp(&addr, &(s_in_entry->sin_addr), sizeof(addr)) == 0) {
+				freeaddrinfo(res);
+				return 1;
+			}
+		}	
+		freeaddrinfo(res);
 		return 0;
 	}
 
@@ -159,7 +170,7 @@ host_match(char *line, char *host)
 			char *dot;
 
 			if (gethostname(domain, (sizeof(domain) - 1)) == -1) {
-				perror("getdomainname");
+				perror("gethostname");
 				exit(255);
 			}
 			if (domain[0] == '\0')
@@ -203,9 +214,9 @@ int find_hostline(char *host)
 	if (NULL == fp) return -1;
 	
         char line[HOST_NAME_MAX], *cp;
-        int i, host_hit=0;
+        int i, host_hit = 0;
         for (i = 0; (cp = fgets(line, sizeof(line), fp)) != NULL; i++) {
-                if ((host_hit=host_match(line, host))==1)
+                if ((host_hit = host_match(line, host)) == 1)
                         break;
         }
         fclose(fp);
@@ -338,7 +349,7 @@ main(int argc, char *argv[], char *envp[])
 #endif
 	extern int optind;
 	extern char *optarg;
-	char *targethost=NULL;
+	char *targethost = NULL;
 
 	/*test for real deal or just version and exit*/
 
@@ -350,21 +361,23 @@ main(int argc, char *argv[], char *envp[])
 	while ((c = getopt(argc, argv, "c:n:h:svo")) != EOF) {
 		switch (c) {
 			case 'c':
+				targethost = NULL;
 				ncopies = atoi(optarg);
 				if (ncopies < 0) {
 					err = 1;
 				}
 				break;
 			case 'n':
+				targethost = NULL;
 				onenode = atoi(optarg);
 				if (onenode < 0) {
 					err = 1;
 				}
 				break;
 			case 'h':
-				onenode=0;
-				targethost=optarg;		
-				onenode=find_hostline(targethost);
+				onenode = 0;
+				targethost = optarg;		
+				onenode = find_hostline(targethost);
 				if (onenode < 0) {
 					err = 1;
 				}
@@ -382,7 +395,6 @@ main(int argc, char *argv[], char *envp[])
 				err = 1;
 				break;
 		}
-		if (targethost) break;
 	}
 	
 	if (err || (onenode >= 0 && ncopies >= 0) || (argc == optind)) {
@@ -398,6 +410,8 @@ main(int argc, char *argv[], char *envp[])
 		fprintf(stderr, "      -n node_index = run a copy "
 				"of \"program\" on the \"node_index\"-th node,\n");
 
+		fprintf(stderr, "      -h hostname = run a copy "
+				"of \"program\" on the node named by hostname,\n");
 		fprintf(stderr, "      -s = forces synchronous execution,\n");
 		fprintf(stderr, "      -v = forces verbose output.\n");
 		fprintf(stderr, "      -o = no obits are waited for.\n");
