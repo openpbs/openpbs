@@ -365,9 +365,9 @@ print_db_job(char *id, int no_attributes)
 			}
 		}
 		printf("\n");
+		free_attrlist(&dbjob.db_attr_list.attrs);
 	}
 
-	free_attrlist(&dbjob.db_attr_list.attrs);
 	return 0;
 }
 #endif

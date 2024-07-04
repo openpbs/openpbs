@@ -204,6 +204,7 @@ api_to_cli = {
     ATTR_mailfrom: 'mail_from',
     ATTR_nodepack: 'node_pack',
     ATTR_nodefailrq: 'node_fail_requeue',
+    ATTR_resendtermdelay: 'resend_term_delay',
     ATTR_operators: 'operators',
     ATTR_queryother: 'query_other_jobs',
     ATTR_resccost: 'resources_cost',

@@ -1090,7 +1090,7 @@ extern int svr_chk_ownerResv(struct batch_request *, resc_resv *);
 #endif /* _BATCH_REQUEST_H */
 
 #ifdef _QUEUE_H
-extern int svr_chkque(job *, pbs_queue *, char *, int mtype);
+extern int svr_chkque(job *, pbs_queue *, char *, char *, int mtype);
 extern int default_router(job *, pbs_queue *, long);
 extern int site_alt_router(job *, pbs_queue *, long);
 extern int site_acl_check(job *, pbs_queue *);
@@ -1098,6 +1098,7 @@ extern int site_acl_check(job *, pbs_queue *);
 
 #ifdef _WORK_TASK_H
 extern int issue_signal(job *, char *, void (*)(struct work_task *), void *);
+extern int delayed_issue_signal(job *pjob, char *signame, void (*func)(struct work_task *), void *extra, int delay);
 extern void on_job_exit(struct work_task *);
 #endif /* _WORK_TASK_H */
 

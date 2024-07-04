@@ -179,3 +179,28 @@ class TestJobRouting(TestFunctional):
                            id=jid, extend='t')
         self.server.expect(JOB, {ATTR_state + '=X': 2}, count=True,
                            id=jid, extend='t')
+
+    def test_route_resource_with_cr(self):
+        """
+        test submitting and routing job with select
+        containing nasty CR chars from Windows
+        """
+
+        dflt_q = self.server.default_queue
+        # Create a route queue with destination to default queue
+        queue_attrib = {ATTR_qtype: 'route',
+                        ATTR_routedest: dflt_q,
+                        ATTR_enable: 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, queue_attrib, id='routeq')
+
+        select = "select=ncpus=1\r:mem=1gb\r:arch=linux"
+        job = Job(TEST_USER, attrs={ATTR_queue: 'routeq',
+                                    ATTR_l: select})
+        try:
+            jid = self.server.submit(job)
+        except PbsSubmitError as e:
+            error_msg = "qsub: Illegal attribute or " \
+                        "resource value Resource_List.:mem"
+            self.assertEquals(e.msg[0], error_msg)
+        else:
+            self.fail("Job submit did not fail as expected.")

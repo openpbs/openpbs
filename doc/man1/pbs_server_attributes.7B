@@ -1130,6 +1130,26 @@ Behaves as if set to default value of
 Default: 
 .I 310
 
+.IP resend_term_delay 8
+Delay for resending the TERM signal to a job in seconds.
+.br
+Can be set by Managers and Operators.  Visible to all.
+.br
+Must be >= 0 and <= 1800.
+.br
+Format: 
+.I Integer
+.br
+Python type:
+.I int
+.IP Unset 3
+Behaves as if set to default value of 
+.I 5.
+.RE
+.IP
+Default: 
+.I 5
+
 .IP "node_group_enable" 8
 Specifies whether placement sets (which includes node grouping) are
 enabled.  See the 

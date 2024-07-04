@@ -541,6 +541,7 @@ extern int action_reserve_retry_time(attribute *pattr, void *pobject, int actmod
 extern int action_reserve_retry_init(attribute *pattr, void *pobject, int actmode);
 extern int set_rpp_retry(attribute *pattr, void *pobject, int actmode);
 extern int set_node_fail_requeue(attribute *pattr, void *pobject, int actmode);
+extern int set_resend_term_delay(attribute *pattr, void *pobject, int actmode);
 extern int set_rpp_highwater(attribute *pattr, void *pobject, int actmode);
 extern int set_license_location(attribute *pattr, void *pobject, int actmode);
 extern int set_license_min(attribute *pattr, void *pobject, int actmode);

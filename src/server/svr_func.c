@@ -960,6 +960,70 @@ unset_node_fail_requeue(void)
 		  LOG_NOTICE, msg_daemonname, log_buffer);
 }
 
+/*
+ *
+ * @brief
+ *	Set resend_term_delay attribute.
+ *
+ * @par Functionality:
+ *	This function sets the resend_term_delay server attribute.
+ *	resend_term_delay can not be < 0 and > 1800.
+ *
+ * @param[in]	pattr	-	ptr to attribute
+ * @param[in]	pobject	-	pointer to some parent object.(required but unused here)
+ * @param[in]	actmode	-	the action to take (e.g. ATR_ACTION_ALTER)
+ *
+ * @return	int
+ * @retval	PBSE_NONE
+ *
+ */
+int
+set_resend_term_delay(attribute *pattr, void *pobject, int actmode)
+{
+	if (actmode == ATR_ACTION_FREE)
+		return (PBSE_NONE);
+
+	if ((actmode == ATR_ACTION_ALTER) ||
+	    (actmode == ATR_ACTION_RECOV)) {
+
+		if (pattr->at_val.at_long >= 0 && pattr->at_val.at_long <= 1800) {
+			set_sattr_l_slim(SVR_ATR_ResendTermDelay, pattr->at_val.at_long, SET);
+		} else {
+			return (PBSE_BADATVAL);
+		}
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_NOTICE, msg_daemonname, "resend_term_delay value changed to %ld",
+			pattr->at_val.at_long);
+	}
+
+	return (PBSE_NONE);
+}
+
+/*
+ *
+ * @brief
+ *	Unset resend_term_delay attribute.
+ *
+ * @par Functionality:
+ *	This function unsets the resend_term_delay server attribute
+ *	by reverting it back to it's default value.
+ *
+ * @param[in]	void
+ *
+ * @return	void
+ *
+ */
+void
+unset_resend_term_delay(void)
+{
+	set_sattr_l_slim(SVR_ATR_ResendTermDelay,
+		PBS_RESEND_TERM_DELAY_DEFAULT, SET);
+	log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+		LOG_NOTICE, msg_daemonname,
+		"resend_term_delay reverting back to default val %ld",
+		PBS_RESEND_TERM_DELAY_DEFAULT);
+}
+
 /**
  * @brief
  *		set_license_min - action function for the pbs_license_min server

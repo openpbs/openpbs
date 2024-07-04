@@ -201,6 +201,8 @@ local_move(job *jobp, struct batch_request *req)
 	long newtype = -1;
 	long long time_usec;
 	struct timeval tval;
+	conn_t *conn = NULL;
+	char *physhost = NULL;
 
 	/* search for destination queue */
 	if ((qp = find_queuebyname(destination)) == NULL) {
@@ -226,7 +228,14 @@ local_move(job *jobp, struct batch_request *req)
 		mtype = MOVE_TYPE_Move; /* non-privileged move */
 	}
 
-	pbs_errno = svr_chkque(jobp, qp, get_hostPart(get_jattr_str(jobp, JOB_ATR_job_owner)), mtype);
+	if (req != NULL) {
+		conn = get_conn(req->rq_conn);
+		if (conn) {
+			physhost = conn->cn_physhost;
+		}
+	}
+
+	pbs_errno = svr_chkque(jobp, qp, get_jattr_str(jobp, JOB_ATR_submit_host), physhost, mtype);
 	if (pbs_errno) {
 		/* should this queue be retried? */
 		return (should_retry_route(pbs_errno));

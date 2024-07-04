@@ -272,6 +272,7 @@ extern "C" {
 #define ATTR_mailfrom "mail_from"
 #define ATTR_nodepack "node_pack"
 #define ATTR_nodefailrq "node_fail_requeue"
+#define ATTR_resendtermdelay "resend_term_delay"
 #define ATTR_operators "operators"
 #define ATTR_queryother "query_other_jobs"
 #define ATTR_resccost "resources_cost"

@@ -414,6 +414,9 @@ pbs_gss_server_establish_context(gss_cred_id_t server_creds, gss_cred_id_t *clie
 		return PBS_GSS_ERR_INTERNAL;
 	}
 
+	send_tok.value = NULL;
+	send_tok.length = 0;
+
 	acc_sec_maj_stat = gss_accept_sec_context(&acc_sec_min_stat, gss_context, server_creds, &recv_tok, GSS_C_NO_CHANNEL_BINDINGS, &client, &doid, &send_tok, ret_flags, NULL, client_creds);
 
 	if (send_tok.length != 0) {
@@ -742,6 +745,7 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 			oid = PBS_GSS_MECH_OID;
 
 			ret = pbs_gss_client_establish_context(service_name, creds, oid, gss_flags, &gss_context, &ret_flags, data_in, len_in, data_out, len_out);
+			gss_extra->gssctx = gss_context;
 
 			if (ccache_from_keytab || gss_extra->conn_type == AUTH_SERVICE_CONN)
 				unsetenv("KRB5CCNAME");
@@ -805,6 +809,7 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 			}
 
 			ret = pbs_gss_server_establish_context(server_creds, NULL, &gss_context, &(client_name), &ret_flags, data_in, len_in, data_out, len_out);
+			gss_extra->gssctx = gss_context;
 
 			break;
 
@@ -819,8 +824,6 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 		GSS_LOG_ERR("Failed to establish gss context");
 		return PBS_GSS_ERR_CONTEXT_ESTABLISH;
 	}
-
-	gss_extra->gssctx = gss_context;
 
 	if (ret == PBS_GSS_CONTINUE_NEEDED) {
 		return PBS_GSS_OK;

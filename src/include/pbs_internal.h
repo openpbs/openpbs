@@ -175,6 +175,9 @@ extern "C" {
 /* Default value of Node fail requeue (ATTR_nodefailrq)*/
 #define PBS_NODE_FAIL_REQUEUE_DEFAULT 310
 
+/* Default value of resend_term_delay (ATTR_resendtermdelay)*/
+#define PBS_RESEND_TERM_DELAY_DEFAULT 5
+
 /* Default value of preempt_queue_prio */
 #define PBS_PREEMPT_QUEUE_PRIO_DEFAULT 150
 
