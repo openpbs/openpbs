@@ -3036,7 +3036,9 @@ class CgroupUtils(object):
                        % (str(filename), msg.strip()))
             if filename is None:
                 return
-            with open(filename, 'a') as desc:
+            # sticky bit requires leaving out os.O_CREAT
+            fd = os.open(filename, os.O_APPEND|os.O_WRONLY)
+            with os.fdopen(fd, 'a') as desc:
                 desc.write(msg)
         except Exception:
             # tough luck for user, but not fatal to system
