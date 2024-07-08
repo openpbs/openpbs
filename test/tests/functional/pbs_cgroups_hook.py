@@ -2741,6 +2741,50 @@ if %s e.job.in_ms_mom():
         self.logger.info('Joined stdout/stderr contained expected string: '
                          + foundstr)
 
+    def test_cgroup_diag_messages(self):
+        """
+        Test to verify that job that exceeded resources has the diag_message
+        set correctly.
+        """
+
+        if not self.paths[self.hosts_list[0]]['memory']:
+            self.skipTest('Test requires memory subystem mounted')
+        # run the test if swap space is available
+        if not self.mem or not self.swapctl:
+            self.skipTest('Test requires memory controller with memsw'
+                          'swap accounting enabled')
+        if have_swap() == 0:
+            self.skipTest('no swap space available on the local host')
+        # Get the grandparent directory
+        fn = self.paths[self.hosts_list[0]]['memory']
+        fn = os.path.join(fn, 'memory.memsw.limit_in_bytes')
+        if not self.is_file(fn, self.hosts_list[0]):
+            self.skipTest('vmem resource not present on node')
+
+        # Make sure job history is enabled to see when job is gone
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.assertEqual(rc, 0)
+
+        self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
+                                      self.swapctl, ''))
+
+        a = {
+            'Resource_List.select':
+            '1:ncpus=1:mem=400mb:vmem=420mb:host=%s' % self.hosts_list[0]}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.eatmem_job1)
+        jid = self.server.submit(j)
+        a = {'job_state': 'F'}
+        self.server.expect(JOB, a, jid, extend='x', offset=10)
+        resc = ['resources_used.diag_messages']
+        s = self.server.status(JOB, resc, id=jid, extend='x')
+        dmsg = s[0]['resources_used.diag_messages'].replace("'", "")
+        json_exceeded = json.loads(dmsg)
+        msg = json_exceeded[self.mom.shortname]
+        self.assertEqual(msg, 'Cgroup mem limit exceeded, '
+                         'Cgroup memsw limit exceeded')
+
     def cgroup_offline_node(self, name, vnpernuma=False):
         """
         Per vnode_per_numa_node config setting, return True if able to
