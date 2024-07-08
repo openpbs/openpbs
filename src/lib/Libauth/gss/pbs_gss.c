@@ -60,8 +60,8 @@
 #define PBS_GSS_MECH_OID (gss_OID) gss_mech_krb5
 #endif
 
-static pthread_mutex_t gss_lock;
-static pthread_once_t gss_init_lock_once = PTHREAD_ONCE_INIT;
+static pthread_mutex_t gss_mutex;
+static pthread_once_t gss_init_once = PTHREAD_ONCE_INIT;
 static char gss_log_buffer[LOG_BUF_SIZE];
 static void (*logger)(int type, int objclass, int severity, const char *objname, const char *text);
 #define DEFAULT_CREDENTIAL_LIFETIME 7200
@@ -130,10 +130,98 @@ enum PBS_GSS_ERRORS {
 
 static int pbs_gss_can_get_creds(const gss_OID_set oidset);
 static int init_pbs_client_ccache_from_keytab(char *err_buf, int err_buf_size);
-static void init_gss_lock(void);
+static void init_gss_mutex(void);
 
+/**
+ * @brief
+ *	Acquire lock on a mutex
+ *
+ * @param[in] - lock - ptr to a mutex variable
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ * @return	error code
+ * @retval	1	failure
+ * @retval	0	success
+ */
+static int
+gss_lock(pthread_mutex_t *lock)
+{
+	if (pthread_mutex_lock(lock) != 0) {
+		GSS_LOG_ERR("Failed to lock mutex");
+		return 1;
+	}
+	return 0;
+}
+
+/**
+ * @brief
+ *	Release lock on a mutex
+ *
+ * @param[in] - lock - ptr to a mutex variable
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ * @return	error code
+ * @retval	1	failure
+ * @retval	0	success
+ */
+static int
+gss_unlock(pthread_mutex_t *lock)
+{
+	if (pthread_mutex_unlock(lock) != 0) {
+		GSS_LOG_ERR("Failed to unlock mutex");
+		return 1;
+	}
+	return 0;
+}
+
+/**
+ * @brief
+ *	wrapper function for gss_fork_mutex_lock().
+ *
+ */
+void
+gss_atfork_prepare()
+{
+	gss_lock(&gss_mutex);
+}
+
+/**
+ * @brief
+ *	wrapper function for gss_fork_mutex_unlock().
+ *
+ */
+void
+gss_atfork_parent()
+{
+	gss_unlock(&gss_mutex);
+}
+
+/**
+ * @brief
+ *	wrapper function for init_gss_mutex().
+ *
+ */
+void
+gss_atfork_child()
+{
+	init_gss_mutex();
+}
+
+/**
+ * @brief
+ *	Initialize gss mutex.
+ *
+ */
 static void
-init_gss_lock(void)
+init_gss_mutex(void)
 {
 	pthread_mutexattr_t attr;
 
@@ -147,8 +235,26 @@ init_gss_lock(void)
 		return;
 	}
 
-	if (pthread_mutex_init(&gss_lock, &attr) != 0) {
-		GSS_LOG_ERR("Failed to initialize mutex");
+	if (pthread_mutex_init(&gss_mutex, &attr) != 0) {
+		GSS_LOG_ERR("Failed to initialize gss mutex");
+		return;
+	}
+
+	return;
+}
+
+/**
+ * @brief
+ *	Initialize gss at fork.
+ *
+ */
+static void
+init_gss_atfork(void)
+{
+	init_gss_mutex();
+
+	if (pthread_atfork(gss_atfork_prepare, gss_atfork_parent, gss_atfork_child) != 0) {
+		GSS_LOG_ERR("gss atfork handler failed");
 		return;
 	}
 
@@ -1056,18 +1162,16 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 
 	*is_handshake_done = 0;
 
-	pthread_once(&gss_init_lock_once, init_gss_lock);
+	pthread_once(&gss_init_once, init_gss_atfork);
 
-	if (pthread_mutex_lock(&gss_lock) != 0) {
-		GSS_LOG_ERR("Failed to lock gss mutex");
-		return 1;
+	if (gss_lock(&gss_mutex)) {
+		return PBS_GSS_ERR_INTERNAL;
 	}
 
 	rc = pbs_gss_establish_context(gss_extra, data_in, len_in, data_out, len_out);
 
-	if (pthread_mutex_unlock(&gss_lock) != 0) {
-		GSS_LOG_ERR("Failed to unlock gss mutex");
-		return 1;
+	if (gss_unlock(&gss_mutex)) {
+		return PBS_GSS_ERR_INTERNAL;
 	}
 
 	if (gss_extra->gssctx_established) {
