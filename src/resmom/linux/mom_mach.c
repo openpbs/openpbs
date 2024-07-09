@@ -224,7 +224,7 @@ proc_get_btime(void)
 			if (fscanf(fp, "%*[^\n]%*c") == EOF) 
 				log_errf(-1, __func__, "fscanf failed. ERR : %s", strerror(errno));				
 		} else {
-			if (fscanf(fp, "%u", &linux_time)) 
+			if (fscanf(fp, "%u", &linux_time) == EOF) 
 				log_errf(-1, __func__, "fscanf failed. ERR : %s", strerror(errno));				
 			fclose(fp);
 			return;
