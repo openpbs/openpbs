@@ -329,7 +329,7 @@ job_delete_attr(job *pjob, int attr_idx)
 		}
 		free_db_attr_list(&db_attr_list);
 
-		clear_attr(get_jattr(pjob, attr_idx), &attr_def);
+		clear_jattr(pjob, attr_idx);
 	}
 
 	return 0;

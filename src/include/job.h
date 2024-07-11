@@ -1047,6 +1047,7 @@ void free_jattr(job *pjob, int attr_idx);
 void mark_jattr_not_set(job *pjob, int attr_idx);
 void mark_jattr_set(job *pjob, int attr_idx);
 attribute *get_jattr(const job *pjob, int attr_idx);
+void clear_jattr(job *pjob, int attr_idx);
 
 /*
  *	The filesystem related recovery/save routines are renamed
