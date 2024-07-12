@@ -338,7 +338,8 @@ free_nattr(struct pbsnode *pnode, int attr_idx)
 void
 clear_nattr(struct pbsnode *pnode, int attr_idx)
 {
-	clear_attr(get_nattr(pnode, attr_idx), &node_attr_def[attr_idx]);
+	if (pnode != NULL)
+		clear_attr(get_nattr(pnode, attr_idx), &node_attr_def[attr_idx]);
 }
 
 /**
