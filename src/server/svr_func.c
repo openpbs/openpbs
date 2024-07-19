@@ -95,6 +95,7 @@
 
 extern struct python_interpreter_data svr_interp_data;
 extern pbs_list_head svr_runjob_hooks;
+extern pbs_list_head svr_deferred_req;
 
 extern time_t time_now;
 extern char *resc_in_err;
@@ -6864,4 +6865,79 @@ memory_debug_log(struct work_task *ptask)
 		free(buf);
 	}
 #endif /* malloc_info */
+}
+
+/**
+ * @brief
+ *		Get list of deferred requests for a particular scheduler.
+ * 		If the list does not exist yet and the 'create' is TRUE,
+ * 		then create the list.
+ *
+ * @param[in]	psched	-	scheduler structure to identify list of deferred requests.
+ * @param[in]	create	-	boolean - if true, create non-existing list
+ *
+ * @return	List of deferred requests for the particular scheduler
+ * @retval	NULL	: list not found or not created
+ * @retval	pbs_list_head*	: list of scheduler deferred requests.
+ */
+pbs_list_head *
+get_sched_deferred_request(pbs_sched *psched, int create)
+{
+	struct sched_deferred_request *psdefr;
+
+	for (psdefr = (struct sched_deferred_request *) GET_NEXT(svr_deferred_req);
+	     psdefr;
+	     psdefr = (struct sched_deferred_request *) GET_NEXT(psdefr->sdr_link)) {
+		if (psdefr->sdr_psched == psched)
+			break;
+	}
+
+	if (psdefr) {
+		return &psdefr->sdr_deferred_req;
+	}
+
+	if (create == FALSE) {
+		return NULL;
+	}
+
+	psdefr = (struct sched_deferred_request *) malloc(sizeof(struct sched_deferred_request));
+	if (psdefr == NULL) {
+		log_err(-1, __func__, "Failed to allocate memory.");
+		return NULL;
+	}
+	CLEAR_LINK(psdefr->sdr_link);
+	CLEAR_HEAD(psdefr->sdr_deferred_req);
+	psdefr->sdr_psched = psched;
+	append_link(&svr_deferred_req, &psdefr->sdr_link, psdefr);
+
+	return &psdefr->sdr_deferred_req;
+}
+
+/**
+ * @brief
+ *		Remove list of deferred requests for a particular scheduler
+ *		if the list is empty.
+ *
+ * @param[in]	psched	-	scheduler structure to identify list of deferred requests.
+ *
+ */
+void
+clear_sched_deferred_request(pbs_sched *psched)
+{
+	struct sched_deferred_request *psdefr;
+
+	for (psdefr = (struct sched_deferred_request *) GET_NEXT(svr_deferred_req);
+	     psdefr;
+	     psdefr = (struct sched_deferred_request *) GET_NEXT(psdefr->sdr_link)) {
+		if (psdefr->sdr_psched == psched)
+			break;
+	}
+
+	if (psdefr && GET_NEXT(psdefr->sdr_deferred_req) == NULL) {
+		/* no more requests in psdefr->sdr_deferred_req
+		 * lets remove the scheduler related list
+		 */
+		delete_link(&psdefr->sdr_link);
+		free(psdefr);
+	}
 }

@@ -354,6 +354,12 @@ struct deferred_request {
 	int dr_sent; /* sent to Scheduler */
 };
 
+struct sched_deferred_request {
+	pbs_list_link sdr_link;
+	pbs_list_head sdr_deferred_req; /* list of deferred requests of the scheduler */
+	pbs_sched *sdr_psched; /* Scheduler */
+};
+
 #endif /* _LIST_LINK_H */
 
 /*
