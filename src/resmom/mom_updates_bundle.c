@@ -744,14 +744,19 @@ get_job_update(job *pjob)
 							 job_attr_def[JOB_ATR_substate].at_name, NULL, ATR_ENCODE_CLIENT, NULL);
 	}
 
-	/*
-	 * The update_walltime() ensures the walltime is always set before encode_used().
-	 * A job without used walltime could occur in the first seconds of a job.
-	 * This ensures the used walltime is set even if the elapsed time is zero.
+	/* sister moms update of used resources
+	 * is done by send_resc_used_to_ms(); do not send it here
 	 */
-	update_walltime(pjob);
+	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE)) {
+		/*
+		 * The update_walltime() ensures the walltime is always set before encode_used().
+		 * A job without used walltime could occur in the first seconds of a job.
+		 * This ensures the used walltime is set even if the elapsed time is zero.
+		 */
+		update_walltime(pjob);
 
-	encode_used(pjob, &prused->ru_attr);
+		encode_used(pjob, &prused->ru_attr);
+	}
 
 	/* Now add certain others as required for updating at the Server */
 	for (i = 0; mom_rtn_list[i] != JOB_ATR_LAST; ++i) {

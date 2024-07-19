@@ -1359,3 +1359,45 @@ else:
 
         # Bring the mom back up
         self.momB.start()
+
+    def test_finished_walltime(self):
+        """
+        If used resources are modified from hook, this test makes sure
+        that mem used resources are merged and once the job ends,
+        the walltime is not zero.
+        """
+        hook_body = """
+import pbs
+e = pbs.event()
+if e.type == pbs.EXECHOST_PERIODIC:
+    for jobid in e.job_list:
+        e.job_list[jobid].resources_used["mem"] = pbs.size('1024kb')
+else:
+    e.job.resources_used["mem"] = pbs.size('1024kb')
+"""
+        hook_name = "multinode_used"
+        attr = {'event': 'exechost_periodic,execjob_epilogue,execjob_end',
+                'freq': '3',
+                'enabled': 'True'}
+        rv = self.server.create_import_hook(hook_name, attr, hook_body)
+        self.assertTrue(rv)
+
+        sleeptime = 30
+        a = {'Resource_List.select': '3:ncpus=1',
+             'Resource_List.walltime': sleeptime,
+             'Resource_List.place': "scatter"}
+        j = Job(TEST_USER)
+        j.set_attributes(a)
+        j.set_sleep_time(f"{sleeptime}")
+        jid = self.server.submit(j)
+
+        self.server.expect(JOB, {
+            'job_state': 'R',
+            'resources_used.mem': '3072kb'},
+            attrop=PTL_AND, offset=sleeptime/2, id=jid)
+
+        self.server.expect(JOB, {
+            'job_state': 'F',
+            'resources_used.mem': '3072kb',
+            'resources_used.walltime': sleeptime}, op=GE,
+            extend='x', offset=sleeptime/2, attrop=PTL_AND, id=jid)
