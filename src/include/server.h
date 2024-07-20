@@ -184,7 +184,7 @@ extern void unlicense_nodes(void);
 extern void set_sched_default(pbs_sched *, int from_scheduler);
 extern void memory_debug_log(struct work_task *ptask);
 
-extern pbs_list_head *get_sched_deferred_request(pbs_sched *psched, int create);
+extern pbs_list_head *fetch_sched_deferred_request(pbs_sched *psched, bool create);
 extern void clear_sched_deferred_request(pbs_sched *psched);
 
 attribute *get_sattr(int attr_idx);

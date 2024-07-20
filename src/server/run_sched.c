@@ -336,7 +336,7 @@ schedule_jobs(pbs_sched *psched)
 
 		/* are there any qrun requests from manager/operator */
 		/* which haven't been sent,  they take priority      */
-		deferred_req = get_sched_deferred_request(psched, FALSE);
+		deferred_req = fetch_sched_deferred_request(psched, false);
 		if (deferred_req) {
 			pdefr = (struct deferred_request *) GET_NEXT(*deferred_req);
 		} /* else pdefr is NULL */
@@ -534,7 +534,7 @@ handle_deferred_cycle_close(pbs_sched *psched)
 	pbs_list_head *deferred_req;
 	struct deferred_request *pdefr;
 
-	deferred_req = get_sched_deferred_request(psched, FALSE);
+	deferred_req = fetch_sched_deferred_request(psched, false);
 	if (deferred_req == NULL) {
 		return;
 	}

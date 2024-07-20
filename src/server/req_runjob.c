@@ -236,7 +236,7 @@ clear_from_defr(int sd)
 	     psched;
 	     psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
 
-		deferred_req = get_sched_deferred_request(psched, FALSE);
+		deferred_req = fetch_sched_deferred_request(psched, false);
 		if (deferred_req == NULL) {
 			continue;
 		}
@@ -453,7 +453,7 @@ req_runjob(struct batch_request *preq)
 		pbs_strncpy(pdefr->dr_id, fixjid, PBS_MAXSVRJOBID + 1);
 		pdefr->dr_preq = preq;
 		pdefr->dr_sent = 0;
-		deferred_req = get_sched_deferred_request(psched, TRUE);
+		deferred_req = fetch_sched_deferred_request(psched, true);
 		if (deferred_req == NULL) {
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
@@ -1861,7 +1861,7 @@ req_defschedreply(struct batch_request *preq)
 	}
 
 	find_assoc_sched_jid(preq->rq_ind.rq_defrpy.rq_id, &psched);
-	deferred_req = get_sched_deferred_request(psched, FALSE);
+	deferred_req = fetch_sched_deferred_request(psched, false);
 	if (deferred_req == NULL) {
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;

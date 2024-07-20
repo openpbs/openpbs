@@ -6881,7 +6881,7 @@ memory_debug_log(struct work_task *ptask)
  * @retval	pbs_list_head*	: list of scheduler deferred requests.
  */
 pbs_list_head *
-get_sched_deferred_request(pbs_sched *psched, int create)
+fetch_sched_deferred_request(pbs_sched *psched, bool create)
 {
 	struct sched_deferred_request *psdefr;
 
