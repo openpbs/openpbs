@@ -107,7 +107,7 @@ extern pbs_sched *find_sched(char *sched_name);
 extern int validate_job_formula(attribute *pattr, void *pobject, int actmode);
 extern pbs_sched *find_sched_from_partition(char *partition);
 extern int recv_sched_cycle_end(int sock);
-extern void handle_deferred_cycle_close();
+extern void handle_deferred_cycle_close(pbs_sched *psched);
 
 attribute *get_sched_attr(const pbs_sched *psched, int attr_idx);
 char *get_sched_attr_str(const pbs_sched *psched, int attr_idx);

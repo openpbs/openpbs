@@ -47,7 +47,6 @@
 extern struct server server;
 extern char server_name[];
 extern char *msg_sched_called;
-extern pbs_list_head svr_deferred_req;
 
 int scheduler_jobs_stat = 0; /* set to 1 once scheduler queried jobs in a cycle*/
 extern int svr_unsent_qrun_req;
@@ -265,7 +264,7 @@ recv_sched_cycle_end(int sock)
 	/* clear list of jobs which were altered/modified during cycle */
 	am_jobs.am_used = 0;
 	scheduler_jobs_stat = 0;
-	handle_deferred_cycle_close();
+	handle_deferred_cycle_close(psched);
 
 	if (rc == DIS_EOF)
 		rc = -1;
@@ -321,7 +320,8 @@ schedule_jobs(pbs_sched *psched)
 	int cmd;
 	int s;
 	static int first_time = 1;
-	struct deferred_request *pdefr;
+	struct deferred_request *pdefr = NULL;
+	pbs_list_head *deferred_req;
 	char *jid = NULL;
 
 	if (psched == NULL)
@@ -336,7 +336,10 @@ schedule_jobs(pbs_sched *psched)
 
 		/* are there any qrun requests from manager/operator */
 		/* which haven't been sent,  they take priority      */
-		pdefr = (struct deferred_request *) GET_NEXT(svr_deferred_req);
+		deferred_req = fetch_sched_deferred_request(psched, false);
+		if (deferred_req) {
+			pdefr = (struct deferred_request *) GET_NEXT(*deferred_req);
+		} /* else pdefr is NULL */
 		while (pdefr) {
 			if (pdefr->dr_sent == 0) {
 				s = is_job_array(pdefr->dr_id);
@@ -371,7 +374,9 @@ schedule_jobs(pbs_sched *psched)
 
 		/* if there are more qrun requests queued up, reset cmd so */
 		/* they are sent when the Scheduler completes this cycle   */
-		pdefr = GET_NEXT(svr_deferred_req);
+		if (deferred_req) {
+			pdefr = GET_NEXT(*deferred_req);
+		} /* else pdefr is NULL */
 		while (pdefr) {
 			if (pdefr->dr_sent == 0) {
 				pbs_sched *target_sched;
@@ -433,7 +438,7 @@ scheduler_close(int sock)
 	am_jobs.am_used = 0;
 	scheduler_jobs_stat = 0;
 
-	handle_deferred_cycle_close();
+	handle_deferred_cycle_close(psched);
 }
 
 /**
@@ -524,9 +529,15 @@ set_scheduler_flag(int flag, pbs_sched *psched)
  * @return void
  */
 void
-handle_deferred_cycle_close(void)
+handle_deferred_cycle_close(pbs_sched *psched)
 {
+	pbs_list_head *deferred_req;
 	struct deferred_request *pdefr;
+
+	deferred_req = fetch_sched_deferred_request(psched, false);
+	if (deferred_req == NULL) {
+		return;
+	}
 
 	/*
 	 * If a deferred (from qrun) had been sent to the Scheduler and is still
@@ -537,7 +548,7 @@ handle_deferred_cycle_close(void)
 	 * If any qrun request is pending in the deffered list, set svr_unsent_qrun_req so
 	 * they are sent when the Scheduler completes this cycle
 	 */
-	pdefr = (struct deferred_request *) GET_NEXT(svr_deferred_req);
+	pdefr = (struct deferred_request *) GET_NEXT(*deferred_req);
 
 	while (pdefr) {
 		struct deferred_request *next_pdefr = (struct deferred_request *) GET_NEXT(pdefr->dr_link);
@@ -554,4 +565,6 @@ handle_deferred_cycle_close(void)
 
 		pdefr = next_pdefr;
 	}
+
+	clear_sched_deferred_request(psched);
 }
