@@ -533,6 +533,30 @@ Default:
 .I False
 (authorization is required)
 
+.IP validate_user 8
+Used for checking the user is valid/exists on the server
+and thus can submit and alter jobs.
+.br
+Readable by all; settable by Manager.
+.br
+Format: 
+.I Boolean
+.br
+Python type:
+.I bool
+.br
+Behavior:
+.RS
+.IP True 3
+Check the password database for user existence
+(e.g., the local password file /etc/passwd).
+.IP False 3
+The existence of user on the pbs server is not required.
+.RE
+.IP
+Default: 
+.I False
+
 .IP FLicenses 8
 The number of licenses currently available for allocation to unlicensed
 hosts.
