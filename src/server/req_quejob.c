@@ -2058,9 +2058,18 @@ req_resvSub(struct batch_request *preq)
 	char owner[PBS_MAXUSER + 1];
 	char *partition_name = NULL;
 	char *ptr = NULL;
+	conn_t *conn = NULL;
 
 	if (preq->rq_extend && strchr(preq->rq_extend, 'm'))
 		is_maintenance = 1;
+
+	if (preq->prot != PROT_TPP) {
+		conn = get_conn(sock);
+		if (!conn) {
+			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
+		}
+	}
 
 	switch (process_hooks(preq, hook_msg, sizeof(hook_msg),
 			      pbs_python_set_interrupt)) {
@@ -2423,6 +2432,22 @@ req_resvSub(struct batch_request *preq)
 			}
 		}
 
+		if (conn) {
+			strcpy(buf, conn->cn_physhost);
+			set_rattr_str_slim(presv, RESV_ATR_submit_host, buf, NULL);
+		}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		/* save gssapi/krb5 creds for this reservation */
+		if (conn && conn->cn_credid != NULL &&
+			conn->cn_auth_config != NULL &&
+			conn->cn_auth_config->auth_method != NULL && strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
+			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				"saving creds.  conn is %d, cred id %s", preq->rq_conn, conn->cn_credid);
+
+			set_rattr_str_slim(presv, RESV_ATR_cred_id, conn->cn_credid, NULL);
+		}
+#endif
 		/* set reservation name to "NULL" if not specified by user */
 
 		if (!is_rattr_set(presv, RESV_ATR_resv_name))

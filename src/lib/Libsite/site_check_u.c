@@ -102,21 +102,22 @@ site_check_user_map(void *pobj, int objtype, char *luser)
 	/* set pointer variables etc based on object's type */
 	if (objtype == JOB_OBJECT) {
 		p1 = get_jattr_str(pobj, JOB_ATR_job_owner);
+		orighost = get_jattr_str(pobj, JOB_ATR_submit_host);
 		objid = ((job *) pobj)->ji_qs.ji_jobid;
 		event_type = PBSEVENT_JOB;
 		event_class = PBS_EVENTCLASS_JOB;
 	} else {
 		p1 = get_rattr_str(pobj, RESV_ATR_resv_owner);
+		orighost = get_rattr_str(pobj, RESV_ATR_submit_host);
 		objid = ((resc_resv *) pobj)->ri_qs.ri_resvID;
-		event_type = PBSEVENT_JOB;
-		event_class = PBS_EVENTCLASS_JOB;
+		event_type = PBSEVENT_RESV;
+		event_class = PBS_EVENTCLASS_RESV;
 	}
 
 	/* the owner name, without the "@host" */
 	cvrt_fqn_to_name(p1, owner);
 
-	orighost = strchr(p1, '@');
-	if ((orighost == NULL) || (*++orighost == '\0')) {
+	if ((orighost == NULL) || (*orighost == '\0')) {
 		log_event(event_type, event_class, LOG_INFO, objid, msg_orighost);
 		return (-1);
 	}
@@ -124,7 +125,13 @@ site_check_user_map(void *pobj, int objtype, char *luser)
 		return (0);
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	return 0;
+	/* if this is gss job/resv ignore the rest */
+	if (objtype == JOB_OBJECT && is_jattr_set(pobj, JOB_ATR_cred_id)) {
+		return -1;
+	}
+	if (objtype == RESC_RESV_OBJECT && is_rattr_set(pobj, RESV_ATR_cred_id)) {
+		return -1;
+	}
 #endif
 
 #ifdef WIN32
