@@ -85,6 +85,8 @@ struct svr_jobid_list {
 #define LARGE_BUF_LEN 4096
 #define MAXSERVERNAME PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2
 #define PBS_DEPEND_LEN 2040
+#define PBS_JOBCOOKIE "PBS_JOBCOOKIE"
+#define PBS_INTERACTIVE_COOKIE "PBS_INTERACTIVE_COOKIE"
 
 /* for calling pbs_parse_quote:  to accept whitespace as data or separators */
 #define QMGR_ALLOW_WHITE_IN_VALUE 1
