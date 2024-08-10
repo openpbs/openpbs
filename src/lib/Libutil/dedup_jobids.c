@@ -150,6 +150,67 @@ split_sub_jobid(char *jobid, char **out_jobid, char **sub_job_range)
 }
 
 /**
+ * @brief Check if job id is a short job id
+ * and misses the server name.
+ *
+ * @param [in] jobid to check
+ * 
+ * @return bool
+ * @retval true for short job id
+ * @retval false otherwise
+ */
+bool
+check_short_jobid(char *jobid)
+{
+	if (jobid == NULL) {
+		return false;
+	}
+
+	while (*jobid) {
+		if (isdigit(*jobid) == 0 && *jobid != '[' && *jobid != ']') {
+			return false;
+		}
+		jobid++;
+	}
+	return true;
+}
+
+/**
+ * @brief Adds default server name to short job ids.
+ *
+ * @param [in,out] jobids list of jobids
+ * @param [in] numjids total count of jobids
+ * @param [in,out] malloc_track to track the memory allocated
+ * 
+ * @return int
+ * @retval 0  for Success
+ * @retval -1 for Failure
+ */
+int
+add_default_server(char **jobids, int numjids, char *malloc_track)
+{
+	int i;
+	char *def_server = pbs_default();
+	char jobid[PBS_MAXJOBNAME +1];
+	for (i = 0; i < numjids; i++) {
+		if (check_short_jobid(jobids[i])) {
+			if (def_server == NULL) {
+				return -1;
+			}
+
+			sprintf(jobid, "%s.%s", jobids[i], def_server);
+			jobids[i] = strdup(jobid);
+			if (jobids[i] == NULL) {
+				return -1;
+			}
+			malloc_track[i] = 1;
+		}
+	}
+
+	return 0;
+}
+
+/**
  * @brief Remove duplicate jobids from jobids list
  *
  * @param [in,out] jobids list of jobids
@@ -188,6 +249,10 @@ dedup_jobids(char **jobids, int *numjids, char *malloc_track)
 	srange_list = calloc((*numjids), sizeof(array_job_range_list *));
 	if (array_jobid_list == NULL)
 		return -1;
+
+	if (add_default_server(jobids, *numjids, malloc_track)) {
+		return -1;
+	}
 
 	non_array_jobs_idx = pbs_idx_create(0, 0);
 	array_jobs_idx = pbs_idx_create(0, 0);
@@ -273,6 +338,9 @@ dedup_jobids(char **jobids, int *numjids, char *malloc_track)
 				free_range_list(r2);
 				free_range_list(r3);
 			}
+		}
+		if (malloc_track[uni_jobids]) {
+			free(jobids[uni_jobids]);
 		}
 		/* one for '[', one for ']' and one for '.' */
 		jobids[uni_jobids] = (char *) malloc(strlen(array_jobid_list[i]) + strlen(temp_range) + 4);

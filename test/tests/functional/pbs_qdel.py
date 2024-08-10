@@ -210,7 +210,7 @@ class TestQdel(TestFunctional):
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: "R"}, id=jid)
-        self.server.delete([jid, jid, jid, jid, jid], wait=True)
+        self.server.delete([jid.split(".")[0], jid, jid, jid, jid], wait=True)
         self.server.expect(JOB, {'job_state': 'F', 'substate': 91}, id=jid,
                            extend='x', max_attempts=20)
 
@@ -478,7 +478,8 @@ class TestQdel(TestFunctional):
             self.server.delete(job_set)
             self.fail("qdel didn't throw 'Unknown job id' error")
         except PbsDeleteError as e:
-            self.assertEqual("qdel: Unknown Job Id " + unknown_jid, e.msg[0])
+            msg = f'qdel: Unknown Job Id {unknown_jid}'
+            self.assertTrue(e.msg[0].startswith(msg))
             self.server.expect(JOB, {'job_state': 'F'}, id=stripped_jid,
                                extend='x')
             self.server.expect(JOB, {'job_state': 'F'}, id=running_jid,
