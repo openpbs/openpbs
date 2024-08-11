@@ -479,7 +479,9 @@ init_deljoblist(struct batch_request *preq)
 		if (!pjob)
 			continue;
 
-		pbs_idx_insert(preply->brp_un.brp_deletejoblist.undeleted_job_idx, pjob->ji_qs.ji_jobid, NULL);
+		if (pbs_idx_insert(preply->brp_un.brp_deletejoblist.undeleted_job_idx, pjob->ji_qs.ji_jobid, NULL) != PBS_IDX_RET_OK) {
+			return 1;
+		}
 		if (strcmp(jlist[tail], pjob->ji_qs.ji_jobid) != 0) {
 			free(jlist[tail]);
 			jlist[tail] = strdup(pjob->ji_qs.ji_jobid);
