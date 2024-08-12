@@ -1228,7 +1228,17 @@ pbs_auth_encrypt_data(void *ctx, void *data_in, size_t len_in, void **data_out, 
 	unwrapped.length = len_in;
 	unwrapped.value = data_in;
 
+	pthread_once(&gss_init_once, init_gss_atfork);
+
+	if (gss_lock(&gss_mutex)) {
+		return PBS_GSS_ERR_INTERNAL;
+	}
+
 	maj_stat = gss_wrap(&min_stat, gss_extra->gssctx, gss_extra->is_secure, GSS_C_QOP_DEFAULT, &unwrapped, &conf_state, &wrapped);
+
+	if (gss_unlock(&gss_mutex)) {
+		return PBS_GSS_ERR_INTERNAL;
+	}
 
 	if (maj_stat != GSS_S_COMPLETE) {
 		GSS_LOG_STS("gss_wrap", maj_stat, min_stat);
@@ -1302,7 +1312,17 @@ pbs_auth_decrypt_data(void *ctx, void *data_in, size_t len_in, void **data_out, 
 	wrapped.length = len_in;
 	wrapped.value = data_in;
 
+	pthread_once(&gss_init_once, init_gss_atfork);
+
+	if (gss_lock(&gss_mutex)) {
+		return PBS_GSS_ERR_INTERNAL;
+	}
+
 	maj_stat = gss_unwrap(&min_stat, gss_extra->gssctx, &wrapped, &unwrapped, NULL, NULL);
+
+	if (gss_unlock(&gss_mutex)) {
+		return PBS_GSS_ERR_INTERNAL;
+	}
 
 	if (maj_stat != GSS_S_COMPLETE) {
 		GSS_LOG_STS("gss_unwrap", maj_stat, min_stat);
