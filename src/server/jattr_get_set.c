@@ -527,3 +527,18 @@ free_jattr(job *pjob, int attr_idx)
 	if (pjob != NULL)
 		free_attr(job_attr_def, get_jattr(pjob, attr_idx), attr_idx);
 }
+
+/**
+ * @brief	clear a job attribute
+ *
+ * @param[in]	pjob - pointer to job
+ * @param[in]	attr_idx - attribute index to clear
+ *
+ * @return	void
+ */
+void
+clear_jattr(job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		clear_attr(get_jattr(pjob, attr_idx), &job_attr_def[attr_idx]);
+}

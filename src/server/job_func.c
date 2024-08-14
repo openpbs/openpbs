@@ -282,6 +282,58 @@ job_abt(job *pjob, char *text)
 
 	return (rc);
 }
+
+/**
+ * @brief
+ * 		job_delete_attr - delete a job attribute
+ *
+ *		The job attribute is removed from the memory and db.
+ *
+ * @param[in]	pjob - pointer to job structure
+ * @param[in]	attr_idx - attribute to remove
+ * 
+ * @return	int
+ * @retval	0	- success
+ * @retval	!=0	- fail
+ */
+
+int
+job_delete_attr(job *pjob, int attr_idx)
+{
+	void *conn = (void *) svr_db_conn;
+	int index;
+	pbs_db_obj_info_t obj;
+	pbs_db_attr_list_t db_attr_list;
+	attribute_def attr_def;
+	attribute *pattr;
+	int rc;
+
+	obj.pbs_db_un.pbs_db_job = NULL;
+	obj.pbs_db_obj_type = PBS_DB_JOB;
+
+	db_attr_list.attr_count = 0;
+	CLEAR_HEAD(db_attr_list.attrs);
+
+	if (is_jattr_set(pjob, attr_idx)) {
+		attr_def = job_attr_def[attr_idx];
+		if ((index = find_attr(job_attr_idx, job_attr_def, attr_def.at_name)) < 0) {
+			return -1;
+		}
+		pattr = pjob->ji_wattr;
+		if ((rc = encode_single_attr_db((job_attr_def + index), (pattr + index), &db_attr_list)) != 0) {
+			return rc;
+		}
+		if ((rc = pbs_db_delete_attr_obj(conn, &obj, pjob->ji_qs.ji_jobid, &db_attr_list)) < 0) {
+			free_db_attr_list(&db_attr_list);
+			return rc;
+		}
+		free_db_attr_list(&db_attr_list);
+
+		clear_jattr(pjob, attr_idx);
+	}
+
+	return 0;
+}
 #endif /* PBS_MOM */
 
 /**

@@ -995,6 +995,7 @@ extern char *lookup_variable(void *, int, char *);
 extern void issue_track(job *);
 extern void issue_delete(job *);
 extern int job_abt(job *, char *);
+extern int job_delete_attr(job *, int);
 extern job *job_alloc(void);
 extern void job_free(job *);
 extern int modify_job_attr(job *, svrattrl *, int, int *);
@@ -1046,6 +1047,7 @@ void free_jattr(job *pjob, int attr_idx);
 void mark_jattr_not_set(job *pjob, int attr_idx);
 void mark_jattr_set(job *pjob, int attr_idx);
 attribute *get_jattr(const job *pjob, int attr_idx);
+void clear_jattr(job *pjob, int attr_idx);
 
 /*
  *	The filesystem related recovery/save routines are renamed

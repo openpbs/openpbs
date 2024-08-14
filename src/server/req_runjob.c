@@ -139,7 +139,6 @@ extern char *msg_init_substate;
 extern char *msg_manager;
 extern char *msg_stageinfail;
 extern char *msg_job_abort;
-extern pbs_list_head svr_deferred_req;
 extern time_t time_now;
 extern int svr_totnodes; /* non-zero if using nodes */
 extern job *chk_job_request(char *, struct batch_request *, int *, int *);
@@ -229,29 +228,43 @@ check_and_provision_job(struct batch_request *preq, job *pjob, int *need_prov)
 static void
 clear_from_defr(int sd)
 {
+	pbs_sched *psched;
+	pbs_list_head *deferred_req;
 	struct deferred_request *pdefr;
 
-	for (pdefr = (struct deferred_request *) GET_NEXT(svr_deferred_req);
-	     pdefr;
-	     pdefr = (struct deferred_request *) GET_NEXT(pdefr->dr_link)) {
-		if (pdefr->dr_preq != NULL) {
-			if (pdefr->dr_preq->rq_conn == sd) {
-				/* found deferred run job request whose */
-				/* connection to the client has closed  */
-				if (pdefr->dr_sent != 0) {
-					/* request sent to scheduler, wait   */
-					/* for it to respond before removing */
-					/* this request, just null the qrun  */
-					/* request pointer                   */
-					pdefr->dr_preq = NULL;
-				} else {
-					/* unlink & free the deferred request */
-					delete_link(&pdefr->dr_link);
-					free(pdefr);
+	for (psched = (pbs_sched *) GET_NEXT(svr_allscheds);
+	     psched;
+	     psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
+
+		deferred_req = fetch_sched_deferred_request(psched, false);
+		if (deferred_req == NULL) {
+			continue;
+		}
+
+		for (pdefr = (struct deferred_request *) GET_NEXT(*deferred_req);
+		     pdefr;
+		     pdefr = (struct deferred_request *) GET_NEXT(pdefr->dr_link)) {
+			if (pdefr->dr_preq != NULL) {
+				if (pdefr->dr_preq->rq_conn == sd) {
+					/* found deferred run job request whose */
+					/* connection to the client has closed  */
+					if (pdefr->dr_sent != 0) {
+						/* request sent to scheduler, wait   */
+						/* for it to respond before removing */
+						/* this request, just null the qrun  */
+						/* request pointer                   */
+						pdefr->dr_preq = NULL;
+					} else {
+						/* unlink & free the deferred request */
+						delete_link(&pdefr->dr_link);
+						free(pdefr);
+					}
+					break;
 				}
-				break;
 			}
 		}
+
+		clear_sched_deferred_request(psched);
 	}
 }
 
@@ -304,6 +317,7 @@ req_runjob(struct batch_request *preq)
 	int end;
 	int step;
 	int count;
+	pbs_list_head *deferred_req;
 	struct deferred_request *pdefr;
 	char hook_msg[HOOK_MSG_SIZE];
 	pbs_sched *psched;
@@ -439,7 +453,12 @@ req_runjob(struct batch_request *preq)
 		pbs_strncpy(pdefr->dr_id, fixjid, PBS_MAXSVRJOBID + 1);
 		pdefr->dr_preq = preq;
 		pdefr->dr_sent = 0;
-		append_link(&svr_deferred_req, &pdefr->dr_link, pdefr);
+		deferred_req = fetch_sched_deferred_request(psched, true);
+		if (deferred_req == NULL) {
+			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
+		}
+		append_link(deferred_req, &pdefr->dr_link, pdefr);
 		/* ensure that request is removed if client connect is closed */
 		net_add_close_func(preq->rq_conn, clear_from_defr);
 
@@ -936,7 +955,9 @@ svr_startjob(job *pjob, struct batch_request *preq)
 			return (PBSE_SYSTEM);
 
 	/* clear Exit_status which may have been set in a hook and requeued */
-	clear_attr(get_jattr(pjob, JOB_ATR_exit_status), &job_attr_def[(int) JOB_ATR_exit_status]);
+	if (job_delete_attr(pjob, JOB_ATR_exit_status)) {
+		return PBSE_SYSTEM;
+	}
 
 	/* if exec_vnode already set and either (hotstart or checkpoint) */
 	/* then reuseuse the host(s) listed in the current exec_vnode	 */
@@ -1832,6 +1853,8 @@ assign_hosts(job *pjob, char *given, int set_exec_vnode)
 void
 req_defschedreply(struct batch_request *preq)
 {
+	pbs_sched *psched;
+	pbs_list_head *deferred_req;
 	struct deferred_request *pdefr;
 
 	if (preq->rq_ind.rq_defrpy.rq_cmd != SCH_SCHEDULE_AJOB) {
@@ -1839,7 +1862,14 @@ req_defschedreply(struct batch_request *preq)
 		return;
 	}
 
-	for (pdefr = (struct deferred_request *) GET_NEXT(svr_deferred_req);
+	find_assoc_sched_jid(preq->rq_ind.rq_defrpy.rq_id, &psched);
+	deferred_req = fetch_sched_deferred_request(psched, false);
+	if (deferred_req == NULL) {
+		req_reject(PBSE_IVALREQ, 0, preq);
+		return;
+	}
+
+	for (pdefr = (struct deferred_request *) GET_NEXT(*deferred_req);
 	     pdefr;
 	     pdefr = (struct deferred_request *) GET_NEXT(pdefr->dr_link)) {
 		if (strcmp(preq->rq_ind.rq_defrpy.rq_id, pdefr->dr_id) == 0)
@@ -1877,6 +1907,8 @@ req_defschedreply(struct batch_request *preq)
 	/* unlink and free the deferred request entry */
 	delete_link(&pdefr->dr_link);
 	free(pdefr);
+
+	clear_sched_deferred_request(psched);
 
 	reply_send(preq);
 }

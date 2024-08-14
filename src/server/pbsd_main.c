@@ -168,7 +168,7 @@ int shutdown_who;		  /* see req_shutdown() */
 char *mom_host = server_host;
 long new_log_event_mask = 0;
 int server_init_type = RECOV_WARM;
-pbs_list_head svr_deferred_req;
+pbs_list_head svr_deferred_req; /* list of lists, one for each scheduler */
 pbs_list_head svr_newjobs; /* list of incomming new jobs       */
 pbs_list_head svr_allscheds;
 extern pbs_list_head svr_creds_cache; /* all credentials available to send */
