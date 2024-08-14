@@ -1631,7 +1631,11 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 			/* remote, try scp */
 		} else if (pbs_conf.scp_path != NULL && (loop % 2) == 1) {
 			ag0 = pbs_conf.scp_path;
-			ag1 = "-Brvp";
+			if (pbs_conf.scp_args != NULL) {
+				ag1 = pbs_conf.scp_args;
+                        } else {
+				ag1 = "-Brvp";
+                        }
 		} else {
 			ag0 = pbs_conf.rcp_path;
 			ag1 = "-rp";
@@ -1752,7 +1756,11 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 				/* let's try to copy using pbs_rcp now */
 				continue;
 			}
-			ag1 = "-Brv";
+			if (pbs_conf.scp_args != NULL) {
+				ag1 = pbs_conf.scp_args;
+                        } else {
+				ag1 = "-Brv";
+                        }
 		} else {
 			ag0 = pbs_conf.rcp_path;
 			if ((cred_buf != NULL) && (cred_len != 0)) {
