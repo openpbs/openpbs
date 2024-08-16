@@ -170,6 +170,9 @@ Port on which default scheduler listens.  Default value: 15004
 Location of scp command if scp is used; setting this parameter causes
 PBS to first try scp rather than rcp for file transport.
 
+.IP PBS_SCP_ARGS
+Arguments for the scp command if scp is used; if not set, defaults will be used.
+
 .IP PBS_SECONDARY   
 Hostname of secondary server.  Used only for failover configuration.  
 Overrides PBS_SERVER_HOST_NAME.

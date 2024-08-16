@@ -101,6 +101,7 @@ struct pbs_config pbs_conf = {
 	NULL,			    /* pbs_server_name */
 	NULL,			    /* cp_path */
 	NULL,			    /* scp_path */
+	NULL,			    /* scp_args */
 	NULL,			    /* rcp_path */
 	NULL,			    /* pbs_demux_path */
 	NULL,			    /* pbs_environment */
@@ -474,6 +475,9 @@ __pbs_loadconf(int reload)
 			} else if (!strcmp(conf_name, PBS_CONF_SCP)) {
 				free(pbs_conf.scp_path);
 				pbs_conf.scp_path = shorten_and_cleanup_path(conf_value);
+			} else if (!strcmp(conf_name, PBS_CONF_SCP_ARGS)) {
+				free(pbs_conf.scp_args);
+				pbs_conf.scp_args = strdup(conf_value);
 			} else if (!strcmp(conf_name, PBS_CONF_CP)) {
 				free(pbs_conf.cp_path);
 				pbs_conf.cp_path = shorten_and_cleanup_path(conf_value);
@@ -652,6 +656,10 @@ __pbs_loadconf(int reload)
 	if ((gvalue = getenv(PBS_CONF_SCP)) != NULL) {
 		free(pbs_conf.scp_path);
 		pbs_conf.scp_path = shorten_and_cleanup_path(gvalue);
+	}
+	if ((gvalue = getenv(PBS_CONF_SCP_ARGS)) != NULL) {
+		free(pbs_conf.scp_args);
+		pbs_conf.scp_args = strdup(gvalue);
 	}
 	if ((gvalue = getenv(PBS_CONF_CP)) != NULL) {
 		free(pbs_conf.cp_path);
@@ -1023,6 +1031,10 @@ err:
 	if (pbs_conf.scp_path) {
 		free(pbs_conf.scp_path);
 		pbs_conf.scp_path = NULL;
+	}
+	if (pbs_conf.scp_args) {
+		free(pbs_conf.scp_args);
+		pbs_conf.scp_args = NULL;
 	}
 	if (pbs_conf.cp_path) {
 		free(pbs_conf.cp_path);

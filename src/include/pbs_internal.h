@@ -219,7 +219,8 @@ struct pbs_config
 	char *pbs_exec_path;			/* path to the pbs exec dir */
 	char *pbs_server_name;		/* name of PBS Server, usually hostname of host on which PBS server is executing */
 	char *cp_path;			/* path to local copy function */
-	char *scp_path;			/* path to ssh */
+	char *scp_path;			/* path to scp, overriding the default (OS-dependent) one */
+	char *scp_args;			/* arguments for scp, overriding the default (OS-dependent) ones */
 	char *rcp_path;			/* path to pbs_rsh */
 	char *pbs_demux_path;			/* path to pbs demux */
 	char *pbs_environment;		/* path to pbs_environment file */
@@ -295,7 +296,8 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_INSTALL_MODE    "PBS_INSTALL_MODE" /* PBS installation mode */
 #define PBS_CONF_RCP		"PBS_RCP"
 #define PBS_CONF_CP		"PBS_CP"
-#define PBS_CONF_SCP		"PBS_SCP"		      /* path to ssh */
+#define PBS_CONF_SCP		"PBS_SCP"		      /* path to scp */
+#define PBS_CONF_SCP_ARGS	"PBS_SCP_ARGS"		      /* args for scp */
 #define PBS_CONF_ENVIRONMENT    "PBS_ENVIRONMENT" /* path to pbs_environment */
 #define PBS_CONF_PRIMARY	"PBS_PRIMARY"  /* Primary Server in failover */
 #define PBS_CONF_SECONDARY	"PBS_SECONDARY"	/* Secondary Server failover */
