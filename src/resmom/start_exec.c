@@ -1,4 +1,4 @@
-/*
+	/*
  * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
@@ -3608,9 +3608,11 @@ finish_exec(job *pjob)
 		struct sigaction act;
 		char *termtype;
 		char *phost;
+		char *auth_method;
 		int qsub_sock;
 		int old_qsub_sock;
 		int pts; /* fd for slave pty */
+		int ret = 0;
 
 		/*************************************************************************/
 		/*		We have an "interactive" job, connect the standard	 */
@@ -3641,7 +3643,30 @@ finish_exec(job *pjob)
 			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 		}
 
-		qsub_sock = conn_qsub(phost + 1, get_jattr_long(pjob, JOB_ATR_interactive));
+		/* get qsub prefered auth method */
+
+		auth_method = arst_string("PBS_O_INTERACTIVE_AUTH_METHOD", get_jattr(pjob, JOB_ATR_variables));
+		if ((auth_method == NULL) ||
+		    ((auth_method = strchr(auth_method, (int) '=')) == NULL)) {
+			log_joberr(-1, __func__, "PBS_O_INTERACTIVE_AUTH_METHOD not set",
+				   pjob->ji_qs.ji_jobid);
+			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
+		}
+
+		/* Verify prefered auth is supported */
+		if (is_string_in_arr(pbs_conf.supported_auth_methods, auth_method+1)) {
+			log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+				"interactive authentication method = %s", auth_method+1);
+			if (strcmp(auth_method+1, AUTH_RESVPORT_NAME) == 0)
+				qsub_sock = conn_qsub_resvport(phost + 1, get_jattr_long(pjob, JOB_ATR_interactive));
+			else
+				qsub_sock = conn_qsub(phost + 1, get_jattr_long(pjob, JOB_ATR_interactive));
+		} else {
+			qsub_sock = -1;
+			sprintf(log_buffer, "interactive authentication method %s not supported", auth_method +1);
+			log_err(errno, __func__, log_buffer);
+		}
+
 		if (qsub_sock < 0) {
 			sprintf(log_buffer, "cannot open qsub sock for %s",
 				pjob->ji_qs.ji_jobid);
@@ -3679,6 +3704,13 @@ finish_exec(job *pjob)
 				(void) CS_close_socket(old_qsub_sock);
 				starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 			}
+		}
+
+		ret = auth_with_qsub(qsub_sock, get_jattr_long(pjob, JOB_ATR_interactive),
+				     phost + 1, auth_method + 1, pjob->ji_qs.ji_jobid);
+		if (ret != INTERACTIVE_AUTH_SUCCESS) {
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid, "Failed to authenticate with qsub");
+			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 		}
 
 		/* send job id as validation to qsub */
@@ -3766,6 +3798,7 @@ finish_exec(job *pjob)
 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "read failed with errno %d", errno);
 
 			shutdown(qsub_sock, 2);
+			dis_destroy_chan(qsub_sock);
 			exit(0);
 
 		} else if (writerpid > 0) {
@@ -3935,10 +3968,19 @@ finish_exec(job *pjob)
 									       JOB_EXEC_FAIL2, &sjr);
 							}
 						}
-						port_forwarder(socks, conn_qsub, phost + 1,
-							       get_jattr_long(pjob, JOB_ATR_X11_port),
-							       qsub_sock, mom_reader_Xjob,
-							       log_mom_portfw_msg);
+						if (strcmp(auth_method+1, AUTH_RESVPORT_NAME) == 0) {
+							port_forwarder(socks, conn_qsub_resvport, phost + 1,
+									get_jattr_long(pjob, JOB_ATR_X11_port),
+									qsub_sock, mom_reader_Xjob,
+									log_mom_portfw_msg,
+									EXEC_HOST_SIDE, auth_method+1, pjob->ji_qs.ji_jobid);
+						} else {
+							port_forwarder(socks, conn_qsub, phost + 1,
+									get_jattr_long(pjob, JOB_ATR_X11_port),
+									qsub_sock, mom_reader_Xjob,
+									log_mom_portfw_msg,
+									EXEC_HOST_SIDE, auth_method+1, pjob->ji_qs.ji_jobid);
+						}
 					} else {
 						int res = mom_reader(qsub_sock, ptc, buf);
 						/* Inside mom_reader, if read is successful and write fails then it is an error and hence logging here as error for -1 */
@@ -3955,6 +3997,7 @@ finish_exec(job *pjob)
 				/* make sure qsub gets EOF */
 
 				shutdown(qsub_sock, 2);
+				dis_destroy_chan(qsub_sock);
 
 				/* change pty back to available after */
 				/* job is done */

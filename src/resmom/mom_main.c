@@ -643,6 +643,41 @@ static void check_busy(double);
 
 /**
  * @brief
+ *	auth_handler - Handles additional authentication required for server TCP connections
+ *
+ * @param[in] conn - pointer to connection struct
+ *
+ * @return int
+ * @retval -1 - Authentication failed
+ * @retval 0 - Connection was authenticated successfully
+ * @retval 1 - Conncection did not need additional authentication
+ *
+ */
+static int
+auth_handler(conn_t *conn)
+{
+	if (conn->cn_authen & PBS_NET_CONN_PREVENT_IP_SPOOFING) {
+		char ebuf[LOG_BUF_SIZE] = "";
+		char port_str[6];
+
+		snprintf(port_str, sizeof(port_str), "%d", conn->cn_port);
+
+		/* The received cipher should include the remote's port used to connect
+		 * with this MoM, to prevent IP Spoofing and capture-replay attacks.
+		 */
+		if (server_cipher_auth(conn->cn_sock, port_str, ebuf, sizeof(ebuf))) {
+			log_err(errno, __func__, ebuf);
+			return -1;
+		}
+		conn->cn_authen &= ~PBS_NET_CONN_PREVENT_IP_SPOOFING;
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+/**
+ * @brief
  *	logs error message
  *
  * @param[in] attrib - pointer to rm_attribute structure
@@ -7943,7 +7978,7 @@ main(int argc, char *argv[])
 	}
 
 	tpp_fd = -1;
-	if (init_network_add(sock_bind_mom, NULL, process_request) != 0) {
+	if (init_network_add(sock_bind_mom, auth_handler, process_request) != 0) {
 
 		c = SOCK_ERRNO;
 		(void) sprintf(log_buffer,

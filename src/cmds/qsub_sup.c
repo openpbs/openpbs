@@ -1229,7 +1229,8 @@ x11handler(int X_data_socket, int interactive_reader_socket)
 	/* Try to open a socket for the local X server. */
 
 	port_forwarder(socks, x11_connect_display, display, 0,
-		       interactive_reader_socket, reader_Xjob, log_cmds_portfw_msg);
+		       interactive_reader_socket, reader_Xjob, log_cmds_portfw_msg,
+			   QSUB_SIDE, pbs_conf.interactive_auth_method, new_jobname);
 }
 
 /**
@@ -1340,13 +1341,17 @@ retry:
 	 * second, mom sends the job id for us to verify
 	 */
 
-	ret = CS_client_auth(news);
-
-	if ((ret != CS_SUCCESS) && (ret != CS_AUTH_USE_IFF)) {
-		fprintf(stderr, "qsub: failed authentication with execution host\n");
-		shutdown(news, 2);
-		exit_qsub(1);
-	}
+	ret = auth_exec_socket(news, ntohs(GET_IP_PORT(&from)), pbs_conf.interactive_auth_method, new_jobname);
+	if (ret != INTERACTIVE_AUTH_SUCCESS) {
+ 		fprintf(stderr, "qsub: failed authentication with execution host\n");
+		shutdown(news, SHUT_RDWR);
+		close(news);
+		dis_destroy_chan(news);
+		if (ret == INTERACTIVE_AUTH_RETRY)
+			goto retry;
+		else
+			exit_qsub(1);
+ 	}
 
 	/* now verify the value of job id */
 
@@ -1364,12 +1369,14 @@ retry:
 	if (pc == momjobid) { /* no data read */
 		shutdown(news, 2);
 		close(news);
+		dis_destroy_chan(news);
 		goto retry;
 	}
 
 	if (strncmp(momjobid, new_jobname, PBS_MAXSVRJOBID) != 0) {
 		fprintf(stderr, "qsub: invalid job name from execution server\n");
 		shutdown(news, 2);
+		dis_destroy_chan(news);
 		exit_qsub(1);
 	}
 

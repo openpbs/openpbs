@@ -193,6 +193,29 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 		return (sock); /* PBS_NET_RC_RETRY or PBS_NET_RC_FATAL */
 	}
 
+	/* We need to further identify our identity with the remote execution node
+	 * to prevent against IP spoofing. The encoded cipher will include the local
+	 * port used to connect to the remote execution node.
+	 */
+	if ((sock >=0) && pmom && (prot == PROT_TCP)) {
+		char errbuf[LOG_BUF_SIZE] = "";
+		struct sockaddr sockname;
+		pbs_socklen_t socknamelen;
+		char port_str[6]; /* TCP ports can go up to 65536, so 5 digits + 1 for null term */
+		socknamelen = sizeof(sockname);
+
+		if (getsockname(sock, (struct sockaddr *) &sockname, &socknamelen) < 0) {
+			log_err(errno, __func__, "Error getting the socket's bound address");
+			return (PBS_NET_RC_RETRY);
+		}
+		snprintf(port_str, sizeof(port_str), "%d", ntohs(GET_IP_PORT(&sockname)));
+		if (client_cipher_auth(sock, port_str, errbuf, sizeof(errbuf)) != 0) {
+			log_err(errno, __func__, errbuf);
+			pbs_errno = PBSE_BADCRED;
+			return (PBS_NET_RC_RETRY);
+		}
+	}
+
 	/* add the connection to the server connection table and select list */
 
 	if (func) {

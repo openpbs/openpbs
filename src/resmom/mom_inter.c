@@ -458,6 +458,7 @@ int ptc;
  *
  * @param hostname[in] - hostname of the submission host where qsub is running.
  * @param port[in] - port number on which qsub is accepting connection.
+ * @param authport_falgs[in] - Authentication port flags to use. Values defined in net_connect.h
  *
  * @return int
  * @retval >=0 the socket obtained
@@ -465,8 +466,8 @@ int ptc;
  * @retval  -2 PBS_NET_RC_RETRY
  *
  */
-int
-conn_qsub(char *hostname, long port)
+static int
+_conn_qsub(char *hostname, long port, int authport_flags)
 {
 	pbs_net_t hostaddr;
 
@@ -478,7 +479,46 @@ conn_qsub(char *hostname, long port)
 	 * a client
 	 */
 
-	return (client_to_svr(hostaddr, (unsigned int) port, B_SVR));
+	return (client_to_svr(hostaddr, (unsigned int) port, authport_flags));
+}
+
+/**
+ * @brief
+ *      connect to the qsub that submitted this interactive job, using a privileged port
+ *
+ * @param hostname[in] - hostname of the submission host where qsub is running.
+ * @param port[in] - port number on which qsub is accepting connection.
+ *
+ * @return int
+ * @retval >=0 the socket obtained
+ * @retval  -1 PBS_NET_RC_FATAL
+ * @retval  -2 PBS_NET_RC_RETRY
+ *
+ */
+int
+conn_qsub_resvport(char *hostname, long port)
+{
+	return _conn_qsub(hostname, port, B_SVR | B_RESERVED);
+}
+
+
+/**
+ * @brief
+ *      connect to the qsub that submitted this interactive job
+ *
+ * @param hostname[in] - hostname of the submission host where qsub is running.
+ * @param port[in] - port number on which qsub is accepting connection.
+ *
+ * @return int
+ * @retval >=0 the socket obtained
+ * @retval  -1 PBS_NET_RC_FATAL
+ * @retval  -2 PBS_NET_RC_RETRY
+ *
+ */
+int
+conn_qsub(char *hostname, long port)
+{
+	return _conn_qsub(hostname, port, B_SVR);
 }
 
 /**

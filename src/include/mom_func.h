@@ -379,6 +379,7 @@ extern void scan_for_terminated(void);
 extern int setwinsize(int);
 extern void set_termcc(int);
 extern int conn_qsub(char *host, long port);
+extern int conn_qsub_resvport(char *host, long port);
 extern int state_to_server(int, int);
 extern int send_hook_vnl(void *vnl);
 extern int hook_requests_to_server(pbs_list_head *);
