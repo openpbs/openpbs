@@ -566,3 +566,21 @@ class TestQdel(TestFunctional):
         self.server.delete(jid_list)
         rv = self.server.isUp()
         self.assertTrue(rv, "Server crashed")
+
+    @requirements(num_moms=1)
+    def test_qdel_mix_of_job_and_arrayjob_range(self):
+        """
+        Test that the server handles deleting mix of common job
+        and array job range in one request
+        """
+        j = Job(TEST_USER, {'Resource_List.select': 'ncpus=1'})
+        jid = self.server.submit(j)
+
+        ajid, array_id, sjids = self.array_job_start(20, 2, 2)
+
+        sj_list = [jid, f"{array_id}[1]", f"{array_id}[2]"]
+        self.server.delete(sj_list, wait=True)
+        self.server.expect(
+            JOB, {'job_state': 'F'}, id=jid, extend='x', max_attempts=20)
+        self.server.expect(
+            JOB, {'job_state': 'F'}, id=ajid, extend='x', max_attempts=20)
