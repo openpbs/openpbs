@@ -895,17 +895,22 @@ rsource(char *name, pbs_stat_struct *statp)
 	}
 	while (errno = 0, (dp = readdir(dirp)) != NULL) {
 
+		int len1 = 0;
+		int len2 = 0;
 #ifndef WIN32
 		if (dp->d_ino == 0)
 			continue;
 #endif
 		if (!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, ".."))
 			continue;
-		if (strlen(name) + 1 + strlen(dp->d_name) >= (size_t) (MAXPATHLEN - 1)) {
+		len1 = strlen(name);
+		len2 = strlen(dp->d_name);
+		if (len1 + 1 + len2 >= (size_t) (MAXPATHLEN - 1)) {
 			run_err("%s/%s: name too long", name, dp->d_name);
 			continue;
 		}
-		(void) sprintf(path, "%s/%s", name, dp->d_name);
+		(void) snprintf(path, len1 + 1, "%s/", name);
+		(void) snprintf(path + len1 + 1, len2, "%s", dp->d_name);
 		vect[0] = path;
 		source(1, vect);
 	}

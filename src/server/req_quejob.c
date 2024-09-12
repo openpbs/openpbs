@@ -255,7 +255,7 @@ validate_perm_res_in_select(char *val, int val_exist)
 static int
 generate_objid(char *idbuf, char *clusterid, int objtype, char resv_char)
 {
-	if (idbuf == NULL || server_name == NULL || clusterid == NULL)
+	if (idbuf == NULL || clusterid == NULL)
 		return 1;
 
 	if (objtype == MGR_OBJ_JOB)
@@ -2519,9 +2519,8 @@ req_resvSub(struct batch_request *preq)
 	/* Is this user allowed to submit a reservation? */
 
 	if (is_sattr_set(SVR_ATR_AclResvUserEnabled) && get_sattr_long(SVR_ATR_AclResvUserEnabled)) {
-		if (NULL != preq->rq_host) {
+		if (preq->rq_host[0])
 			snprintf(buf1, sizeof(buf1), "%s@%s", get_rattr_str(presv, RESV_ATR_euser), preq->rq_host);
-		}
 
 		if (acl_check(get_sattr(SVR_ATR_AclResvUsers), buf1, ACL_User) == 0) {
 			resv_free(presv);

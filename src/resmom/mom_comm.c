@@ -2252,7 +2252,7 @@ node_bailout(job *pjob, hnodent *np)
 				sprintf(log_buffer,
 					"unknown command %d saved in event %d",
 					ep->ee_command, ep->ee_event);
-				if (pjob && pjob->ji_qs.ji_jobid) {
+				if (pjob && pjob->ji_qs.ji_jobid[0]) {
 					log_joberr(-1, __func__, log_buffer,
 						   pjob->ji_qs.ji_jobid);
 				} else

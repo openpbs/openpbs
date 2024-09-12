@@ -125,7 +125,7 @@ add_consumable_entry(struct attrl *patl,
 		return;
 
 	for (i = 0; i < *consumable_size; ++i) {
-		if (((*consum) + i) == NULL)
+		if (((*consum) + i)->cons_resource == NULL)
 			continue;
 		if (strcasecmp(patl->resource, ((*consum) + i)->cons_resource) == 0) {
 			((*consum) + i)->cons_consum |= consum_flag;

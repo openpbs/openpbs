@@ -98,7 +98,7 @@ struct pbsnode *pbsd_init_node(pbs_db_node_info_t *dbnode, int type);
 static int
 db_to_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 {
-	if (pdbnd->nd_name && pdbnd->nd_name[0] != 0) {
+	if (pdbnd->nd_name[0] != 0) {
 		free(pnode->nd_name); /* free any previously allocated value */
 		pnode->nd_name = strdup(pdbnd->nd_name);
 		if (pnode->nd_name == NULL)
@@ -106,7 +106,7 @@ db_to_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 	} else
 		pnode->nd_name = NULL;
 
-	if (pdbnd->nd_hostname && (pdbnd->nd_hostname[0] != 0)) {
+	if (pdbnd->nd_hostname[0] != 0) {
 		free(pnode->nd_hostname); /* free any previously allocated value */
 		pnode->nd_hostname = strdup(pdbnd->nd_hostname);
 		if (pnode->nd_hostname == NULL) {

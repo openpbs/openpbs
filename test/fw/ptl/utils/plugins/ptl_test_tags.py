@@ -43,6 +43,10 @@ import logging
 import unittest
 from nose.plugins.base import Plugin
 import collections
+try:
+    from collections.abc import Callable  # Python 3.10+
+except ImportError:
+    from collections import Callable  # For Python versions before 3.10
 
 log = logging.getLogger('nose.plugins.PTLTestTags')
 
@@ -202,7 +206,7 @@ class PTLTestTags(Plugin):
             group_matched = True
             for key, value in group:
                 tag_value = get_tag_value(method, cls, key)
-                if isinstance(value, collections.Callable):
+                if isinstance(value, Callable):
                     if not value(key, method, cls):
                         group_matched = False
                         break

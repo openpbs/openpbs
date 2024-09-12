@@ -2748,7 +2748,7 @@ post_periodic_hook(struct work_task *pwt)
 			 "exechost_periodic", phook->hook_name);
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 			  LOG_ERR, phook->hook_name, log_buffer);
-		if ((reject_msg != NULL) && (reject_msg[0] != '\0')) {
+		if (reject_msg[0] != '\0') {
 			snprintf(log_buffer, sizeof(log_buffer), "%s",
 				 reject_msg);
 			/* log also the custom reject message */
@@ -3169,7 +3169,7 @@ post_run_hook(struct work_task *ptask)
 				  LOG_ERR, phook->hook_name, log_buffer);
 		}
 
-		if ((reject_msg != NULL) && (reject_msg[0] != '\0')) {
+		if (reject_msg[0] != '\0') {
 			if (php->hook_msg != NULL) {
 				snprintf(php->hook_msg, php->msg_len - 1, "%s",
 					 reject_msg);

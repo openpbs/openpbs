@@ -119,6 +119,14 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 	int evtype;
 	int rc;
 
+#ifndef WIN32
+	static wchar_t w_python_binpath[MAXPATHLEN + 1] = {'\0'};
+	char *python_binpath = NULL;
+	PyStatus py_status;
+	PyConfig py_config;
+
+	PyConfig_InitPythonConfig(&py_config);
+#endif
 	/*
 	 * initialize the convenience global pbs_python_daemon_name, as it is
 	 * used everywhere
@@ -171,13 +179,12 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 		goto ERROR_EXIT;
 	}
 
+#ifdef WIN32
 	Py_NoSiteFlag = 1;
 	Py_FrozenFlag = 1;
-	Py_OptimizeFlag = 2;	      /* TODO make this a compile flag variable */
+	Py_OptimizeFlag = 2;          /* TODO make this a compile flag variable */
 	Py_IgnoreEnvironmentFlag = 1; /* ignore PYTHONPATH and PYTHONHOME */
-
 	set_py_progname();
-
 	/* we make sure our top level module is initialized */
 	if ((PyImport_ExtendInittab(pbs_python_inittab_modules) != 0)) {
 		log_err(-1, "PyImport_ExtendInittab",
@@ -186,11 +193,45 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 	}
 
 	/*
-	 * arg '1' means to not skip init of signals
-	 * we want signals to propagate to the executing
-	 * Python script to be able to interrupt it
-	 */
+	* arg '1' means to not skip init of signals
+	* we want signals to propagate to the executing
+	* Python script to be able to interrupt it
+	*/
 	Py_InitializeEx(1);
+#else
+	py_config._install_importlib = 1;
+	py_config.use_environment = 0;
+	py_config.optimization_level = 2;
+	py_config.isolated = 1;
+	py_config.site_import = 0;
+        if (w_python_binpath[0] == '\0') {
+                if (get_py_progname(&python_binpath)) {
+                        log_err(-1, __func__, "Failed to find python binary path!");
+                        return 1;
+                }
+                mbstowcs(w_python_binpath, python_binpath, MAXPATHLEN + 1);
+                free(python_binpath);
+        }
+
+	py_status = PyConfig_SetString(&py_config, &py_config.program_name, w_python_binpath);
+	if (PyStatus_Exception(py_status))
+		goto ERROR_EXIT;
+
+	/* we make sure our top level module is initialized */
+	if ((PyImport_ExtendInittab(pbs_python_inittab_modules) != 0)) {
+		log_err(-1, "PyImport_ExtendInittab",
+			"--> Failed to initialize Python interpreter <--");
+		goto ERROR_EXIT;
+	}
+
+	py_status = Py_InitializeFromConfig(&py_config);
+	if (PyStatus_Exception(py_status)) {
+		log_err(-1, "Py_InitializeFromConfig",
+			"--> Failed to initialize Python interpreter <--");
+		PyConfig_Clear(&py_config);  /* Clear the configuration object */
+		goto ERROR_EXIT;
+	}
+#endif
 
 	if (Py_IsInitialized()) {
 		char *msgbuf;
@@ -351,6 +392,14 @@ pbs_python_ext_quick_start_interpreter(void)
 {
 
 #ifdef PYTHON /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
+#ifndef WIN32
+	char *python_binpath = NULL;
+	static wchar_t w_python_binpath[MAXPATHLEN + 1] = {'\0'};
+	PyStatus py_status;
+	PyConfig py_config;
+
+	PyConfig_InitPythonConfig(&py_config);
+#endif
 	char pbs_python_destlib[MAXPATHLEN + 1] = {'\0'};
 	char pbs_python_destlib2[MAXPATHLEN + 1] = {'\0'};
 
@@ -359,20 +408,55 @@ pbs_python_ext_quick_start_interpreter(void)
 	snprintf(pbs_python_destlib2, MAXPATHLEN, "%s/lib/python/altair/pbs/v1",
 		 pbs_conf.pbs_exec_path);
 
+#ifdef WIN32
 	Py_NoSiteFlag = 1;
 	Py_FrozenFlag = 1;
 	Py_OptimizeFlag = 2;	      /* TODO make this a compile flag variable */
 	Py_IgnoreEnvironmentFlag = 1; /* ignore PYTHONPATH and PYTHONHOME */
 	set_py_progname();
+	/* we make sure our top level module is initialized */
+	if ((PyImport_ExtendInittab(pbs_python_inittab_modules) != 0)) {
+		log_err(-1, "PyImport_ExtendInittab",
+			"--> Failed to initialize Python interpreter <--");
+		goto ERROR_EXIT;
+	}
+
+	Py_InitializeEx(0); /* SKIP initialization of signals */
+#else
+	py_config._install_importlib = 1;
+	py_config.use_environment = 0;
+	py_config.optimization_level = 2;
+	py_config.isolated = 1;
+	py_config.site_import = 0;
+	py_config.install_signal_handlers = 0;
+        if (w_python_binpath[0] == '\0') {
+                if (get_py_progname(&python_binpath)) {
+                        log_err(-1, __func__, "Failed to find python binary path!");
+                        return;
+                }
+                mbstowcs(w_python_binpath, python_binpath, MAXPATHLEN + 1);
+                free(python_binpath);
+        }
+
+	py_status = PyConfig_SetString(&py_config, &py_config.program_name, w_python_binpath);
+	if (PyStatus_Exception(py_status))
+		goto ERROR_EXIT;
 
 	/* we make sure our top level module is initialized */
 	if ((PyImport_ExtendInittab(pbs_python_inittab_modules) != 0)) {
 		log_err(-1, "PyImport_ExtendInittab",
 			"--> Failed to initialize Python interpreter <--");
-		return;
+		goto ERROR_EXIT;
 	}
 
-	Py_InitializeEx(0); /* SKIP initialization of signals */
+	py_status = Py_InitializeFromConfig(&py_config);
+	if (PyStatus_Exception(py_status)) {
+		log_err(-1, "Py_InitializeFromConfig",
+			"--> Failed to initialize Python interpreter <--");
+		PyConfig_Clear(&py_config);  /* Clear the configuration object */
+		goto ERROR_EXIT;
+	}
+#endif
 
 	if (Py_IsInitialized()) {
 		char *msgbuf;

@@ -490,8 +490,8 @@ log_add_if_info()
 	/* Add info to log */
 	for (curr = ni; curr; curr = curr->next) {
 		snprintf(tbuf, sizeof(tbuf), "%s interface %s: ",
-			 (curr->iffamily) ? curr->iffamily : "NULL",
-			 (curr->ifname) ? curr->ifname : "NULL");
+			 (curr->iffamily[0]) ? curr->iffamily : "NULL",
+			 (curr->ifname[0]) ? curr->ifname : "NULL");
 		for (i = 0; curr->ifhostnames[i]; i++) {
 			snprintf(temp, sizeof(temp), "%s ", curr->ifhostnames[i]);
 			snprintf(dest, sizeof(dest), "%s%s", tbuf, temp);

@@ -1424,7 +1424,7 @@ get_comm_filename(char *fname)
 
 	count = snprintf(fname, MAXPIPENAME, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s",
 			 tmpdir,
-			 ((server_out == NULL || server_out[0] == 0) ? "default" : server_out),
+			 server_out[0] == 0 ? "default" : server_out,
 			 (unsigned long int) getuid(),
 			 cred_name,
 			 get_conf_path(),
@@ -1434,7 +1434,7 @@ get_comm_filename(char *fname)
 	if (count >= MAXPIPENAME) {
 		count = snprintf(fname, MAXPIPENAME, "%s/pbs_", TMP_DIR);
 		len = snprintf(buf, MAXPIPENAME, "%.16s_%lu_%.8s_%.32s_%.16s_%.5s",
-			       ((server_out == NULL || server_out[0] == 0) ? "default" : server_out),
+			       server_out[0] == 0 ? "default" : server_out,
 			       (unsigned long int) getuid(),
 			       cred_name,
 			       get_conf_path(),

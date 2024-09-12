@@ -260,7 +260,7 @@ req_usercredential(struct batch_request *preq)
 	cred = preq->rq_ind.rq_usercred.rq_data;
 	len = (size_t) preq->rq_ind.rq_usercred.rq_size;
 
-	if ((preq->rq_host == NULL) || (preq->rq_user == NULL) ||
+	if ((preq->rq_host[0] == '\0') || (preq->rq_user[0] == '\0') ||
 	    user == NULL) { /* no user */
 		req_reject(PBSE_INTERNAL, 0, preq);
 		return;

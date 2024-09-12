@@ -674,7 +674,7 @@ encode_entlim(const attribute *attr, pbs_list_head *phead, char *atname, char *r
 
 				/* check whether the resource is appeared first time or is repeated */
 				/* After check set the op accordingly */
-				if (rescn != NULL) {
+				if (rescn[0]) {
 					for (i = 0; i < index; i++) {
 						if (strcmp(rescn, rescn_array[i]) == 0) {
 							op = INCR;
