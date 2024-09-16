@@ -255,7 +255,7 @@ validate_perm_res_in_select(char *val, int val_exist)
 static int
 generate_objid(char *idbuf, char *clusterid, int objtype, char resv_char)
 {
-	if (idbuf == NULL || clusterid == NULL)
+	if (idbuf == NULL || server_name[0] == '\0' || clusterid == NULL)
 		return 1;
 
 	if (objtype == MGR_OBJ_JOB)

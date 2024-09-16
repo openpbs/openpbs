@@ -279,8 +279,8 @@ attrlist_to_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys
 			if (!tmp)
 				return -1;
 
+			val = (struct str_data *) ((char *) tmp + sizeof(struct pg_array)); /* move val since array moved */
 			array = tmp;
-			val = (struct str_data *) ((char *) val + ((char *) tmp - (char *) array)); /* move val since array moved */
 		}
 		p = pbs_strcpy(val->str, pal->al_atopl.name);
 		if (pal->al_atopl.resource && pal->al_atopl.resource[0] != '\0') {
