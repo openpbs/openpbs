@@ -458,7 +458,8 @@ class TestQdel(TestFunctional):
         self.server.manager(
             MGR_CMD_SET, SERVER, {
                 'job_history_enable': 'True'})
-        try:
+        fail_msg = f'qdel didn\'t throw unknown job error'
+        with self.assertRaises(PbsDeleteError, msg=fail_msg) as c:
             j = Job(TEST_USER)
             j.set_sleep_time(5)
             unknown_jid = "100000"
@@ -476,16 +477,14 @@ class TestQdel(TestFunctional):
             self.server.expect(JOB, {'job_state': 'Q'}, id=queued_jid)
             job_set = [unknown_jid, running_jid, queued_jid, stripped_jid]
             self.server.delete(job_set)
-            self.fail("qdel didn't throw 'Unknown job id' error")
-        except PbsDeleteError as e:
-            msg = f'qdel: Unknown Job Id {unknown_jid}'
-            self.assertTrue(e.msg[0].startswith(msg))
-            self.server.expect(JOB, {'job_state': 'F'}, id=stripped_jid,
-                               extend='x')
-            self.server.expect(JOB, {'job_state': 'F'}, id=running_jid,
-                               extend='x')
-            self.server.expect(JOB, {'job_state': 'F'}, id=queued_jid,
-                               extend='x')
+        msg = f'qdel: Unknown Job Id {unknown_jid}'
+        self.assertTrue(c.exception.msg[0].startswith(msg))
+        self.server.expect(JOB, {'job_state': 'F'}, id=stripped_jid,
+                           extend='x')
+        self.server.expect(JOB, {'job_state': 'F'}, id=running_jid,
+                           extend='x')
+        self.server.expect(JOB, {'job_state': 'F'}, id=queued_jid,
+                           extend='x')
 
     def test_qdel_with_duplicate_jobids_in_list(self):
         """
@@ -567,7 +566,6 @@ class TestQdel(TestFunctional):
         rv = self.server.isUp()
         self.assertTrue(rv, "Server crashed")
 
-    @requirements(num_moms=1)
     def test_qdel_mix_of_job_and_arrayjob_range(self):
         """
         Test that the server handles deleting mix of common job
