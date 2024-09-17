@@ -464,6 +464,11 @@ init_deljoblist(struct batch_request *preq)
 	struct batch_reply *preply = &preq->rq_reply;
 	job *pjob;
 	char *temp;
+	int jt;
+	char *jid;
+	char *p1;
+	char *p2;
+	char range_jid[PBS_MAXSVRJOBID];
 
 	if (preq->rq_ind.rq_deletejoblist.rq_resume)
 		return 0;
@@ -475,16 +480,51 @@ init_deljoblist(struct batch_request *preq)
 
 	for (tail = 0; jlist[tail]; tail++) {
 
-		pjob = find_job(jlist[tail]);
+		jt = is_job_array(jlist[tail]);
+
+		if (jt == IS_ARRAY_Range) {
+			pjob = find_arrayparent(jlist[tail]);
+		} else {
+			pjob = find_job(jlist[tail]);
+		}
+
 		if (!pjob)
 			continue;
 
-		pbs_idx_insert(preply->brp_un.brp_deletejoblist.undeleted_job_idx, pjob->ji_qs.ji_jobid, NULL);
-		if (strcmp(jlist[tail], pjob->ji_qs.ji_jobid) != 0) {
+		if (jt == IS_ARRAY_Range) {
+			/* append fqdn to range jid
+			 * the result is e.g.:
+			 * '123[1-3].full.domain.name'
+			 */
+			sprintf(range_jid, "%s", jlist[tail]);
+			p1 = strchr(pjob->ji_qs.ji_jobid, '.');
+			if (p1) {
+				p2 = strchr(range_jid, '.');
+				if (p2)
+					*p2 = '\0';
+				strncat(range_jid, p1, PBS_MAXSVRJOBID - 1);
+			}
 			free(jlist[tail]);
-			jlist[tail] = strdup(pjob->ji_qs.ji_jobid);
-			if (jlist[tail] == NULL)
+			jlist[tail] = strdup(range_jid);
+			if (jlist[tail] == NULL) {
 				return 1;
+			}
+
+			jid = jlist[tail];
+		} else {
+			/* use jid with fqdn */
+			if (strcmp(jlist[tail], pjob->ji_qs.ji_jobid) != 0) {
+				free(jlist[tail]);
+				jlist[tail] = strdup(pjob->ji_qs.ji_jobid);
+				if (jlist[tail] == NULL)
+					return 1;
+			}
+
+			jid = jlist[tail];
+		}
+
+		if (pbs_idx_insert(preply->brp_un.brp_deletejoblist.undeleted_job_idx, jid, NULL) != PBS_IDX_RET_OK) {
+			return 1;
 		}
 
 		if (head == -1) {
