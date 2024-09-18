@@ -88,7 +88,7 @@ struct pbs_config pbs_conf = {
 	NULL,			    /* auth service users list, will default to just "root" if not set explicitly */
 	{'\0'},			    /* default no auth method to encrypt/decrypt data */
 	AUTH_RESVPORT_NAME,	    /* default to reserved port authentication */
-	AUTH_RESVPORT_NAME,	    /* default to reserved port qsub -I authentication. Possible values: resvport, munge, pwd */
+	AUTH_RESVPORT_NAME,	    /* default to reserved port qsub -I authentication. Possible values: resvport, munge */
 	0,			    /* sched_modify_event */
 	0,			    /* syslogfac */
 	3,			    /* syslogsvr - LOG_ERR from syslog.h */
@@ -1208,15 +1208,4 @@ pbs_get_tmpdir(void)
 		tmpdir[strlen(tmpdir) - 1] = '\0';
 #endif
 	return tmpdir;
-}
-
-void
-pbs_conf_load_interactive_auth_method(void)
-{
-	char *conf_value = pbs_get_conf_var(PBS_CONF_INTERACTIVE_AUTH_METHOD);
-
-	if (conf_value != NULL) {
-		strcpy(pbs_conf.interactive_auth_method, conf_value);
-		free(conf_value);
-	}
 }

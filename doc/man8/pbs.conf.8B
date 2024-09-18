@@ -57,7 +57,7 @@ you may set
 
 .IP PBS_AUTH_METHOD 
 Authentication method to be used by PBS. Allowed values are
-"munge", "pwd", and "resvport" (case-insensitive). Defaults to "resvport".
+"munge" and "resvport" (case-insensitive). Defaults to "resvport".
 
 .IP PBS_AUTH_SERVICE_USERS
 List of daemon users allowed to connect to the communication daemon.
@@ -163,7 +163,7 @@ Overrides PBS_SERVER_HOST_NAME.
 
 .IP PBS_INTERACTIVE_AUTH_METHOD
 Authentication method to be used when establishing a qsub interactive session.
-Supported methods are "resvport", "munge" and "pwd" (case-insensitive). Defaults to "resvport".
+Supported methods are "resvport" and "munge" (case-insensitive). Defaults to "resvport".
 
 .IP PBS_CP 
 Location of local copy command. Default is cp on Linux systems and xcopy on Windows.

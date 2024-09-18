@@ -91,6 +91,7 @@
 
 #include "pbs_error.h"
 #include "job.h"
+#include "ticket.h"
 
 #ifdef HAVE_MALLOC_INFO
 #include <malloc.h>
@@ -2734,4 +2735,166 @@ read_all_attrs_from_jbfile(int fd, char **state, char **substate, char **errbuf)
 	}
 
 	return pal;
+}
+
+/**
+ * @brief
+ *  Generate a random string with given length..
+ *
+ * @param[in/out]	str - Character array where random string is stored
+ * @param[in]		len - Length of string to be generated
+ *
+ * @return void
+ */
+void
+set_rand_str(char *str, int len)
+{
+	int i;
+	for (i = 0; i < len - 1; i++) {
+		str[i] = (rand_num() % 255) + 1; /* don't allow zero since it is null char */
+		if (str[i] == ';') {
+			/* we are using ; as a separator, so can't have that */
+			str[i] = '_';
+		}
+	}
+	str[i] = '\0';
+
+}
+/**
+ * @brief
+ * 	Generate a host key with encryption
+ *
+ * @param[in] cluster_key - The cluster key used for encryption
+ * @param[in] salt -  A salt value to add randomness to the encryption
+ * @param[in/out] len - Length of encrypted data
+ *
+ * @return char *
+ * @return !NULL - Encrypted data
+ * @return NULL - failure
+ */
+char *
+gen_hostkey(char *cluster_key, char *salt, size_t *len)
+{
+	static size_t cred_len;
+	static char *cred_buf = NULL;
+	int cred_type;
+	extern unsigned char pbs_aes_key[][16];
+	extern unsigned char pbs_aes_iv[][16];
+	char *q;
+	char *p = NULL;
+	const char *timestr = uLTostr(time(0), 10);
+
+	if (cluster_key == NULL)
+		return NULL;
+
+	q = p = malloc(strlen(salt) + 1 + strlen(timestr) + 1 + strlen(cluster_key) + 1);
+	p = pbs_strcpy(p, salt);
+	p = pbs_strcpy(p, ";");
+	p = pbs_strcpy(p, timestr);
+	p = pbs_strcpy(p, ";");
+	pbs_strcpy(p, cluster_key);
+
+	if (pbs_encrypt_pwd(q, &cred_type, &cred_buf, &cred_len,
+			    (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) != 0)
+		return NULL;
+	free(q);
+
+	/* now form a string as such: str;encrypted-data */
+	*len = strlen(salt) + 1 + cred_len;
+	q = p = malloc(*len + 1);
+	p = pbs_strcpy(p, salt);
+	p = pbs_strcpy(p, ";");
+	memcpy(p, cred_buf, cred_len);
+	free(cred_buf);
+	cred_buf = NULL;
+	q[*len] = '\0';
+
+	return q;
+}
+
+/**
+ * @brief
+ * 	Validate a host key and extract cluster key
+ *
+ * @param[in] host_key - The host key to be validated
+ * @param[in] host_keylen -  Length of host key
+ * @param[out] cluster_key - Store the extracted cluster key
+ *
+ * @return int
+ * @return 0 - success
+ * @return -1 - failure
+ */
+int
+validate_hostkey(char *host_key, size_t host_keylen, char **cluster_key)
+{
+	char *ck;
+	char *p;
+	char *key = NULL;
+	char *salt;
+	time_t origin;
+	extern unsigned char pbs_aes_key[][16];
+	extern unsigned char pbs_aes_iv[][16];
+
+	/* break it down to find out salt;clusterkey */
+	if (!(p = strchr(host_key, ';'))) {
+		log_errf(-1, __func__, "first ; not found");
+		goto err;
+	}
+	*p = '\0';
+	salt = host_key;
+
+	ck = p + 1;
+	if (pbs_decrypt_pwd(ck, PBS_CREDTYPE_AES, host_keylen - (ck - host_key), &key,
+			    (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) != 0) {
+		log_errf(-1, __func__, "decyrpt failed, host_keylen=%d, initial salt found was %s", host_keylen - (ck - host_key), salt);
+		goto err;
+	}
+
+	/* break down decrypted cluster key into timestamp and rand and verify timestamp */
+	if (!(p = strchr(key, ';'))) {
+		log_errf(-1, __func__, "second ; not found");
+		goto err;
+	}
+	*p = '\0';
+
+	/* compare the salt values */
+	if (strcmp(salt, key) != 0) {
+		log_errf(-1, __func__, "salt does not match salt=%s, key=%s", salt, key);
+		goto err;
+	}
+
+	/* ensure timestamp is not too old (within 5 mins) */
+	origin = atol(++p);
+	if ((origin == -1) || ((time(0) - origin) > 300)) {
+		log_errf(-1, __func__, "timestamp out of whack, time=%ld, origin=%ld", time(0), origin);
+		goto err;
+	}
+	if (!(p = strchr(p, ';'))) {
+		log_errf(-1, __func__, "Third ; not found");
+		goto err;
+	}
+	*p = '\0';
+	ck = ++p;
+
+	/* if cluster_key provided compare them */
+	if (cluster_key) {
+		if (*cluster_key) {
+			if (strcmp(ck, *cluster_key) != 0) {
+				log_errf(-1, __func__, "Cluster key does not match, ck=%s, cluster_key=%s", ck, *cluster_key);
+				goto err;
+			}
+		} else {
+			*cluster_key = strdup(ck);
+			if (!*cluster_key) {
+				log_errf(-1, __func__, "strdup of cluster key failed");
+				goto err;
+			}
+		}
+	}
+	free(key);
+	return 0;
+
+err:
+	free(key);
+	return -1;
 }

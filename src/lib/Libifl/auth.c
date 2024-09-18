@@ -1049,13 +1049,6 @@ auth_exec_socket(int sock, unsigned short port, char *auth_method, char* jobid)
 			return INTERACTIVE_AUTH_SUCCESS;
 		else
 			return INTERACTIVE_AUTH_RETRY;
-	} else if (strcmp(auth_method, AUTH_PWD_NAME) == 0) {
-		if (server_cipher_auth(sock, jobid, ebuf, sizeof(ebuf) != 0)) {
-			if (ebuf[0] != '\0')
-				fprintf(stderr, "qsub: %s\n", ebuf);
-			/* If authentication process failed, retry to connect with another execution host */
-			return INTERACTIVE_AUTH_RETRY;
-		}
 	} else if ((strcmp(auth_method, AUTH_MUNGE_NAME) == 0)) {
 		char encrypt_method[MAXAUTHNAME + 1] = "";
 		pbs_auth_config_t *auth_config = NULL;
@@ -1125,11 +1118,6 @@ int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_met
 	if (strcmp(auth_method, AUTH_RESVPORT_NAME) == 0) {
 		/* If method is resvport, we have already connected with a privileged port */
 		return INTERACTIVE_AUTH_SUCCESS;
-	} else if (strcmp(auth_method, AUTH_PWD_NAME) == 0) {
-		if (client_cipher_auth(sock, jobid, ebuf, sizeof(ebuf)) !=0) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Error in handle client handshake: %s");
-			return INTERACTIVE_AUTH_FAILED;
-		}
 	} else {
 		char encrypt_method[MAXAUTHNAME + 1] = "";
 		pbs_auth_config_t *auth_config = NULL;

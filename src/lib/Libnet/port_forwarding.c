@@ -229,7 +229,7 @@ port_forwarder(
 						if (auth_exec_socket(sock, ntohs(GET_IP_PORT(&from)), auth_method, jobid) != INTERACTIVE_AUTH_SUCCESS) {
 							snprintf(err_msg, sizeof(err_msg),
 								"Incoming connection from %s on socket %d rejected, authentication data incorrect, errno=%d",
-								netaddr((pbs_net_t *)&from), sock, errno);
+								netaddr((struct sockaddr_in *)&from), sock, errno);
 							PF_LOGGER(logfunc, err_msg);
 							shutdown(sock, SHUT_RDWR);
 							close(sock);

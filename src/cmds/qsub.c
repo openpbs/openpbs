@@ -3303,7 +3303,7 @@ main(int argc, char **argv, char **envp) /* qsub */
 
 	/* Needs to be done before job_env_basic(), so that it gets the correct interactive auth method */
 	if (Interact_opt)
-		pbs_conf_load_interactive_auth_method();
+		pbs_loadconf(0);
 
 	/* Enable X11 Forwarding or GUI if specified */
 	enable_gui();
