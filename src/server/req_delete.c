@@ -945,7 +945,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 
 	/* active job is being deleted by delete job batch request */
 	pjob->ji_terminated = 1;
-	if ((preq->rq_user != NULL) && (preq->rq_host != NULL))
+	if ((preq->rq_user[0] != '\0') && (preq->rq_host[0] != '\0'))
 		sprintf(by_user, "%s@%s", preq->rq_user, preq->rq_host);
 
 	if ((preq->rq_extend && strstr(preq->rq_extend, FORCE)))

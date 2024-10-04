@@ -142,7 +142,11 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
       libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
       libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
       swig expat postgresql python3-pip sudo man-db git elfutils libcjson-dev
-    pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
+    if [[ $(printf '%s\n' "24.04" "$VERSION_ID" | sort -V | head -n1) == "24.04" ]]; then
+	apt-get -y install python3-nose python3-bs4 python3-defusedxml python3-pexpect
+    else
+        pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
+    fi
   else
     echo "Unknown platform..."
     exit 1

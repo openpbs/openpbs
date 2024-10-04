@@ -45,6 +45,10 @@ import sys
 import time
 import string
 import random
+try:
+    from collections.abc import Callable  # Python 3.10+
+except ImportError:
+    from collections import Callable  # For Python versions before 3.10
 
 
 class PbsAttribute(object):
@@ -95,7 +99,7 @@ class PbsAttribute(object):
         :returns: int or float or string
         """
 
-        if value is None or isinstance(value, collections.Callable):
+        if value is None or isinstance(value, Callable):
             return value
 
         if isinstance(value, (int, float)):

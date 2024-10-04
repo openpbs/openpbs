@@ -1364,9 +1364,9 @@ copy_br(struct batch_request *src)
 	req->rq_reply.brp_choice = src->rq_reply.brp_choice;
 	req->rq_fromsvr = src->rq_fromsvr;
 	req->rq_perm = src->rq_perm;
-	if (src->rq_user)
+	if (src->rq_user[0])
 		memcpy(&req->rq_user, &src->rq_user, sizeof(req->rq_user));
-	if (src->rq_host)
+	if (src->rq_host[0])
 		memcpy(&req->rq_host, &src->rq_host, sizeof(req->rq_host));
 	append_link(&svr_requests, &req->rq_link, req);
 

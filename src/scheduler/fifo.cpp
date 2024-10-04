@@ -165,13 +165,48 @@ schedinit(int nthreads)
 	set_ical_zoneinfo(zone_dir);
 
 #ifdef PYTHON
+#ifdef WIN32
 	Py_NoSiteFlag = 1;
 	Py_FrozenFlag = 1;
 	Py_IgnoreEnvironmentFlag = 1;
-
 	set_py_progname();
 	Py_InitializeEx(0);
+#else
+	static wchar_t w_python_binpath[MAXPATHLEN + 1] = {'\0'};
+	char *python_binpath = NULL;
+	PyStatus py_status;
+	PyConfig py_config;
 
+	PyConfig_InitPythonConfig(&py_config);
+
+	py_config._install_importlib = 1;
+	py_config.use_environment = 0;
+	py_config.optimization_level = 2;
+	py_config.isolated = 1;
+	py_config.site_import = 0;
+	py_config.install_signal_handlers = 0;
+
+        if (w_python_binpath[0] == '\0') {
+                if (get_py_progname(&python_binpath)) {
+                        log_err(-1, __func__, "Failed to find python binary path!");
+                        return -1;
+                }
+                mbstowcs(w_python_binpath, python_binpath, MAXPATHLEN + 1);
+                free(python_binpath);
+        }
+
+	py_status = PyConfig_SetString(&py_config, &py_config.program_name, w_python_binpath);
+	if (PyStatus_Exception(py_status))
+		return -1;
+
+	py_status = Py_InitializeFromConfig(&py_config);
+	if (PyStatus_Exception(py_status)) {
+		log_err(-1, "Py_InitializeFromConfig",
+			"--> Failed to initialize Python interpreter <--");
+		PyConfig_Clear(&py_config);  // Clear the configuration object
+		return -1;
+	}
+#endif
 	PyRun_SimpleString(
 		"_err =\"\"\n"
 		"ex = None\n"

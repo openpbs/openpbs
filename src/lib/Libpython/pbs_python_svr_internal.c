@@ -3583,7 +3583,7 @@ _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname, char *per
 	}
 
 	/* set job.queue to actual queue object */
-	if (pjob->ji_qs.ji_queue) {
+	if (pjob->ji_qs.ji_queue[0]) {
 		py_que = _pps_helper_get_queue(NULL, pjob->ji_qs.ji_queue, perf_label); /* NEW ref */
 		if (py_que) {
 			if (PyObject_HasAttrString(py_job, ATTR_queue)) {
@@ -3732,7 +3732,7 @@ _pps_helper_get_resv(resc_resv *presv_o, const char *resvid, char *perf_label)
 	}
 
 	/* set resv.queue to actual queue object */
-	if (presv->ri_qs.ri_queue && PyObject_HasAttrString(py_resv, ATTR_queue)) {
+	if (presv->ri_qs.ri_queue[0] && PyObject_HasAttrString(py_resv, ATTR_queue)) {
 		py_que = _pps_helper_get_queue(NULL, presv->ri_qs.ri_queue, perf_label); /* NEW */
 		if (py_que) {
 			/* py_que ref ct incremented as part of py_resv */
@@ -10566,7 +10566,7 @@ pbs_python_set_hook_debug_input_file(char *filename)
 char *
 pbs_python_get_hook_debug_input_file(void)
 {
-	if (hook_debug.input_file == NULL)
+	if (hook_debug.input_file[0] == '\0')
 		return NULL;
 	return (hook_debug.input_file);
 }
@@ -10615,7 +10615,7 @@ pbs_python_set_hook_debug_output_file(char *filename)
 char *
 pbs_python_get_hook_debug_output_file(void)
 {
-	if (hook_debug.output_file == NULL)
+	if (hook_debug.output_file[0] == '\0')
 		return NULL;
 	return (hook_debug.output_file);
 }
@@ -10662,7 +10662,7 @@ pbs_python_set_hook_debug_data_file(char *filename)
 char *
 pbs_python_get_hook_debug_data_file(void)
 {
-	if (hook_debug.data_file == NULL)
+	if (hook_debug.data_file[0] == '\0')
 		return NULL;
 	return (hook_debug.data_file);
 }
@@ -10685,7 +10685,7 @@ pbs_python_set_hook_debug_objname(char *objname)
 char *
 pbs_python_get_hook_debug_objname(void)
 {
-	if (hook_debug.objname == NULL)
+	if (hook_debug.objname[0] == '\0')
 		return NULL;
 	return (hook_debug.objname);
 }
@@ -11975,7 +11975,7 @@ const char pbsv1mod_meth_get_server_data_file_doc[] =
 PyObject *
 pbsv1mod_meth_get_server_data_file(void)
 {
-	if ((hook_debug.data_file == NULL) || (hook_debug.data_file[0] == '\0')) {
+	if (hook_debug.data_file[0] == '\0') {
 		Py_RETURN_NONE;
 	}
 	return (PyUnicode_FromString(hook_debug.data_file));

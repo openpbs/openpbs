@@ -2372,7 +2372,7 @@ main(int argc, char *argv[], char *envp[])
 		pbs_python_set_mode(C_MODE); /* PBS C mode - flexible */
 
 		/* Prepare output file */
-		if ((the_output != NULL) && (*the_output != '\0')) {
+		if (*the_output != '\0') {
 			fp_out = fopen(the_output, "w");
 
 			if (fp_out == NULL) {
@@ -2510,8 +2510,7 @@ main(int argc, char *argv[], char *envp[])
 					fprintf(fp_out, "%s=False\n", EVENT_REJECT_OBJECT);
 					req_params_out.rq_move = (struct rq_manage *) &rqmv;
 					pbs_python_event_to_request(hook_event, &req_params_out, perf_label, perf_action);
-					if ((rqmv.rq_destin != NULL) &&
-					    (rqmv.rq_destin[0] != '\0'))
+					if (rqmv.rq_destin[0] != '\0')
 						fprintf(fp_out, "%s.%s=%s\n", EVENT_OBJECT,
 							PY_EVENT_PARAM_SRC_QUEUE, rqmv.rq_destin);
 				}

@@ -104,6 +104,11 @@ except ImportError:
     class SkipTest(Exception):
         pass
 
+try:
+    from collections.abc import Callable  # Python 3.10+
+except ImportError:
+    from collections import Callable  # For Python versions before 3.10
+
 
 class Wrappers(PBSService):
     dflt_attributes = {
@@ -1094,7 +1099,7 @@ class Wrappers(PBSService):
                             v = ''
                         else:
                             v = v[1]
-                    if isinstance(v, collections.Callable):
+                    if isinstance(v, Callable):
                         v = ''
                     if '.' in k:
                         _r = k.split('.')[0]
@@ -1350,7 +1355,7 @@ class Wrappers(PBSService):
                 attrs_to_ignore.append(k)
                 continue
             msg += [k, PTL_OP_TO_STR[operator].strip()]
-            if isinstance(val, collections.Callable):
+            if isinstance(val, Callable):
                 msg += ['callable(' + val.__name__ + ')']
                 if args is not None:
                     msg.extend([str(x) for x in args])
@@ -1478,7 +1483,7 @@ class Wrappers(PBSService):
 
                 # functions/methods are invoked and their return value
                 # used on expect
-                if isinstance(v, collections.Callable):
+                if isinstance(v, Callable):
                     if varargs is not None:
                         rv = v(stat_v, *varargs)
                     else:

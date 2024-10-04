@@ -3920,9 +3920,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 		req_ptr.rq_manage = (struct rq_manage *) &preq->rq_ind.rq_modify;
 		head_ptr = &svr_modifyjob_hooks;
 		/* Modifyjob hooks not run if requester is the scheduler */
-		if ((preq->rq_user != NULL) && (strcmp(preq->rq_user, PBS_SCHED_DAEMON_NAME) == 0) && (pbs_conf.sched_modify_event == 0)) {
+		if ((preq->rq_user[0] != '\0') && (strcmp(preq->rq_user, PBS_SCHED_DAEMON_NAME) == 0) && (pbs_conf.sched_modify_event == 0))
 			return (2);
-		}
 	} else if (preq->rq_type == PBS_BATCH_MoveJob) {
 		hook_event = HOOK_EVENT_MOVEJOB;
 		req_ptr.rq_move = (struct rq_move *) &preq->rq_ind.rq_move;
@@ -5514,7 +5513,7 @@ check_for_latest_action(mominfo_t *minfo, mom_hook_action_t *pact, int j, int ev
 	for (i = 0; i < ((mom_svrinfo_t *) minfo->mi_data)->msr_num_action; i++) {
 		pact2 = ((mom_svrinfo_t *) minfo->mi_data)->msr_action[i];
 		if (pact2 && (i != j) && (pact2->tid > pact->tid) && (pact2->action & event) &&
-		    pact2->hookname && (strcmp(pact2->hookname, pact->hookname) == 0)) {
+		    pact2->hookname[0] && (strcmp(pact2->hookname, pact->hookname) == 0)) {
 			return 1;
 		}
 	}
@@ -5570,7 +5569,7 @@ post_sendhookTPP(struct work_task *pwt)
 		snprintf(log_buffer, sizeof(log_buffer),
 			 "%s reply (tid=%lld) not from current "
 			 "batch of hook updates (tid=%lld) from mhost=%s",
-			 __func__, tid, g_sync_hook_tid, minfo->mi_host ? minfo->mi_host : "");
+			 __func__, tid, g_sync_hook_tid, minfo->mi_host[0] ? minfo->mi_host : "");
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
 		return; /* return now as info->index no longer valid */
 	}
@@ -7002,7 +7001,7 @@ post_server_periodic_hook(struct work_task *ptask)
 				 "periodic", phook->hook_name);
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 				  LOG_ERR, phook->hook_name, log_buffer);
-			if ((reject_msg != NULL) && (reject_msg[0] != '\0')) {
+			if (reject_msg[0] != '\0') {
 				snprintf(log_buffer, sizeof(log_buffer), "%s",
 					 reject_msg);
 				/* log also the custom reject message */

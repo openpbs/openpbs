@@ -126,6 +126,7 @@ get_py_progname(char **binpath)
 	return 1;
 #endif
 }
+#ifdef WIN32
 /**
  * @brief set_py_progname
  * 	Find and tell Python interpreter where python binary is located
@@ -150,7 +151,6 @@ set_py_progname(void)
 		free(python_binpath);
 	}
 	Py_SetProgramName(w_python_binpath);
-#ifdef WIN32
 	/*
 	 *  There is a bug in windows version of python resulting need to set python home explicitly.
 	 */
@@ -165,9 +165,10 @@ set_py_progname(void)
 		free(python_homepath);
 	}
 	Py_SetPythonHome(w_python_homepath);
-#endif
+
 	return 0;
 #else
 	return 0;
 #endif
 }
+#endif

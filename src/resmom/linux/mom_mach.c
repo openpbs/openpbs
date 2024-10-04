@@ -2198,7 +2198,7 @@ procflagsfmt(char *release)
 	char rfseparator_dot = '.';
 	char rfseparator_dash = '-';
 	int nseparators_seen = 0;
-	int major, minor, micro, ver;
+	int major, minor = 0, micro, ver;
 	static char before[] = "%lu";
 	static char after[] = "%u";
 
