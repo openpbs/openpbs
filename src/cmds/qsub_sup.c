@@ -209,15 +209,14 @@ get_conf_path(void)
 
 /**
  * @brief
- *      Check the line does not end with win/mac.
+ *      Check the line does not end with win cr,lf.
  *
  * @param[in]	s	- input line
  *
  * @return      int
  * @retval -1 - input error
- * @retval 0 - unix (not win/mac)
- * @retval 1 - mac (line ends with '\r')
- * @retval 2 - win (line ends with '\r\n')
+ * @retval 0 - unix
+ * @retval 1 - win (cr, lf)
  */
 int
 check_crlf(char * s)
@@ -230,9 +229,6 @@ check_crlf(char * s)
 		return 0;
 	}
 	if (len > 1 && s[len - 2] == '\r' && s[len - 1] == '\n') {
-		return 2;
-	}
-	if (s[len - 1] == '\r') {
 		return 1;
 	}
 	return 0;
@@ -322,7 +318,7 @@ get_script(FILE *file, char *script, char *prefix)
 		}
 #ifndef WIN32
 		if (check_crlf(in)) {
-			fprintf(stderr, "qsub: incorrect script format\n");
+			fprintf(stderr, "qsub: script contains cr, lf\n");
 			fclose(TMP_FILE);
 			free(extend_in);
 			free(s_in);

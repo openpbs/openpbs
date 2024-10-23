@@ -126,5 +126,5 @@ cat $0
         fail_msg = 'qsub didn\'t throw an error'
         with self.assertRaises(PbsSubmitError, msg=fail_msg) as c:
             self.server.submit(j)
-        msg = 'qsub: incorrect script format'
+        msg = 'qsub: script contains cr, lf'
         self.assertEqual(c.exception.msg[0], msg)
