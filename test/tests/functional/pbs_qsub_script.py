@@ -115,3 +115,16 @@ cat $0
         rc = self.du.cmp(fileA=expected_fn,
                          fileB=job_output_file, runas=TEST_USER)
         self.assertEqual(rc, 0, 'cmp of job files failed')
+
+    def test_qsub_crlf(self):
+        """
+        This test case check the qsub rejects script ending with cr,lf.
+        """
+        script = """#!/bin/sh\r\nhostname\r\n"""
+        j = Job(TEST_USER)
+        j.create_script(script)
+        fail_msg = 'qsub didn\'t throw an error'
+        with self.assertRaises(PbsSubmitError, msg=fail_msg) as c:
+            self.server.submit(j)
+        msg = 'qsub: script contains cr, lf'
+        self.assertEqual(c.exception.msg[0], msg)
