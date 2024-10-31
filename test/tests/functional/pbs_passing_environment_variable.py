@@ -209,3 +209,24 @@ foo\n
         exp_string = 'ENV_TEST=N:\\\\\\\\aa\\\\\\\\bb\\\\\\\\cc\\\\\\\\dd'
         exp_string += '\\\\\\\\ee\\\\\\\\ff\\\\\\\\gg\\\\\\\\hh\\\\\\\\ii'
         self.assertIn(exp_string, var_list)
+
+    def test_long_env(self):
+        """
+        Test to verify that job is able to process
+        very long env attribute.
+        """
+
+        env = "VAR0=foobar"
+        for i in range(1, 300):
+            env = f"{env},VAR{i}=foobar"
+
+        a = {ATTR_v: env}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        qstat = self.server.status(JOB, ATTR_v, id=jid)
+        var_list = qstat[0]['Variable_List'].split(",")
+
+        for i in range(0, 300):
+            exp_string = f"VAR{i}=foobar"
+            self.assertIn(exp_string, var_list)
