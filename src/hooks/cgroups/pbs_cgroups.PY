@@ -5374,7 +5374,7 @@ class CgroupUtils(object):
                 self.assigned_resources = self._get_assigned_cgroup_resources()
         if not assigned:
             pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Assignment of resources failed '
-                       'for %s, attempting cleanup' % (caller_name, jobid))
+                       'for %s, attempting cleanup' % (caller_name(), jobid))
             # Cleanup cgroups for jobs not present on this node
             jobdict = node.gather_jobs_on_node(cgroup)
             if jobdict and jobid in jobdict:
