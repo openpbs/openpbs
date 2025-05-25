@@ -1857,10 +1857,7 @@ action_entlim_res(attribute *pattr, void *pobject, int actmode)
  * @retval	PBSE_MIXENTLIMS	: here is a new style entlim limit set
  */
 int
-check_no_entlim(pattr, pobject, actmode)
-attribute *pattr;
-void *pobject;
-int actmode;
+check_no_entlim(attribute *pattr, void *pobject, int actmode)
 {
 	int i;
 	pbs_queue *pq;

@@ -1755,7 +1755,7 @@ resend:
  */
 
 static void
-	post_deljobfromresv_req(pwt) struct work_task *pwt;
+	post_deljobfromresv_req(struct work_task *pwt)
 {
 	resc_resv *presv;
 	job *pjob = NULL;

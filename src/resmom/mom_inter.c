@@ -119,8 +119,7 @@ read_net(int sock, char *buf, int amt)
  */
 
 char *
-rcvttype(sock)
-int sock;
+rcvttype(int sock)
 {
 	static char buf[PBS_TERM_BUF_SZ];
 
@@ -151,7 +150,7 @@ int sock;
  */
 
 void
-	set_termcc(fd) int fd;
+	set_termcc(int fd)
 {
 	struct termios slvtio;
 
@@ -234,8 +233,7 @@ rcvwinsize(int sock)
  *
  */
 int
-setwinsize(pty)
-int pty;
+setwinsize(int pty)
 {
 	if (ioctl(pty, TIOCSWINSZ, &wsz) < 0) {
 		perror("ioctl TIOCSWINSZ");
@@ -251,7 +249,7 @@ int pty;
  *
  * @param[in] s - filr descriptor
  * @param[in] ptc - master file descriptor
- * @param[in] command - shell command
+ * @param[in] command - shell command(s) to be sent to the PTY before user data from the socket
  *
  * @return    error code
  * @retval    0     Success
@@ -260,10 +258,7 @@ int pty;
  * 
  */
 int
-mom_reader(s, ptc, command)
-int s;
-int ptc;
-char *command; /* shell command(s) to be sent to the PTY before user data from the socket */
+mom_reader(int s, int ptc, char *command)
 {
 	char buf[PF_BUF_SIZE];
 	int c;
@@ -416,9 +411,7 @@ mom_reader_Xjob(int s)
  *
  */
 int
-mom_writer(s, ptc)
-int s;
-int ptc;
+mom_writer(int s, int ptc)
 {
 	char buf[PF_BUF_SIZE];
 	int c;

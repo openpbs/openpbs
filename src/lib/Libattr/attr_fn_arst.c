@@ -706,12 +706,12 @@ parse_comma_string_bs(char *start)
  * 	variables.
  *
  *	See also count_substrings
+ *
+ * @param val comma separated string of substrings
+ * @param pcnt where to return the value
  */
 int
-count_substrings_bs(val, pcnt)
-char *val; /*comma separated string of substrings*/
-int *pcnt; /*where to return the value*/
-
+count_substrings_bs(char *val, int *pcnt)
 {
 	int rc = 0;
 	int ns;

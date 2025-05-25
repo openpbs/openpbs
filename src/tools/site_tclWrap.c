@@ -317,8 +317,7 @@ Tcl_Obj *CONST objv[];
  **	for whatever C code which may be required for your scheduler.
  */
 void
-	site_cmds(interp)
-		Tcl_Interp *interp;
+	site_cmds(Tcl_Interp *interp)
 {
 	DBPRT(("%s: entered\n", __func__))
 #ifdef NAS
