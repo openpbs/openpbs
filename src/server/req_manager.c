@@ -3612,7 +3612,7 @@ check_resource_set_on_jobs_or_resvs(struct batch_request *preq, resource_def *pr
  * 		helper function to send/update resourcedef file.
  */
 static void
-timed_send_rescdef()
+timed_send_rescdef(struct work_task *)
 {
 	send_rescdef(1); /* forcing with 1 to avoid failures due to intermittent file stamp race issues */
 	rescdef_wt_g = NULL;

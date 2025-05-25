@@ -104,7 +104,7 @@ static char logbuf[256];
 /* Private function within this file */
 static int conn_find_usable_index(int);
 static int conn_find_actual_index(int);
-static void accept_conn();
+static void accept_conn(int);
 static void cleanup_conn(int);
 
 /**

@@ -391,7 +391,7 @@ extern void set_vnode_state(struct pbsnode *, unsigned long, enum vnode_state_op
 extern struct resvinfo *find_vnode_in_resvs(struct pbsnode *, enum vnode_degraded_op);
 extern void free_rinf_list(struct resvinfo *);
 extern void degrade_offlined_nodes_reservations(void);
-extern void degrade_downed_nodes_reservations(void);
+extern void degrade_downed_nodes_reservations(struct work_task *);
 
 extern int mod_node_ncpus(struct pbsnode *pnode, long ncpus, int actmode);
 extern int initialize_pbsnode(struct pbsnode *, char *, int);
@@ -461,7 +461,7 @@ struct pbsnode *node_recov_db(char *nd_name, struct pbsnode *pnode);
 extern int add_mom_to_pool(mominfo_t *);
 extern void reset_pool_inventory_mom(mominfo_t *);
 extern vnpool_mom_t *find_vnode_pool(mominfo_t *pmom);
-extern void mcast_msg();
+extern void mcast_msg(struct work_task *);
 int get_job_share_type(struct job *pjob);
 #endif
 

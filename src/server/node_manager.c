@@ -7923,7 +7923,7 @@ degrade_offlined_nodes_reservations(void)
  * @par MT-safe: No
  */
 void
-degrade_downed_nodes_reservations(void)
+degrade_downed_nodes_reservations(struct work_task *)
 {
 	int i;
 	struct pbsnode *pn;
