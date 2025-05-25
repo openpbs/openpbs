@@ -311,7 +311,7 @@ extern int svr_connect(pbs_net_t, unsigned int, void (*)(int), enum conn_type, i
 #ifdef _WORK_TASK_H
 extern void release_req(struct work_task *);
 #ifdef _BATCH_REQUEST_H
-extern int issue_Drequest(int, struct batch_request *, void (*)(), struct work_task **, int);
+extern int issue_Drequest(int, struct batch_request *, void (*)(struct work_task *), struct work_task **, int);
 #endif /* _BATCH_REQUEST_H */
 #endif /* _WORK_TASK_H */
 

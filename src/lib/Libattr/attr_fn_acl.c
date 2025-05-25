@@ -97,7 +97,7 @@ static int user_order(char *old, char *new);
 static int group_order(char *old, char *new);
 static int
 set_allacl(attribute *, attribute *, enum batch_op,
-	   int (*order_func)());
+	   int (*order_func)(char *, char *));
 
 /* for all decode_*acl() - use decode_arst() */
 /* for all encode_*acl() - use encode_arst() */

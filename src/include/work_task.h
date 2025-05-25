@@ -90,7 +90,7 @@ struct work_task {
 	int wt_aux2;			     /* optional info 2: e.g. *real* child pid (windows), tpp msgid etc */
 };
 
-extern struct work_task *set_task(enum work_type, long event, void (*func)(), void *param);
+extern struct work_task *set_task(enum work_type, long event, void (*func)(struct work_task *), void *param);
 extern int convert_work_task(struct work_task *ptask, enum work_type);
 extern void clear_task(struct work_task *ptask);
 extern void dispatch_task(struct work_task *);
