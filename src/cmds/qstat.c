@@ -2685,7 +2685,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
-	if (!(output_format == FORMAT_DEFAULT || f_opt)) {
+	if (output_format != FORMAT_DEFAULT && alt_opt) {
 		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
