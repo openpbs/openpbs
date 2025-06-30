@@ -461,7 +461,27 @@ prt_attr(char *name, char *resource, char *value, int one_line, json_data * json
 					}
 					if (pbs_json_insert_parsed(json_prev_resc, resource, value, 0))
 						exit_qstat("json error");
-				} else {
+				} else if (value[0] == '[' && strchr(value, '=') != NULL && value[strlen(value)-1] == ']'){ // new type restriction
+
+					static json_data *json_list = NULL;
+					static char *prev_name = NULL;
+
+					if (prev_name == NULL || strcmp(prev_name,name) != 0){
+						json_list = pbs_json_create_array();
+						if (json_list == NULL){
+							exit_qstat("json error");
+						}
+
+						pbs_json_insert_item(json_obj,name, json_list);
+						prev_name = name;
+					}
+
+					if (pbs_json_insert_parsed(json_list, NULL, value, 0)){
+						exit_qstat("json error");
+					}
+						
+
+				} else { // not resource, not new-type restriction
 					if (prev_resc_name) {
 						json_prev_resc = NULL;
 						prev_resc_name = NULL;
@@ -2685,7 +2705,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
-	if (!(output_format == FORMAT_DEFAULT || f_opt) || (output_format != FORMAT_DEFAULT && alt_opt)){
+	if (!(output_format == FORMAT_DEFAULT || f_opt) || (output_format != FORMAT_DEFAULT && alt_opt)) {
 		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
