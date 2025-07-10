@@ -107,6 +107,7 @@ char *cnvt_est_start_time(char *start_time, int shortform);
 #define DISPLAY_TRUNC_CHAR '*'
 
 #define NUML 5
+#define MAX_RES 64
 
 static struct attrl basic_attribs[] = {
 	{&basic_attribs[1],
@@ -461,27 +462,7 @@ prt_attr(char *name, char *resource, char *value, int one_line, json_data * json
 					}
 					if (pbs_json_insert_parsed(json_prev_resc, resource, value, 0))
 						exit_qstat("json error");
-				} else if (value[0] == '[' && strchr(value, '=') != NULL && value[strlen(value)-1] == ']'){ // new type restriction
-
-					static json_data *json_list = NULL;
-					static char *prev_name = NULL;
-
-					if (prev_name == NULL || strcmp(prev_name,name) != 0){
-						json_list = pbs_json_create_array();
-						if (json_list == NULL){
-							exit_qstat("json error");
-						}
-
-						pbs_json_insert_item(json_obj,name, json_list);
-						prev_name = name;
-					}
-
-					if (pbs_json_insert_parsed(json_list, NULL, value, 0)){
-						exit_qstat("json error");
-					}
-						
-
-				} else { // not resource, not new-type restriction
+				} else { 
 					if (prev_resc_name) {
 						json_prev_resc = NULL;
 						prev_resc_name = NULL;
@@ -1696,6 +1677,16 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 		strcpy(ext, "0");
 		type = "not defined";
 		prev_resc_name = NULL;
+
+		char *new_type_restr_acc = NULL;
+		size_t acc_len = 0;
+		char *new_type_attr_name = NULL;
+
+		char *res_new_type_name = NULL;
+		char *res_names[MAX_RES] = {0};
+		char *res_values[MAX_RES] = {0};
+		int res_count = 0;
+
 		if (full) {
 			if (output_format == FORMAT_DSV || output_format == FORMAT_DEFAULT)
 				printf("Queue: %s%s", p->name, delimiter);
@@ -1707,12 +1698,70 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 			a = p->attribs;
 			while (a != NULL) {
 				if (a->name != NULL) {
-					prt_attr(a->name, a->resource, a->value,
-						 alt_opt & ALT_DISPLAY_w, json_queue);
+					if (output_format == FORMAT_JSON && a->value[0] == '[' && strchr(a->value, '=') != NULL && a->value[strlen(a->value)-1] == ']'){ // new type queue restriction
+						if (a->resource){ // resource + new type queue restriction + json
+							int found = 0;
+							for (int i = 0; i < res_count; i++){
+								if (strcmp(res_names[i], a->resource) == 0){
+									found = 1;
+									size_t new_len = strlen(res_values[i]) + strlen(a->value) + 2; // +2 for ",\0"
+									char *new_buf = malloc(new_len);
+									if (!new_buf){
+										exit_qstat("out of memory");
+									}
+									snprintf(new_buf, new_len, "%s,%s", res_values[i], a->value);
+									free(res_values[i]);
+									res_values[i] = new_buf;
+									break;
+								}
+							}
+							if (!found && res_count < MAX_RES){ // first time restriction seen, create new key 
+								res_names[res_count] = strndup(a->resource, strlen(a->resource));
+								res_values[res_count] = strndup(a->value, strlen(a->value));
+								res_count++;
+								res_new_type_name = a->name;
+							}
+						}
+						else { // new type but not a sub resource
+							size_t new_len = strlen(a->value) + 2; // +2 for ",\0"
+							acc_len += new_len;
+							
+							char *new_buf = malloc(acc_len);
+							if (new_buf == NULL){
+								exit_qstat("out of memory");
+							}
+
+							if (new_type_restr_acc){ // append
+								snprintf(new_buf, acc_len, "%s,%s", new_type_restr_acc, a->value);
+								free(new_type_restr_acc);
+							} else { // first elem, start new
+								snprintf(new_buf, acc_len, "%s", a->value);
+								new_type_attr_name = a->name;
+							}
+							
+							new_type_restr_acc = new_buf;
+						} 
+					} else { // not new-type queue restriction
+						prt_attr(a->name, a->resource, a->value,
+							alt_opt & ALT_DISPLAY_w, json_queue);
+					}
 				}
 				a = a->next;
 				if (a)
 					printf("%s", delimiter);
+			}
+			if (new_type_restr_acc){ // new type restriction
+				pbs_json_insert_string(json_queue, new_type_attr_name, new_type_restr_acc);
+				free(new_type_restr_acc);
+			}
+			if (res_count > 0){ // new type restiction + resource type
+				json_data *json_obj = pbs_json_create_object();
+				for (int i = 0; i < res_count; i++){
+					pbs_json_insert_string(json_obj, res_names[i], res_values[i]);
+					free(res_names[i]);
+					free(res_values[i]);
+				}
+				pbs_json_insert_item(json_queue, res_new_type_name, json_obj);
 			}
 			if (output_format == FORMAT_DEFAULT)
 				printf("%s", delimiter);
