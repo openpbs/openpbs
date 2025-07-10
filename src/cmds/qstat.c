@@ -107,6 +107,7 @@ char *cnvt_est_start_time(char *start_time, int shortform);
 #define DISPLAY_TRUNC_CHAR '*'
 
 #define NUML 5
+#define MAX_ATTRS 64
 #define MAX_RES 64
 
 static struct attrl basic_attribs[] = {
@@ -1680,7 +1681,11 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 
 		char *new_type_restr_acc = NULL;
 		size_t acc_len = 0;
+
 		char *new_type_attr_name = NULL;
+		char *attr_names[MAX_ATTRS] = {0};
+		char *attr_values[MAX_ATTRS] = {0};
+		int attr_count = 0;
 
 		char *res_new_type_name = NULL;
 		char *res_names[MAX_RES] = {0};
@@ -1700,6 +1705,7 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 				if (a->name != NULL) {
 					if (output_format == FORMAT_JSON && a->value[0] == '[' && strchr(a->value, '=') != NULL && a->value[strlen(a->value)-1] == ']'){ // new type queue restriction
 						if (a->resource){ // resource + new type queue restriction + json
+							// check if key already exists
 							int found = 0;
 							for (int i = 0; i < res_count; i++){
 								if (strcmp(res_names[i], a->resource) == 0){
@@ -1709,7 +1715,7 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 									if (!new_buf){
 										exit_qstat("out of memory");
 									}
-									snprintf(new_buf, new_len, "%s,%s", res_values[i], a->value);
+									snprintf(new_buf, new_len, "%s,%s", res_values[i], a->value); // exits, append to running output
 									free(res_values[i]);
 									res_values[i] = new_buf;
 									break;
@@ -1723,23 +1729,27 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 							}
 						}
 						else { // new type but not a sub resource
-							size_t new_len = strlen(a->value) + 2; // +2 for ",\0"
-							acc_len += new_len;
-							
-							char *new_buf = malloc(acc_len);
-							if (new_buf == NULL){
-								exit_qstat("out of memory");
+							int found = 0;
+							for (int i = 0; i < attr_count; i++){
+								if (strcmp(attr_names[i], a->name) == 0){
+									found = 1;
+									size_t new_len = strlen(attr_values[i]) + strlen(a->value) + 2; // +2 for ",\0"
+									char *new_buf = malloc(new_len);
+									if (!new_buf){
+										exit_qstat("out of memory");
+									}
+									snprintf(new_buf, new_len, "%s,%s", attr_values[i], a->value); // exists, append to running output
+									free(attr_values[i]);
+									attr_values[i] = new_buf;
+									break;
+								}
 							}
-
-							if (new_type_restr_acc){ // append
-								snprintf(new_buf, acc_len, "%s,%s", new_type_restr_acc, a->value);
-								free(new_type_restr_acc);
-							} else { // first elem, start new
-								snprintf(new_buf, acc_len, "%s", a->value);
+							if (!found && attr_count < MAX_ATTRS){ // first time restriction seen, create new key 
+								attr_names[attr_count] = strndup(a->name, strlen(a->name));
+								attr_values[attr_count] = strndup(a->value, strlen(a->value));
+								attr_count++;
 								new_type_attr_name = a->name;
 							}
-							
-							new_type_restr_acc = new_buf;
 						} 
 					} else { // not new-type queue restriction
 						prt_attr(a->name, a->resource, a->value,
@@ -1750,9 +1760,12 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 				if (a)
 					printf("%s", delimiter);
 			}
-			if (new_type_restr_acc){ // new type restriction
-				pbs_json_insert_string(json_queue, new_type_attr_name, new_type_restr_acc);
-				free(new_type_restr_acc);
+			if (attr_count > 0){ // new type restriction
+				for (int i = 0; i < attr_count; i++){
+					pbs_json_insert_string(json_queue, attr_names[i], attr_values[i]);
+					free(attr_names[i]);
+					free(attr_values[i]);
+				}
 			}
 			if (res_count > 0){ // new type restiction + resource type
 				json_data *json_obj = pbs_json_create_object();
