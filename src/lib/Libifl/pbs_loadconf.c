@@ -567,15 +567,10 @@ __pbs_loadconf(int reload)
 				}
 				free(value);
 			} else if (!strcmp(conf_name, PBS_CONF_AUTH_SERVICE_USERS)) {
-				char *value = convert_string_to_lowercase(conf_value);
-				if (value == NULL)
-					goto err;
-				pbs_conf.auth_service_users = break_comma_list(value);
+				pbs_conf.auth_service_users = break_comma_list(conf_value);
 				if (pbs_conf.auth_service_users == NULL) {
-					free(value);
 					goto err;
 				}
-				free(value);
 			} else if (!strcmp(conf_name, PBS_CONF_DAEMON_SERVICE_USER)) {
 				free(pbs_conf.pbs_daemon_service_user);
 				pbs_conf.pbs_daemon_service_user = strdup(conf_value);
