@@ -1611,6 +1611,41 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 }
 
 #define TYPEL 4
+/**
+ * @brief
+ *      Helper function to accumulate new-type restriction to a running string
+ *
+ * @param[in] keys - array of  keys
+ * @param[in] values - array of values corresponding to each key
+ * @param[in] count - pointer to current number of unqiue keys stored in keys/values
+ * @param[in] max - maximum allowed number of unique keys 
+ * @param[in] key - new key to process 
+ * @param[in] val - value associated with the key to accumulate 
+ *
+ */
+static void accumulate_restriction(char **keys, char **values, int *count, int max, const char *key, const char *val){
+	for (int i = 0; i < *count; i++){
+		// check if key already exists
+		if(strcmp(keys[i], key) == 0){
+			size_t new_len = strlen(values[i]) + strlen(val) + 2; // ",\0"
+			char *new_buf = malloc(new_len);
+			if (!new_buf){
+				exit_qstat("out of memory");
+			}
+			snprintf(new_buf, new_len, "%s,%s", values[i], val); //append to running output
+			free(values[i]);
+			values[i] = new_buf;
+			return;
+		}
+	}
+
+	// first time restriction seen, create new key
+	if (*count < max){
+		keys[*count] = strndup(key, strlen(key));
+		values[*count] = strndup(val, strlen(val));
+		(*count)++;
+	}
+}
 
 /**
  * @brief
@@ -1705,51 +1740,12 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 				if (a->name != NULL) {
 					if (output_format == FORMAT_JSON && a->value[0] == '[' && strchr(a->value, '=') != NULL && a->value[strlen(a->value)-1] == ']'){ // new type queue restriction
 						if (a->resource){ // resource + new type queue restriction + json
-							// check if key already exists
-							int found = 0;
-							for (int i = 0; i < res_count; i++){
-								if (strcmp(res_names[i], a->resource) == 0){
-									found = 1;
-									size_t new_len = strlen(res_values[i]) + strlen(a->value) + 2; // +2 for ",\0"
-									char *new_buf = malloc(new_len);
-									if (!new_buf){
-										exit_qstat("out of memory");
-									}
-									snprintf(new_buf, new_len, "%s,%s", res_values[i], a->value); // exits, append to running output
-									free(res_values[i]);
-									res_values[i] = new_buf;
-									break;
-								}
-							}
-							if (!found && res_count < MAX_RES){ // first time restriction seen, create new key 
-								res_names[res_count] = strndup(a->resource, strlen(a->resource));
-								res_values[res_count] = strndup(a->value, strlen(a->value));
-								res_count++;
-								res_new_type_name = a->name;
-							}
+							accumulate_restriction(res_names, res_values, &res_count, MAX_RES, a->resource, a->value);
+							res_new_type_name = a->name;
 						}
 						else { // new type but not a sub resource
-							int found = 0;
-							for (int i = 0; i < attr_count; i++){
-								if (strcmp(attr_names[i], a->name) == 0){
-									found = 1;
-									size_t new_len = strlen(attr_values[i]) + strlen(a->value) + 2; // +2 for ",\0"
-									char *new_buf = malloc(new_len);
-									if (!new_buf){
-										exit_qstat("out of memory");
-									}
-									snprintf(new_buf, new_len, "%s,%s", attr_values[i], a->value); // exists, append to running output
-									free(attr_values[i]);
-									attr_values[i] = new_buf;
-									break;
-								}
-							}
-							if (!found && attr_count < MAX_ATTRS){ // first time restriction seen, create new key 
-								attr_names[attr_count] = strndup(a->name, strlen(a->name));
-								attr_values[attr_count] = strndup(a->value, strlen(a->value));
-								attr_count++;
-								new_type_attr_name = a->name;
-							}
+							accumulate_restriction(attr_names, attr_values, &attr_count, MAX_ATTRS, a->name, a->value);
+							new_type_attr_name = a->name;
 						} 
 					} else { // not new-type queue restriction
 						prt_attr(a->name, a->resource, a->value,
