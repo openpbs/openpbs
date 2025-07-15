@@ -38,13 +38,26 @@
 # subject to Altair's trademark licensing policies.
 
 from tests.security import *
-
+import os
+import errno
+import socket
+import re
+import random
+import string
+import sys
+import time
 
 class TestMultipleAuthMethods(TestSecurity):
     """
     This test suite contains tests for Multiple authentication added to PBS
     """
     node_list = []
+    # Regular expression that will be used to get the address and port number
+    # from the output of 'netstat' or 'ss' commands
+    re_addr_port = re.compile(r'(?P<addr>.*):(?P<port>\d+)')
+    # Regular expression that will be used to get the second argument of write
+    # system calls from the output of 'strace' command
+    re_syscall = re.compile(r'.*\"(?P<write_buffer>.*)\".*')
 
     def setUp(self):
         TestSecurity.setUp(self)
@@ -1308,6 +1321,357 @@ class TestMultipleAuthMethods(TestSecurity):
         j.interactive_script = [('sleep 100', '.*')]
         jid = self.server.submit(j)
         self.match_logs({'mom': f'interactive authentication method {auth_method} not supported'})
+
+    def test_penetration_interactive_auth_resvport(self):
+        """
+        Test that qsub interactive will reject unathorized incoming connections.
+        1. qsub -I starts listening for an incoming connection
+        2. We connect to the qsub socket and send a random message
+        3. qsub should reject the connection since it does not originate from a
+        privileged port.
+
+        Node 1: Server, Sched, Mom, Comm
+        """
+        auth_method = 'resvport'
+        conf_param = {'PBS_SUPPORTED_AUTH_METHODS': auth_method,
+                      'PBS_INTERACTIVE_AUTH_METHOD': auth_method}
+        self.helper_pentest_interactive_auth_1(conf_param)
+
+    def test_penetration_interactive_auth_munge(self):
+        """
+        Test that qsub interactive will reject unathorized incoming connections.
+        1. qsub -I starts listening for an incoming connection
+        2. We connect to the qsub socket and send a random message
+        3. qsub should reject the connection since it does not match with a valid
+        root munge token.
+
+        Node 1: Server, Sched, Mom, Comm
+        """
+        # Function call to check if munge is installed and enabled
+        self.perform_op(choice='check_installed_and_run',
+                        host_name=self.server.hostname)
+
+        auth_method = 'munge'
+        conf_param = {'PBS_SUPPORTED_AUTH_METHODS': f'resvport,{auth_method}',
+                      'PBS_INTERACTIVE_AUTH_METHOD': auth_method}
+        self.helper_pentest_interactive_auth_1(conf_param)
+
+    def helper_pentest_interactive_auth_1(self, conf_param):
+        """
+        Helper function for pen-testing interactive authentication.
+        In this test a malicious user connects to the qsub -I socket and
+        submits a random message. The connection should be refused since it
+        does not match the expected credentials. When scheduling is turned on,
+        a valid execution host should be able to connect to qsub -I and the
+        interactive job should start running.
+
+        :param conf_param: Configuration parameters to update in pbs.conf
+        :type conf_param: dict
+        """
+        if self.server.get_op_mode() != PTL_CLI:
+            self.server.set_op_mode(PTL_CLI)
+
+        self.update_pbs_conf(conf_param, host_name=self.svr_hostname)
+
+        # turn off scheduling, so we can try to connect with qsub
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        # submit an interactive job
+        j = Job(TEST_USER, attrs={ATTR_inter: ''})
+        j.interactive_script = [('sleep 100', '.*')]
+        jid = self.server.submit(j)
+        # Get the address and port of qsub -I
+        address, port = self.get_qsub_address_port(host=self.svr_hostname)
+        self.assertTrue(port and address, "Failed to get qsub -I address and port")
+        family, socktype, _, _, sockaddr = socket.getaddrinfo(address, port)[0]
+        # Create a TCP socket and connect to qsub
+        with socket.socket(family, socktype) as sock:
+            sock = socket.socket(family, socktype)
+            sock.connect(sockaddr)
+            with self.assertRaises(BrokenPipeError, msg='Connection was not refused'):
+                for _ in range(10):
+                    # Add a small delay so that MoM has the time to close the connection
+                    time.sleep(5)
+                    # Send the job id to qsub
+                    sock.sendall(jid.encode())
+        self.logger.info('Connection refused as expected')
+
+        # the job should be still in the queue
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid)
+        # now turn scheduling on
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        # the job should be running
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+
+    def test_penetration_interactive_auth_resvport_2(self):
+        """
+        In this test the malicious user connects to the socket and stays idle.
+        1. qsub -I starts listening for an incoming connection
+        2. We connect to the qsub socket and stay idle.
+        3. After a while the connection should timeout and be closed.
+        4. When scheduling is turned on, a valid execution host should be able
+        to connect to qsub -I.
+        5. The interactive job should start running.
+
+        Node 1: Server, Sched, Mom, Comm
+        """
+        auth_method = 'resvport'
+        conf_param = {'PBS_SUPPORTED_AUTH_METHODS': f'{auth_method}',
+                      'PBS_INTERACTIVE_AUTH_METHOD': auth_method}
+        self.helper_pentest_interactive_auth_2(conf_param=conf_param)
+
+    def test_penetration_interactive_auth_munge_2(self):
+        """
+        In this test the malicious user connects to the socket and stays idle.
+        1. qsub -I starts listening for an incoming connection
+        2. We connect to the qsub socket and stay idle.
+        3. After a while the connection should timeout and be closed.
+        4. When scheduling is turned on, a valid execution host should be able
+        to connect to qsub -I.
+        5. The interactive job should start running.
+
+        Node 1: Server, Sched, Mom, Comm
+        """
+
+        # Function call to check if munge is installed and enabled
+        self.perform_op(choice='check_installed_and_run',
+                        host_name=self.server.hostname)
+
+        auth_method = 'munge'
+        conf_param = {'PBS_SUPPORTED_AUTH_METHODS': f'resvport,{auth_method}',
+                      'PBS_INTERACTIVE_AUTH_METHOD': auth_method}
+        self.helper_pentest_interactive_auth_2(conf_param=conf_param)
+
+    def helper_pentest_interactive_auth_2(self, conf_param):
+        """
+        Helper function for pen-testing interactive authentication.
+        In this test a malicious user connects to the socket and stays idle.
+        After a while the connection should timeout and be closed.
+        When scheduling is turned on, a valid execution host should be able
+        to connect to qsub -I and the interactive job should start running.
+
+        :param conf_param: Configuration parameters to update in pbs.conf
+        :type conf_param: dict
+        """
+        if self.server.get_op_mode() != PTL_CLI:
+            self.server.set_op_mode(PTL_CLI)
+
+        self.update_pbs_conf(conf_param, host_name=self.svr_hostname)
+
+        # turn off scheduling, so we can try to connect with qsub
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        # submit an interactive job
+        j = Job(TEST_USER, attrs={ATTR_inter: ''})
+        j.interactive_script = [('sleep 100', '.*')]
+        jid = self.server.submit(j)
+
+        # Get the address and port of qsub -I
+        address, port = self.get_qsub_address_port(host=self.svr_hostname)
+        self.assertTrue(port and address, "Failed to get qsub -I address and port")
+        family, socktype, _, _, sockaddr = socket.getaddrinfo(address, port)[0]
+        # Create a TCP socket and try to connect to qsub
+        with socket.socket(family, socktype) as sock:
+            sock.connect(sockaddr)
+            # the job should be still in the queue
+            self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid)
+            # now turn scheduling on
+            self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+            # the job should be running
+            self.server.expect(JOB, {ATTR_state: 'R'}, id=jid, offset=30)
+
+    def test_penetration_root_impersonation_munge(self):
+        """
+        Test that server will reject credentials that don't match with the
+        username in the batch request.
+        1. Send to the server a connect request with root as the username
+        2. Then send a authenticate request with a root as the username
+        3. Finally we send the TEST_USER's munge token.
+        4. The server should reject the request since the username in the
+        batch requests does not match with the username in the munge token.
+
+        Node 1: Server, Sched, Mom, Comm
+        """
+        # Function call to check if munge is installed and enabled
+        self.perform_op(choice='check_installed_and_run',
+                        host_name=self.server.hostname)
+
+        auth_method = 'munge'
+        conf_param = {'PBS_AUTH_METHOD': f'{auth_method}',
+                      'PBS_SUPPORTED_AUTH_METHODS': f'resvport,{auth_method}'}
+        self.update_pbs_conf(conf_param, host_name=self.svr_hostname)
+
+        packets_to_send = []
+        # Need to run qstat under strace, to get all write system calls
+        root_packets = self.get_qstat_write_syscalls(runas=ROOT_USER)
+        self.assertGreater(len(root_packets), 2, f"Failed to get {ROOT_USER}'s write system calls for qstat")
+
+        user_packets = self.get_qstat_write_syscalls(runas=TEST_USER)
+        self.assertGreater(len(user_packets), 2, f"Failed to get {TEST_USER}'s write system calls for qstat")
+
+        # This is the order the packets will be sent:
+        # 1. PBS_BATCH_Connect as root
+        # 2. PBS_BATCH_Authenticate as root
+        # 3. TEST_USER's munge credentials
+        packets_to_send = root_packets[:2] + [user_packets[2]]
+        start_time = time.time()
+        # Establish connection with server in port PBS_BATCH_SERVICE_PORT
+        server_port = self.server.pbs_conf.get('PBS_BATCH_SERVICE_PORT', 15001)
+        family, socktype, _, _, sockaddr = socket.getaddrinfo(self.svr_hostname, server_port)[0]
+        # Create a TCP socket and try to connect to the server
+        with socket.socket(family, socktype) as sock:
+            sock = socket.socket(family, socktype)
+            sock.connect(sockaddr)
+            # Send PBS_BATCH_Connect
+            sock.sendall(bytes.fromhex(packets_to_send[0].replace(r'\x', ' ')))
+            # Send PBS_BATCH_Authenticate with user credentials
+            sock.sendall(bytes.fromhex(packets_to_send[1].replace(r'\x', ' ')))
+            sock.sendall(bytes.fromhex(packets_to_send[2].replace(r'\x', ' ')))
+            reply = sock.recv(1024).decode()
+            # Now match expected server logs
+            self.server.log_match(f".*Type 0 request received from {ROOT_USER}.*",
+                                    regexp=True, starttime=start_time)
+            self.server.log_match(f".*Type 95 request received from {ROOT_USER}.*",
+                                    regexp=True, starttime=start_time)
+            self.server.log_match(".*;munge_validate_auth_data;MUNGE user-authentication on decode failed with `Replayed credential`.*",
+                                    regexp=True, starttime=start_time)
+            self.server.log_match(".*;tcp_pre_process;MUNGE user-authentication on decode failed with `Replayed credential`.*",
+                                    regexp=True, starttime=start_time)
+
+    def test_penetration_server_to_mom_over_tcp_1(self):
+        """
+        Test that MoM will reject unathenticated TCP requests at port 15002.
+        1. We establish a TCP connection with MoM on port 15002 and submit a
+        random request.
+        2. MoM should reject the request since it does not contain the correct
+        encrypted cipher.
+
+        Node 1: Server, Sched, Mom, Comm
+        """
+        if os.getuid() != 0 or sys.platform in ('cygwin', 'win32'):
+            self.skipTest("Test needs to run as root")
+
+        packet = 'PKTV1\x00\x00\x00\x00\x00\x0d+1+1+2+5ncpus'
+        # Establish connection with mom in port PBS_MANAGER_SERVICE_PORT
+        mom_port = self.server.pbs_conf.get('PBS_MOM_SERVICE_PORT', 15002)
+        family, socktype, _, _, sockaddr = socket.getaddrinfo(self.svr_hostname, mom_port)[0]
+        start_time = time.time()
+        # Create a TCP socket and connect to mom
+        with socket.socket(family, socktype) as sock:
+            # Bind to an available, privileged port
+            self.bind_to_privileged_port(sock)
+            sock.connect(sockaddr)
+            # Send the packet
+            sock.sendall(packet.encode())
+            # Now match expected mom log
+            self.mom.log_match(f".*pbs_mom;.*received incorrect auth token.*",
+                               regexp=True, starttime=start_time)
+            self.mom.log_match(f".*;pbs_mom;Svr;wait_request;process socket failed.*",
+                               regexp=True, starttime=start_time)
+
+    def test_penetration_server_to_mom_over_tcp_2(self):
+        """
+        Test that MoM will reject unathenticated TCP requests at port 15002.
+        1. We establish a TCP connection with MoM on port 15002 and submit a
+        request that looks similar to an encrypted cipher.
+        2. MoM should reject the request since it does not match the expected
+        encrypted cipher according to the authentication protocol.
+
+        Node 1: Server, Sched, Mom, Comm
+        """
+        if os.getuid() != 0 or sys.platform in ('cygwin', 'win32'):
+            self.skipTest("Test needs to run as root")
+
+        random_str = ''.join(random.choices(string.ascii_letters, k=15)) +\
+            ';' + ''.join(random.choices(string.ascii_letters, k=33))
+        packet = 'PKTV1\x00\x01\x00\x00\x00\x31' + random_str
+        # Establish connection with mom in port PBS_MANAGER_SERVICE_PORT
+        mom_port = self.server.pbs_conf.get('PBS_MOM_SERVICE_PORT', 15002)
+        family, socktype, _, _, sockaddr = socket.getaddrinfo(self.svr_hostname, mom_port)[0]
+        start_time = time.time()
+        # Create a TCP socket and connect to mom
+        with socket.socket(family, socktype) as sock:
+            # Bind to an available, privileged port
+            self.bind_to_privileged_port(sock)
+            sock.connect(sockaddr)
+            # Send the packet
+            sock.sendall(packet.encode())
+            # Now match expected mom log
+            self.mom.log_match(f".*pbs_mom;validate_hostkey, decyrpt failed, host_keylen=.*",
+                               regexp=True, starttime=start_time)
+            self.mom.log_match(f".*pbs_mom;.*Failed to decrypt auth data.*",
+                               regexp=True, starttime=start_time)
+            self.mom.log_match(f".*;pbs_mom;Svr;wait_request;process socket failed.*",
+                               regexp=True, starttime=start_time)
+
+    def bind_to_privileged_port(self, sock):
+        """
+        Bind to an available, privileged port
+
+        :param sock: The socket to bind
+        :type sock: socket.socket
+        :return: The privileged port number that was successfully bound
+        """
+        port_found = False
+        for local_port in range(1023, 0, -1):
+            try:
+                sock.bind((self.svr_hostname, local_port))
+                port_found = True
+                break
+            except socket.error as e:
+                if e.errno != errno.EADDRINUSE:
+                    raise e
+        self.assertTrue(port_found, "Failed to find an available privileged port")
+        return local_port
+
+    def get_qsub_address_port(self, host):
+        """
+        Extract the address and listenting port of a qsub interactive session
+
+        :param host: The hostname of the host where qsub -I was run
+        :type host: str
+        :return: A tuple containing the address and port of the qsub session,
+                    or (None, None) if not found
+        """
+        tool = self.du.which(hostname=host, exe='ss')
+        if tool == 'ss':
+            tool = self.du.which(hostname=host, exe='netstat')
+        if tool == 'netstat':
+            self.skipTest(f"Command ss or netstat not found on {host}")
+        cmd = [tool, '-tnap']
+        ret = self.du.run_cmd(hosts=host, cmd=cmd, runas=ROOT_USER)
+        if ret['rc'] == 0:
+            for line in ret['out']:
+                if 'LISTEN' in line and 'qsub' in line:
+                    # this should extract the port number from the output
+                    m = self.re_addr_port.match(line.split()[3])
+                    if m:
+                        return m.group('addr'), m.group('port')
+        self.logger.error(f"Failed to get qsub -I address and port with: {ret['err']}")
+        return None, None
+
+    def get_qstat_write_syscalls(self, runas, host=None):
+        """
+        Get all write system calls made by qstat
+
+        param runas: The user to run the command as
+        type runas: str
+        return: A list of all write system calls made by qstat.
+        """
+        strace = self.du.which(hostname=host, exe='strace')
+        if strace == 'strace':
+            self.skipTest("Command strace not found")
+        qstat = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat')
+        cmd = [strace, '--trace=write', '-s1024', '-x', '-q', '--', qstat]
+        ret = self.du.run_cmd(cmd=cmd, runas=runas, hosts=host, logerr=False)
+        calls = []
+        if ret['rc'] == 0:
+            for line in ret['err']:
+                m = self.re_syscall.match(line)
+                if m:
+                    calls.append(m.group('write_buffer'))
+        else:
+            self.logger.error(f"Failed to get qstat write system calls with: {ret['err']}")
+        return calls
 
     def tearDown(self):
         conf_param = ['PBS_SUPPORTED_AUTH_METHODS',
