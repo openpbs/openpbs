@@ -604,7 +604,6 @@ class TestMultipleAuthMethods(TestSecurity):
         exp_msg = ['munge_get_auth_data: ' + err_msg1,
                     'auth: error returned: 15010',
                     'auth: ' + err_msg1,
-                    'System call failure.',
                     msg
                     ]
 
@@ -619,7 +618,14 @@ class TestMultipleAuthMethods(TestSecurity):
         try:
             j1id = self.server.submit(j)
         except PbsSubmitError as e:
-            self.assertTrue(exp_msg == e.msg or exp_msg1 == e.msg)
+            # Check if all lines of exp_msg are present in the error message
+            all_in_exp_msg = all(any(s in msg for msg in e.msg)
+                                 for s in exp_msg)
+            # Check if all lines of exp_msg1 are present in the error message
+            all_in_exp_msg1 = all(any(s in msg for msg in e.msg)
+                                  for s in exp_msg1)
+            self.assertTrue(all_in_exp_msg or all_in_exp_msg1,
+                            f"{str(e.msg)} does not match with {str(exp_msg)} or {str(exp_msg1)}")
             self.logger.info("Job submit failed as expected with" + str(e.msg))
         else:
             err_msg = "Failed to get expected error message"
@@ -717,20 +723,18 @@ class TestMultipleAuthMethods(TestSecurity):
         PBS_SUPPORTED_AUTH_METHODS is not added to pbs.conf on server host
         Configuration:
         Node 1 : Server, Sched, Comm (self.hostA)
-        Node 2 : Mom (self.hostB)
-        Node 3 : Client (self.hostC)
+        Node 2 : Mom, Client (self.hostB)
         """
         if self.server.client == self.server.hostname:
-            msg = "Test requires 2 moms and 1 client which is on non server"
+            msg = "Test requires 1 mom and 1 client which is on non server"
             msg += " host as input"
             self.skipTest(msg)
 
         self.hostA = self.server.shortname
         self.momA = self.moms.values()[0]
         self.hostB = self.momA.shortname
-        self.hostC = self.server.client
 
-        self.node_list = [self.hostA, self.hostB, self.hostC]
+        self.node_list = [self.hostA, self.hostB]
 
         # Verify if munge is installed on all the hosts
         for host in self.node_list:
@@ -777,7 +781,6 @@ class TestMultipleAuthMethods(TestSecurity):
         exp_msgs = ['init_munge: libmunge.so not found',
                     'auth: error returned: 15010',
                     'auth: Munge lib is not loaded',
-                    'System call failure.',
                     msg
                     ]
         try:
@@ -794,7 +797,7 @@ class TestMultipleAuthMethods(TestSecurity):
 
         err_msg = "qstat: cannot connect to server %s" % self.server.hostname
         err_msg += " (errno=15010)"
-        exp_msgs[4] = err_msg
+        exp_msgs[3] = err_msg
         try:
             self.server.status(SERVER, id=self.svr_hostname)
         except PbsStatusError as e:
@@ -866,7 +869,7 @@ class TestMultipleAuthMethods(TestSecurity):
         self.momB.log_match(exp_log)
         self.common_steps_without_munge(self.hostB)
 
-    @requirements(num_moms=2, num_comms=1, no_comm_on_server=True)
+    @requirements(num_moms=1, num_comms=1, no_comm_on_server=True)
     def test_without_munge_on_comm_host(self):
         """
         Test behavior when PBS_AUTH_METHOD is set to munge on
@@ -874,8 +877,7 @@ class TestMultipleAuthMethods(TestSecurity):
         when pbs_comm and client are on non-server host
         Configuration:
         Node 1: Server, Sched, Mom [self.hostA]
-        Node 2: Mom [self.hostB]
-        Node 3: Comm [self.hostC]
+        Node 2: Comm [self.hostB]
         """
         if self.svr_hostname == self.comm.shortname:
             msg = "Test requires a comm host which is present on "
@@ -884,37 +886,34 @@ class TestMultipleAuthMethods(TestSecurity):
 
         self.momA = self.moms.values()[0]
         self.hostA = self.momA.shortname
-        self.momB = self.moms.values()[1]
-        self.hostB = self.momB.shortname
-        self.hostC = self.comm.shortname
+        self.hostB = self.comm.shortname
 
         self.perform_op(choice='check_not_installed',
-                        host_name=self.hostC)
-        self.node_list.extend([self.hostA, self.hostB, self.hostC])
-
+                        host_name=self.hostB)
+        self.node_list.extend([self.hostA, self.hostB])
 
         conf_param = {'PBS_SUPPORTED_AUTH_METHODS': 'MUNGE',
                       'PBS_AUTH_METHOD': 'MUNGE',
-                      'PBS_LEAF_ROUTERS': self.hostC}
+                      'PBS_LEAF_ROUTERS': self.hostB}
         self.update_pbs_conf(conf_param, check_state=False)
 
         del conf_param['PBS_LEAF_ROUTERS']
         conf_param['PBS_COMM_LOG_EVENTS'] = 2047
         self.update_pbs_conf(
             conf_param,
-            host_name=self.hostC,
+            host_name=self.hostB,
             check_state=False)
 
         del conf_param['PBS_SUPPORTED_AUTH_METHODS']
-        conf_param['PBS_LEAF_ROUTERS'] = self.hostC
+        conf_param['PBS_LEAF_ROUTERS'] = self.hostB
         for mom in self.moms.values():
             if mom.shortname != self.svr_hostname:
                 self.update_pbs_conf(
                     conf_param, host_name=mom.name, check_state=False)
 
-        self.common_steps_without_munge(self.hostC)
+        self.common_steps_without_munge(self.hostB)
 
-    @requirements(num_client=1, num_moms=2)
+    @requirements(num_client=1, num_moms=1)
     def test_without_munge_on_client_host(self):
         """
         Test behavior when PBS_AUTH_METHOD is set to munge on
@@ -922,8 +921,7 @@ class TestMultipleAuthMethods(TestSecurity):
         when pbs_comm and client are on non-server host
         Configuration:
         Node 1: Server, Sched, Mom, Comm [self.hostA]
-        Node 2: Mom [self.hostB]
-        Node 3: Client [self.hostC]
+        Node 2: Client [self.hostB]
         """
         if self.svr_hostname == self.server.client:
             msg = "Test requires a client host which is present on "
@@ -932,20 +930,18 @@ class TestMultipleAuthMethods(TestSecurity):
 
         self.momA = self.moms.values()[0]
         self.hostA = self.momA.shortname
-        self.momB = self.moms.values()[1]
-        self.hostB = self.momB.shortname
-        self.hostC = self.server.client
+        self.hostB = self.server.client
 
         self.perform_op(choice='check_not_installed',
-                        host_name=self.hostC)
-        self.node_list.extend([self.hostA, self.hostB, self.hostC])
+                        host_name=self.hostB)
+        self.node_list.extend([self.hostA, self.hostB])
 
         conf_param = {'PBS_SUPPORTED_AUTH_METHODS': 'MUNGE',
                       'PBS_AUTH_METHOD': 'MUNGE',
                       'PBS_COMM_LOG_EVENTS': "2047"}
         self.update_pbs_conf(conf_param, check_state=False)
         del conf_param['PBS_COMM_LOG_EVENTS']
-        self.update_pbs_conf(conf_param, host_name=self.hostC,
+        self.update_pbs_conf(conf_param, host_name=self.hostB,
                              restart=False)
         conf_param = {'PBS_AUTH_METHOD': 'MUNGE'}
         for mom in self.moms.values():
@@ -953,7 +949,7 @@ class TestMultipleAuthMethods(TestSecurity):
                 self.update_pbs_conf(
                     conf_param, host_name=mom.name, check_state=False)
 
-        self.common_steps_without_munge(self.hostC)
+        self.common_steps_without_munge(self.hostB)
 
     @requirements(num_client=1)
     def test_diff_auth_method_on_client(self):

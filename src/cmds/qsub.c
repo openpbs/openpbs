@@ -2833,7 +2833,8 @@ do_connect(char *server_out, char *retmsg)
 		sd_svr = cnt2server(server_out);
 
 	if (sd_svr <= 0) {
-		sprintf(retmsg, "qsub: cannot connect to server %s (errno=%d)\n", pbs_server, pbs_errno);
+		sprintf(retmsg, "qsub: cannot connect to server %s (errno=%d)\n",
+			pbs_default() == NULL ? "" : pbs_default(), pbs_errno);
 		return (pbs_errno);
 	}
 
