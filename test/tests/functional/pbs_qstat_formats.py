@@ -751,3 +751,59 @@ class TestQstatFormats(TestFunctional):
         except ValueError:
             self.logger.info(qstat_out)
             self.assertFalse(True, "Json failed to load")
+
+    def test_qstat_format_conflicts(self):
+        """
+        Test conflicting combinations of alt_opt flags with -F
+        """
+        binpath = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat')
+        conflicting_opts = [
+            '-a -F JSON',
+            '-i -F JSON',
+            '-r -F JSON',
+            '-n -F JSON',
+            '-s -F JSON',
+            '-H -F JSON',
+            '-T -F JSON',
+            '-G -F JSON',
+            '-M -F JSON',
+            '-1 -F JSON',
+            '-w -F JSON',
+        ]
+
+        for flags in conflicting_opts:
+            qstat_cmd = binpath + ' ' + flags
+            ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd)
+
+            self.assertNotEqual(ret['rc'], 0, f"Expected failure for: {flags}")
+            self.assertIn("conflicting options", ''.join(ret['err']).lower(),
+                          f"Missing conflict error for: {flags}")
+            self.assertEqual(len(ret['out']), 0, f"Unexpected stdout for: {flags}")
+
+
+    def test_qstat_format_valid_combos(self):
+        """
+        Test valid combinations of alt_opt flags with - JSON
+        i.e. should not throw errors
+        """
+        binpath = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat')
+
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        ret = self.du.run_cmd(self.server.hostname, cmd="qstat -f " + jid)
+        self.assertIn("job_state", ''.join(ret['out']))
+
+        valid_opts = [
+            '-f -F JSON',
+            f'-f -F JSON {jid}',
+            '-Bf -F JSON',
+            '-Qf -F JSON'
+        ]
+
+        for flags in valid_opts:
+            qstat_cmd = binpath + ' ' + flags
+            ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd)
+
+            self.assertEqual(ret['rc'], 0, f"Expected success for: {flags}")
+            self.assertEqual(len(ret['err']), 0, f"Unexpected stderr for: {flags}")
+            self.assertGreater(len(ret['out']), 0, f"No output for: {flags}")
