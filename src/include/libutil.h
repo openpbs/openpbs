@@ -350,6 +350,10 @@ extern char *get_hostname_from_addr(struct in_addr addr);
 extern char *parse_servername(char *, unsigned int *);
 extern int rand_num(void);
 
+extern char *gen_hostkey(char *cluster_key, char *salt, size_t *len);
+extern int validate_hostkey(char *host_key, size_t host_keylen, char **cluster_key);
+void set_rand_str(char *str, int len);
+
 /* thread utils */
 extern int init_mutex_attr_recursive(void *attr);
 

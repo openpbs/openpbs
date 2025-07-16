@@ -970,7 +970,7 @@ client_cipher_auth(int fd, char *text, char *ebuf, size_t ebufsz)
 	size_t len = 0;
 	int type = 0;
 	char salt[SALT_SIZE];
-	char *msg;
+	char *msg = NULL;
 
 	DIS_tcp_funcs();
 
