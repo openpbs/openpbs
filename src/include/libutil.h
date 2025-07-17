@@ -374,6 +374,7 @@ char *get_range_from_jid(char *jid);
 char *create_subjob_id(char *parent_jid, int sjidx);
 
 #define GET_IP_PORT(x) ((struct sockaddr_in *) (x))->sin_port
+#define IS_VALID_IP(x) (((struct sockaddr_in *)(x))->sin_family == AF_INET)
 
 #ifdef __cplusplus
 }
