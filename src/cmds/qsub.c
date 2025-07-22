@@ -502,9 +502,12 @@ expand_varlist(char *varlist)
 			*p2 = '\0';
 			vv = p2 + 1;
 		}
-		if ((vv == NULL) && (strncmp(vn, PBS_O_ENV, sizeof(PBS_O_ENV) - 1) != 0)) {
-			/* do not add PBS_O_* env variables, as these */
-			/* are set by qsub */
+		if ((vv == NULL) && (strncmp(vn, PBS_O_ENV, sizeof(PBS_O_ENV) - 1) != 0)
+				 && (strncmp(vn, PBS_JOBCOOKIE, sizeof(PBS_JOBCOOKIE) - 1) != 0)
+				 && (strncmp(vn, PBS_INTERACTIVE_COOKIE, sizeof(PBS_INTERACTIVE_COOKIE) - 1) != 0)) {
+			/* do not add PBS_O_* env variables, as these are set by qsub
+			 * Job related cookies should not be sent and are excluded to
+			 * prevent exposing internal PBS interactive session information. */
 
 			ev = getenv(vn);
 			if (ev == NULL) {
