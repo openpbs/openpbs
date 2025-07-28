@@ -1623,26 +1623,42 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
  * @param[in] val - value associated with the key to accumulate 
  *
  */
-static void accumulate_restriction(char **keys, char **values, int *count, int max, const char *key, const char *val){
-	for (int i = 0; i < *count; i++){
-		// check if key already exists
-		if(strcmp(keys[i], key) == 0){
-			size_t new_len = strlen(values[i]) + strlen(val) + 2; // ",\0"
+static void accumulate_restriction(char **keys, char **values, int *count, int max, const char *key, const char *val) {
+	/* check NULL-ness of parameters*/
+	if (!keys || !values || !count || !key || !val) {
+		exit_qstat("accumulate_restriction: NULL key or value");
+	}
+	for (int i = 0; i < *count; i++) {
+		/* check if key already exists */
+		if (strcmp(keys[i], key) == 0) {
+			size_t new_len = strlen(values[i]) + strlen(val) + 2; /* ",\0" */
 			char *new_buf = malloc(new_len);
-			if (!new_buf){
+			if (!new_buf) {
 				exit_qstat("out of memory");
 			}
-			snprintf(new_buf, new_len, "%s,%s", values[i], val); //append to running output
+			snprintf(new_buf, new_len, "%s,%s", values[i], val); /* append to running output */
 			free(values[i]);
 			values[i] = new_buf;
 			return;
 		}
 	}
 
-	// first time restriction seen, create new key
-	if (*count < max){
-		keys[*count] = strndup(key, strlen(key));
-		values[*count] = strndup(val, strlen(val));
+	/* first time restriction seen, create new key */
+	if (*count < max) {
+		char *new_key = strndup(key, strlen(key) + 1);
+		if (!new_key) {
+			exit_qstat("out of memory");
+		}
+
+		char *new_val = strndup(val, strlen(val) + 1);
+		if (!new_val) {
+			free(new_key);
+			exit_qstat("out of memory");
+		}
+
+		/* assign values*/
+		keys[*count] = new_key;
+		values[*count] = new_val;
 		(*count)++;
 	}
 }
@@ -1738,16 +1754,16 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 			a = p->attribs;
 			while (a != NULL) {
 				if (a->name != NULL) {
-					if (output_format == FORMAT_JSON && a->value[0] == '[' && strchr(a->value, '=') != NULL && a->value[strlen(a->value)-1] == ']'){ // new type queue restriction
-						if (a->resource){ // resource + new type queue restriction + json
+					if (output_format == FORMAT_JSON && a->value[0] == '[' && strchr(a->value, '=') != NULL && a->value[strlen(a->value)-1] == ']') { /* new type queue restriction */
+						if (a->resource) { /* resource + new type queue restriction + json */
 							accumulate_restriction(res_names, res_values, &res_count, MAX_RES, a->resource, a->value);
 							res_new_type_name = a->name;
 						}
-						else { // new type but not a sub resource
+						else { /* new type but not a sub resource */
 							accumulate_restriction(attr_names, attr_values, &attr_count, MAX_ATTRS, a->name, a->value);
 							new_type_attr_name = a->name;
 						} 
-					} else { // not new-type queue restriction
+					} else { /* not new-type queue restriction */
 						prt_attr(a->name, a->resource, a->value,
 							alt_opt & ALT_DISPLAY_w, json_queue);
 					}
@@ -1756,16 +1772,16 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 				if (a)
 					printf("%s", delimiter);
 			}
-			if (attr_count > 0){ // new type restriction
-				for (int i = 0; i < attr_count; i++){
+			if (attr_count > 0) { /* new type restriction */
+				for (int i = 0; i < attr_count; i++) {
 					pbs_json_insert_string(json_queue, attr_names[i], attr_values[i]);
 					free(attr_names[i]);
 					free(attr_values[i]);
 				}
 			}
-			if (res_count > 0){ // new type restiction + resource type
+			if (res_count > 0) { /* new type restiction + resource type */
 				json_data *json_obj = pbs_json_create_object();
-				for (int i = 0; i < res_count; i++){
+				for (int i = 0; i < res_count; i++) {
 					pbs_json_insert_string(json_obj, res_names[i], res_values[i]);
 					free(res_names[i]);
 					free(res_values[i]);
@@ -2763,7 +2779,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
-	if (!(output_format == FORMAT_DEFAULT || f_opt)) {
+	if (!(output_format == FORMAT_DEFAULT || f_opt) || (output_format != FORMAT_DEFAULT && alt_opt)) {
 		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
