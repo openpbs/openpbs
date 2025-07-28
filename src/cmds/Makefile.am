@@ -151,7 +151,8 @@ pbs_rdel_LDADD = ${common_libs}
 pbs_rdel_SOURCES = pbs_rdel.c ${common_sources}
 
 pbs_rstat_CPPFLAGS = ${common_cflags}
-pbs_rstat_LDADD = ${common_libs}
+pbs_rstat_LDADD = ${common_libs} \
+	$(top_builddir)/src/lib/Libjson/libpbsjson.la
 pbs_rstat_SOURCES = pbs_rstat.c ${common_sources}
 
 pbs_rsub_CPPFLAGS = ${common_cflags}
