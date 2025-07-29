@@ -812,7 +812,7 @@ class TestQstatFormats(TestFunctional):
     def test_qstat_Qf_json_new_type_queue_format(self):
         """
         Test if qstat -Qf -F JSON returns multiple new-type queue restrictions
-        as a single comma seperated string, rather than having duplicate keys
+        as a single comma separated string, rather than having duplicate keys
         """
 
         qname = 'newtypeq'
@@ -860,7 +860,7 @@ class TestQstatFormats(TestFunctional):
 
         for key, val in expected.items():
             self.assertIn(key, qdata)
-            self.assertIsInstance(qdata[key], str, f"{key} should be a comma-seperated string")
+            self.assertIsInstance(qdata[key], str, f"{key} should be a comma-separated string")
             self.assertCountEqual(qdata[key], val)
 
         res_expected = { #resource based new type restrictions
