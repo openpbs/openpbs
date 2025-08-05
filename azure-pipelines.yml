@@ -28,10 +28,21 @@ jobs:
       
       - bash: |
           sudo apt-get update
-          sudo apt-get install -y pep8
           sudo apt-get install -y python3-pip
           sudo pip3 install --upgrade pip
-          sudo pip3 install clang-format
+          sudo pip3 install pycodestyle pep8 flake8 clang-format
+          
+          # Create pep8 symlink if it doesn't exist (for compatibility)
+          if ! command -v pep8 &> /dev/null; then
+            sudo ln -sf $(which pycodestyle) /usr/local/bin/pep8
+          fi
+          
+          # Verify installations
+          echo "Checking installed tools:"
+          python3 --version
+          pip3 --version
+          pep8 --version || pycodestyle --version
+          clang-format --version
           
           # Check if runchecks script exists
           if [ -f ".github/runchecks" ]; then
