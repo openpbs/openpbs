@@ -99,7 +99,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
       dnf -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
-  elif [ "x${ID}" == "xrocky" -a "x${VERSION_ID}" == "x9.2" ]; then
+  elif [ "x${ID}" == "xrocky" -a "x${VERSION_ID}" == "x9" ]; then
     export LANG="C.utf8"
     dnf -y clean all
     yum -y install yum-utils
