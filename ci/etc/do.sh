@@ -360,9 +360,9 @@ if [ "x${RUN_TESTS}" == "x1" ]; then
   ptl_log_file=${logdir}/logfile-${time_stamp}
   chown pbsroot ${logdir}
   if [ -z "${eval_tag}" ]; then
-    sudo -Hiu pbsroot pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${ptl_log_file} ${params}
+    sudo -Hiu pbsroot pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${ptl_log_file} ${params} -l DEBUG 
   else
-    sudo -Hiu pbsroot pbs_benchpress --eval-tags="'${eval_tag}'" ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${ptl_log_file} ${params}
+    sudo -Hiu pbsroot pbs_benchpress --eval-tags="'${eval_tag}'" ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${ptl_log_file} ${params} -l DEBUG
   fi
 fi
 
