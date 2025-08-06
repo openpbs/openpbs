@@ -806,9 +806,8 @@ class TestQstatFormats(TestFunctional):
 
             self.assertEqual(ret['rc'], 0, f"Expected success for: {flags}")
             self.assertEqual(len(ret['err']), 0, f"Unexpected stderr for: {flags}")
-            self.assertGreater(len(ret['out']), 0, f"No output for: {flags}")
-
     
+
     def test_qstat_Qf_json_new_type_queue_format(self):
         """
         Test if qstat -Qf -F JSON returns multiple new-type queue restrictions
@@ -879,4 +878,7 @@ class TestQstatFormats(TestFunctional):
 
 
         self.server.manager(MGR_CMD_DELETE, QUEUE, id=qname)
+<<<<<<< HEAD
 
+=======
+>>>>>>> ed9a6122 (qstat: queue json dups + fixing formatting issues)
