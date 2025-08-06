@@ -66,24 +66,28 @@ jobs:
            PKG_INSTALL_CMD: "apt-get -y update && apt-get -y upgrade && apt-get install -y python3 build-essential"
            DOCKER_EXTRA_ARG: "-e DEBIAN_FRONTEND=noninteractive -e LANGUAGE=C.UTF-8 -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8"
            CI_CMD: "./ci --local"
+           CONTAINER_NAME: "ubuntu2404-$(Build.BuildId)"
            
         "Ubuntu 20.04":
            OS_TYPE: "ubuntu:20.04"
            PKG_INSTALL_CMD: "apt-get -y update && apt-get -y upgrade && apt-get install -y python3 build-essential"
            DOCKER_EXTRA_ARG: "-e DEBIAN_FRONTEND=noninteractive -e LANGUAGE=C.UTF-8 -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8"
            CI_CMD: "./ci --local"
+           CONTAINER_NAME: "ubuntu2004-$(Build.BuildId)"
            
         "Rocky Linux 9 Sanitize":
            OS_TYPE: "rockylinux/rockylinux:9.2"
            PKG_INSTALL_CMD: "yum -y update && yum -y install python3 gcc gcc-c++ make"
            DOCKER_EXTRA_ARG: "-e BUILD_MODE=sanitize"
            CI_CMD: "./ci --local=sanitize"
+           CONTAINER_NAME: "rocky-sanitize-$(Build.BuildId)"
            
         "Rocky Linux 9 Kerberos":
            OS_TYPE: "rockylinux/rockylinux:9.2"
            PKG_INSTALL_CMD: "yum -y update && yum -y install python3 gcc gcc-c++ make"
            DOCKER_EXTRA_ARG: "-e BUILD_MODE=kerberos"
            CI_CMD: "./ci --local"
+           CONTAINER_NAME: "rocky-kerberos-$(Build.BuildId)"
            
     pool:
       vmImage: 'ubuntu-latest'
@@ -98,6 +102,7 @@ jobs:
         echo "Package Install: $(PKG_INSTALL_CMD)"
         echo "Docker Args: $(DOCKER_EXTRA_ARG)"
         echo "CI Command: $(CI_CMD)"
+        echo "Container Name: $(CONTAINER_NAME)"
       displayName: 'Display build configuration'
       
     - script: |
@@ -108,7 +113,7 @@ jobs:
         docker run -d \
           $(DOCKER_EXTRA_ARG) \
           -h pbs.dev.local \
-          --name pbsdev \
+          --name $(CONTAINER_NAME) \
           -v $(pwd):$(pwd) \
           --privileged \
           -w $(pwd) \
@@ -116,38 +121,38 @@ jobs:
           /bin/bash -c "sleep 3600"
           
         # Verify container is running
-        docker ps | grep pbsdev
+        docker ps | grep $(CONTAINER_NAME)
         
       displayName: 'Start Docker container'
       
     - script: |
         # Install packages
-        docker exec pbsdev bash -c "$(PKG_INSTALL_CMD)"
+        docker exec $(CONTAINER_NAME) bash -c "$(PKG_INSTALL_CMD)"
         
         # Verify Python installation
-        docker exec pbsdev python3 --version
+        docker exec $(CONTAINER_NAME) python3 --version
         
       displayName: 'Install dependencies'
       
     - script: |
         # Check if ci directory and script exist
-        docker exec pbsdev bash -c "ls -la"
-        docker exec pbsdev bash -c "if [ -d 'ci' ]; then ls -la ci/; else echo 'ci directory not found'; fi"
+        docker exec $(CONTAINER_NAME) bash -c "ls -la"
+        docker exec $(CONTAINER_NAME) bash -c "if [ -d 'ci' ]; then ls -la ci/; else echo 'ci directory not found'; fi"
         
         # Run CI script if it exists
-        if docker exec pbsdev bash -c "[ -f 'ci/ci' ] || [ -f './ci' ]"; then
-          docker exec --privileged pbsdev bash -c "cd ci && $(CI_CMD)"
+        if docker exec $(CONTAINER_NAME) bash -c "[ -f 'ci/ci' ] || [ -f './ci' ]"; then
+          docker exec --privileged $(CONTAINER_NAME) bash -c "cd ci && $(CI_CMD)"
         else
           echo "CI script not found, running basic build test"
-          docker exec pbsdev bash -c "python3 -c 'print(\"Python test successful\")'"
+          docker exec $(CONTAINER_NAME) bash -c "python3 -c 'print(\"Python test successful\")'"
         fi
         
       displayName: 'Run CI tests'
       
     - script: |
         # Cleanup
-        docker stop pbsdev || true
-        docker rm pbsdev || true
+        docker stop $(CONTAINER_NAME) || true
+        docker rm $(CONTAINER_NAME) || true
         
       displayName: 'Cleanup Docker container'
       condition: always()
