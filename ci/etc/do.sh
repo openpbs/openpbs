@@ -375,6 +375,13 @@ if [ "x${IS_CI_BUILD}" != "x1" ]; then
 #Azure pipeline : on Suse platform man page test is failing. Need to analyze.
 #for time being skipping man page test case
   /opt/pbs/bin/pbsnodes -av
-  pbs_benchpress --tags=smoke --exclude=SmokeTest.test_man_pages -l DEBUG
+  ps -ef | grep pbs
+  cat /var/spool/pbs/server_logs/*
+  echo
+  cat /var/spool/pbs/mom_logs/*
+  echo
+  cat /var/spool/pbs/comm_logs/*
+  #pbs_benchpress --tags=smoke --exclude=SmokeTest.test_man_pages -l DEBUG
+  pbs_benchpress -t SmokeTest.SmokeTest --exclude=SmokeTest.test_man_pages -l DEBUG
   /opt/pbs/bin/pbsnodes -av
 fi
