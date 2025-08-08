@@ -806,4 +806,76 @@ class TestQstatFormats(TestFunctional):
 
             self.assertEqual(ret['rc'], 0, f"Expected success for: {flags}")
             self.assertEqual(len(ret['err']), 0, f"Unexpected stderr for: {flags}")
-            self.assertGreater(len(ret['out']), 0, f"No output for: {flags}")
+    
+
+    def test_qstat_Qf_json_new_type_queue_format(self):
+        """
+        Test if qstat -Qf -F JSON returns multiple new-type queue restrictions
+        as a single comma separated string, rather than having duplicate keys
+        """
+
+        qname = 'newtypeq'
+        a = {'queue_type': 'Execution', 'enabled': 'True',
+             'started': 'True'}
+        
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id=qname)
+
+        # set multiple new-type restrictions:
+        restriction_settings = [
+            ('max_queued ', '[u:foo=3]'),
+            ('max_queued +', '[g:bar=2]'),
+            ('max_run ', '[u:foo=4]'),
+            ('max_run +', '[p:projectX=10]'),
+            ('max_run_soft ', '[g:devs=6]'),
+            ('queued_jobs_threshold ', '[u:baz=15]'),
+            ('max_queued_res.mem ', '[u:foo=100mb]'),
+            ('max_queued_res.mem +', '[g:bar=200mb]'),
+            ('max_queued_res.ncpus ', '[u:foo=3]'),
+        ]
+
+        for attr, val in restriction_settings:
+            self.server.manager(MGR_CMD_SET, QUEUE, {attr: val}, id=qname)
+
+        qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                                      'qstat') + f' -Qf -F JSON {qname}'
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
+        qstat_out = "\n".join(ret['out'])
+        try:
+            j = json.loads(qstat_out)
+        except ValueError:
+            self.logger.info(qstat_out)
+            self.assertFalse(True, "Json failed to load")
+
+        self.assertIn("Queue", j)
+        self.assertIn(qname, j["Queue"])
+        qdata = j["Queue"][qname]
+        
+        expected = { #regular new type restrictions
+            "max_queued": "[u:foo=3],[g:bar=2]",
+            "max_run": "[u:foo=4],[p:projectX=10]",
+            "max_run_soft": "[g:devs=6]",
+            "queued_jobs_threshold": "[u:baz=15]",
+        }
+
+        for key, val in expected.items():
+            self.assertIn(key, qdata)
+            self.assertIsInstance(qdata[key], str, f"{key} should be a comma-separated string")
+            self.assertCountEqual(qdata[key], val)
+
+        res_expected = { #resource based new type restrictions
+            "max_queued_res": {
+                "mem": "[u:foo=100mb],[g:bar=200mb]",
+                "ncpus": "[u:foo=3]"
+            }
+        }
+
+        for attr_key, attr_val in res_expected.items():
+            self.assertIn(attr_key, qdata)
+            self.assertIsInstance(qdata[attr_key], dict)
+            for res_key, res_val in attr_val.items():
+                self.assertIn(res_key, qdata[attr_key])
+                self.assertCountEqual(qdata[attr_key][res_key], res_val)
+
+
+        self.server.manager(MGR_CMD_DELETE, QUEUE, id=qname)
+

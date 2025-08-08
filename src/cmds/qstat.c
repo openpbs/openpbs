@@ -107,6 +107,8 @@ char *cnvt_est_start_time(char *start_time, int shortform);
 #define DISPLAY_TRUNC_CHAR '*'
 
 #define NUML 5
+#define MAX_ATTRS 64
+#define MAX_RES 64
 
 static struct attrl basic_attribs[] = {
 	{&basic_attribs[1],
@@ -461,7 +463,7 @@ prt_attr(char *name, char *resource, char *value, int one_line, json_data * json
 					}
 					if (pbs_json_insert_parsed(json_prev_resc, resource, value, 0))
 						exit_qstat("json error");
-				} else {
+				} else { 
 					if (prev_resc_name) {
 						json_prev_resc = NULL;
 						prev_resc_name = NULL;
@@ -1609,6 +1611,57 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 }
 
 #define TYPEL 4
+/**
+ * @brief
+ *      Helper function to accumulate new-type restriction to a running string
+ *
+ * @param[in] keys - array of  keys
+ * @param[in] values - array of values corresponding to each key
+ * @param[in] count - pointer to current number of unqiue keys stored in keys/values
+ * @param[in] max - maximum allowed number of unique keys 
+ * @param[in] key - new key to process 
+ * @param[in] val - value associated with the key to accumulate 
+ *
+ */
+static void accumulate_restriction(char **keys, char **values, int *count, int max, const char *key, const char *val) {
+	/* check NULL-ness of parameters*/
+	if (!keys || !values || !count || !key || !val) {
+		exit_qstat("accumulate_restriction: NULL key or value");
+	}
+	for (int i = 0; i < *count; i++) {
+		/* check if key already exists */
+		if (strcmp(keys[i], key) == 0) {
+			size_t new_len = strlen(values[i]) + strlen(val) + 2; /* ",\0" */
+			char *new_buf = malloc(new_len);
+			if (!new_buf) {
+				exit_qstat("out of memory");
+			}
+			snprintf(new_buf, new_len, "%s,%s", values[i], val); /* append to running output */
+			free(values[i]);
+			values[i] = new_buf;
+			return;
+		}
+	}
+
+	/* first time restriction seen, create new key */
+	if (*count < max) {
+		char *new_key = strndup(key, strlen(key) + 1);
+		if (!new_key) {
+			exit_qstat("out of memory");
+		}
+
+		char *new_val = strndup(val, strlen(val) + 1);
+		if (!new_val) {
+			free(new_key);
+			exit_qstat("out of memory");
+		}
+
+		/* assign values*/
+		keys[*count] = new_key;
+		values[*count] = new_val;
+		(*count)++;
+	}
+}
 
 /**
  * @brief
@@ -1676,6 +1729,20 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 		strcpy(ext, "0");
 		type = "not defined";
 		prev_resc_name = NULL;
+
+		char *new_type_restr_acc = NULL;
+		size_t acc_len = 0;
+
+		char *new_type_attr_name = NULL;
+		char *attr_names[MAX_ATTRS] = {0};
+		char *attr_values[MAX_ATTRS] = {0};
+		int attr_count = 0;
+
+		char *res_new_type_name = NULL;
+		char *res_names[MAX_RES] = {0};
+		char *res_values[MAX_RES] = {0};
+		int res_count = 0;
+
 		if (full) {
 			if (output_format == FORMAT_DSV || output_format == FORMAT_DEFAULT)
 				printf("Queue: %s%s", p->name, delimiter);
@@ -1687,12 +1754,39 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 			a = p->attribs;
 			while (a != NULL) {
 				if (a->name != NULL) {
-					prt_attr(a->name, a->resource, a->value,
-						 alt_opt & ALT_DISPLAY_w, json_queue);
+					if (output_format == FORMAT_JSON && a->value[0] == '[' && strchr(a->value, '=') != NULL && a->value[strlen(a->value)-1] == ']') { /* new type queue restriction */
+						if (a->resource) { /* resource + new type queue restriction + json */
+							accumulate_restriction(res_names, res_values, &res_count, MAX_RES, a->resource, a->value);
+							res_new_type_name = a->name;
+						}
+						else { /* new type but not a sub resource */
+							accumulate_restriction(attr_names, attr_values, &attr_count, MAX_ATTRS, a->name, a->value);
+							new_type_attr_name = a->name;
+						} 
+					} else { /* not new-type queue restriction */
+						prt_attr(a->name, a->resource, a->value,
+							alt_opt & ALT_DISPLAY_w, json_queue);
+					}
 				}
 				a = a->next;
 				if (a)
 					printf("%s", delimiter);
+			}
+			if (attr_count > 0) { /* new type restriction */
+				for (int i = 0; i < attr_count; i++) {
+					pbs_json_insert_string(json_queue, attr_names[i], attr_values[i]);
+					free(attr_names[i]);
+					free(attr_values[i]);
+				}
+			}
+			if (res_count > 0) { /* new type restiction + resource type */
+				json_data *json_obj = pbs_json_create_object();
+				for (int i = 0; i < res_count; i++) {
+					pbs_json_insert_string(json_obj, res_names[i], res_values[i]);
+					free(res_names[i]);
+					free(res_values[i]);
+				}
+				pbs_json_insert_item(json_queue, res_new_type_name, json_obj);
 			}
 			if (output_format == FORMAT_DEFAULT)
 				printf("%s", delimiter);
@@ -2685,7 +2779,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
-	if (!(output_format == FORMAT_DEFAULT || f_opt) || (output_format != FORMAT_DEFAULT && alt_opt)){
+	if (!(output_format == FORMAT_DEFAULT || f_opt) || (output_format != FORMAT_DEFAULT && alt_opt)) {
 		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
