@@ -57,6 +57,8 @@ fi
 
 cd ${PBS_DIR}
 . /etc/os-release
+# Extract major version number
+MAJOR_VERSION="${VERSION_ID%%.*}"
 SPEC_FILE=$(/bin/ls -1 ${PBS_DIR}/*.spec)
 REQ_FILE=${PBS_DIR}/test/fw/requirements.txt
 if [ ! -r ${SPEC_FILE} -o ! -r ${REQ_FILE} ]; then
@@ -99,7 +101,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
       dnf -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
-  elif [ "x${ID}" == "xrocky" -a "x${VERSION_ID}" == "x9.2" ]; then
+  elif [ "x${ID}" == "xrocky" -a "x${MAJOR_VERSION}" == "x9" ]; then
     export LANG="C.utf8"
     dnf -y clean all
     yum -y install yum-utils
@@ -368,7 +370,10 @@ fi
 
 if [ "x${IS_CI_BUILD}" != "x1" ]; then
   cd /opt/ptl/tests/
+  /opt/pbs/bin/pbsnodes -av
+  ps -ef | grep pbs
 #Azure pipeline : on Suse platform man page test is failing. Need to analyze.
 #for time being skipping man page test case
   pbs_benchpress --tags=smoke --exclude=SmokeTest.test_man_pages
+  /opt/pbs/bin/pbsnodes -av
 fi
