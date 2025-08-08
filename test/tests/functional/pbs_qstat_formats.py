@@ -878,7 +878,4 @@ class TestQstatFormats(TestFunctional):
 
 
         self.server.manager(MGR_CMD_DELETE, QUEUE, id=qname)
-<<<<<<< HEAD
 
-=======
->>>>>>> ed9a6122 (qstat: queue json dups + fixing formatting issues)
