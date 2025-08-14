@@ -72,6 +72,7 @@
 #include "avltree.h"
 #include <limits.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -375,8 +376,6 @@ way3ix(way3 x) /* assume x != 0 */
 /******************************************************************************
  TREE
  ******************************************************************************/
-
-typedef int bool;
 
 /**
  * @brief
