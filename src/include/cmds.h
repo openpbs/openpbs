@@ -92,6 +92,9 @@ struct svr_jobid_list {
 
 #define QDEL_MAIL_SUPPRESS 1000
 
+#define PBS_JOBCOOKIE "PBS_JOBCOOKIE"
+#define PBS_INTERACTIVE_COOKIE "PBS_INTERACTIVE_COOKIE"
+
 extern int optind, opterr;
 extern char *optarg;
 

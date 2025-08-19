@@ -131,12 +131,48 @@ int
 openrm(char *host, unsigned int port)
 {
 	int stream;
+	int c;
+	int rc;
+	struct tpp_config tpp_conf;
+	fd_set selset;
+	struct timeval tv;
 
 	DBPRT(("openrm: host %s port %u\n", host, port))
 	pbs_errno = 0;
 	if (port == 0)
 		port = pbs_conf.manager_service_port;
 	DBPRT(("using port %u\n", port))
+
+	/* call tpp_init */
+	rc = set_tpp_config(&pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers);
+	if (rc == -1) {
+		fprintf(stderr, "Error setting TPP config\n");
+		return -1;
+	}
+
+	if ((tpp_fd = tpp_init(&tpp_conf)) == -1) {
+		fprintf(stderr, "tpp_init failed\n");
+		return -1;
+	}
+
+	/*
+	 * Wait for net to get restored, ie, app to connect to routers
+	 */
+	FD_ZERO(&selset);
+	FD_SET(tpp_fd, &selset);
+	tv.tv_sec = 5;
+	tv.tv_usec = 0;
+	select(FD_SETSIZE, &selset, NULL, NULL, &tv);
+
+	tpp_poll(); /* to clear off the read notification */
+
+	/* get the FQDN of the mom */
+	c = get_fullhostname(host, host, (sizeof(host) - 1));
+	if (c == -1) {
+		fprintf(stderr, "Unable to get full hostname for mom %s\n", host);
+		return -1;
+	}
+
 	stream = tpp_open(host, port);
 	pbs_errno = errno;
 	if (stream < 0)

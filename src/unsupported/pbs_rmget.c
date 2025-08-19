@@ -57,12 +57,9 @@ main(int argc, char *argv[])
 	int i;
 	char mom_name[PBS_MAXHOSTNAME + 1];
 	int mom_port = 0;
-	int c, rc;
+	int c;
 	int mom_sd;
 	char *req;
-	struct tpp_config tpp_conf;
-	fd_set selset;
-	struct timeval tv;
 
 	if (initsocketlib())
 		return 1;
@@ -116,36 +113,6 @@ main(int argc, char *argv[])
 			fprintf(stderr, "%s\n", "Unable to determine TPP node name");
 			return -1;
 		}
-	}
-
-	/* call tpp_init */
-	rc = set_tpp_config(&pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers);
-	if (rc == -1) {
-		fprintf(stderr, "Error setting TPP config\n");
-		return -1;
-	}
-
-	if ((tpp_fd = tpp_init(&tpp_conf)) == -1) {
-		fprintf(stderr, "tpp_init failed\n");
-		return -1;
-	}
-
-	/*
-	 * Wait for net to get restored, ie, app to connect to routers
-	 */
-	FD_ZERO(&selset);
-	FD_SET(tpp_fd, &selset);
-	tv.tv_sec = 5;
-	tv.tv_usec = 0;
-	select(FD_SETSIZE, &selset, NULL, NULL, &tv);
-
-	tpp_poll(); /* to clear off the read notification */
-
-	/* get the FQDN of the mom */
-	c = get_fullhostname(mom_name, mom_name, (sizeof(mom_name) - 1));
-	if (c == -1) {
-		fprintf(stderr, "Unable to get full hostname for mom %s\n", mom_name);
-		return -1;
 	}
 
 	if ((mom_sd = openrm(mom_name, mom_port)) < 0) {

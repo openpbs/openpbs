@@ -4792,7 +4792,7 @@ bad_restrict(u_long ipadd)
 /**
  * @brief
  *	Process a request for the resource monitor. The i/o
- *	will take place using DIS over a tcp fd or an tpp stream.
+ *	will take place using DIS over an tpp stream.
  *
  * @param[in] iochan - i/o channel to indicate stream or fd
  * @param[in] version - protocol version
@@ -4805,7 +4805,7 @@ bad_restrict(u_long ipadd)
  */
 
 int
-rm_request(int iochan, int version, int prot)
+rm_request(int iochan, int version)
 {
 	char name[256];
 	static char *output = NULL;
@@ -4830,36 +4830,24 @@ rm_request(int iochan, int version, int prot)
 		output_size = BUFSIZ;
 	}
 	(void) memset(output, 0, output_size);
-	if (prot == PROT_TCP) {
-		conn_t *conn = get_conn(iochan);
 
-		if (!conn) {
-			log_err(errno, __func__,
-				"not find iochan in connection table");
-			closesocket(iochan);
-			return -1;
-		}
-		ipadd = conn->cn_addr;
-		port = conn->cn_port;
-		close_io = close_conn;
-	} else {
-		addr = tpp_getaddr(iochan);
-		if (addr == NULL) {
-			sprintf(log_buffer, "Sender unknown");
-			goto bad;
-		}
-
-		ipadd = ntohl(addr->sin_addr.s_addr);
-		port = ntohs((unsigned short) addr->sin_port);
-		close_io = (void (*)(int)) & tpp_close;
+	addr = tpp_getaddr(iochan);
+	if (addr == NULL) {
+		sprintf(log_buffer, "Sender unknown");
+		goto bad;
 	}
+
+	ipadd = ntohl(addr->sin_addr.s_addr);
+	port = ntohs((unsigned short) addr->sin_port);
+	close_io = (void (*)(int)) & tpp_close;
+
 	if (version != RM_PROTOCOL_VER) {
 		sprintf(log_buffer, "protocol version %d unknown", version);
 		goto bad;
 	}
 
 	restrictrm = 0;
-	if ((prot == PROT_TCP && port_care && (port >= IPPORT_RESERVED)) || !addrfind(ipadd)) {
+	if (!addrfind(ipadd)) {
 		if (bad_restrict(ipadd)) {
 			sprintf(log_buffer, "bad attempt to connect");
 			goto bad;
@@ -5069,7 +5057,7 @@ bad:
 	 ** to be initialized. So, Initialize accordingly before use.
 	 */
 	if (close_io == NULL)
-		close_io = (prot == PROT_TCP) ? close_conn : (void (*)(int)) & tpp_close;
+		close_io = (void (*)(int)) & tpp_close;
 
 	close_io(iochan);
 	return -1;
@@ -5110,7 +5098,7 @@ do_tpp(int stream)
 	switch (proto) {
 		case RM_PROTOCOL:
 			DBPRT(("%s: got a resource monitor request\n", __func__))
-			if (rm_request(stream, version, PROT_TPP) == 0)
+			if (rm_request(stream, version) == 0)
 				tpp_eom(stream);
 			break;
 
@@ -5166,6 +5154,7 @@ tpp_request(int fd)
  * @brief
  *      Read a TCP message from fd, figure out if it is a
  *      Resource Monitor request or an InterMom message.
+ *      Serve only the IM message
  *
  * @param[in] fd - tcp msg
  *
@@ -5206,13 +5195,6 @@ do_tcp(int fd)
 	}
 
 	switch (proto) {
-		case RM_PROTOCOL:
-			DBPRT(("%s: got a resource monitor request\n", __func__))
-			pbs_tcp_timeout = 0;
-			ret = rm_request(fd, version, PROT_TCP);
-			pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_SHORT;
-			break;
-
 		case TM_PROTOCOL:
 			DBPRT(("%s: got an internal task manager request\n", __func__))
 			ret = tm_request(fd, version);
