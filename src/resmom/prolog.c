@@ -133,11 +133,7 @@ resc_to_string(job *pjob, int attr_idx, char *buf, int buflen)
  */
 
 static int
-pelog_err(pjob, file, n, text)
-job *pjob;
-char *file;
-int n;
-char *text;
+pelog_err(job *pjob, char *file, int n, char *text)
 {
 	sprintf(log_buffer, "pro/epilogue failed, file: %s, exit: %d, %s",
 		file, n, text);
@@ -156,7 +152,7 @@ char *text;
  *
  */
 static void
-	pelogalm(sig) int sig;
+	pelogalm(int sig)
 {
 	run_exit = -4;
 }
@@ -198,11 +194,7 @@ static void
  */
 
 int
-run_pelog(which, pelog, pjob, pe_io_type)
-int which;
-char *pelog;
-job *pjob;
-int pe_io_type;
+run_pelog(int which, char *pelog, job *pjob, int pe_io_type)
 {
 	char *arg[12];
 	char exitcode[20];

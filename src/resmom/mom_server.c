@@ -160,8 +160,7 @@ node *okclients = NULL; /* tree of ip addrs */
  * @retval 	0     if not
  */
 int
-	addrfind(key)
-		const u_long key; /* key to be located */
+	addrfind(const u_long key)
 {
 	node **rootp = &okclients; /* address of tree root */
 

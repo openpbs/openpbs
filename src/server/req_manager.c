@@ -168,9 +168,7 @@ struct pul_store {
  * @retval	FALSE	- No Admin-privilege
  */
 int
-is_local_root(user, host)
-char *user;
-char *host;
+is_local_root(char *user, char *host)
 {
 	/* Similar method used in svr_get_privilege() */
 	if (strcmp(user, PBS_DEFAULT_ADMIN) == 0) {
@@ -1131,7 +1129,7 @@ mgr_unset_attr(attribute *pattr, void *pidx, attribute_def *pdef, int limit, svr
  */
 
 void
-	mgr_queue_create(preq) struct batch_request *preq;
+	mgr_queue_create(struct batch_request *preq)
 {
 	int bad;
 	char *badattr;
@@ -3131,7 +3129,7 @@ mgr_sched_delete(struct batch_request *preq)
  */
 
 static void
-	mgr_node_delete(preq) struct batch_request *preq;
+	mgr_node_delete(struct batch_request *preq)
 {
 	int numnodes = 1;
 	struct pbsnode *pnode;
