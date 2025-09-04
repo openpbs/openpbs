@@ -204,8 +204,10 @@ struct pbs_config
 	unsigned start_comm:1; 		/* should the comm daemon be started */
 	unsigned locallog:1;			/* do local logging */
 	char **supported_auth_methods;		/* supported auth methods on server */
+	char **auth_service_users;		/* recognised service users */
 	char encrypt_method[MAXAUTHNAME + 1];	/* auth method to used for encrypt/decrypt data */
 	char auth_method[MAXAUTHNAME + 1];	/* default auth_method to used by client */
+	char interactive_auth_method[MAXAUTHNAME + 1];	/* auth_method used in interactive qsub sessions */
 	unsigned int sched_modify_event:1;	/* whether to trigger modifyjob hook event or not */
 	unsigned syslogfac;		        /* syslog facility */
 	unsigned syslogsvr;			/* min priority to log to syslog */
@@ -309,9 +311,11 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_OUTPUT_HOST_NAME "PBS_OUTPUT_HOST_NAME"
 #define PBS_CONF_SMTP_SERVER_NAME "PBS_SMTP_SERVER_NAME" /* Name of SMTP Host to send mail to */
 #define PBS_CONF_TMPDIR		"PBS_TMPDIR"     /* temporary file directory */
+#define PBS_CONF_INTERACTIVE_AUTH_METHOD	"PBS_INTERACTIVE_AUTH_METHOD"	/* Authentication method used in qsub interactive */
 #define PBS_CONF_AUTH		"PBS_AUTH_METHOD"
 #define PBS_CONF_ENCRYPT_METHOD	"PBS_ENCRYPT_METHOD"
 #define PBS_CONF_SUPPORTED_AUTH_METHODS	"PBS_SUPPORTED_AUTH_METHODS"
+#define PBS_CONF_AUTH_SERVICE_USERS	"PBS_AUTH_SERVICE_USERS"
 #define PBS_CONF_SCHEDULER_MODIFY_EVENT	"PBS_SCHEDULER_MODIFY_EVENT"
 #define PBS_CONF_MOM_NODE_NAME	"PBS_MOM_NODE_NAME"
 #define PBS_CONF_LOG_HIGHRES_TIMESTAMP	"PBS_LOG_HIGHRES_TIMESTAMP"

@@ -98,7 +98,7 @@ static void *poll_context; /* This is the context of the descriptors being polle
 void *priority_context;
 static int init_poll_context(); /* Initialize the tpp context */
 static void (*read_func[2])(int);
-static int (*ready_read_func)(conn_t *);
+static int (*ready_read_func[2])(conn_t *);
 static char logbuf[256];
 
 /* Private function within this file */
@@ -339,7 +339,7 @@ init_network_add(int sd, int (*readyreadfunc)(conn_t *), void (*readfunc)(int))
 	if (sd == -1)
 		return -1;
 
-	ready_read_func = readyreadfunc;
+	ready_read_func[initialized] = readyreadfunc;
 
 	/* for normal calls ...						*/
 	/* save the routine which should do the reading on connections	*/
@@ -689,7 +689,7 @@ accept_conn(int sd)
 	(void) add_conn(newsock, FromClientDIS,
 			(pbs_net_t) ntohl(from.sin_addr.s_addr),
 			(unsigned int) ntohs(from.sin_port),
-			ready_read_func,
+			ready_read_func[(int) svr_conn[idx]->cn_active],
 			read_func[(int) svr_conn[idx]->cn_active]);
 }
 
@@ -735,6 +735,7 @@ add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, int (*r
 	conn->cn_func = func;
 	conn->cn_oncl = 0;
 	conn->cn_authen = 0;
+	conn->cn_authen |= PBS_NET_CONN_PREVENT_IP_SPOOFING;
 	conn->cn_prio_flag = 0;
 	conn->cn_auth_config = NULL;
 

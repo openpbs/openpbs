@@ -51,10 +51,13 @@
 #include "auth.h"
 #include "log.h"
 
+extern unsigned char pbs_aes_key[][16];
+extern unsigned char pbs_aes_iv[][16];
+#define SALT_SIZE 16
+
 static auth_def_t *loaded_auths = NULL;
 
 static int _invoke_pbs_iff(int psock, const char *server_name, int server_port, char *ebuf, size_t ebufsz);
-static int _handle_client_handshake(int fd, const char *hostname, char *method, int for_encrypt, pbs_auth_config_t *config, char *ebuf, size_t ebufsz);
 static char *_get_load_lib_error(int reset);
 static void *_load_lib(char *loc);
 static void *_load_symbol(char *libloc, void *libhandle, char *name, int required);
@@ -533,8 +536,8 @@ _invoke_pbs_iff(int psock, const char *server_name, int server_port, char *ebuf,
 	return rc;
 }
 
-static int
-_handle_client_handshake(int fd, const char *hostname, char *method, int for_encrypt, pbs_auth_config_t *config, char *ebuf, size_t ebufsz)
+int
+handle_client_handshake(int fd, const char *hostname, char *method, int for_encrypt, pbs_auth_config_t *config, char *ebuf, size_t ebufsz)
 {
 	void *data_in = NULL;
 	size_t len_in = 0;
@@ -764,14 +767,14 @@ engage_client_auth(int fd, const char *hostname, int port, char *ebuf, size_t eb
 	}
 
 	if (pbs_conf.encrypt_method[0] != '\0') {
-		rc = _handle_client_handshake(fd, hostname, pbs_conf.encrypt_method, FOR_ENCRYPT, config, ebuf, ebufsz);
+		rc = handle_client_handshake(fd, hostname, pbs_conf.encrypt_method, FOR_ENCRYPT, config, ebuf, ebufsz);
 		if (rc != 0)
 			return rc;
 	}
 
 	if (strcmp(pbs_conf.auth_method, AUTH_RESVPORT_NAME) != 0) {
 		if (strcmp(pbs_conf.auth_method, pbs_conf.encrypt_method) != 0) {
-			return _handle_client_handshake(fd, hostname, pbs_conf.auth_method, FOR_AUTH, config, ebuf, ebufsz);
+			return handle_client_handshake(fd, hostname, pbs_conf.auth_method, FOR_AUTH, config, ebuf, ebufsz);
 		} else {
 			transport_chan_set_ctx_status(fd, transport_chan_get_ctx_status(fd, FOR_ENCRYPT), FOR_AUTH);
 			transport_chan_set_authdef(fd, transport_chan_get_authdef(fd, FOR_ENCRYPT), FOR_AUTH);
@@ -788,6 +791,7 @@ engage_client_auth(int fd, const char *hostname, int port, char *ebuf, size_t eb
  * @param[in] fd - socket descriptor
  * @param[in] clienthost - hostname associate with fd
  * @param[in] for_encrypt - whether to handle incoming data for encrypt/decrypt auth or for authentication
+ * @param[in] auth_role - role used when initializing the auth context
  * @param[out] ebuf - error buffer
  * @param[in] ebufsz - size of error buffer
  *
@@ -797,7 +801,7 @@ engage_client_auth(int fd, const char *hostname, int port, char *ebuf, size_t eb
  *
  */
 int
-engage_server_auth(int fd, char *clienthost, int for_encrypt, char *ebuf, size_t ebufsz)
+engage_server_auth(int fd, char *clienthost, int for_encrypt, int auth_role, char *ebuf, size_t ebufsz)
 {
 	void *authctx;
 	auth_def_t *authdef;
@@ -827,7 +831,7 @@ engage_server_auth(int fd, char *clienthost, int for_encrypt, char *ebuf, size_t
 	}
 
 	if ((authctx = transport_chan_get_authctx(fd, for_encrypt)) == NULL) {
-		if (authdef->create_ctx(&authctx, AUTH_SERVER, AUTH_USER_CONN, clienthost)) {
+		if (authdef->create_ctx(&authctx, auth_role, AUTH_USER_CONN, clienthost)) {
 			snprintf(ebuf, ebufsz, "Failed to create auth context");
 			pbs_errno = PBSE_SYSTEM;
 			return -1;
@@ -891,4 +895,261 @@ engage_server_auth(int fd, char *clienthost, int for_encrypt, char *ebuf, size_t
 		}
 	}
 	return 0;
+}
+
+/**
+ * @brief
+ *	server_cipher_auth - Validate received cipher authentication data
+ *
+ * @param[in] fd - The exec host side socket
+ * @param[in] text - The text that will be compared against the one in the encrypted message.
+ * @param[in] ebuf - buffer to hold error msg if any
+ * @param[in] ebufsz - size of ebuf
+ *
+ * @return	int
+ * @retval	INTERACTIVE_AUTH_SUCCESS(0)	success
+ * @retval	INTERACTIVE_AUTH_FAILED(1)	failure
+ *
+ */
+int
+server_cipher_auth(int fd, char *text, char *ebuf, size_t ebufsz)
+{
+	size_t len_in = 0;
+	char *data_in = NULL;
+	int type;
+
+	DIS_tcp_funcs();
+
+	if (transport_recv_pkt(fd, &type, (void **) &data_in, &len_in) <= 0) {
+		snprintf(ebuf, ebufsz, "failed to receive auth token");
+		pbs_errno = PBSE_SYSTEM;
+		return INTERACTIVE_AUTH_FAILED;
+	}
+
+	if (type != AUTH_CTX_DATA || len_in <= 0) {
+		snprintf(ebuf, ebufsz, "received incorrect auth token");
+		pbs_errno = PBSE_SYSTEM;
+		return INTERACTIVE_AUTH_FAILED;
+	}
+
+	data_in[len_in - 1] = '\0';
+
+	if (validate_hostkey(data_in, len_in - 1, &text) != 0) {
+		snprintf(ebuf, ebufsz, "Failed to decrypt auth data");
+		pbs_errno = PBSE_BADCRED;
+		return INTERACTIVE_AUTH_FAILED;
+	}
+
+	if (transport_send_pkt(fd, AUTH_CTX_OK, "", 1) <= 0) {
+		snprintf(ebuf, ebufsz, "Failed to send auth context ok token");
+		pbs_errno = PBSE_SYSTEM;
+		return INTERACTIVE_AUTH_FAILED;
+	}
+
+	return INTERACTIVE_AUTH_SUCCESS;
+}
+
+/**
+ * @brief
+ *	client_cipher_auth - Generate random string, encode it and send it over to qsub
+ *
+ * @param[in] fd - The qsub side socket
+ * @param[in] text - The text that will be included in the encrypted message.
+ * @param[in] ebuf - buffer to hold error msg if any
+ * @param[in] ebufsz - size of ebuf
+ *
+ * @return	int
+ * @retval	INTERACTIVE_AUTH_SUCCESS(0)	success
+ * @retval	INTERACTIVE_AUTH_FAILED(1)	failure
+ *
+ */
+int
+client_cipher_auth(int fd, char *text, char *ebuf, size_t ebufsz)
+{
+	void *data_in = NULL;
+	size_t len = 0;
+	int type = 0;
+	char salt[SALT_SIZE];
+	char *msg = NULL;
+
+	DIS_tcp_funcs();
+
+	/* Generate random salt and append current time and text to it.
+	 * In the end the string will look like this: salt;timestr;text
+	 */
+	set_rand_str(salt, SALT_SIZE);
+	msg = gen_hostkey(text, salt, &len);
+	if (!msg) {
+		snprintf(ebuf, ebufsz, "Failed to encode auth data");
+		free(msg);
+		return INTERACTIVE_AUTH_FAILED;
+	}
+
+	if (transport_send_pkt(fd, AUTH_CTX_DATA, msg, len + 1) <= 0) {
+		snprintf(ebuf, ebufsz, "Failed to send auth context token");
+		pbs_errno = PBSE_SYSTEM;
+		free(msg);
+		return INTERACTIVE_AUTH_FAILED;
+	}
+	free(msg);
+	msg = NULL;
+
+	/* recieve ctx token */
+	if (transport_recv_pkt(fd, &type, &data_in, &len) <= 0) {
+		snprintf(ebuf, ebufsz, "Failed to receive auth token");
+		pbs_errno = PBSE_SYSTEM;
+		return INTERACTIVE_AUTH_FAILED;
+	}
+
+	if (type == AUTH_ERR_DATA) {
+		if (len > ebufsz)
+			len = ebufsz;
+		strncpy(ebuf, (char *) data_in, len);
+		ebuf[len] = '\0';
+		pbs_errno = PBSE_BADCRED;
+		return INTERACTIVE_AUTH_FAILED;
+	}
+
+	if (type != AUTH_CTX_OK) {
+		snprintf(ebuf, ebufsz, "incorrect auth token type");
+		pbs_errno = PBSE_SYSTEM;
+		return INTERACTIVE_AUTH_FAILED;
+	}
+
+	if (type == AUTH_CTX_OK)
+		data_in = NULL;
+
+	return INTERACTIVE_AUTH_SUCCESS;
+}
+
+/**
+ * @brief
+ *	Authenticate an incoming connection from an execution host.
+ *
+ * @param[in]	sock - An integer representing the socket file descriptor.
+ * @param[in]	port - The port from which the connection originated from
+ * @param[in]	auth_method - Authentication method used
+ * @param[in]	jobid - The job id.
+ * @return	int
+ * @retval	INTERACTIVE_AUTH_SUCCESS (0) - successful authentication
+ * @retval	INTERACTIVE_AUTH_FAILED (1) - authentication failed
+ * @retval	INTERACTIVE_AUTH_RETRY (2) - retry to connect
+ *
+ */
+int
+auth_exec_socket(int sock, unsigned short port, char *auth_method, char* jobid)
+{
+	char ebuf[LOG_BUF_SIZE] = "";
+	/* Reduce timeout to avoid blocking too long */
+	pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_SHORT;
+
+	if (strcmp(auth_method, AUTH_RESVPORT_NAME) == 0) {
+		/* For resvport, simply verify that the remote port is prvileged */
+		if (port < IPPORT_RESERVED)
+			return INTERACTIVE_AUTH_SUCCESS;
+		else
+			return INTERACTIVE_AUTH_RETRY;
+	} else if ((strcmp(auth_method, AUTH_MUNGE_NAME) == 0)) {
+		char encrypt_method[MAXAUTHNAME + 1] = "";
+		pbs_auth_config_t *auth_config = NULL;
+		auth_def_t *authdef = NULL;
+
+		DIS_tcp_funcs();
+
+		if (load_auths(AUTH_CLIENT)) {
+			fprintf(stderr, "qsub: Failed to load auths\n");
+			return INTERACTIVE_AUTH_FAILED;
+		}
+
+		auth_config = make_auth_config(auth_method,
+					       encrypt_method,
+					       pbs_conf.pbs_exec_path,
+					       pbs_conf.pbs_home_path,
+					       NULL);
+		if (auth_config == NULL) {
+			fprintf(stderr, "qsub: Out of memory when allocating new auth config\n");
+			return INTERACTIVE_AUTH_FAILED;
+		}
+
+		authdef = get_auth(auth_method);
+		if (authdef == NULL) {
+			fprintf(stderr, "qsub: Auth method '%s' does not seem implemented\n", auth_method ? auth_method : "");
+			free_auth_config(auth_config);
+			return INTERACTIVE_AUTH_FAILED;
+		} else {
+			authdef->set_config((const pbs_auth_config_t *) auth_config);
+			transport_chan_set_authdef(sock, authdef, FOR_AUTH);
+			transport_chan_set_ctx_status(sock, AUTH_STATUS_CTX_ESTABLISHING, FOR_AUTH);
+		}
+		if (engage_server_auth(sock, "", FOR_AUTH, AUTH_INTERACTIVE, ebuf, sizeof(ebuf)) != 0) {
+			if (ebuf[0] != '\0')
+				fprintf(stderr, "qsub: %s\n", ebuf);
+			free_auth_config(auth_config);
+			/* If authentication process failed, retry to connect with another execution host */
+			return INTERACTIVE_AUTH_RETRY;
+		}
+		free_auth_config(auth_config);
+	} else {
+		fprintf(stderr, "qsub: Auth method '%s' not supported\n", auth_method ? auth_method : "");
+		return INTERACTIVE_AUTH_FAILED;
+	}
+	return INTERACTIVE_AUTH_SUCCESS;
+}
+
+/**
+ * @brief
+ *	Authenticate a connection to a remote qsub.
+ *
+ * @param[in]	sock - An integer representing the socket file descriptor.
+ * @param[in]	port - The port we connected to
+ * @param[in]	hostname - The qsub hostname.
+ * @param[in]	auth_method - The interactive auth method suggested by qsub.
+ * @param[in]	jobid - The job id.
+ *
+ * @return	int
+ * @retval	INTERACTIVE_AUTH_SUCCESS (0) - successful authentication
+ * @retval	INTERACTIVE_AUTH_FAILED (1) - authentication failed
+ *
+ */
+int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_method, char *jobid)
+{
+	char ebuf[LOG_BUF_SIZE] = "";
+
+	if (strcmp(auth_method, AUTH_RESVPORT_NAME) == 0) {
+		/* If method is resvport, we have already connected with a privileged port */
+		return INTERACTIVE_AUTH_SUCCESS;
+	} else {
+		char encrypt_method[MAXAUTHNAME + 1] = "";
+		pbs_auth_config_t *auth_config = NULL;
+
+		if (!is_string_in_arr(pbs_conf.supported_auth_methods, auth_method)) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Auth method '%s' not supported", auth_method ? auth_method : "");
+			return INTERACTIVE_AUTH_FAILED;
+		}
+
+		DIS_tcp_funcs();
+
+		if (load_auths(AUTH_CLIENT)) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Failed to load auths");
+			return INTERACTIVE_AUTH_FAILED;
+		}
+
+		auth_config = make_auth_config(auth_method,
+							encrypt_method,
+							pbs_conf.pbs_exec_path,
+							pbs_conf.pbs_home_path,
+							NULL);
+		if (auth_config == NULL) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Out of memory when allocating new auth config");
+			return INTERACTIVE_AUTH_FAILED;
+		}
+
+		if (handle_client_handshake(sock, hostname, auth_method, FOR_AUTH, auth_config, ebuf, sizeof(ebuf)) != 0) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Error in handle client handshake: %s", ebuf);
+			free_auth_config(auth_config);
+			return INTERACTIVE_AUTH_FAILED;
+		}
+		free_auth_config(auth_config);
+	}
+	return INTERACTIVE_AUTH_SUCCESS;
 }

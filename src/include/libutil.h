@@ -350,6 +350,10 @@ extern char *get_hostname_from_addr(struct in_addr addr);
 extern char *parse_servername(char *, unsigned int *);
 extern int rand_num(void);
 
+extern char *gen_hostkey(char *cluster_key, char *salt, size_t *len);
+extern int validate_hostkey(char *host_key, size_t host_keylen, char **cluster_key);
+void set_rand_str(char *str, int len);
+
 /* thread utils */
 extern int init_mutex_attr_recursive(void *attr);
 
@@ -368,6 +372,9 @@ void set_proc_limits(char *, int);
 int get_index_from_jid(char *jid);
 char *get_range_from_jid(char *jid);
 char *create_subjob_id(char *parent_jid, int sjidx);
+
+#define GET_IP_PORT(x) ((struct sockaddr_in *) (x))->sin_port
+#define IS_VALID_IP(x) (((struct sockaddr_in *)(x))->sin_family == AF_INET)
 
 #ifdef __cplusplus
 }

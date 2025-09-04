@@ -70,6 +70,9 @@ extern "C" {
 #define NI_MAXSERV 32
 #endif /* !NI_MAXSERV */
 
+#define QSUB_SIDE 1
+#define EXEC_HOST_SIDE 0
+
 /*
  * Structure which maintains the relationship between the producer/consumer
  * sockets and also about the length of the data read/written.
@@ -85,7 +88,9 @@ struct pfwdsock {
 	char buff[PF_BUF_SIZE];
 };
 /*Functions available in port_forwarding.h*/
-void port_forwarder(struct pfwdsock *, int (*connfunc)(char *phost, long pport), char *, int, int inter_read_sock, int (*readfunc)(int), void (*logfunc)(char *));
+void port_forwarder(struct pfwdsock *, int (*connfunc)(char *phost, long pport),
+		    char *, int, int inter_read_sock, int (*readfunc)(int), void (*logfunc)(char *),
+		    int is_qsub_side, char *auth_method, char *jobid);
 int connect_local_xsocket(u_int);
 int x11_connect_display(char *, long);
 int set_nonblocking(int);

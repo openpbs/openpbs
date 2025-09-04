@@ -37,7 +37,7 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-
+import os
 from tests.functional import *
 
 
@@ -179,6 +179,28 @@ class Test_RootOwnedScript(TestFunctional):
 
         # Submit a job
         j = Job(ROOT_USER)
+        j.create_script(body=test)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+
+        msg_expected = ".+%s;pid.+attached as task.+" % jid
+        s = self.mom.log_match(msg_expected, regexp=True, max_attempts=10)
+
+    def test_user_owned_job_pbs_attach(self):
+        """
+        submit a job as user and test pbs_attach feature.
+        """
+        pbs_attach = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                  'bin', 'pbs_attach')
+
+        # Job script
+        test = []
+        test += ['#PBS -l select=ncpus=1\n']
+        test += ['%s -j $PBS_JOBID -P -s %s 30\n' %
+                 (pbs_attach, self.mom.sleep_cmd)]
+
+        # Submit a job
+        j = Job(TEST_USER)
         j.create_script(body=test)
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)

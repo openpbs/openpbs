@@ -46,6 +46,7 @@ extern "C" {
 #include "libauth.h"
 
 #define AUTH_RESVPORT_NAME "resvport"
+#define AUTH_MUNGE_NAME "munge"
 #define AUTH_GSS_NAME "gss"
 #ifndef MAXPATHLEN
 #define MAXPATHLEN 1024
@@ -125,7 +126,19 @@ pbs_auth_config_t *make_auth_config(char *, char *, char *, char *, void *);
 void free_auth_config(pbs_auth_config_t *);
 
 extern int engage_client_auth(int, const char *, int, char *, size_t);
-extern int engage_server_auth(int, char *, int, char *, size_t);
+extern int engage_server_auth(int, char *, int, int, char *, size_t);
+int handle_client_handshake(int fd, const char *hostname, char *method, int for_encrypt, pbs_auth_config_t *config, char *ebuf, size_t ebufsz);
+
+/* For qsub interactive - execution host authentication */
+enum INTERACTIVE_AUTH_STATUS {
+	INTERACTIVE_AUTH_SUCCESS = 0,
+	INTERACTIVE_AUTH_FAILED,
+	INTERACTIVE_AUTH_RETRY
+};
+int auth_exec_socket(int sock, unsigned short port, char *auth_method, char *jobid);
+int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_method, char *jobid);
+int client_cipher_auth(int fd, char *text, char *ebuf, size_t ebufsz);
+int server_cipher_auth(int fd, char *text, char *ebuf, size_t ebufsz);
 
 #ifdef __cplusplus
 }

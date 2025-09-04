@@ -857,7 +857,6 @@ class PTLTestRunner(Plugin):
                 return _msg
         if _comms & _servers:
             if eff_tc_req['no_comm_on_server'] or _no_comm_on_server:
-                return False
                 _msg = 'no comm on server'
                 logger.error(_msg)
                 return _msg

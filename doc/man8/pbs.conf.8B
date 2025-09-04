@@ -56,8 +56,12 @@ you may set
 .SH CONFIGURATION PARAMETERS
 
 .IP PBS_AUTH_METHOD 
-Authentication method to be used by PBS.  Only allowed value is
-"munge" (case-insensitive).  
+Authentication method to be used by PBS. Allowed values are
+"munge" and "resvport" (case-insensitive). Defaults to "resvport".
+
+.IP PBS_AUTH_SERVICE_USERS
+List of daemon users allowed to connect to the communication daemon.
+Defaults to "root". 
 
 .IP PBS_BATCH_SERVICE_PORT  
 Port on which server listens.  Default: 15001
@@ -156,6 +160,10 @@ name.  Cannot contain a colon (":").
 .IP PBS_PRIMARY     
 Hostname of primary server.  Used only for failover configuration.  
 Overrides PBS_SERVER_HOST_NAME.
+
+.IP PBS_INTERACTIVE_AUTH_METHOD
+Authentication method to be used when establishing a qsub interactive session.
+Supported methods are "resvport" and "munge" (case-insensitive). Defaults to "resvport".
 
 .IP PBS_CP 
 Location of local copy command. Default is cp on Linux systems and xcopy on Windows.

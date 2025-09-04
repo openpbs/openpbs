@@ -644,6 +644,24 @@ tpp_handle_auth_handshake(int tfd, int conn_fd, conn_auth_t *authdata, int for_e
 
 	if (is_handshake_done != 1)
 		return 0;
+
+	/* Verify user name is in list of service users */
+	if ((for_encrypt == FOR_AUTH) && (authdata->conn_type == AUTH_SERVER)) {
+		char *user = NULL;
+		char *host = NULL;
+		char *realm = NULL;
+		if (authdef->get_userinfo(authctx, &user, &host, &realm) != 0) {
+			tpp_log(LOG_CRIT, __func__, "tfd=%d, Could not retrieve username from auth ctx", tfd);
+			return -1;
+		}
+		if (user != NULL && !is_string_in_arr(pbs_conf.auth_service_users, user)) {
+			tpp_log(LOG_CRIT, __func__, "tfd=%d, User %s not in service users list", tfd, user);
+			return -1;
+		}
+		if (user)
+			free(user);
+	}
+
 	return 1;
 }
 

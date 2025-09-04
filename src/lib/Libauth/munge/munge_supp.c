@@ -69,9 +69,17 @@ static void (*logger)(int type, int objclass, int severity, const char *objname,
 #define MUNGE_LOG_ERR(m) __MUNGE_LOGGER(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, m)
 #define MUNGE_LOG_DBG(m) __MUNGE_LOGGER(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, m)
 
+typedef struct {
+	/* If set to non-zero, munge_validate_auth_data will also check that
+	 * the token received originated from root user (uid == 0)
+	 */
+	int check_root;
+	char user[PBS_MAXUSER + 1];
+} munge_extra_t;
+
 static void init_munge(void);
 static char *munge_get_auth_data(char *, size_t);
-static int munge_validate_auth_data(void *, char *, size_t);
+static int munge_validate_auth_data(munge_extra_t *, void *, int, char *, size_t);
 
 /**
  * @brief
@@ -209,7 +217,9 @@ err:
  * @brief
  *	munge_validate_auth_data - validate given munge authentication data
  *
+ * @param[in] ctx - pointer to external auth context
  * @param[in] auth_data - auth data to be verified
+ * @param[in] with_root - If set to non-zero, verify that token received matches root uid (0)
  * @param[in] ebuf - buffer to hold error msg if any
  * @param[in] ebufsz - size of ebuf
  *
@@ -219,7 +229,7 @@ err:
  *
  */
 static int
-munge_validate_auth_data(void *auth_data, char *ebuf, size_t ebufsz)
+munge_validate_auth_data(munge_extra_t *ctx, void *auth_data, int with_root, char *ebuf, size_t ebufsz)
 {
 	uid_t uid;
 	gid_t gid;
@@ -267,10 +277,13 @@ munge_validate_auth_data(void *auth_data, char *ebuf, size_t ebufsz)
 		MUNGE_LOG_ERR(ebuf);
 		goto err;
 	}
+	/* Keep the username for verification */
+	pbs_strncpy(ctx->user, pwent->pw_name, PBS_MAXUSER);
 
 	p = strtok((char *) recv_payload, ":");
 
-	if (p && (strncmp(pwent->pw_name, p, PBS_MAXUSER) == 0)) /* inline with current pbs_iff we compare with username only */
+	if (p && (strncmp(pwent->pw_name, p, PBS_MAXUSER) == 0) && /* inline with current pbs_iff we compare with username only */
+	    (with_root == 0 || pwent->pw_uid == 0))
 		rc = 0;
 	else {
 		snprintf(ebuf, ebufsz, "User credentials do not match");
@@ -303,12 +316,9 @@ pbs_auth_set_config(const pbs_auth_config_t *config)
  *	pbs_auth_create_ctx - allocates external auth context structure for MUNGE authentication
  *
  * @param[in] ctx - pointer to external auth context to be allocated
- * @param[in] mode - AUTH_SERVER or AUTH_CLIENT
+ * @param[in] mode - AUTH_SERVER, AUTH_CLIENT, or AUTH_INTERACTIVE
  * @param[in] conn_type - AUTH_USER_CONN or AUTH_SERVICE_CONN
  * @param[in] hostname - hostname of other authenticating party
- *
- * @note
- * 	Currently munge doesn't require any context data, so just return 0
  *
  * @return	int
  * @retval	0 - success
@@ -317,8 +327,24 @@ pbs_auth_set_config(const pbs_auth_config_t *config)
 int
 pbs_auth_create_ctx(void **ctx, int mode, int conn_type, const char *hostname)
 {
-	*ctx = NULL;
-	return 0;
+	munge_extra_t *munge_extra = NULL;
+
+ 	*ctx = NULL;
+
+	munge_extra = calloc(1, sizeof(munge_extra_t));
+	if (munge_extra == NULL) {
+		MUNGE_LOG_ERR("Out of memory!");
+		return 1;
+	}
+
+	/* AUTH_INTERACTIVE used by qsub -I when authenticating an execution host connection */
+	if (mode == AUTH_INTERACTIVE || conn_type == AUTH_SERVICE_CONN)
+		munge_extra->check_root = 1;
+	else
+		munge_extra->check_root = 0;
+
+	*ctx = munge_extra;
+ 	return 0;
 }
 
 /** @brief
@@ -326,15 +352,15 @@ pbs_auth_create_ctx(void **ctx, int mode, int conn_type, const char *hostname)
  *
  * @param[in] ctx - pointer to external auth context
  *
- * @note
- * 	Currently munge doesn't require any context data, so just return 0
- *
  * @return void
  */
 void
 pbs_auth_destroy_ctx(void *ctx)
 {
-	ctx = NULL;
+	munge_extra_t *munge_extra = (munge_extra_t *) ctx;
+	if (munge_extra)
+		free(munge_extra);
+ 	ctx = NULL;
 }
 
 /** @brief
@@ -349,16 +375,24 @@ pbs_auth_destroy_ctx(void *ctx)
  * @retval	0 on success
  * @retval	1 on error
  *
- * @note
- * 	Currently munge doesn't have context, so just return 0
  */
 int
 pbs_auth_get_userinfo(void *ctx, char **user, char **host, char **realm)
 {
-	*user = NULL;
-	*host = NULL;
-	*realm = NULL;
-	return 0;
+	munge_extra_t *munge_extra = (munge_extra_t *) ctx;
+	if (munge_extra == NULL) {
+		MUNGE_LOG_ERR("Munge context not initialized");
+		return 1;
+	}
+
+	*user = strdup(munge_extra->user);
+	if ((*user) == NULL) {
+		MUNGE_LOG_ERR("Failed to allocate memory for username");
+		return 1;
+	}
+ 	*host = NULL;
+ 	*realm = NULL;
+ 	return 0;
 }
 
 /** @brief
@@ -381,6 +415,12 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 	int rc = -1;
 	char ebuf[LOG_BUF_SIZE] = {'\0'};
 
+	munge_extra_t *munge_extra = (munge_extra_t *) ctx;
+	if (munge_extra == NULL) {
+		MUNGE_LOG_ERR("Munge context not initialized");
+		return 1;
+	}
+
 	*len_out = 0;
 	*data_out = NULL;
 	*is_handshake_done = 0;
@@ -398,7 +438,7 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 		char *data = (char *) data_in;
 		/* enforce null char at given length of data */
 		data[len_in - 1] = '\0';
-		rc = munge_validate_auth_data(data, ebuf, sizeof(ebuf) - 1);
+		rc = munge_validate_auth_data(ctx, data, munge_extra->check_root, ebuf, sizeof(ebuf) - 1);
 		if (rc == 0) {
 			*is_handshake_done = 1;
 			return 0;

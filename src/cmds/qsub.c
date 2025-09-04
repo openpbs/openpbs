@@ -1983,6 +1983,11 @@ job_env_basic(void)
 		len += strlen(env);
 		free(env);
 	}
+	env = strdup_esc_commas(pbs_conf.interactive_auth_method);
+	if (env != NULL) {
+		len += strlen(env);
+		free(env);
+	}
 	len += PBS_MAXHOSTNAME;
 	len += MAXPATHLEN;
 	len *= 2; /* Double it for all the commas, etc. */
@@ -2042,7 +2047,15 @@ job_env_basic(void)
 		strcat(job_env, c);
 		free(c);
 	}
-
+	c = strdup_esc_commas(pbs_conf.interactive_auth_method);
+	if (c != NULL) {
+		if (*job_env)
+			strcat(job_env, ",PBS_O_INTERACTIVE_AUTH_METHOD=");
+		else
+			strcat(job_env, "PBS_O_INTERACTIVE_AUTH_METHOD=");
+		strcat(job_env, c);
+		free(c);
+	}
 	/*
 	 * Don't detect the hostname here because it utilizes network services
 	 * that slow everthing down. PBS_O_HOST is set in the daemon later on.
@@ -2829,7 +2842,8 @@ do_connect(char *server_out, char *retmsg)
 		sd_svr = cnt2server(server_out);
 
 	if (sd_svr <= 0) {
-		sprintf(retmsg, "qsub: cannot connect to server %s (errno=%d)\n", pbs_server, pbs_errno);
+		sprintf(retmsg, "qsub: cannot connect to server %s (errno=%d)\n",
+			pbs_default() == NULL ? "" : pbs_default(), pbs_errno);
 		return (pbs_errno);
 	}
 
@@ -3296,6 +3310,10 @@ main(int argc, char **argv, char **envp) /* qsub */
 	if (command_flag == 0)
 		/* Read the job script from a file or stdin */
 		read_job_script(script);
+
+	/* Needs to be done before job_env_basic(), so that it gets the correct interactive auth method */
+	if (Interact_opt)
+		pbs_loadconf(0);
 
 	/* Enable X11 Forwarding or GUI if specified */
 	enable_gui();

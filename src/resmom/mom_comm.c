@@ -5566,6 +5566,112 @@ cleanup:
 
 #define TASK_FDMAX 10
 
+
+/**
+ * @brief
+ * 		Find the UID of a process that owns the socket between 
+ * 		two endpoints from /proc/net/tcp or /proc/net/tcp6.
+ * 
+ * @param[in] path - Path to the TCP file (either /proc/net/tcp or /proc/net/tcp6)
+ * @param[in] target_uid - Target UID to match
+ * @param[in] target_local_port - Target local port to match
+ * @param[in] target_remote_port - Target remote port to match
+ * 
+ * @return int
+ * @retval -1 on failure
+ * @retval UID of the process on success
+ * 
+ */
+static int
+find_uid_from_tcp(const char *path, int target_uid, unsigned int target_local_port, unsigned int target_remote_port)
+{
+	char line[512];
+	unsigned int local;
+	unsigned int remote;
+	int uid = -1;
+	FILE *fp = fopen(path, "r");
+
+	if (!fp) {
+		log_errf(errno, __func__, "Failed to open %s", path);
+		return -1;
+	}
+
+	/*
+	 * Read each line, extract the local port, remote port and uid,
+	 * and compare them with the target ports. If a match is found, return
+	 * the uid.
+	 */
+	while (fgets(line, sizeof(line), fp)) {
+		if (sscanf(line, "%*s %*[0-9A-Fa-f]:%4X %*[0-9A-Fa-f]:%4X %*s %*s %*s %*s %d",
+			   &local, &remote, &uid) == 3) {
+			if (local == target_local_port && remote == target_remote_port && target_uid == uid) {
+				goto ret;
+			} else if (local == target_remote_port && remote == target_local_port && target_uid == uid) {
+				goto ret;
+			}
+		}
+	}
+
+	uid = -1;
+ret:
+	fclose(fp);
+	return uid;
+}
+
+/**
+ * @brief
+ *      Discover the UID of the process that owns the socket connection by 
+ * 		looking at /proc/net/tcp or /proc/net/tcp6.
+ *
+ * @param[in] conn - The connection structure
+ * @param[in] target_uid - Target UID to match
+ *
+ * @return int
+ * @retval -1 on failure
+ * @retval UID of the process on success
+ */
+static int
+get_uid_from_socket(conn_t *conn, int target_uid)
+{
+	pbs_net_t local_addr;
+	pbs_net_t remote_addr;
+	pbs_socklen_t addr_len;
+
+	addr_len = sizeof(local_addr);
+	if (getsockname(conn->cn_sock, (struct sockaddr *) &local_addr, &addr_len) < 0) {
+		log_err(errno, __func__, "Error getting the socket's local address");
+		return -1;
+	}
+
+	addr_len = sizeof(remote_addr);
+	if (getpeername(conn->cn_sock, (struct sockaddr *) &remote_addr, &addr_len) < 0) {
+		log_err(errno, __func__, "Error getting the socket's remote address");
+		return -1;
+	}
+
+	if (IS_VALID_IP(&local_addr) && IS_VALID_IP(&remote_addr)) {
+		unsigned int local_port = ntohs(GET_IP_PORT(&local_addr));
+		unsigned int remote_port = ntohs(GET_IP_PORT(&remote_addr));
+
+		/* First try to find matching entry in /proc/net/tcp */
+		int uid = find_uid_from_tcp("/proc/net/tcp", target_uid, local_port, remote_port);
+		if (uid != -1)
+			return uid;
+
+		/* Then look at /proc/net/tcp6 */
+		uid = find_uid_from_tcp("/proc/net/tcp6", target_uid, local_port, remote_port);
+		if (uid != -1)
+			return uid;
+
+		log_errf(-1, __func__, "No matching UID found for local port %u and remote port %u in /proc/net/tcp or /proc/net/tcp6",
+			 local_port, remote_port);
+	} else {
+		log_err(-1, __func__, "Invalid IP address in connection");
+	}
+
+	return -1;
+}
+
 /**
  *
  * @brief
@@ -5678,6 +5784,7 @@ tm_request(int fd, int version)
 		char *user_name = disrst(fd, &ret);
 		BAIL("uid")
 #else
+		int system_uid = -1;
 		char comm[32] = {'\0'};
 		uid_t uid;
 		uid = disrui(fd, &ret);
@@ -5701,6 +5808,21 @@ tm_request(int fd, int version)
 		if (*cookie != '\0') {
 			sprintf(log_buffer, "%s: job cookie is not NULL", id);
 			goto err;
+		}
+
+		/* Discover the system_uid by indexing /proc/net/tcp
+		 * with the local and remote socket addresses
+		 * The system_uid should match uid
+		 */
+		system_uid = get_uid_from_socket(conn, uid);
+		if (system_uid == -1) {
+			sprintf(log_buffer, "%s: unable to determine the system UID", id);
+			i = TM_ENOTFOUND;
+			goto aterr;
+		} else if (system_uid != uid) {
+			sprintf(log_buffer, "%s: system UID %d does not match UID %u", id, system_uid, uid);
+			i = TM_EUSER;
+			goto aterr;
 		}
 
 		if (*jobid == '\0') { /* search for job */

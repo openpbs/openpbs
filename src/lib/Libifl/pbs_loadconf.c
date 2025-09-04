@@ -85,8 +85,10 @@ struct pbs_config pbs_conf = {
 	0,			    /* start comm */
 	0,			    /* locallog */
 	NULL,			    /* default to NULL for supported auths */
+	NULL,			    /* auth service users list, will default to just "root" if not set explicitly */
 	{'\0'},			    /* default no auth method to encrypt/decrypt data */
 	AUTH_RESVPORT_NAME,	    /* default to reserved port authentication */
+	AUTH_RESVPORT_NAME,	    /* default to reserved port qsub -I authentication. Possible values: resvport, munge */
 	0,			    /* sched_modify_event */
 	0,			    /* syslogfac */
 	3,			    /* syslogsvr - LOG_ERR from syslog.h */
@@ -533,7 +535,14 @@ __pbs_loadconf(int reload)
 				pbs_conf.pbs_conf_remote_viewer = strdup(conf_value);
 			}
 #endif
-			else if (!strcmp(conf_name, PBS_CONF_AUTH)) {
+			else if (!strcmp(conf_name, PBS_CONF_INTERACTIVE_AUTH_METHOD)) {
+				char *value = convert_string_to_lowercase(conf_value);
+				if (value == NULL)
+					goto err;
+				memset(pbs_conf.interactive_auth_method, '\0', sizeof(pbs_conf.interactive_auth_method));
+				strcpy(pbs_conf.interactive_auth_method, value);
+				free(value);
+			} else if (!strcmp(conf_name, PBS_CONF_AUTH)) {
 				char *value = convert_string_to_lowercase(conf_value);
 				if (value == NULL)
 					goto err;
@@ -557,6 +566,11 @@ __pbs_loadconf(int reload)
 					goto err;
 				}
 				free(value);
+			} else if (!strcmp(conf_name, PBS_CONF_AUTH_SERVICE_USERS)) {
+				pbs_conf.auth_service_users = break_comma_list(conf_value);
+				if (pbs_conf.auth_service_users == NULL) {
+					goto err;
+				}
 			} else if (!strcmp(conf_name, PBS_CONF_DAEMON_SERVICE_USER)) {
 				free(pbs_conf.pbs_daemon_service_user);
 				pbs_conf.pbs_daemon_service_user = strdup(conf_value);
@@ -914,6 +928,14 @@ __pbs_loadconf(int reload)
 		goto err;
 	}
 
+	if ((gvalue = getenv(PBS_CONF_INTERACTIVE_AUTH_METHOD)) != NULL) {
+		char *value = convert_string_to_lowercase(gvalue);
+		if (value == NULL)
+			goto err;
+		memset(pbs_conf.interactive_auth_method, '\0', sizeof(pbs_conf.interactive_auth_method));
+		strcpy(pbs_conf.interactive_auth_method, value);
+		free(value);
+	}
 	if ((gvalue = getenv(PBS_CONF_AUTH)) != NULL) {
 		char *value = convert_string_to_lowercase(gvalue);
 		if (value == NULL)
@@ -943,14 +965,30 @@ __pbs_loadconf(int reload)
 		}
 		free(value);
 	}
-
 	if (pbs_conf.supported_auth_methods == NULL) {
 		pbs_conf.supported_auth_methods = break_comma_list(AUTH_RESVPORT_NAME);
 		if (pbs_conf.supported_auth_methods == NULL) {
 			goto err;
 		}
 	}
-
+	if ((gvalue = getenv(PBS_CONF_AUTH_SERVICE_USERS)) != NULL) {
+		char *value = convert_string_to_lowercase(gvalue);
+		if (value == NULL)
+			goto err;
+		free_string_array(pbs_conf.auth_service_users);
+		pbs_conf.auth_service_users = break_comma_list(value);
+		if (pbs_conf.auth_service_users == NULL) {
+			free(value);
+			goto err;
+		}
+		free(value);
+	}
+	if (pbs_conf.auth_service_users == NULL) {
+		pbs_conf.auth_service_users = break_comma_list("root");
+		if (pbs_conf.auth_service_users == NULL) {
+			goto err;
+		}
+	}
 	if (pbs_conf.encrypt_method[0] != '\0') {
 		/* encryption is not disabled, validate encrypt method */
 		if (is_valid_encrypt_method(pbs_conf.encrypt_method) != 1) {
@@ -1063,6 +1101,10 @@ err:
 	if (pbs_conf.supported_auth_methods) {
 		free_string_array(pbs_conf.supported_auth_methods);
 		pbs_conf.supported_auth_methods = NULL;
+	}
+	if (pbs_conf.auth_service_users) {
+		free_string_array(pbs_conf.auth_service_users);
+		pbs_conf.auth_service_users = NULL;
 	}
 
 	pbs_conf.load_failed = 1;

@@ -56,6 +56,8 @@ enum AUTH_ROLE {
 	AUTH_CLIENT,
 	/* Server role, aka who is authenticating incoming user/connection */
 	AUTH_SERVER,
+	/* qsub side, when authenticating an interactive connection (i.e. qsub -I) from an execution host */
+	AUTH_INTERACTIVE,
 	/* last role, mostly used while error checking for role value */
 	AUTH_ROLE_LAST
 };

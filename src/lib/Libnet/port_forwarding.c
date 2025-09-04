@@ -58,6 +58,8 @@
 #include "pbs_ifl.h"
 #include "log.h"
 #include "libutil.h"
+#include "auth.h"
+#include "dis.h"
 
 #define PF_LOGGER(logfunc, msg) \
 	if (logfunc != NULL) {  \
@@ -91,6 +93,9 @@ extern int set_nodelay(int fd);
  *                               readers read data.
  * @param readfunc[in] - function pointer pointing to the mom and qsub readers.
  * @param logfunc[in] - Function pointer for log function
+ * @param is_qsub_side[in] - Can be one of QSUB_SIDE (1) or EXEC_HOST_SIDE (0)
+ * @param auth_method[in] - Authentication method used
+ * @param jobid[in] - Job id
  *
  * @return void
  */
@@ -102,7 +107,10 @@ port_forwarder(
 	int pport,
 	int inter_read_sock,
 	int (*readfunc)(int),
-	void (*logfunc)(char *))
+	void (*logfunc)(char *),
+	int is_qsub_side,
+	char *auth_method,
+	char *jobid)
 {
 	fd_set rfdset, wfdset, efdset;
 	int rc;
@@ -113,8 +121,8 @@ port_forwarder(
 	char err_msg[LOG_BUF_SIZE];
 	int readfunc_ret;
 	/*
-         * Make the sockets in the socks structure non blocking
-         */
+	 * Make the sockets in the socks structure non blocking
+	 */
 	for (n = 0; n < NUM_SOCKS; n++) {
 		if (!(socks + n)->active || ((socks + n)->sock < 0))
 			continue;
@@ -215,15 +223,31 @@ port_forwarder(
 						(socks + n)->active = 0;
 						continue;
 					}
+
+					/* authenticate execution host socket */
+					if (is_qsub_side == QSUB_SIDE) {
+						if (auth_exec_socket(sock, ntohs(GET_IP_PORT(&from)), auth_method, jobid) != INTERACTIVE_AUTH_SUCCESS) {
+							snprintf(err_msg, sizeof(err_msg),
+								"Incoming connection from %s on socket %d rejected, authentication data incorrect, errno=%d",
+								netaddr((struct sockaddr_in *)&from), sock, errno);
+							PF_LOGGER(logfunc, err_msg);
+							shutdown(sock, SHUT_RDWR);
+							close(sock);
+							dis_destroy_chan(sock);
+							continue;
+						}
+					}
+
 					/*
-                                         * Make the sock non blocking
-                                         */
+					 * Make the sock non blocking
+					 */
 					if (set_nonblocking(sock) == -1) {
 						snprintf(err_msg, sizeof(err_msg),
 							 "set_nonblocking failed for socket=%d, errno=%d",
 							 sock, errno);
 						PF_LOGGER(logfunc, err_msg);
 						close(sock);
+						dis_destroy_chan(sock);
 						continue;
 					}
 					if (set_nodelay(sock) == -1) {
@@ -250,15 +274,30 @@ port_forwarder(
 					(socks + newsock)->listening = (socks + peersock)->listening = 0;
 					(socks + newsock)->active = (socks + peersock)->active = 1;
 					(socks + peersock)->sock = connfunc(phost, pport);
+
+					/* authenticate with qsub side */
+					if (is_qsub_side == EXEC_HOST_SIDE) {
+						if (auth_with_qsub((socks + peersock)->sock, pport, phost, auth_method, jobid) != 0) {
+							snprintf(err_msg, sizeof(err_msg),
+								"Authentication for outgoing connection to qsub from port %u on socket %d rejected by remote side, errno=%d",
+								pport, (socks + peersock)->sock, errno);
+							PF_LOGGER(logfunc, err_msg);
+							close((socks + peersock)->sock);
+							dis_destroy_chan((socks + peersock)->sock);
+							(socks + peersock)->active = 0;
+							continue;
+						}
+					}
 					/*
-                                         * Make sockets non-blocking
-                                         */
+					 * Make sockets non-blocking
+					 */
 					if (set_nonblocking((socks + peersock)->sock) == -1) {
 						snprintf(err_msg, sizeof(err_msg),
 							 "set_nonblocking failed for socket=%d, errno=%d",
 							 (socks + peersock)->sock, errno);
 						PF_LOGGER(logfunc, err_msg);
 						close((socks + peersock)->sock);
+						dis_destroy_chan((socks + peersock)->sock);
 						(socks + peersock)->active = 0;
 						continue;
 					}
@@ -285,6 +324,7 @@ port_forwarder(
 						}
 						shutdown((socks + n)->sock, SHUT_RDWR);
 						close((socks + n)->sock);
+						dis_destroy_chan((socks + n)->sock);
 						(socks + n)->active = 0;
 						snprintf(err_msg, sizeof(err_msg),
 							 "closing the socket %d after read failure, errno=%d",
@@ -293,6 +333,7 @@ port_forwarder(
 					} else if (rc == 0) {
 						shutdown((socks + n)->sock, SHUT_RDWR);
 						close((socks + n)->sock);
+						dis_destroy_chan((socks + n)->sock);
 						(socks + n)->active = 0;
 					} else {
 						(socks + n)->bufavail += rc;
@@ -313,6 +354,7 @@ port_forwarder(
 					}
 					shutdown((socks + n)->sock, SHUT_RDWR);
 					close((socks + n)->sock);
+					dis_destroy_chan((socks + n)->sock);
 					(socks + n)->active = 0;
 					snprintf(err_msg, sizeof(err_msg),
 						 "closing the socket %d after write failure, errno=%d",
@@ -321,6 +363,7 @@ port_forwarder(
 				} else if (rc == 0) {
 					shutdown((socks + n)->sock, SHUT_RDWR);
 					close((socks + n)->sock);
+					dis_destroy_chan((socks + n)->sock);
 					(socks + n)->active = 0;
 				} else {
 					(socks + peer)->bufwritten += rc;
@@ -334,6 +377,7 @@ port_forwarder(
 				if (!(socks + peer)->active && ((socks + peer)->bufwritten == (socks + peer)->bufavail)) {
 					shutdown((socks + n)->sock, SHUT_RDWR);
 					close((socks + n)->sock);
+					dis_destroy_chan((socks + n)->sock);
 					(socks + n)->active = 0;
 				}
 			}

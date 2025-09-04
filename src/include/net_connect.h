@@ -67,6 +67,7 @@ typedef unsigned long pbs_net_t; /* for holding host addresses */
 #define PBS_NET_CONN_NOTIMEOUT 0x04
 #define PBS_NET_CONN_FROM_QSUB_DAEMON 0x08
 #define PBS_NET_CONN_FORCE_QSUB_UPDATE 0x10
+#define PBS_NET_CONN_PREVENT_IP_SPOOFING 0x20
 
 #define QSUB_DAEMON "qsub-daemon"
 
