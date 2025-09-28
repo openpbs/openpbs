@@ -47,6 +47,7 @@
 #include <dlfcn.h>
 #include <grp.h>
 #include "libauth.h"
+#include "libutil.h"
 #include "pbs_ifl.h"
 
 static pthread_once_t munge_init_once = PTHREAD_ONCE_INIT;
