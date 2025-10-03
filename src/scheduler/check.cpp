@@ -1108,13 +1108,13 @@ find_check_resource(schd_resource *reslist, resource_req *resreq, unsigned int f
  * @param[in] flags to modify behavior (@see check_avail_resources())
  * @param[in] fail_code - fail code to use in schd_error if resources don't match
  * @param[out] err - if resources don't match, reason not matched
- * @return int
+ * @return long long
  * @retval number of chunks matched if matched and consumable
  * @retval SCHD_INFINITY if matched and non-consumable
  * @retval 0 of resources failed to match
  */
 
-int
+long long
 match_resource(schd_resource *res, resource_req *resreq, unsigned int flags, enum sched_error_code fail_code, schd_error *err)
 {
 	sch_resource_t avail; /* amount of available resource */
