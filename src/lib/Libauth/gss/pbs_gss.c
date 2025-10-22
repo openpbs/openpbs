@@ -50,8 +50,13 @@
 #include <gssapi.h>
 #include <gssapi.h>
 #include <krb5.h>
+#include <errno.h>
+#include <termios.h>
+#include <pty.h>
+#include <sys/wait.h>
 #include "pbs_ifl.h"
 #include "libauth.h"
+#include "pbs_internal.h"
 
 #if defined(KRB5_HEIMDAL)
 #define PBS_GSS_MECH_OID GSS_KRB5_MECHANISM
@@ -129,6 +134,7 @@ enum PBS_GSS_ERRORS {
 };
 
 static int pbs_gss_can_get_creds(const gss_OID_set oidset);
+static int pbs_gss_ask_user_creds();
 static int init_pbs_client_ccache_from_keytab(char *err_buf, int err_buf_size);
 static void init_gss_mutex(void);
 
@@ -596,6 +602,146 @@ pbs_gss_can_get_creds(const gss_OID_set oidset)
 
 /**
  * @brief
+ *	If in tty, ask user for credentials. The custom binary is run in a new session.
+ *  The pipes are created for passing stdin and stdout to the new session.
+ *  User can therfore insert password using tools like 'kinit' and get credentials.
+ *
+ * @return	int
+ * @retval	!= 0 if creds not be acquired
+ * @retval	0 if creds acquired
+ */
+static int
+pbs_gss_ask_user_creds()
+{
+	int master_fd, slave_fd; // PTY file descriptors
+	static struct termios original_term;
+	struct termios pty_tios, raw_tios;
+    pid_t pid;
+	int status;
+
+	char *user_creds_bin = pbs_conf.pbs_gss_user_creds_bin ? pbs_conf.pbs_gss_user_creds_bin : NULL;
+
+	if (!user_creds_bin) {
+		return -1;
+	}
+
+	char *cmd[] = { user_creds_bin, 0 };
+
+	if (! isatty(fileno(stdout) || ! isatty(fileno(stdin))))
+		return -1; /* not a terminal, cannot ask user for creds */
+
+	/* save current terminal settings*/
+	if (tcgetattr(STDIN_FILENO, &original_term) == -1) {
+		return -1;
+	}
+
+	/* configure new terminal - disable echo for inserting password */
+	raw_tios = original_term;
+    raw_tios.c_lflag &= ~(ICANON | ECHO | ECHOCTL | ECHONL);
+    raw_tios.c_cc[VMIN] = 1;
+    raw_tios.c_cc[VTIME] = 0;
+
+	if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw_tios) == -1) {
+        return -1;
+    }
+
+	if (tcgetattr(slave_fd, &pty_tios) == 0) {
+        pty_tios.c_cc[VERASE] = 127; /* fix backspace key */
+        tcsetattr(slave_fd, TCSANOW, &pty_tios);
+    }
+
+	/* create peseudo terminal for user cred bin to run */
+	if (openpty(&master_fd, &slave_fd, NULL, NULL, NULL) == -1) {
+		return -1;
+	}
+
+	pid = fork();
+    if (pid < 0) {
+        return -1; /* fork failed */
+	}
+
+	if (pid == 0) {
+		/* child */
+		close(master_fd);
+		if (setsid() == -1) {
+            exit(1);
+        }
+
+		if (dup2(slave_fd, STDIN_FILENO) == -1 ||
+            dup2(slave_fd, STDOUT_FILENO) == -1 ||
+            dup2(slave_fd, STDERR_FILENO) == -1) {
+            exit(1);
+        }
+
+		close(slave_fd);
+
+		if (execvp(cmd[0], cmd) < 0) {
+			exit(1);
+		}
+	} else {
+		/* parent */
+
+		const int size = 1024;
+		char buffer[size];
+        ssize_t bytes_read;
+		int get_password = 1;
+
+		close(slave_fd);
+
+		while (1) {
+			fd_set read_fds;
+			int max_fd = master_fd;
+
+			FD_ZERO(&read_fds);
+			FD_SET(master_fd, &read_fds);
+			FD_SET(STDIN_FILENO, &read_fds);
+
+			if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) {
+                if (errno == EINTR)
+					continue;
+                break;
+            }
+
+			if (FD_ISSET(master_fd, &read_fds)) {
+                bytes_read = read(master_fd, buffer, size - 1);
+                if (bytes_read > 0) {
+                    // Write child's output directly to the parent's terminal STDOUT
+                    write(STDOUT_FILENO, buffer, bytes_read);
+                } else if (bytes_read == 0) {
+                    break;
+                } else {
+                    break;
+                }
+            }
+
+			if (FD_ISSET(STDIN_FILENO, &read_fds)) {
+                bytes_read = read(STDIN_FILENO, buffer, size - 1);
+                if (bytes_read > 0) {
+                    // Write user input to the PTY master (to the child's STDIN)
+                    write(master_fd, buffer, bytes_read);
+                } else if (bytes_read == 0) {
+                    close(master_fd);
+                    break;
+                } else {
+                    break;
+                }
+            }
+
+			if (waitpid(pid, &status, WNOHANG) > 0) {
+                break;
+            }
+		}
+
+		waitpid(pid, &status, 0);
+	}
+
+	close(master_fd);
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_term);
+	return WEXITSTATUS(status);
+}
+
+/**
+ * @brief
  * 	create or renew ccache from keytab for the gss client side.
  *
  * @param[in] err_buf - buffer to put error log
@@ -690,12 +836,6 @@ init_pbs_client_ccache_from_keytab(char *err_buf, int err_buf_size)
 	 */
 	if (endtime - (60 * 30) >= time(NULL)) {
 		ret = 0;
-		goto out;
-	}
-
-	ret = krb5_cc_new_unique(context, "FILE", NULL, &ccache);
-	if (ret) {
-		snprintf(err_buf, err_buf_size, "Failed to create ccache (%s)", krb5_get_error_message(context, ret));
 		goto out;
 	}
 
@@ -821,11 +961,48 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 				return PBS_GSS_ERR_OID;
 
 			if (gss_extra->conn_type == AUTH_USER_CONN) {
-				if (!pbs_gss_can_get_creds(oidset)) {
-					ccache_from_keytab = 1;
+				char *ccname = getenv("KRB5CCNAME");
+				int can_get_creds = 0;
 
+				if (pbs_gss_can_get_creds(oidset)) {
+					can_get_creds = 1;
+				}
+
+				if (!can_get_creds && ccname) {
+					unsetenv("KRB5CCNAME");
+
+					/* try get credentials with default ccache */
+
+					if (pbs_gss_can_get_creds(oidset)) {
+						can_get_creds = 1;
+					} else {
+						if (ccname) {
+							setenv("KRB5CCNAME", ccname, 1);
+						}
+					}
+				}
+
+				if (!can_get_creds) {
 					if (init_pbs_client_ccache_from_keytab(gss_log_buffer, LOG_BUF_SIZE)) {
 						GSS_LOG_DBG(gss_log_buffer);
+						unsetenv("KRB5CCNAME");
+					} else {
+						ccache_from_keytab = 1;
+						can_get_creds = 1;
+					}
+
+					if (!ccache_from_keytab && ccname) {
+						setenv("KRB5CCNAME", ccname, 1);
+					}
+				}
+
+				if (!can_get_creds) {
+					if (ccname) {
+						setenv("KRB5CCNAME", ccname, 1);
+					}
+
+					/* no credentials at all, ask user for creds */
+					if (pbs_gss_ask_user_creds()) {
 						unsetenv("KRB5CCNAME");
 					}
 				}
@@ -866,6 +1043,7 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 
 			break;
 
+		case AUTH_INTERACTIVE:
 		case AUTH_SERVER:
 			/*
 			 * if credentials are old, try to get new ones. If we can't, keep the old
@@ -949,14 +1127,14 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 	if (ret == PBS_GSS_OK) {
 		gss_extra->gssctx_established = 1;
 		gss_extra->is_secure = (ret_flags & GSS_C_CONF_FLAG);
-		if (gss_extra->role == AUTH_SERVER) {
+		if (gss_extra->role == AUTH_SERVER || gss_extra->role == AUTH_INTERACTIVE) {
 			snprintf(gss_log_buffer, LOG_BUF_SIZE, "GSS context established with client %s", gss_extra->clientname);
 		} else {
 			snprintf(gss_log_buffer, LOG_BUF_SIZE, "GSS context established with server %s", gss_extra->hostname);
 		}
 		GSS_LOG_DBG(gss_log_buffer);
 	} else {
-		if (gss_extra->role == AUTH_SERVER) {
+		if (gss_extra->role == AUTH_SERVER || gss_extra->role == AUTH_INTERACTIVE) {
 			if (gss_extra->clientname)
 				snprintf(gss_log_buffer, LOG_BUF_SIZE, "Failed to establish GSS context with client %s", gss_extra->clientname);
 			else
@@ -1014,7 +1192,7 @@ pbs_auth_create_ctx(void **ctx, int mode, int conn_type, const char *hostname)
 	gss_extra->gssctx = GSS_C_NO_CONTEXT;
 	gss_extra->role = mode;
 	gss_extra->conn_type = conn_type;
-	if (gss_extra->role == AUTH_SERVER) {
+	if (gss_extra->role == AUTH_SERVER || gss_extra->role == AUTH_INTERACTIVE) {
 		char *hn = NULL;
 		if ((hn = malloc(PBS_MAXHOSTNAME + 1)) == NULL) {
 			return PBS_GSS_ERR_INTERNAL;
@@ -1177,7 +1355,7 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 	if (gss_extra->gssctx_established) {
 		*is_handshake_done = 1;
 
-		if (gss_extra->role == AUTH_SERVER) {
+		if (gss_extra->role == AUTH_SERVER || gss_extra->role == AUTH_INTERACTIVE) {
 			snprintf(gss_log_buffer, LOG_BUF_SIZE, "Entered encrypted communication with client %s", gss_extra->clientname);
 			GSS_LOG_DBG(gss_log_buffer);
 		} else {

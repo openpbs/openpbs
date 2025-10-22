@@ -226,7 +226,7 @@ port_forwarder(
 
 					/* authenticate execution host socket */
 					if (is_qsub_side == QSUB_SIDE) {
-						if (auth_exec_socket(sock, ntohs(GET_IP_PORT(&from)), auth_method, jobid) != INTERACTIVE_AUTH_SUCCESS) {
+						if (auth_exec_socket(sock, &from, auth_method, jobid) != INTERACTIVE_AUTH_SUCCESS) {
 							snprintf(err_msg, sizeof(err_msg),
 								"Incoming connection from %s on socket %d rejected, authentication data incorrect, errno=%d",
 								netaddr((struct sockaddr_in *)&from), sock, errno);
