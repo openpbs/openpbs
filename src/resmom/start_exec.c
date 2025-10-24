@@ -3619,6 +3619,12 @@ finish_exec(job *pjob)
 		/*		streams to a socket connected to qsub.			 */
 		/*************************************************************************/
 
+		/* prevent user from interrupting start of the job */
+		signal(SIGHUP, SIG_IGN);
+		signal(SIGINT, SIG_IGN);
+		signal(SIGQUIT, SIG_IGN);
+		signal(SIGTSTP, SIG_IGN);
+
 		sigemptyset(&act.sa_mask);
 #ifdef SA_INTERRUPT
 		act.sa_flags = SA_INTERRUPT;
@@ -4557,6 +4563,12 @@ finish_exec(job *pjob)
 		the_env = pjob->ji_env.v_envp;
 		*(pjob->ji_env.v_envp + pjob->ji_env.v_used) = NULL;
 
+		/* user was prevented to interrupt, it is safe to revert now */
+		signal(SIGHUP, SIG_DFL);
+		signal(SIGINT, SIG_DFL);
+		signal(SIGQUIT, SIG_DFL);
+		signal(SIGTSTP, SIG_DFL);
+
 		execve(the_progname, the_argv, the_env);
 		free(progname);
 		free_attrlist(&argv_list);
@@ -4586,6 +4598,12 @@ finish_exec(job *pjob)
 			shellname = shell;
 		arg[0] = shellname;
 		arg[1] = NULL;
+
+		/* user was prevented to interrupt, it is safe to revert now */
+		signal(SIGHUP, SIG_DFL);
+		signal(SIGINT, SIG_DFL);
+		signal(SIGQUIT, SIG_DFL);
+		signal(SIGTSTP, SIG_DFL);
 
 		/* we're purposely not calling log_close() here */
 		/* for this causes a side-effect. log_close() would */
