@@ -1577,6 +1577,8 @@ show_nonprint_chars(char *str)
 	size_t nsize;
 	int ch;
 	char special_char[] = "\n\t";
+	wchar_t wc;
+	int len;
 
 	if ((str == NULL) || (str[0] == '\0'))
 		return str;
@@ -1593,12 +1595,34 @@ show_nonprint_chars(char *str)
 	locbuf[0] = '\0';
 	buf = str;
 	buf2 = locbuf;
-	while ((ch = *buf++) != '\0') {
+
+	mbtowc(NULL, NULL, 0);
+
+	while (*buf != '\0') {
+		len = mbtowc(&wc, buf, MB_CUR_MAX);
+
+		if (len == 0) {
+			/* shoud not happen */
+			break;
+		} else if (len < 0) {
+			/* non-ASCII */
+			ch = *buf & 0xFF;
+		} else {
+			/* wide character - len > 0 */
+			ch = (int)wc;
+		}
+
 		if ((ch < 32) && !char_in_set(ch, special_char)) {
 			*buf2++ = '^';
 			*buf2++ = ch + 64;
 		} else {
 			*buf2++ = ch;
+		}
+
+		if (len < 0) {
+			buf++;
+		} else {
+			buf += len;
 		}
 	}
 	*buf2 = '\0';
