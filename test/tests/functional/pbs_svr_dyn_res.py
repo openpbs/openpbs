@@ -709,6 +709,53 @@ class TestServerDynRes(TestFunctional):
                                         ppid=self.scheduler.get_pid())
         self.assertFalse(children)
 
+    def test_res_dyn_res_assigned_calendar(self):
+        """
+        Test that server_dyn_res initialize assigned value and
+        calendar uses the value
+        """
+        if len(self.moms) != 1:
+            self.skipTest('Test requires only one MOM')
+        dyn_res_name = "foobar"
+
+        # enable calendaring
+        self.scheduler.set_sched_config({'strict_ordering': 'true all'})
+        a = {'backfill_depth': '2'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        # Create a resource of type long. positive value
+        resname = [dyn_res_name]
+        restype = ["long"]
+        resval = ['/bin/echo 4']
+
+        # Add server_dyn_res entry in sched_config
+        self.setup_dyn_res(resname, restype, resval)
+
+        a = {f'Resource_List.{dyn_res_name}': 4}
+        a['Resource_List.select'] = 'ncpus=1'
+        a['Resource_List.place'] = 'exclhost'
+        # Submit job
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Job must run successfully
+        a = {'job_state': 'R', f'Resource_List.{dyn_res_name}': '4'}
+        self.server.expect(JOB, a, id=jid)
+
+        ctime = time.time()
+
+        # submit job that can not run but not due to $dyn_res_name
+        a = {f'Resource_List.{dyn_res_name}': 4}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        time.sleep(5)
+
+        # Check scheduler log not matching 'turned negative' line
+        msg = f"update_server_on_end;{dyn_res_name} turned negative"
+        self.scheduler.log_match(msg, starttime=ctime, existence=False,
+                                 max_attempts=5)
+
     def tearDown(self):
         # removing all files creating in test
         if len(self.dirnames) != 0:

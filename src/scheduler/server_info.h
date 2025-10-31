@@ -69,6 +69,11 @@ server_info *query_server_info(status *pol, struct batch_status *server);
 int query_server_dyn_res(server_info *sinfo);
 
 /*
+ * 	calc_server_dyn_res_assigned - initialize assigned value of server_dyn_res
+ */
+void calc_server_dyn_res_assigned(server_info *sinfo);
+
+/*
  *	find_alloc_resource[_by_str] - try and find a resource, and if it is
  *                                     not there allocate space for it and
  *                                     add it to the resource list

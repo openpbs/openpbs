@@ -336,6 +336,8 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 
+	calc_server_dyn_res_assigned(sinfo);
+
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		counts *allcts;
 		allcts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
@@ -777,6 +779,32 @@ query_server_dyn_res(server_info *sinfo)
 	}
 
 	return 0;
+}
+
+/**
+ * @brief
+ * 		initialize assigned value of server_dyn_res
+ *
+ * @param[in]	sinfo	-	server info
+ *
+ */
+void
+calc_server_dyn_res_assigned(server_info *sinfo) {
+	schd_resource *res;
+	resource_req *req;
+
+	for (int i = 0; sinfo->running_jobs[i] != NULL; i++) {
+		for (const auto &dr : conf.dynamic_res) {
+			res = find_alloc_resource_by_str(sinfo->res, dr.res);
+			if (res != NULL && res->type.is_consumable) {
+				req = find_resource_req(sinfo->running_jobs[i]->resreq, res->def);
+				if (req == NULL) {
+					continue;
+				}
+				res->assigned += req->amount;
+			}
+		}
+	}
 }
 
 /**
