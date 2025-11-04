@@ -2832,6 +2832,10 @@ finish_exec(job *pjob)
 	FILE *temp_stderr = stderr;
 	vnl_t *vnl_fails = NULL;
 	vnl_t *vnl_good = NULL;
+	struct sigaction tmp_act_hup;
+	struct sigaction tmp_act_int;
+	struct sigaction tmp_act_quit;
+	struct sigaction tmp_act_stp;
 
 	ptc = -1; /* No current master pty */
 
@@ -3619,13 +3623,15 @@ finish_exec(job *pjob)
 		/*		streams to a socket connected to qsub.			 */
 		/*************************************************************************/
 
-		/* prevent user from interrupting start of the job */
-		signal(SIGHUP, SIG_IGN);
-		signal(SIGINT, SIG_IGN);
-		signal(SIGQUIT, SIG_IGN);
-		signal(SIGTSTP, SIG_IGN);
-
 		sigemptyset(&act.sa_mask);
+		/* prevent user from interrupting start of the job */
+		act.sa_flags = 0;
+		act.sa_handler = SIG_IGN;
+		(void) sigaction(SIGHUP, &act, &tmp_act_hup);
+		(void) sigaction(SIGINT, &act, &tmp_act_int);
+		(void) sigaction(SIGQUIT, &act, &tmp_act_quit);
+		(void) sigaction(SIGTSTP, &act, &tmp_act_stp);
+
 #ifdef SA_INTERRUPT
 		act.sa_flags = SA_INTERRUPT;
 #else
@@ -4564,10 +4570,10 @@ finish_exec(job *pjob)
 		*(pjob->ji_env.v_envp + pjob->ji_env.v_used) = NULL;
 
 		/* user was prevented to interrupt, it is safe to revert now */
-		signal(SIGHUP, SIG_DFL);
-		signal(SIGINT, SIG_DFL);
-		signal(SIGQUIT, SIG_DFL);
-		signal(SIGTSTP, SIG_DFL);
+		(void) sigaction(SIGHUP, &tmp_act_hup, NULL);
+		(void) sigaction(SIGINT, &tmp_act_int, NULL);
+		(void) sigaction(SIGQUIT, &tmp_act_quit, NULL);
+		(void) sigaction(SIGTSTP, &tmp_act_stp, NULL);
 
 		execve(the_progname, the_argv, the_env);
 		free(progname);
@@ -4600,10 +4606,10 @@ finish_exec(job *pjob)
 		arg[1] = NULL;
 
 		/* user was prevented to interrupt, it is safe to revert now */
-		signal(SIGHUP, SIG_DFL);
-		signal(SIGINT, SIG_DFL);
-		signal(SIGQUIT, SIG_DFL);
-		signal(SIGTSTP, SIG_DFL);
+		(void) sigaction(SIGHUP, &tmp_act_hup, NULL);
+		(void) sigaction(SIGINT, &tmp_act_int, NULL);
+		(void) sigaction(SIGQUIT, &tmp_act_quit, NULL);
+		(void) sigaction(SIGTSTP, &tmp_act_stp, NULL);
 
 		/* we're purposely not calling log_close() here */
 		/* for this causes a side-effect. log_close() would */
