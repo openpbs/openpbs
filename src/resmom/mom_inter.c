@@ -65,6 +65,8 @@
 #include "libsec.h"
 #include "port_forwarding.h"
 #include "log.h"
+#include "libpbs.h"
+#include "dis.h"
 
 static char cc_array[PBS_TERM_CCA];
 static struct winsize wsz;
@@ -109,6 +111,43 @@ read_net(int sock, char *buf, int amt)
 
 /**
  * @brief
+ * 	read_net - read packet from network till received amount expected
+ *
+ * @param[in] sock - file descriptor
+ * @param[in] buf  - buffer
+ * @param[in] amt  - amount of data
+ *
+ * @return int
+ * @retval  >0 amount read
+ * @retval  -1 on error
+ *
+ */
+static int
+read_pkt_net(int sock, char *buf, int amt)
+{
+	int got;
+	int total = 0;
+	void *data_in = NULL;
+	size_t len_in = 0;
+	int type = 0;
+
+	while (amt > 0) {
+		got = transport_recv_pkt(sock, &type, &data_in, &len_in);
+		if (got > 0) { /* read (some) data */
+			memcpy(buf, data_in, len_in);
+			amt -= got;
+			buf += got;
+			total += got;
+		} else if (got == 0)
+			break;
+		else
+			return (-1);
+	}
+	return (total);
+}
+
+/**
+ * @brief
  * 	rcvttype - receive the terminal type of the real terminal
  *	Sent over network as "TERM=type_string"
  *
@@ -122,16 +161,23 @@ char *
 rcvttype(int sock)
 {
 	static char buf[PBS_TERM_BUF_SZ];
+	int (*read_f)(int, char *, int) = NULL;
+
+	if (transport_chan_get_ctx_status(sock, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_READY) {
+		read_f = read_pkt_net;
+	} else {
+		read_f = read_net;
+	}
 
 	/* read terminal type as sent by qsub */
 
-	if ((read_net(sock, buf, PBS_TERM_BUF_SZ) != PBS_TERM_BUF_SZ) ||
+	if ((read_f(sock, buf, PBS_TERM_BUF_SZ) != PBS_TERM_BUF_SZ) ||
 	    (strncmp(buf, "TERM=", 5) != 0))
 		return NULL;
 
 	/* get the basic control characters from qsub's termial */
 
-	if (read_net(sock, cc_array, PBS_TERM_CCA) != PBS_TERM_CCA) {
+	if (read_f(sock, cc_array, PBS_TERM_CCA) != PBS_TERM_CCA) {
 		return NULL;
 	}
 
@@ -212,8 +258,15 @@ int
 rcvwinsize(int sock)
 {
 	char buf[PBS_TERM_BUF_SZ];
+	int (*read_f)(int, char *, int) = NULL;
 
-	if (read_net(sock, buf, PBS_TERM_BUF_SZ) != PBS_TERM_BUF_SZ)
+	if (transport_chan_get_ctx_status(sock, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_READY) {
+		read_f = read_pkt_net;
+	} else {
+		read_f = read_net;
+	}
+
+	if (read_f(sock, buf, PBS_TERM_BUF_SZ) != PBS_TERM_BUF_SZ)
 		return (-1);
 	if (sscanf(buf, "WINSIZE %hu,%hu,%hu,%hu", &wsz.ws_row, &wsz.ws_col,
 		   &wsz.ws_xpixel, &wsz.ws_ypixel) != 4)
@@ -313,6 +366,78 @@ mom_reader(int s, int ptc, char *command)
 
 /**
  * @brief
+ *	reader process - reads from the remote socket, and writes
+ *	to the master pty
+ *
+ * @param[in] s - filr descriptor
+ * @param[in] ptc - master file descriptor
+ * @param[in] command - shell command(s) to be sent to the PTY before user data from the socket
+ *
+ * @return    error code
+ * @retval    0     Success
+ * @retval   -1     Write Failure
+ * @retval   -2     Read Failure
+ * 
+ */
+int
+mom_reader_pkt(int s, int ptc, char *command)
+{
+	int c;
+	void *data_in = NULL;
+	size_t len_in = 0;
+	int type = 0;
+
+	/* send shell command(s) to the PTY input stream */
+	c = command ? strlen(command) : 0;
+	if (c > 0) {
+		int wc;
+		char *p = command;
+
+		while (c) {
+			if ((wc = write(ptc, p, c)) < 0) {
+				if (errno == EINTR) {
+					continue;
+				}
+				return (-1);
+			}
+			c -= wc;
+			p += wc;
+		}
+	}
+
+	/* read from the socket, and write to ptc */
+	while (mom_reader_go) {
+		pbs_tcp_timeout = -1;
+		c = transport_recv_pkt(s, &type, &data_in, &len_in);
+		if (c > 0) {
+			int wc;
+			char *p = data_in;
+
+			while (c) {
+				if ((wc = write(ptc, p, c)) < 0) {
+					if (errno == EINTR) {
+						continue;
+					}
+					return (-1);
+				}
+				c -= wc;
+				p += wc;
+			}
+		} else if (c == -2) { /* tcp_recv returns -2 on EOF */
+			return (0);
+		} else if (c < 0) {
+			if (errno == EINTR)
+				continue;
+			else {
+				return (-2);
+			}
+		}
+	}
+	return 0;
+}
+
+/**
+ * @brief
  *      This functions sets the job directory to PBS_JOBDIR for private sandbox
  *
  * @param command[in] - this parameter contains the job directory in case of
@@ -398,6 +523,79 @@ mom_reader_Xjob(int s)
 
 /**
  * @brief
+ *        This function reads the packets from remote socket and write it to pty.
+ *
+ * @param[in] s - socket fd from where data needs to be read.
+ *
+ * @return  int
+ * @retval    0  Success
+ * @retval   -1  Failure
+ * @retval   -2  Peer Closed
+ *
+ */
+int
+mom_reader_pkt_Xjob(int s)
+{
+	int c;
+	void *data_in = NULL;
+	size_t len_in = 0;
+	int type = 0;
+
+	/* read from the socket, and write to ptc */
+	c = transport_recv_pkt(s, &type, &data_in, &len_in);
+	if (c > 0) {
+		int wc;
+		char *p = data_in;
+
+		while (c) {
+			if ((wc = write(ptc, p, c)) < 0) {
+				if (errno == EINTR) {
+					continue;
+				}
+				return (-1);
+			}
+			c -= wc;
+			p += wc;
+		}
+	} else if (c == -2) { /* tcp_recv returns -2 on EOF */
+		/* If control reaches here, then it means peer has closed the
+		 * connection
+		 */
+		return (-2);
+	} else if (c < 0) {
+		if (errno == EINTR) {
+			return (0);
+		} else {
+			return (-1);
+		}
+	}
+	return (0);
+}
+
+/**
+ * @brief
+ *        This function selects reader for data from remote socket and write it to pty.
+ *
+ * @param[in] s - socket fd from where data needs to be read.
+ *
+ * @return  int
+ * @retval    0  Success
+ * @retval   -1  Failure
+ * @retval   -2  Peer Closed
+ *
+ */
+int
+mom_get_reader_Xjob(int s)
+{
+	if (transport_chan_get_ctx_status(s, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_READY) {
+		return mom_reader_pkt_Xjob(s);
+	} else {
+		return mom_reader_Xjob(s);
+	}
+}
+
+/**
+ * @brief
  * 	Writer process: reads from master pty, and writes
  * 	data out to the rem socket
  *
@@ -433,6 +631,45 @@ mom_writer(int s, int ptc)
 				c -= wc;
 				p += wc;
 			}
+		} else if (c == 0) {
+			return (0);
+		} else if (c < 0) {
+			if (errno == EINTR)
+				continue;
+			else {
+				return (-2);
+			}
+		}
+	}
+}
+
+/**
+ * @brief
+ * 	Packet Writer process: reads from master pty, and writes
+ * 	data out to the rem socket
+ *
+ * @param[in] s - socket fd
+ * @param[in] ptc - master file descriptor
+ *
+ * @return    error code
+ * @retval    0     Success
+ * @retval   -1     Write Failure
+ * @retval   -2     Read Failure
+ *
+ */
+int
+mom_writer_pkt(int s, int ptc)
+{
+	char buf[PF_BUF_SIZE];
+	int c;
+
+	/* read from ptc, and write to the socket */
+	while (1) {
+		c = read(ptc, buf, sizeof(buf));
+		if (c > 0) {
+			int wc;
+			char *p = buf;
+			transport_send_pkt(s, AUTH_ENCRYPTED_DATA, buf, c);
 		} else if (c == 0) {
 			return (0);
 		} else if (c < 0) {
