@@ -982,6 +982,32 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 						  njob->name, "Error in add_job_to_calendar");
 				}
 				/* else cal_rc == 0: failed to add to calendar - continue on */
+			} else {
+				/* it is not a tob job, is the estimate set? */
+				if (njob->job->est_start_time != -1 || njob->job->est_execvnode != 0x0) {
+					struct attrl attr = {0};
+					attr.name = const_cast<char *>(ATTR_estimated);
+					attr.resource = const_cast<char *>("exec_vnode");
+					attr.value = strdup("");
+					attr.op = UNSET;
+
+					struct attrl attr2 = {0};
+					attr2.name = const_cast<char *>(ATTR_estimated);
+					attr2.resource = const_cast<char *>("start_time");
+					attr2.value = strdup("");
+					attr2.op = UNSET;
+
+					attr.next = &attr2;
+
+					if (attr.value != NULL && attr2.value != NULL) {
+						update_job_attr(sd, njob, NULL, NULL, NULL, &attr, UPDATE_NOW);
+					} else {
+						log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, njob->name,
+								  "can't clear job estimates, malloc failed");
+					}
+					free(attr.value);
+					free(attr2.value);
+				}
 			}
 
 			/* Need to set preemption status so that soft limits can be checked

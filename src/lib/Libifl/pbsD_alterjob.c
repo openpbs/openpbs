@@ -85,7 +85,7 @@ attrl_to_attropl(struct attrl *attrib)
 		ap->name = attrib->name;
 		ap->resource = attrib->resource;
 		ap->value = attrib->value;
-		ap->op = SET;
+		ap->op = attrib->op;
 		ap->next = NULL;
 		attrib = attrib->next;
 	}

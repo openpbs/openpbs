@@ -525,7 +525,7 @@ struct attrl {
 	char *name;
 	char *resource;
 	char *value;
-	enum batch_op op; /* not used */
+	enum batch_op op;
 };
 
 struct attropl {

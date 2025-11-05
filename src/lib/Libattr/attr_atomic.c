@@ -175,10 +175,15 @@ attr_atomic_set(struct svrattrl *plist, attribute *old, attribute *new, void *pd
 		/* update new copy with temp, MODIFY is set on ones changed */
 
 		if ((plist->al_op != INCR) && (plist->al_op != DECR) &&
-		    (plist->al_op != SET))
+		    (plist->al_op != SET) && (plist->al_op != UNSET))
 			plist->al_op = SET;
 
-		if (temp.at_flags & ATR_VFLAG_SET) {
+		if (plist->al_op == UNSET) {
+			/* For UNSET operation, clear the attribute */
+			(pdef + index)->at_free(new + index);
+			(new + index)->at_flags &= ~ATR_VFLAG_SET;
+			(new + index)->at_flags |= ATR_MOD_MCACHE;
+		} else if (temp.at_flags & ATR_VFLAG_SET) {
 			rc = (pdef + index)->at_set(new + index, &temp, plist->al_op);
 			if (rc) {
 				(pdef + index)->at_free(&temp);
