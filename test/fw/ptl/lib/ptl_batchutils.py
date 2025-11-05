@@ -78,7 +78,7 @@ class BatchUtils(object):
                             r"[.]*[(?P<server>.*)]*")
 
     pbsobjname_re = re.compile(r"^(?P<tag>[\w\d][\d\w\s]*:?[\s]+)" +
-                               r"*(?P<name>[\w@\.\d\[\]-]+)$")
+                               r"*(?P<name>[\^\\\w@\.\d\[\]-]+)$")
     pbsobjattrval_re = re.compile(r"""
                             [\s]*(?P<attribute>[\w\d\.-]+)
                             [\s]*=[\s]*
@@ -636,6 +636,20 @@ class BatchUtils(object):
             _js.append(_jdict)
         return _js
 
+    def convert_to_ascii(self, s):
+        """
+        Convert char sequences within string like ^A, ^B, ... to
+        ASCII 0x01, ...
+
+        :param s: string to convert
+        :type s: string
+        :returns: converted string
+        """
+        def repl(m):
+            c = m.group(1)
+            return chr(ord(c) - 64) if "@" < c <= "_" else m.group(0)
+        return re.sub(r"\^(.)", repl, s)
+
     def convert_to_dictlist(self, l, attribs=None, mergelines=True, id=None,
                             obj_type=None):
         """
@@ -682,7 +696,7 @@ class BatchUtils(object):
                     if id is None or (id is not None and d['id'] == id):
                         objlist.append(d.copy())
                 d = {}
-                d['id'] = m.group('name')
+                d['id'] = self.convert_to_ascii(m.group('name'))
                 _t = m.group('tag')
                 if _t == 'Resv ID: ':
                     d[_t.replace(': ', '')] = d['id']
