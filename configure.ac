@@ -128,7 +128,6 @@ AC_CHECK_HEADERS([ \
 # Checks for required header files.
 AC_CHECK_HEADERS([ \
 	stdio.h \
-	alloca.h \
 	arpa/inet.h \
 	assert.h \
 	ctype.h \
@@ -147,7 +146,6 @@ AC_CHECK_HEADERS([ \
 	netdb.h \
 	netinet/in.h \
 	netinet/in_systm.h \
-	netinet/ip.h \
 	netinet/tcp.h \
 	openssl/aes.h \
 	openssl/bio.h \
@@ -175,7 +173,6 @@ AC_CHECK_HEADERS([ \
 	sys/mount.h \
 	sys/param.h \
 	sys/poll.h \
-	sys/quota.h \
 	sys/resource.h \
 	sys/select.h \
 	sys/signal.h \
