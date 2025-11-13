@@ -1580,8 +1580,11 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 					}
 					free_svrattrl(tm_list);
 				}
-			} else if (strcasecmp(plist->al_name, ATTR_scheduling) == 0)
+			} else if (strcasecmp(plist->al_name, ATTR_scheduling) == 0) {
 				set_sattr_l_slim(SVR_ATR_scheduling, 1, SET);
+			} else if (strcasecmp(plist->al_name, ATTR_clearesten) == 0) {
+				set_sattr_l_slim(SVR_ATR_clear_est_enable, 0, SET);
+			}
 		}
 		svr_save_db(&server);
 		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_INFO,

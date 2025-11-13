@@ -983,23 +983,9 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 				}
 				/* else cal_rc == 0: failed to add to calendar - continue on */
 			} else {
-				/* it is not a tob job, is the estimate set? */
-				if (njob->job->est_start_time != -1 || njob->job->est_execvnode != NULL) {
-					struct attrl attr = {0};
-					attr.name = const_cast<char *>(ATTR_estimated);
-					attr.resource = const_cast<char *>("exec_vnode");
-					attr.value = const_cast<char *>("");
-					attr.op = UNSET;
-
-					struct attrl attr2 = {0};
-					attr2.name = const_cast<char *>(ATTR_estimated);
-					attr2.resource = const_cast<char *>("start_time");
-					attr2.value = const_cast<char *>("");
-					attr2.op = UNSET;
-
-					attr.next = &attr2;
-
-					update_job_attr(sd, njob, NULL, NULL, NULL, &attr, UPDATE_NOW);
+				if (njob->job->is_topjob) {
+					/* the job is not a tob job anymore */
+					update_job_attr(sd, njob, ATTR_topjob, NULL, const_cast<char *>("False"), NULL, UPDATE_NOW);
 				}
 			}
 
