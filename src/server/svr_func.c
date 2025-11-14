@@ -6938,3 +6938,42 @@ clear_sched_deferred_request(pbs_sched *psched)
 		free(psdefr);
 	}
 }
+
+/**
+ * @brief
+ * 		action_clear_topjob_estimates - action routine for the server's
+ * 		"clear_topjob_estimates_enable" attribute.
+ *
+ * @param[in]	pattr	-	pointer to attribute structure
+ * @param[in]	pobj	-	not used
+ * @param[in]	actmode	-	action mode
+ *
+ * @return	int
+ * @retval	zero	: success
+ * @retval	nonzero	: failure
+ */
+int
+action_clear_topjob_estimates(attribute *pattr, void *pobj, int actmode)
+{
+	if (actmode == ATR_ACTION_NEW ||
+	    actmode == ATR_ACTION_ALTER) {
+
+		if (pattr->at_val.at_long) {
+			job *pjob = (job *) GET_NEXT(svr_alljobs);
+			for (; pjob; pjob = (job *) GET_NEXT(pjob->ji_alljobs)) {
+				if (check_job_substate(pjob, JOB_SUBSTATE_EXITED)) {
+					continue;
+				}
+
+				if (get_jattr_long(pjob, JOB_ATR_topjob)) {
+					continue;
+				}
+
+				if (is_jattr_set(pjob, JOB_ATR_estimated)) {
+					clear_jattr(pjob, JOB_ATR_estimated);
+				}
+			}
+		}
+	}
+	return PBSE_NONE;
+}

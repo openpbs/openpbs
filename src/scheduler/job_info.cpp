@@ -1249,7 +1249,7 @@ new_job_info()
 	jinfo->accrue_type = 0;
 	jinfo->eligible_time = 0;
 	jinfo->can_not_preempt = 0;
-	jinfo->is_topjob = 0;
+	jinfo->is_topjob = false;
 	jinfo->topjob_ineligible = 0;
 
 	jinfo->is_array = 0;
@@ -4388,7 +4388,7 @@ update_estimated_attrs(int pbs_sd, resource_resv *job,
 			array = find_resource_resv(job->server->jobs, job->job->array_id);
 	}
 
-	if (job->job->is_topjob == FALSE) {
+	if (job->job->is_topjob == false) {
 		update_job_attr(pbs_sd, job, ATTR_topjob, NULL, const_cast<char *>("True"), NULL, aflags);
 	}
 

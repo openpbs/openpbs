@@ -100,7 +100,7 @@ void clear_job_estimate(struct work_task *ptask);
  * 		Clear job estimate.
  *
  * @par	Functionality:
- *		If the server attribute clear_estimates_enable is set to True,
+ *		If the server attribute clear_topjob_estimates_enable is set to True,
  *		the job estimates when and where the job will run are cleared.
  *
  * @param[in,out]	ptask	- work task

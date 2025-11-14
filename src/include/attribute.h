@@ -558,6 +558,7 @@ extern int set_max_job_sequence_id(attribute *pattr, void *pobj, int actmode);
 extern int set_cred_renew_enable(attribute *pattr, void *pobject, int actmode);
 extern int set_cred_renew_period(attribute *pattr, void *pobject, int actmode);
 extern int set_cred_renew_cache_period(attribute *pattr, void *pobject, int actmode);
+extern int action_clear_topjob_estimates(attribute *pattr, void *pobj, int actmode);
 
 /* Extern functions from sched_attr_def*/
 extern int action_opt_bf_fuzzy(attribute *pattr, void *pobj, int actmode);

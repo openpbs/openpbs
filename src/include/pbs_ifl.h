@@ -316,7 +316,7 @@ extern "C" {
 #define ATTR_max_concurrent_prov "max_concurrent_provision"
 #define ATTR_resv_post_processing "resv_post_processing_time"
 #define ATTR_backfill_depth "backfill_depth"
-#define ATTR_clearesten "clear_estimates_enable"
+#define ATTR_clearesten "clear_topjob_estimates_enable"
 #define ATTR_job_requeue_timeout "job_requeue_timeout"
 #define ATTR_show_hidden_attribs "show_hidden_attribs"
 #define ATTR_python_restart_max_hooks "python_restart_max_hooks"
