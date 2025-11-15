@@ -982,6 +982,11 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 						  njob->name, "Error in add_job_to_calendar");
 				}
 				/* else cal_rc == 0: failed to add to calendar - continue on */
+			} else {
+				if (njob->job->is_topjob) {
+					/* the job is not a tob job anymore */
+					update_job_attr(sd, njob, ATTR_topjob, NULL, const_cast<char *>("False"), NULL, UPDATE_NOW);
+				}
 			}
 
 			/* Need to set preemption status so that soft limits can be checked

@@ -734,6 +734,11 @@ int
 validate_job_formula(attribute *pattr, void *pobject, int actmode) {
 	return (PBSE_NONE);
 }
+
+int
+action_clear_topjob_estimates(attribute *pattr, void *pobj, int actmode) {
+	return (PBSE_NONE);
+}
 #endif /* defined(PBS_V1_COMMON_MODULE_DEFINE_STUB_FUNCS) */
 
 #endif /* defined(PBS_v1_COMMON_I_INCLUDED) */

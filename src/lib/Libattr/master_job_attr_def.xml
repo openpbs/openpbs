@@ -1924,6 +1924,23 @@
       </member_verify_function>
    </attributes>
    <attributes>
+      <member_index>JOB_ATR_topjob</member_index>
+      <member_name>ATTR_topjob</member_name>
+      <member_at_decode>decode_b</member_at_decode>
+      <member_at_encode>encode_b</member_at_encode>
+      <member_at_set>set_b</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>PRIV_READ | ATR_DFLAG_SvWR | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_BOOL</member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_bool</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
       <member_index>JOB_ATR_topjob_ineligible</member_index>
       <member_name>ATTR_topjob_ineligible</member_name>
       <member_at_decode>decode_b</member_at_decode>

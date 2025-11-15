@@ -257,6 +257,7 @@ init_server_attrs()
 	set_sattr_str_slim(SVR_ATR_mailfrom, PBS_DEFAULT_MAIL, NULL);
 	set_sattr_l_slim(SVR_ATR_query_others, 1, SET);
 	set_sattr_l_slim(SVR_ATR_scheduling, 1, SET);
+	set_sattr_l_slim(SVR_ATR_clear_est_enable, 0, SET);
 
 	prdef = &svr_resc_def[RESC_NCPUS];
 	if (prdef) {

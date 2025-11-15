@@ -93,7 +93,32 @@ extern void revert_alter_reservation(resc_resv *presv);
 extern int gen_future_reply(resc_resv *presv, long fromNow);
 extern job *chk_job_request(char *, struct batch_request *, int *, int *);
 extern resc_resv *chk_rescResv_request(char *, struct batch_request *);
+void clear_job_estimate(struct work_task *ptask);
 
+/**
+ * @brief
+ * 		Clear job estimate.
+ *
+ * @par	Functionality:
+ *		If the server attribute clear_topjob_estimates_enable is set to True,
+ *		the job estimates when and where the job will run are cleared.
+ *
+ * @param[in,out]	ptask	- work task
+ */
+void
+clear_job_estimate(struct work_task *ptask)
+{
+	job *pjob;
+	pjob = (job *) ptask->wt_parm1;
+
+	if (!get_sattr_long(SVR_ATR_clear_est_enable)) {
+		return;
+	}
+
+	if (is_jattr_set(pjob, JOB_ATR_estimated)) {
+		clear_jattr(pjob, JOB_ATR_estimated);
+	}
+}
 /*
  * post_modify_req - clean up after sending modify request to MOM
  */
@@ -295,6 +320,10 @@ req_modifyjob(struct batch_request *preq)
 				   atol(plist->al_value));
 			req_reject(PBSE_PERM, 0, preq);
 			return;
+		} else if ((strcmp(plist->al_name, ATTR_topjob) == 0) &&
+				(plist->al_value != NULL) &&
+				(strcmp(plist->al_value, "False") == 0)) {
+			set_task(WORK_Immed, 0, clear_job_estimate, (void *) pjob);
 		}
 		plist = (svrattrl *) GET_NEXT(plist->al_link);
 	}
