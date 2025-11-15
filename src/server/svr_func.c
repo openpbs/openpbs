@@ -6958,10 +6958,10 @@ action_clear_topjob_estimates(attribute *pattr, void *pobj, int actmode)
 	if (actmode == ATR_ACTION_NEW ||
 	    actmode == ATR_ACTION_ALTER) {
 
-		if (pattr->at_val.at_long) {
+		if (is_attr_set(pattr) && pattr->at_val.at_long) {
 			job *pjob = (job *) GET_NEXT(svr_alljobs);
 			for (; pjob; pjob = (job *) GET_NEXT(pjob->ji_alljobs)) {
-				if (check_job_substate(pjob, JOB_SUBSTATE_EXITED)) {
+				if (check_job_substate(pjob, JOB_SUBSTATE_FINISHED)) {
 					continue;
 				}
 

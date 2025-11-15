@@ -366,8 +366,6 @@ class TestCalendaring(TestFunctional):
         clear_topjob_estimates_enable is set to True
         """
 
-        str_to_bool = {'True': True, 'False': False}
-
         self.scheduler.set_sched_config({'strict_ordering': 'true all'})
         a = {'resources_available.ncpus': 1}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
@@ -388,7 +386,7 @@ class TestCalendaring(TestFunctional):
         job2 = self.server.status(JOB, id=jid2)
         self.assertIn('estimated.start_time', job2[0])
         self.assertIn('estimated.exec_vnode', job2[0])
-        self.assertTrue(str_to_bool[job2[0]['topjob']])
+        self.server.expect(JOB, {'topjob': True}, jid2, max_attempts=5)
 
         a = {'backfill_depth': '0'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
@@ -398,7 +396,7 @@ class TestCalendaring(TestFunctional):
         job2 = self.server.status(JOB, id=jid2)
         self.assertIn('estimated.start_time', job2[0])
         self.assertIn('estimated.exec_vnode', job2[0])
-        self.assertFalse(str_to_bool[job2[0]['topjob']])
+        self.server.expect(JOB, {'topjob': False}, jid2, max_attempts=5)
 
         a = {'clear_topjob_estimates_enable': True}
         self.server.manager(MGR_CMD_SET, SERVER, a)
@@ -416,8 +414,6 @@ class TestCalendaring(TestFunctional):
         clear_topjob_estimates_enable set to true. Also, the job's topjob
         attribute is set accordingly.
         """
-
-        str_to_bool = {'True': True, 'False': False}
 
         self.scheduler.set_sched_config({'strict_ordering': 'true all'})
         a = {'resources_available.ncpus': 1}
@@ -439,7 +435,7 @@ class TestCalendaring(TestFunctional):
         job2 = self.server.status(JOB, id=jid2)
         self.assertIn('estimated.start_time', job2[0])
         self.assertIn('estimated.exec_vnode', job2[0])
-        self.assertTrue(str_to_bool[job2[0]['topjob']])
+        self.server.expect(JOB, {'topjob': True}, jid2, max_attempts=5)
 
         a = {'backfill_depth': '0'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
@@ -449,7 +445,7 @@ class TestCalendaring(TestFunctional):
         job2 = self.server.status(JOB, id=jid2)
         self.assertNotIn('estimated.start_time', job2[0])
         self.assertNotIn('estimated.exec_vnode', job2[0])
-        self.assertFalse(str_to_bool[job2[0]['topjob']])
+        self.server.expect(JOB, {'topjob': False}, jid2, max_attempts=5)
 
     def test_topjob_estimates_clearing_disabled(self):
         """
@@ -458,8 +454,6 @@ class TestCalendaring(TestFunctional):
         top job status. The clearing is prevented by clear_topjob_estimates_enable
         set to false/unset. Also, the job's topjob attribute is set accordingly.
         """
-
-        str_to_bool = {'True': True, 'False': False}
 
         self.scheduler.set_sched_config({'strict_ordering': 'true all'})
         a = {'resources_available.ncpus': 1}
@@ -481,7 +475,7 @@ class TestCalendaring(TestFunctional):
         job2 = self.server.status(JOB, id=jid2)
         self.assertIn('estimated.start_time', job2[0])
         self.assertIn('estimated.exec_vnode', job2[0])
-        self.assertTrue(str_to_bool[job2[0]['topjob']])
+        self.server.expect(JOB, {'topjob': True}, jid2, max_attempts=5)
 
         a = {'backfill_depth': '0'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
@@ -491,4 +485,4 @@ class TestCalendaring(TestFunctional):
         job2 = self.server.status(JOB, id=jid2)
         self.assertIn('estimated.start_time', job2[0])
         self.assertIn('estimated.exec_vnode', job2[0])
-        self.assertFalse(str_to_bool[job2[0]['topjob']])
+        self.server.expect(JOB, {'topjob': False}, jid2, max_attempts=5)
