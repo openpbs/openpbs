@@ -670,6 +670,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_node_set,
 			ATTR_array,
 			ATTR_array_index,
+			ATTR_topjob,
 			ATTR_topjob_ineligible,
 			ATTR_array_indices_remaining,
 			ATTR_execvnode,
@@ -995,6 +996,9 @@ query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *
 				resresv->job->array_index = -1;
 
 			resresv->job->is_subjob = true;
+		} else if (!strcmp(attrp->name, ATTR_topjob)) {
+			if (!strcmp(attrp->value, ATR_TRUE))
+				resresv->job->is_topjob = true;
 		} else if (!strcmp(attrp->name, ATTR_topjob_ineligible)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				resresv->job->topjob_ineligible = true;
@@ -1245,6 +1249,7 @@ new_job_info()
 	jinfo->accrue_type = 0;
 	jinfo->eligible_time = 0;
 	jinfo->can_not_preempt = 0;
+	jinfo->is_topjob = false;
 	jinfo->topjob_ineligible = 0;
 
 	jinfo->is_array = 0;
@@ -2536,6 +2541,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->is_subjob = ojinfo->is_subjob;
 	njinfo->is_prerunning = ojinfo->is_prerunning;
 	njinfo->can_not_preempt = ojinfo->can_not_preempt;
+	njinfo->is_topjob = ojinfo->is_topjob;
 	njinfo->topjob_ineligible = ojinfo->topjob_ineligible;
 	njinfo->is_checkpointed = ojinfo->is_checkpointed;
 	njinfo->is_provisioning = ojinfo->is_provisioning;
@@ -4380,6 +4386,10 @@ update_estimated_attrs(int pbs_sd, resource_resv *job,
 		aflags = UPDATE_NOW;
 		if (!job->job->array_id.empty())
 			array = find_resource_resv(job->server->jobs, job->job->array_id);
+	}
+
+	if (job->job->is_topjob == false) {
+		update_job_attr(pbs_sd, job, ATTR_topjob, NULL, const_cast<char *>("True"), NULL, aflags);
 	}
 
 	/* create attrl for estimated.exec_vnode to be passed as the 'extra' field

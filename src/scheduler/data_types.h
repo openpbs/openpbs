@@ -580,6 +580,7 @@ struct job_info
 	bool is_provisioning:1;	/* job is provisioning */
 	bool is_preempted:1;	/* job is preempted */
 	bool is_prerunning:1;		/* Job in prerunning substate */
+	bool is_topjob:1;		/* job is the top job */
 	bool topjob_ineligible:1;	/* Job is ineligible to be a top job */
 
 	char *job_name;			/* job name attribute (qsub -N) */

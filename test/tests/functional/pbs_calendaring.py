@@ -358,3 +358,131 @@ class TestCalendaring(TestFunctional):
         c = "Not Running: Job would conflict with reservation or top job"
         self.server.expect(JOB, {ATTR_state: 'Q', ATTR_comment: c}, id=jid3)
         self.server.expect(JOB, {ATTR_state: 'Q', ATTR_comment: c}, id=jid4)
+
+    def test_topjob_stale_estimates_clearing_on_clear_attr_set(self):
+        """
+        In this test we test that former top job with stale estimate
+        gets the estimate cleared once the server attribute
+        clear_topjob_estimates_enable is set to True
+        """
+
+        self.scheduler.set_sched_config({'strict_ordering': 'true all'})
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        a = {'backfill_depth': '2'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'scheduler_iteration': '5'}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+
+        res_req = {'Resource_List.select': '1:ncpus=1',
+                   'Resource_List.walltime': 300}
+        j1 = Job(TEST_USER, attrs=res_req)
+        jid1 = self.server.submit(j1)
+
+        self.server.expect(JOB, {'job_state': 'R'}, jid1)
+
+        j2 = Job(TEST_USER, attrs=res_req)
+        jid2 = self.server.submit(j2)
+        job2 = self.server.status(JOB, id=jid2)
+        self.assertIn('estimated.start_time', job2[0])
+        self.assertIn('estimated.exec_vnode', job2[0])
+        self.server.expect(JOB, {'topjob': True}, jid2, max_attempts=5)
+
+        a = {'backfill_depth': '0'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        time.sleep(6)
+
+        job2 = self.server.status(JOB, id=jid2)
+        self.assertIn('estimated.start_time', job2[0])
+        self.assertIn('estimated.exec_vnode', job2[0])
+        self.server.expect(JOB, {'topjob': False}, jid2, max_attempts=5)
+
+        a = {'clear_topjob_estimates_enable': True}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        self.server.expect(JOB, 'estimated.start_time', id=jid2, op=UNSET,
+                           interval=1, max_attempts=10)
+        self.server.expect(JOB, 'estimated.exec_vnode', id=jid2, op=UNSET,
+                           interval=1, max_attempts=10)
+
+    def test_topjob_estimates_clearing_enabled(self):
+        """
+        In this test we test that the top job which gets added to the
+        calendar with valid estimate has estimate cleared once it losses
+        top job status. The clearing needs to have the server attribute
+        clear_topjob_estimates_enable set to true. Also, the job's topjob
+        attribute is set accordingly.
+        """
+
+        self.scheduler.set_sched_config({'strict_ordering': 'true all'})
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        a = {'backfill_depth': '2', 'clear_topjob_estimates_enable': True}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'scheduler_iteration': '5'}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+
+        res_req = {'Resource_List.select': '1:ncpus=1',
+                   'Resource_List.walltime': 300}
+        j1 = Job(TEST_USER, attrs=res_req)
+        jid1 = self.server.submit(j1)
+
+        self.server.expect(JOB, {'job_state': 'R'}, jid1)
+
+        j2 = Job(TEST_USER, attrs=res_req)
+        jid2 = self.server.submit(j2)
+        job2 = self.server.status(JOB, id=jid2)
+        self.assertIn('estimated.start_time', job2[0])
+        self.assertIn('estimated.exec_vnode', job2[0])
+        self.server.expect(JOB, {'topjob': True}, jid2, max_attempts=5)
+
+        a = {'backfill_depth': '0'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        time.sleep(6)
+
+        job2 = self.server.status(JOB, id=jid2)
+        self.assertNotIn('estimated.start_time', job2[0])
+        self.assertNotIn('estimated.exec_vnode', job2[0])
+        self.server.expect(JOB, {'topjob': False}, jid2, max_attempts=5)
+
+    def test_topjob_estimates_clearing_disabled(self):
+        """
+        In this test we test that the top job which gets added to the
+        calendar with valid estimate has not estimate cleared if it losses
+        top job status. The clearing is prevented by clear_topjob_estimates_enable
+        set to false/unset. Also, the job's topjob attribute is set accordingly.
+        """
+
+        self.scheduler.set_sched_config({'strict_ordering': 'true all'})
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        a = {'backfill_depth': '2', 'clear_topjob_estimates_enable': False}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'scheduler_iteration': '5'}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+
+        res_req = {'Resource_List.select': '1:ncpus=1',
+                   'Resource_List.walltime': 300}
+        j1 = Job(TEST_USER, attrs=res_req)
+        jid1 = self.server.submit(j1)
+
+        self.server.expect(JOB, {'job_state': 'R'}, jid1)
+
+        j2 = Job(TEST_USER, attrs=res_req)
+        jid2 = self.server.submit(j2)
+        job2 = self.server.status(JOB, id=jid2)
+        self.assertIn('estimated.start_time', job2[0])
+        self.assertIn('estimated.exec_vnode', job2[0])
+        self.server.expect(JOB, {'topjob': True}, jid2, max_attempts=5)
+
+        a = {'backfill_depth': '0'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        time.sleep(6)
+
+        job2 = self.server.status(JOB, id=jid2)
+        self.assertIn('estimated.start_time', job2[0])
+        self.assertIn('estimated.exec_vnode', job2[0])
+        self.server.expect(JOB, {'topjob': False}, jid2, max_attempts=5)
