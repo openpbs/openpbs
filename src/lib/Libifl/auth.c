@@ -43,6 +43,7 @@
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 #include <dlfcn.h>
+#include <netdb.h>
 
 #include "dis.h"
 #include "pbs_ifl.h"
@@ -1037,11 +1038,12 @@ client_cipher_auth(int fd, char *text, char *ebuf, size_t ebufsz)
  *
  */
 int
-auth_exec_socket(int sock, unsigned short port, char *auth_method, char* jobid)
+auth_exec_socket(int sock, struct sockaddr_in *from, char *auth_method, char* jobid)
 {
 	char ebuf[LOG_BUF_SIZE] = "";
 	/* Reduce timeout to avoid blocking too long */
 	pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_SHORT;
+	unsigned short port = ntohs(GET_IP_PORT(from));
 
 	if (strcmp(auth_method, AUTH_RESVPORT_NAME) == 0) {
 		/* For resvport, simply verify that the remote port is prvileged */
@@ -1089,6 +1091,50 @@ auth_exec_socket(int sock, unsigned short port, char *auth_method, char* jobid)
 			return INTERACTIVE_AUTH_RETRY;
 		}
 		free_auth_config(auth_config);
+	} else if ((strcmp(auth_method, AUTH_GSS_NAME) == 0)) {
+		char encrypt_method[MAXAUTHNAME + 1] = "GSS";
+		pbs_auth_config_t *auth_config = NULL;
+		auth_def_t *authdef = NULL;
+		struct hostent *hostp;
+		const void *addr;
+		size_t addr_size;
+
+		if (load_auths(AUTH_CLIENT)) {
+			fprintf(stderr, "qsub: Failed to load auths\n");
+			return INTERACTIVE_AUTH_FAILED;
+		}
+
+		auth_config = make_auth_config(auth_method,
+					       encrypt_method,
+					       pbs_conf.pbs_exec_path,
+					       pbs_conf.pbs_home_path,
+					       NULL);
+		if (auth_config == NULL) {
+			fprintf(stderr, "qsub: Out of memory when allocating new auth config\n");
+			return INTERACTIVE_AUTH_FAILED;
+		}
+
+		authdef = get_auth(auth_method);
+		if (authdef == NULL) {
+			fprintf(stderr, "qsub: Auth method '%s' does not seem implemented\n", auth_method ? auth_method : "");
+			free_auth_config(auth_config);
+			return INTERACTIVE_AUTH_FAILED;
+		}
+
+		addr = &from->sin_addr;
+		addr_size = sizeof(from->sin_addr);
+		hostp = gethostbyaddr(addr, addr_size, from->sin_family);
+		if (hostp == NULL) {
+			fprintf(stderr, "qsub: Unable to resolve host address\n");
+			free_auth_config(auth_config);
+			return INTERACTIVE_AUTH_RETRY;
+		}
+
+		if (handle_client_handshake(sock, hostp->h_name, auth_method, FOR_ENCRYPT, auth_config, ebuf, sizeof(ebuf)) != 0) {
+			fprintf(stderr, "qsub: %s\n", ebuf);
+			free_auth_config(auth_config);
+			return INTERACTIVE_AUTH_RETRY;
+		}
 	} else {
 		fprintf(stderr, "qsub: Auth method '%s' not supported\n", auth_method ? auth_method : "");
 		return INTERACTIVE_AUTH_FAILED;
@@ -1118,6 +1164,56 @@ int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_met
 	if (strcmp(auth_method, AUTH_RESVPORT_NAME) == 0) {
 		/* If method is resvport, we have already connected with a privileged port */
 		return INTERACTIVE_AUTH_SUCCESS;
+	} else if ((strcmp(auth_method, AUTH_GSS_NAME) == 0)) {
+		char encrypt_method[MAXAUTHNAME + 1] = "GSS";
+		pbs_auth_config_t *auth_config = NULL;
+		auth_def_t *authdef = NULL;
+
+		if (!is_string_in_arr(pbs_conf.supported_auth_methods, auth_method)) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Auth method '%s' not supported", auth_method ? auth_method : "");
+			return INTERACTIVE_AUTH_FAILED;
+		}
+
+		DIS_tcp_funcs();
+
+		/* user credentials could be expired on qsub side, wait for user to possibly refresh credentials manually */
+		pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_VLONG;
+
+		if (load_auths(AUTH_SERVER)) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Failed to load auths");
+			return INTERACTIVE_AUTH_FAILED;
+		}
+
+		auth_config = make_auth_config(auth_method,
+							encrypt_method,
+							pbs_conf.pbs_exec_path,
+							pbs_conf.pbs_home_path,
+							NULL);
+		if (auth_config == NULL) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Out of memory when allocating new auth config");
+			return INTERACTIVE_AUTH_FAILED;
+		}
+
+		authdef = get_auth(auth_method);
+		if (authdef == NULL) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Auth method '%s' does not seem implemented\n", auth_method ? auth_method : "");
+			free_auth_config(auth_config);
+			return INTERACTIVE_AUTH_FAILED;
+		} else {
+			authdef->set_config((const pbs_auth_config_t *) auth_config);
+			transport_chan_set_authdef(sock, authdef, FOR_ENCRYPT);
+			transport_chan_set_ctx_status(sock, AUTH_STATUS_CTX_ESTABLISHING, FOR_ENCRYPT);
+		}
+
+		/* run handshake loop */
+		while (transport_chan_get_ctx_status(sock, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_ESTABLISHING) {
+			if (engage_server_auth(sock, hostname, FOR_ENCRYPT, AUTH_INTERACTIVE, ebuf, sizeof(ebuf)) != 0) {
+				if (ebuf[0] != '\0')
+					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "qsub: %s\n", ebuf);
+				free_auth_config(auth_config);
+				return INTERACTIVE_AUTH_FAILED;
+			}
+		}
 	} else {
 		char encrypt_method[MAXAUTHNAME + 1] = "";
 		pbs_auth_config_t *auth_config = NULL;
