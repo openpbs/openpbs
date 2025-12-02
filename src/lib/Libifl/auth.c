@@ -1038,7 +1038,7 @@ client_cipher_auth(int fd, char *text, char *ebuf, size_t ebufsz)
  *
  */
 int
-auth_exec_socket(int sock, struct sockaddr_in *from, char *auth_method, char* jobid)
+auth_exec_socket(int sock, struct sockaddr_in *from, char *auth_method, char *encrypt_method, char* jobid)
 {
 	char ebuf[LOG_BUF_SIZE] = "";
 	/* Reduce timeout to avoid blocking too long */
@@ -1052,7 +1052,7 @@ auth_exec_socket(int sock, struct sockaddr_in *from, char *auth_method, char* jo
 		else
 			return INTERACTIVE_AUTH_RETRY;
 	} else if ((strcmp(auth_method, AUTH_MUNGE_NAME) == 0)) {
-		char encrypt_method[MAXAUTHNAME + 1] = "";
+		encrypt_method[0] = '\0';
 		pbs_auth_config_t *auth_config = NULL;
 		auth_def_t *authdef = NULL;
 
@@ -1092,12 +1092,10 @@ auth_exec_socket(int sock, struct sockaddr_in *from, char *auth_method, char* jo
 		}
 		free_auth_config(auth_config);
 	} else if ((strcmp(auth_method, AUTH_GSS_NAME) == 0)) {
-		char encrypt_method[MAXAUTHNAME + 1] = "GSS";
 		pbs_auth_config_t *auth_config = NULL;
 		auth_def_t *authdef = NULL;
-		struct hostent *hostp;
-		const void *addr;
-		size_t addr_size;
+		char *hostname;
+		int for_encrypt;
 
 		if (load_auths(AUTH_CLIENT)) {
 			fprintf(stderr, "qsub: Failed to load auths\n");
@@ -1121,16 +1119,20 @@ auth_exec_socket(int sock, struct sockaddr_in *from, char *auth_method, char* jo
 			return INTERACTIVE_AUTH_FAILED;
 		}
 
-		addr = &from->sin_addr;
-		addr_size = sizeof(from->sin_addr);
-		hostp = gethostbyaddr(addr, addr_size, from->sin_family);
-		if (hostp == NULL) {
+		hostname = get_hostname_from_addr(from->sin_addr);
+		if (hostname == NULL) {
 			fprintf(stderr, "qsub: Unable to resolve host address\n");
 			free_auth_config(auth_config);
 			return INTERACTIVE_AUTH_RETRY;
 		}
 
-		if (handle_client_handshake(sock, hostp->h_name, auth_method, FOR_ENCRYPT, auth_config, ebuf, sizeof(ebuf)) != 0) {
+		if (encrypt_method[0] == '\0') {
+			for_encrypt = FOR_AUTH;
+		} else {
+			for_encrypt = FOR_ENCRYPT;
+		}
+
+		if (handle_client_handshake(sock, hostname, auth_method, for_encrypt, auth_config, ebuf, sizeof(ebuf)) != 0) {
 			fprintf(stderr, "qsub: %s\n", ebuf);
 			free_auth_config(auth_config);
 			return INTERACTIVE_AUTH_RETRY;
@@ -1157,7 +1159,7 @@ auth_exec_socket(int sock, struct sockaddr_in *from, char *auth_method, char* jo
  * @retval	INTERACTIVE_AUTH_FAILED (1) - authentication failed
  *
  */
-int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_method, char *jobid)
+int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_method, char *encrypt_method, char *jobid)
 {
 	char ebuf[LOG_BUF_SIZE] = "";
 
@@ -1165,9 +1167,9 @@ int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_met
 		/* If method is resvport, we have already connected with a privileged port */
 		return INTERACTIVE_AUTH_SUCCESS;
 	} else if ((strcmp(auth_method, AUTH_GSS_NAME) == 0)) {
-		char encrypt_method[MAXAUTHNAME + 1] = "GSS";
 		pbs_auth_config_t *auth_config = NULL;
 		auth_def_t *authdef = NULL;
+		int for_encrypt;
 
 		if (!is_string_in_arr(pbs_conf.supported_auth_methods, auth_method)) {
 			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Auth method '%s' not supported", auth_method ? auth_method : "");
@@ -1194,6 +1196,12 @@ int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_met
 			return INTERACTIVE_AUTH_FAILED;
 		}
 
+		if (encrypt_method[0] == '\0') {
+			for_encrypt = FOR_AUTH;
+		} else {
+			for_encrypt = FOR_ENCRYPT;
+		}
+
 		authdef = get_auth(auth_method);
 		if (authdef == NULL) {
 			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Auth method '%s' does not seem implemented\n", auth_method ? auth_method : "");
@@ -1201,13 +1209,13 @@ int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_met
 			return INTERACTIVE_AUTH_FAILED;
 		} else {
 			authdef->set_config((const pbs_auth_config_t *) auth_config);
-			transport_chan_set_authdef(sock, authdef, FOR_ENCRYPT);
-			transport_chan_set_ctx_status(sock, AUTH_STATUS_CTX_ESTABLISHING, FOR_ENCRYPT);
+			transport_chan_set_authdef(sock, authdef, for_encrypt);
+			transport_chan_set_ctx_status(sock, AUTH_STATUS_CTX_ESTABLISHING, for_encrypt);
 		}
 
 		/* run handshake loop */
-		while (transport_chan_get_ctx_status(sock, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_ESTABLISHING) {
-			if (engage_server_auth(sock, hostname, FOR_ENCRYPT, AUTH_INTERACTIVE, ebuf, sizeof(ebuf)) != 0) {
+		while (transport_chan_get_ctx_status(sock, for_encrypt) == (int) AUTH_STATUS_CTX_ESTABLISHING) {
+			if (engage_server_auth(sock, hostname, for_encrypt, AUTH_INTERACTIVE, ebuf, sizeof(ebuf)) != 0) {
 				if (ebuf[0] != '\0')
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "qsub: %s\n", ebuf);
 				free_auth_config(auth_config);
@@ -1215,7 +1223,7 @@ int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_met
 			}
 		}
 	} else {
-		char encrypt_method[MAXAUTHNAME + 1] = "";
+		encrypt_method[0] = '\0';
 		pbs_auth_config_t *auth_config = NULL;
 
 		if (!is_string_in_arr(pbs_conf.supported_auth_methods, auth_method)) {

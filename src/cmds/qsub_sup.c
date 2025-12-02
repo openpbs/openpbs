@@ -1062,6 +1062,8 @@ writer(int s)
 	char tilde = '~';
 	int wi;
 
+	bool as_pkt = transport_chan_get_ctx_status(s, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_READY;
+
 	/* read from stdin, and write to the socket */
 
 	while (1) {
@@ -1091,14 +1093,20 @@ writer(int s)
 						continue;
 #endif						 /* VDSUSP */
 					} else { /* not escape, write out tilde */
-						while ((wi = CS_write(s, &tilde, 1)) != 1) {
-							if ((wi == -1) && (errno == EINTR))
-								continue;
-							else
+						if (as_pkt) {
+							wi = transport_send_pkt(s, AUTH_ENCRYPTED_DATA, &tilde, 1);
+							if (wi < 1)
+								break;
+						} else {
+							while ((wi = CS_write(s, &tilde, 1)) != 1) {
+								if ((wi == -1) && (errno == EINTR))
+									continue;
+								else
+									break;
+							}
+							if (wi != 1)
 								break;
 						}
-						if (wi != 1)
-							break;
 					}
 				}
 				newline = 0; /* no longer at start of line */
@@ -1109,93 +1117,20 @@ writer(int s)
 					  (c == oldtio.c_cc[VINTR]) ||
 					  (c == '\r');
 			}
-			while ((wi = CS_write(s, &c, 1)) != 1) { /* write out character */
-				if ((wi == -1) && (errno == EINTR))
-					continue;
-				else
+			if (as_pkt) {
+				wi = transport_send_pkt(s, AUTH_ENCRYPTED_DATA, &c, 1);
+				if (wi < 1)
+					break;
+			} else {
+				while ((wi = CS_write(s, &c, 1)) != 1) { /* write out character */
+					if ((wi == -1) && (errno == EINTR))
+						continue;
+					else
+						break;
+				}
+				if (wi != 1)
 					break;
 			}
-			if (wi != 1)
-				break;
-
-		} else if (i == 0) { /* EOF */
-			break;
-		} else if (i < 0) { /* error */
-			if (errno == EINTR)
-				continue;
-			else {
-				perror("qsub: read error");
-				return;
-			}
-		}
-	}
-	return;
-}
-
-/**
- * @brief
- * 	Packet Writer process: reads from stdin, and writes
- * 	data out to the rem socket
- *
- * @param[in] s - file descriptor
- *
- * @return Void
- *
- */
-void
-pkt_writer(int s)
-{
-	char c;
-	int i;
-	int newline = 1;
-	char tilde = '~';
-	int wi;
-
-	/* read from stdin, and write to the socket */
-
-	while (1) {
-		i = read(0, &c, 1);
-		if (i > 0) { /* read data */
-			if (newline) {
-				if (c == tilde) { /* maybe escape character */
-
-					/* read next character to check */
-
-					while ((i = read(0, &c, 1)) != 1) {
-						if ((i == -1) && (errno == EINTR))
-							continue;
-						else
-							break;
-					}
-					if (i != 1)
-						break;
-					if (c == '.') /* termination character */
-						break;
-					else if (c == oldtio.c_cc[VSUSP]) {
-						stopme(0); /* ^Z suspend all */
-						continue;
-#ifdef VDSUSP
-					} else if (c == oldtio.c_cc[VDSUSP]) {
-						stopme(getpid());
-						continue;
-#endif						 /* VDSUSP */
-					} else { /* not escape, write out tilde */
-						wi = transport_send_pkt(s, AUTH_ENCRYPTED_DATA, &tilde, 1);
-						if (wi < 1)
-							break;
-					}
-				}
-				newline = 0; /* no longer at start of line */
-			} else {
-				/* reset to newline if \n \r kill or interrupt */
-				newline = (c == '\n') ||
-					  (c == oldtio.c_cc[VKILL]) ||
-					  (c == oldtio.c_cc[VINTR]) ||
-					  (c == '\r');
-			}
-			wi = transport_send_pkt(s, AUTH_ENCRYPTED_DATA, &c, 1);
-			if (wi < 1)
-				break;
 
 		} else if (i == 0) { /* EOF */
 			break;
@@ -1455,7 +1390,8 @@ x11handler(int X_data_socket, int interactive_reader_socket)
 
 	port_forwarder(socks, x11_connect_display, display, 0,
 		       interactive_reader_socket, get_reader_Xjob, log_cmds_portfw_msg,
-			   QSUB_SIDE, pbs_conf.interactive_auth_method, new_jobname);
+			   QSUB_SIDE, pbs_conf.interactive_auth_method,
+			   pbs_conf.interactive_encrypt_method, new_jobname);
 }
 
 /**
@@ -1569,7 +1505,7 @@ retry:
 	 * second, mom sends the job id for us to verify
 	 */
 
-	ret = auth_exec_socket(news, &from, pbs_conf.interactive_auth_method, new_jobname);
+	ret = auth_exec_socket(news, &from, pbs_conf.interactive_auth_method, pbs_conf.interactive_encrypt_method, new_jobname);
 	if (ret != INTERACTIVE_AUTH_SUCCESS) {
  		fprintf(stderr, "qsub: failed authentication with execution host\n");
 		shutdown(news, SHUT_RDWR);
@@ -1670,11 +1606,7 @@ retry:
 		if (sigaction(SIGCHLD, &act, NULL) < 0)
 			exit_qsub(1);
 
-		if (transport_chan_get_ctx_status(news, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_READY) {
-			pkt_writer(news);
-		} else {
-			writer(news);
-		}
+		writer(news);
 
 		/* all done - make sure the child is gone and reset the terminal */
 		kill(child, SIGTERM);

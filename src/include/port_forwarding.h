@@ -90,7 +90,7 @@ struct pfwdsock {
 /*Functions available in port_forwarding.h*/
 void port_forwarder(struct pfwdsock *, int (*connfunc)(char *phost, long pport),
 		    char *, int, int inter_read_sock, int (*readfunc)(int), void (*logfunc)(char *),
-		    int is_qsub_side, char *auth_method, char *jobid);
+		    int is_qsub_side, char *auth_method, char *encrypt_method, char *jobid);
 int connect_local_xsocket(u_int);
 int x11_connect_display(char *, long);
 int set_nonblocking(int);

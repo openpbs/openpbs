@@ -89,6 +89,7 @@ struct pbs_config pbs_conf = {
 	{'\0'},			    /* default no auth method to encrypt/decrypt data */
 	AUTH_RESVPORT_NAME,	    /* default to reserved port authentication */
 	AUTH_RESVPORT_NAME,	    /* default to reserved port qsub -I authentication. Possible values: resvport, munge */
+	{'\0'},			    /* default no method to encrypt/decrypt data in an interatcive job */
 	0,			    /* sched_modify_event */
 	0,			    /* syslogfac */
 	3,			    /* syslogsvr - LOG_ERR from syslog.h */
@@ -543,6 +544,13 @@ __pbs_loadconf(int reload)
 				memset(pbs_conf.interactive_auth_method, '\0', sizeof(pbs_conf.interactive_auth_method));
 				strcpy(pbs_conf.interactive_auth_method, value);
 				free(value);
+			} else if (!strcmp(conf_name, PBS_CONF_INTERACTIVE_ENCRYPT_METHOD)) {
+				char *value = convert_string_to_lowercase(conf_value);
+				if (value == NULL)
+					goto err;
+				memset(pbs_conf.interactive_encrypt_method, '\0', sizeof(pbs_conf.interactive_encrypt_method));
+				strcpy(pbs_conf.interactive_encrypt_method, value);
+				free(value);
 			} else if (!strcmp(conf_name, PBS_CONF_AUTH)) {
 				char *value = convert_string_to_lowercase(conf_value);
 				if (value == NULL)
@@ -943,6 +951,15 @@ __pbs_loadconf(int reload)
 			goto err;
 		memset(pbs_conf.interactive_auth_method, '\0', sizeof(pbs_conf.interactive_auth_method));
 		strcpy(pbs_conf.interactive_auth_method, value);
+		free(value);
+	}
+	if ((gvalue = getenv(PBS_CONF_INTERACTIVE_ENCRYPT_METHOD)) != NULL) {
+		char *value = convert_string_to_lowercase(gvalue);
+		ensure_string_not_null(&value); // allow unsetting
+		if (value == NULL)
+			goto err;
+		memset(pbs_conf.interactive_encrypt_method, '\0', sizeof(pbs_conf.interactive_encrypt_method));
+		strcpy(pbs_conf.interactive_encrypt_method, value);
 		free(value);
 	}
 	if ((gvalue = getenv(PBS_CONF_AUTH)) != NULL) {

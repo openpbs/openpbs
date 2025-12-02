@@ -208,6 +208,7 @@ struct pbs_config
 	char encrypt_method[MAXAUTHNAME + 1];	/* auth method to used for encrypt/decrypt data */
 	char auth_method[MAXAUTHNAME + 1];	/* default auth_method to used by client */
 	char interactive_auth_method[MAXAUTHNAME + 1];	/* auth_method used in interactive qsub sessions */
+	char interactive_encrypt_method[MAXAUTHNAME + 1];	/* encrypt_method used in interactive qsub sessions */
 	unsigned int sched_modify_event:1;	/* whether to trigger modifyjob hook event or not */
 	unsigned syslogfac;		        /* syslog facility */
 	unsigned syslogsvr;			/* min priority to log to syslog */
@@ -313,6 +314,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_SMTP_SERVER_NAME "PBS_SMTP_SERVER_NAME" /* Name of SMTP Host to send mail to */
 #define PBS_CONF_TMPDIR		"PBS_TMPDIR"     /* temporary file directory */
 #define PBS_CONF_INTERACTIVE_AUTH_METHOD	"PBS_INTERACTIVE_AUTH_METHOD"	/* Authentication method used in qsub interactive */
+#define PBS_CONF_INTERACTIVE_ENCRYPT_METHOD	"PBS_INTERACTIVE_ENCRYPT_METHOD"	/* Encryption method used in qsub interactive */
 #define PBS_CONF_AUTH		"PBS_AUTH_METHOD"
 #define PBS_CONF_ENCRYPT_METHOD	"PBS_ENCRYPT_METHOD"
 #define PBS_CONF_SUPPORTED_AUTH_METHODS	"PBS_SUPPORTED_AUTH_METHODS"
