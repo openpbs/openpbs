@@ -62,6 +62,7 @@
 #include <stdlib.h>
 #include "pbs_internal.h"
 #include "libutil.h"
+#include <sys/socket.h>
 #include <arpa/inet.h>
 #include "pbs_json.h"
 
