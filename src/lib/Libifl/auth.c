@@ -1047,11 +1047,11 @@ auth_exec_socket(int sock, struct sockaddr_in *from, char *auth_method, char *en
 
 	if (strcmp(auth_method, AUTH_RESVPORT_NAME) == 0) {
 		/* For resvport, simply verify that the remote port is prvileged */
-		if (port < IPPORT_RESERVED)
-			return INTERACTIVE_AUTH_SUCCESS;
-		else
+		if (port >= IPPORT_RESERVED)
 			return INTERACTIVE_AUTH_RETRY;
-	} else if ((strcmp(auth_method, AUTH_MUNGE_NAME) == 0)) {
+	}
+
+	if ((strcmp(auth_method, AUTH_MUNGE_NAME) == 0)) {
 		encrypt_method[0] = '\0';
 		pbs_auth_config_t *auth_config = NULL;
 		auth_def_t *authdef = NULL;
@@ -1091,18 +1091,23 @@ auth_exec_socket(int sock, struct sockaddr_in *from, char *auth_method, char *en
 			return INTERACTIVE_AUTH_RETRY;
 		}
 		free_auth_config(auth_config);
-	} else if ((strcmp(auth_method, AUTH_GSS_NAME) == 0)) {
+	}
+
+	if (strcmp(auth_method, AUTH_GSS_NAME) == 0 || strcmp(encrypt_method, AUTH_GSS_NAME) == 0) {
 		pbs_auth_config_t *auth_config = NULL;
 		auth_def_t *authdef = NULL;
 		char *hostname;
 		int for_encrypt;
+		char *method;
+
+		method = strcmp(auth_method, AUTH_GSS_NAME) == 0 ? auth_method : encrypt_method;
 
 		if (load_auths(AUTH_CLIENT)) {
 			fprintf(stderr, "qsub: Failed to load auths\n");
 			return INTERACTIVE_AUTH_FAILED;
 		}
 
-		auth_config = make_auth_config(auth_method,
+		auth_config = make_auth_config(method,
 					       encrypt_method,
 					       pbs_conf.pbs_exec_path,
 					       pbs_conf.pbs_home_path,
@@ -1112,7 +1117,7 @@ auth_exec_socket(int sock, struct sockaddr_in *from, char *auth_method, char *en
 			return INTERACTIVE_AUTH_FAILED;
 		}
 
-		authdef = get_auth(auth_method);
+		authdef = get_auth(method);
 		if (authdef == NULL) {
 			fprintf(stderr, "qsub: Auth method '%s' does not seem implemented\n", auth_method ? auth_method : "");
 			free_auth_config(auth_config);
@@ -1132,12 +1137,14 @@ auth_exec_socket(int sock, struct sockaddr_in *from, char *auth_method, char *en
 			for_encrypt = FOR_ENCRYPT;
 		}
 
-		if (handle_client_handshake(sock, hostname, auth_method, for_encrypt, auth_config, ebuf, sizeof(ebuf)) != 0) {
+		if (handle_client_handshake(sock, hostname, method, for_encrypt, auth_config, ebuf, sizeof(ebuf)) != 0) {
 			fprintf(stderr, "qsub: %s\n", ebuf);
 			free_auth_config(auth_config);
 			return INTERACTIVE_AUTH_RETRY;
 		}
-	} else {
+	}
+
+	if (!is_string_in_arr(pbs_conf.supported_auth_methods, auth_method)) {
 		fprintf(stderr, "qsub: Auth method '%s' not supported\n", auth_method ? auth_method : "");
 		return INTERACTIVE_AUTH_FAILED;
 	}
@@ -1163,16 +1170,18 @@ int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_met
 {
 	char ebuf[LOG_BUF_SIZE] = "";
 
-	if (strcmp(auth_method, AUTH_RESVPORT_NAME) == 0) {
-		/* If method is resvport, we have already connected with a privileged port */
-		return INTERACTIVE_AUTH_SUCCESS;
-	} else if ((strcmp(auth_method, AUTH_GSS_NAME) == 0)) {
+	/* If auth_method is resvport, we have already connected with a privileged port */
+
+	if ((strcmp(auth_method, AUTH_GSS_NAME) == 0) || strcmp(encrypt_method, AUTH_GSS_NAME) == 0) {
 		pbs_auth_config_t *auth_config = NULL;
 		auth_def_t *authdef = NULL;
 		int for_encrypt;
+		char *method;
 
-		if (!is_string_in_arr(pbs_conf.supported_auth_methods, auth_method)) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Auth method '%s' not supported", auth_method ? auth_method : "");
+		method = strcmp(auth_method, AUTH_GSS_NAME) == 0 ? auth_method : encrypt_method;
+
+		if (!is_string_in_arr(pbs_conf.supported_auth_methods, method)) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Auth method '%s' not supported", method ? method : "");
 			return INTERACTIVE_AUTH_FAILED;
 		}
 
@@ -1186,7 +1195,7 @@ int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_met
 			return INTERACTIVE_AUTH_FAILED;
 		}
 
-		auth_config = make_auth_config(auth_method,
+		auth_config = make_auth_config(method,
 							encrypt_method,
 							pbs_conf.pbs_exec_path,
 							pbs_conf.pbs_home_path,
@@ -1202,9 +1211,9 @@ int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_met
 			for_encrypt = FOR_ENCRYPT;
 		}
 
-		authdef = get_auth(auth_method);
+		authdef = get_auth(method);
 		if (authdef == NULL) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Auth method '%s' does not seem implemented\n", auth_method ? auth_method : "");
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, jobid, "Auth method '%s' does not seem implemented\n", method ? method : "");
 			free_auth_config(auth_config);
 			return INTERACTIVE_AUTH_FAILED;
 		} else {
@@ -1222,7 +1231,9 @@ int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_met
 				return INTERACTIVE_AUTH_FAILED;
 			}
 		}
-	} else {
+	}
+
+	if ((strcmp(auth_method, AUTH_MUNGE_NAME) == 0)) {
 		encrypt_method[0] = '\0';
 		pbs_auth_config_t *auth_config = NULL;
 
@@ -1255,5 +1266,6 @@ int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_met
 		}
 		free_auth_config(auth_config);
 	}
+
 	return INTERACTIVE_AUTH_SUCCESS;
 }
