@@ -95,6 +95,7 @@ extern int set_nodelay(int fd);
  * @param logfunc[in] - Function pointer for log function
  * @param is_qsub_side[in] - Can be one of QSUB_SIDE (1) or EXEC_HOST_SIDE (0)
  * @param auth_method[in] - Authentication method used
+ * @param encrypt_method[in] - Encryption method used
  * @param jobid[in] - Job id
  *
  * @return void
@@ -110,6 +111,7 @@ port_forwarder(
 	void (*logfunc)(char *),
 	int is_qsub_side,
 	char *auth_method,
+	char *encrypt_method,
 	char *jobid)
 {
 	fd_set rfdset, wfdset, efdset;
@@ -226,7 +228,7 @@ port_forwarder(
 
 					/* authenticate execution host socket */
 					if (is_qsub_side == QSUB_SIDE) {
-						if (auth_exec_socket(sock, ntohs(GET_IP_PORT(&from)), auth_method, jobid) != INTERACTIVE_AUTH_SUCCESS) {
+						if (auth_exec_socket(sock, &from, auth_method, encrypt_method, jobid) != INTERACTIVE_AUTH_SUCCESS) {
 							snprintf(err_msg, sizeof(err_msg),
 								"Incoming connection from %s on socket %d rejected, authentication data incorrect, errno=%d",
 								netaddr((struct sockaddr_in *)&from), sock, errno);
@@ -277,7 +279,7 @@ port_forwarder(
 
 					/* authenticate with qsub side */
 					if (is_qsub_side == EXEC_HOST_SIDE) {
-						if (auth_with_qsub((socks + peersock)->sock, pport, phost, auth_method, jobid) != 0) {
+						if (auth_with_qsub((socks + peersock)->sock, pport, phost, auth_method, encrypt_method, jobid) != 0) {
 							snprintf(err_msg, sizeof(err_msg),
 								"Authentication for outgoing connection to qsub from port %u on socket %d rejected by remote side, errno=%d",
 								pport, (socks + peersock)->sock, errno);

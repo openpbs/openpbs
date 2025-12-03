@@ -804,6 +804,59 @@ reader(int s)
 }
 
 /**
+ * @brief
+ *	Interactive Paket Reader process: reads from the remote socket,
+ *	and writes that out to the stdout
+ *
+ * @param[in] s - socket (file descriptor)
+ *
+ * @return   Error code
+ * @retval  -1  Failure
+ * @retval   0   Success
+ *
+ */
+int
+pkt_reader(int s)
+{
+	int c;
+	char *p;
+	int wc;
+	void *data_in = NULL;
+	size_t len_in = 0;
+	int type = 0;
+
+	/* read from the socket, and write to stdout */
+	while (1) {
+		pbs_tcp_timeout = -1;
+		c = transport_recv_pkt(s, &type, &data_in, &len_in);
+		if (c > 0) {
+			p = data_in;
+			while (c) {
+				if ((wc = write(1, p, c)) < 0) {
+					if (errno == EINTR) {
+						continue;
+					} else {
+						perror("qsub: write error");
+						return (-1);
+					}
+				}
+				c -= wc;
+				p += wc;
+			}
+		} else if (c == -2) { /* tcp_recv returns -2 on EOF */
+			return (0); /* EOF - all done */
+		} else {
+			if (errno == EINTR)
+				continue;
+			else {
+				perror("qsub: read error");
+				return (-1);
+			}
+		}
+	}
+}
+
+/**
  * @brief       This is a reader function which reads from the remote socket
  *              when X forwarding is enabled and writes it back to stdout.
  *
@@ -855,6 +908,84 @@ reader_Xjob(int s)
 	}
 
 	return (0);
+}
+
+/**
+ * @brief       This is a packet reader function which reads from the remote socket
+ *              when X forwarding is enabled and writes it back to stdout.
+ *
+ * @param[in] s - socket descriptor from where data is to be read.
+ *
+ * @return	int
+ * @retval	 0	Success
+ * @retval	-1	Failure
+ * @retval      -2      Peer Closed connection
+ *
+ */
+int
+pkt_reader_Xjob(int s)
+{
+	int c = 0;
+	char *p;
+	int wc;
+	int d = fileno(stdout);
+	void *data_in = NULL;
+	size_t len_in = 0;
+	int type = 0;
+
+	/* read from the socket and write to stdout */
+	c = transport_recv_pkt(s, &type, &data_in, &len_in);
+	if (c > 0) {
+		p = data_in;
+		while (c) {
+			/*write data back to stdout*/
+			if ((wc = write(d, p, c)) < 0) {
+				if (errno == EINTR) {
+					continue;
+				} else {
+					perror("qsub: write error");
+					return (-1);
+				}
+			}
+			c -= wc;
+			p += wc;
+		}
+	} else if (c == -2) { /* tcp_recv returns -2 on EOF */
+		/*
+		 * If control reaches here, then it means peer has closed the
+		 * connection.
+		 */
+		return (-2);
+	} else if (errno == EINTR) {
+		return (0);
+	} else {
+		perror("qsub: read error");
+		return (-1);
+	}
+
+	return (0);
+}
+
+/**
+ * @brief       This is a reader wrapper function which selects reader for remote socket
+ *              when X forwarding is enabled and writes it back to stdout.
+ *
+ * @param[in] s - socket descriptor from where data is to be read.
+ *
+ * @return	int
+ * @retval	 0	Success
+ * @retval	-1	Failure
+ * @retval      -2      Peer Closed connection
+ *
+ */
+int
+get_reader_Xjob(int s)
+{
+	if (transport_chan_get_ctx_status(s, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_READY) {
+		return pkt_reader_Xjob(s);
+	} else {
+		return reader_Xjob(s);
+	}
 }
 
 /**
@@ -931,6 +1062,8 @@ writer(int s)
 	char tilde = '~';
 	int wi;
 
+	bool as_pkt = transport_chan_get_ctx_status(s, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_READY;
+
 	/* read from stdin, and write to the socket */
 
 	while (1) {
@@ -960,14 +1093,20 @@ writer(int s)
 						continue;
 #endif						 /* VDSUSP */
 					} else { /* not escape, write out tilde */
-						while ((wi = CS_write(s, &tilde, 1)) != 1) {
-							if ((wi == -1) && (errno == EINTR))
-								continue;
-							else
+						if (as_pkt) {
+							wi = transport_send_pkt(s, AUTH_ENCRYPTED_DATA, &tilde, 1);
+							if (wi < 1)
+								break;
+						} else {
+							while ((wi = CS_write(s, &tilde, 1)) != 1) {
+								if ((wi == -1) && (errno == EINTR))
+									continue;
+								else
+									break;
+							}
+							if (wi != 1)
 								break;
 						}
-						if (wi != 1)
-							break;
 					}
 				}
 				newline = 0; /* no longer at start of line */
@@ -978,14 +1117,20 @@ writer(int s)
 					  (c == oldtio.c_cc[VINTR]) ||
 					  (c == '\r');
 			}
-			while ((wi = CS_write(s, &c, 1)) != 1) { /* write out character */
-				if ((wi == -1) && (errno == EINTR))
-					continue;
-				else
+			if (as_pkt) {
+				wi = transport_send_pkt(s, AUTH_ENCRYPTED_DATA, &c, 1);
+				if (wi < 1)
+					break;
+			} else {
+				while ((wi = CS_write(s, &c, 1)) != 1) { /* write out character */
+					if ((wi == -1) && (errno == EINTR))
+						continue;
+					else
+						break;
+				}
+				if (wi != 1)
 					break;
 			}
-			if (wi != 1)
-				break;
 
 		} else if (i == 0) { /* EOF */
 			break;
@@ -1025,7 +1170,12 @@ send_term(int sock)
 		snprintf(buf, sizeof(buf), "TERM=%s", term);
 		free(term);
 	}
-	(void) CS_write(sock, buf, PBS_TERM_BUF_SZ);
+
+	if (transport_chan_get_ctx_status(sock, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_READY) {
+		transport_send_pkt(sock, AUTH_ENCRYPTED_DATA, buf, PBS_TERM_BUF_SZ);
+	} else {
+		(void) CS_write(sock, buf, PBS_TERM_BUF_SZ);
+	}
 
 	cc_array[0] = oldtio.c_cc[VINTR];
 	cc_array[1] = oldtio.c_cc[VQUIT];
@@ -1033,7 +1183,12 @@ send_term(int sock)
 	cc_array[3] = oldtio.c_cc[VKILL];
 	cc_array[4] = oldtio.c_cc[VEOF];
 	cc_array[5] = oldtio.c_cc[VSUSP];
-	CS_write(sock, cc_array, PBS_TERM_CCA);
+
+	if (transport_chan_get_ctx_status(sock, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_READY) {
+		transport_send_pkt(sock, AUTH_ENCRYPTED_DATA, cc_array, PBS_TERM_CCA);
+	} else {
+		(void) CS_write(sock, cc_array, PBS_TERM_CCA);
+	}
 }
 
 /**
@@ -1051,7 +1206,12 @@ send_winsize(int sock)
 	char buf[PBS_TERM_BUF_SZ];
 
 	(void) sprintf(buf, "WINSIZE %hu,%hu,%hu,%hu", wsz.ws_row, wsz.ws_col, wsz.ws_xpixel, wsz.ws_ypixel);
-	(void) CS_write(sock, buf, PBS_TERM_BUF_SZ);
+
+	if (transport_chan_get_ctx_status(sock, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_READY) {
+		transport_send_pkt(sock, AUTH_ENCRYPTED_DATA, buf, PBS_TERM_BUF_SZ);
+	} else {
+		(void) CS_write(sock, buf, PBS_TERM_BUF_SZ);
+	}
 	return;
 }
 
@@ -1229,8 +1389,9 @@ x11handler(int X_data_socket, int interactive_reader_socket)
 	/* Try to open a socket for the local X server. */
 
 	port_forwarder(socks, x11_connect_display, display, 0,
-		       interactive_reader_socket, reader_Xjob, log_cmds_portfw_msg,
-			   QSUB_SIDE, pbs_conf.interactive_auth_method, new_jobname);
+		       interactive_reader_socket, get_reader_Xjob, log_cmds_portfw_msg,
+			   QSUB_SIDE, pbs_conf.interactive_auth_method,
+			   pbs_conf.interactive_encrypt_method, new_jobname);
 }
 
 /**
@@ -1261,6 +1422,9 @@ interactive(void)
 	struct winsize wsz;
 	int child;
 	int ret;
+	int type;
+	void *data_in = NULL;
+	size_t len_in = 0;
 
 	/* disallow ^Z which hangs up MOM starting an interactive job */
 	sigemptyset(&act.sa_mask);
@@ -1341,7 +1505,7 @@ retry:
 	 * second, mom sends the job id for us to verify
 	 */
 
-	ret = auth_exec_socket(news, ntohs(GET_IP_PORT(&from)), pbs_conf.interactive_auth_method, new_jobname);
+	ret = auth_exec_socket(news, &from, pbs_conf.interactive_auth_method, pbs_conf.interactive_encrypt_method, new_jobname);
 	if (ret != INTERACTIVE_AUTH_SUCCESS) {
  		fprintf(stderr, "qsub: failed authentication with execution host\n");
 		shutdown(news, SHUT_RDWR);
@@ -1355,22 +1519,33 @@ retry:
 
 	/* now verify the value of job id */
 
-	amt = PBS_MAXSVRJOBID + 1;
-	pc = momjobid;
-	while (amt > 0) {
-		int len = CS_read(news, pc, amt);
-		if (len <= 0)
-			break;
-		pc += len;
-		if (*(pc - 1) == '\0')
-			break;
-		amt -= len;
-	}
-	if (pc == momjobid) { /* no data read */
-		shutdown(news, 2);
-		close(news);
-		dis_destroy_chan(news);
-		goto retry;
+	if (transport_chan_get_ctx_status(news, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_READY) {
+		int len = transport_recv_pkt(news, &type, &data_in, &len_in);
+		if (len <= 0) { /* no data read */
+			shutdown(news, 2);
+			close(news);
+			dis_destroy_chan(news);
+			goto retry;
+		}
+		strncpy(momjobid, (char *) data_in, len_in);
+	} else {
+		amt = PBS_MAXSVRJOBID + 1;
+		pc = momjobid;
+		while (amt > 0) {
+			int len = CS_read(news, pc, amt);
+			if (len <= 0)
+				break;
+			pc += len;
+			if (*(pc - 1) == '\0')
+				break;
+			amt -= len;
+		}
+		if (pc == momjobid) { /* no data read */
+			shutdown(news, 2);
+			close(news);
+			dis_destroy_chan(news);
+			goto retry;
+		}
 	}
 
 	if (strncmp(momjobid, new_jobname, PBS_MAXSVRJOBID) != 0) {
@@ -1414,7 +1589,11 @@ retry:
 			x11handler(X11_comm_sock, news);
 		} else {
 			/* call interactive job's reader */
-			(void) reader(news);
+			if (transport_chan_get_ctx_status(news, FOR_ENCRYPT) == (int) AUTH_STATUS_CTX_READY) {
+				(void) pkt_reader(news);
+			} else {
+				(void) reader(news);
+			}
 		}
 		/* reset terminal */
 		tcsetattr(0, TCSANOW, &oldtio);

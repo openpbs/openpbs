@@ -43,6 +43,8 @@
 extern "C" {
 #endif
 
+#include <netdb.h>
+
 #include "libauth.h"
 
 #define AUTH_RESVPORT_NAME "resvport"
@@ -135,8 +137,8 @@ enum INTERACTIVE_AUTH_STATUS {
 	INTERACTIVE_AUTH_FAILED,
 	INTERACTIVE_AUTH_RETRY
 };
-int auth_exec_socket(int sock, unsigned short port, char *auth_method, char *jobid);
-int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_method, char *jobid);
+int auth_exec_socket(int sock, struct sockaddr_in *from, char *auth_method, char *encrypt_method, char *jobid);
+int auth_with_qsub(int sock, unsigned short port, char* hostname, char *auth_method, char *encrypt_method, char *jobid);
 int client_cipher_auth(int fd, char *text, char *ebuf, size_t ebufsz);
 int server_cipher_auth(int fd, char *text, char *ebuf, size_t ebufsz);
 

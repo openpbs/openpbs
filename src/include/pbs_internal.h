@@ -208,6 +208,7 @@ struct pbs_config
 	char encrypt_method[MAXAUTHNAME + 1];	/* auth method to used for encrypt/decrypt data */
 	char auth_method[MAXAUTHNAME + 1];	/* default auth_method to used by client */
 	char interactive_auth_method[MAXAUTHNAME + 1];	/* auth_method used in interactive qsub sessions */
+	char interactive_encrypt_method[MAXAUTHNAME + 1];	/* encrypt_method used in interactive qsub sessions */
 	unsigned int sched_modify_event:1;	/* whether to trigger modifyjob hook event or not */
 	unsigned syslogfac;		        /* syslog facility */
 	unsigned syslogsvr;			/* min priority to log to syslog */
@@ -252,6 +253,7 @@ struct pbs_config
 	char *pbs_daemon_service_user; /* user the scheduler runs as */
 	char *pbs_daemon_service_auth_user; /* auth user the scheduler runs as */
 	char *pbs_privileged_auth_user; /* auth user with admin access */
+	char *pbs_gss_user_creds_bin; /* path to user credentials program */
 	char current_user[PBS_MAXUSER+1]; /* current running user */
 #ifdef WIN32
 	char *pbs_conf_remote_viewer; /* Remote viewer client executable for PBS GUI jobs, along with launch options */
@@ -312,6 +314,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_SMTP_SERVER_NAME "PBS_SMTP_SERVER_NAME" /* Name of SMTP Host to send mail to */
 #define PBS_CONF_TMPDIR		"PBS_TMPDIR"     /* temporary file directory */
 #define PBS_CONF_INTERACTIVE_AUTH_METHOD	"PBS_INTERACTIVE_AUTH_METHOD"	/* Authentication method used in qsub interactive */
+#define PBS_CONF_INTERACTIVE_ENCRYPT_METHOD	"PBS_INTERACTIVE_ENCRYPT_METHOD"	/* Encryption method used in qsub interactive */
 #define PBS_CONF_AUTH		"PBS_AUTH_METHOD"
 #define PBS_CONF_ENCRYPT_METHOD	"PBS_ENCRYPT_METHOD"
 #define PBS_CONF_SUPPORTED_AUTH_METHODS	"PBS_SUPPORTED_AUTH_METHODS"
@@ -323,6 +326,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_DAEMON_SERVICE_USER "PBS_DAEMON_SERVICE_USER"
 #define PBS_CONF_DAEMON_SERVICE_AUTH_USER "PBS_DAEMON_SERVICE_AUTH_USER"
 #define PBS_CONF_PRIVILEGED_AUTH_USER "PBS_PRIVILEGED_AUTH_USER" /* e.g.: used for gss/krb and krb host principal (host/<fqdn>@<REALM>) is expected */
+#define PBS_CONF_GSS_USER_CREDENTIALS_BIN "PBS_GSS_USER_CREDENTIALS_BIN"
 #ifdef WIN32
 #define PBS_CONF_REMOTE_VIEWER "PBS_REMOTE_VIEWER"	/* Executable for remote viewer application alongwith its launch options, for PBS GUI jobs */
 #endif
