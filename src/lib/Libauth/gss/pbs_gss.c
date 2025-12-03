@@ -613,7 +613,7 @@ pbs_gss_can_get_creds(const gss_OID_set oidset)
 static int
 pbs_gss_ask_user_creds()
 {
-	int master_fd, slave_fd; // PTY file descriptors
+	int master_fd, slave_fd; /* PTY file descriptors */
 	static struct termios original_term;
 	struct termios pty_tios, raw_tios;
     pid_t pid;
@@ -705,7 +705,7 @@ pbs_gss_ask_user_creds()
 			if (FD_ISSET(master_fd, &read_fds)) {
                 bytes_read = read(master_fd, buffer, size - 1);
                 if (bytes_read > 0) {
-                    // Write child's output directly to the parent's terminal STDOUT
+                    /* Write child's output directly to the parent's terminal STDOUT */
                     write(STDOUT_FILENO, buffer, bytes_read);
                 } else if (bytes_read == 0) {
                     break;
@@ -717,7 +717,7 @@ pbs_gss_ask_user_creds()
 			if (FD_ISSET(STDIN_FILENO, &read_fds)) {
                 bytes_read = read(STDIN_FILENO, buffer, size - 1);
                 if (bytes_read > 0) {
-                    // Write user input to the PTY master (to the child's STDIN)
+                    /* Write user input to the PTY master (to the child's STDIN) */
                     write(master_fd, buffer, bytes_read);
                 } else if (bytes_read == 0) {
                     close(master_fd);
