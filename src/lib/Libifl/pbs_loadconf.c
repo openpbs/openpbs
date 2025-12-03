@@ -1022,6 +1022,13 @@ __pbs_loadconf(int reload)
 			goto err;
 		}
 	}
+	if (pbs_conf.interactive_encrypt_method[0] != '\0') {
+		/* encryption is not disabled, validate encrypt method */
+		if (is_valid_encrypt_method(pbs_conf.interactive_encrypt_method) != 1) {
+			fprintf(stderr, "The given PBS_INTERACTIVE_ENCRYPT_METHOD = %s does not support encrypt/decrypt of data\n", pbs_conf.interactive_encrypt_method);
+			goto err;
+		}
+	}
 
 	pbs_conf.pbs_tmpdir = pbs_get_tmpdir();
 
