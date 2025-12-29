@@ -253,7 +253,7 @@ AddREQ(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[
 }
 
 int
-AllREQ(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+AllREQ(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	int ret;
 
@@ -312,7 +312,7 @@ GetREQ(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[
 }
 
 int
-FlushREQ(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+FlushREQ(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	if (argc != 1) {
 		sprintf(log_buffer, badparm, (char *) argv[0]);
@@ -327,7 +327,7 @@ FlushREQ(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-ActiveREQ(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+ActiveREQ(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	int ret;
 
@@ -353,7 +353,7 @@ ActiveREQ(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-FullResp(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+FullResp(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	int flag;
 
@@ -372,7 +372,7 @@ FullResp(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-PBS_Connect(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_Connect(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *server = NULL;
 
@@ -403,7 +403,7 @@ PBS_Connect(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-PBS_Disconnect(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_Disconnect(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	if (argc != 1) {
 		sprintf(log_buffer, badparm, argv[0]);
@@ -468,7 +468,7 @@ void
 }
 
 int
-PBS_StatServ(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_StatServ(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg;
 	struct batch_status *bs;
@@ -514,7 +514,7 @@ PBS_StatServ(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-PBS_StatJob(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_StatJob(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg;
 	struct batch_status *bs;
@@ -556,7 +556,7 @@ PBS_StatJob(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-PBS_SelStat(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_SelStat(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg;
 	struct batch_status *bs;
@@ -607,7 +607,7 @@ PBS_SelStat(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-PBS_StatQue(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_StatQue(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg;
 	struct batch_status *bs;
@@ -686,7 +686,7 @@ PBS_StatNode(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST
 }
 
 int
-PBS_AsyRunJob(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_AsyRunJob(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg;
 	char *location = NULL;
@@ -716,7 +716,7 @@ PBS_AsyRunJob(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-PBS_RunJob(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_RunJob(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg;
 	char *location = NULL;
@@ -746,7 +746,7 @@ PBS_RunJob(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-PBS_ReRun(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_ReRun(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg;
 	char *extend = "0";
@@ -775,7 +775,7 @@ PBS_ReRun(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-PBS_MoveJob(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_MoveJob(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg;
 	char *location = NULL;
@@ -815,7 +815,7 @@ PBS_MoveJob(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-PBS_DelJob(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_DelJob(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg;
 	char *message = NULL;
@@ -845,7 +845,7 @@ PBS_DelJob(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-PBS_HoldJob(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_HoldJob(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg;
 
@@ -872,7 +872,7 @@ PBS_HoldJob(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
 }
 
 int
-PBS_QueueOp(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[], struct attropl *attr)
+PBS_QueueOp(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[], struct attropl *attr)
 {
 	int merr;
 
@@ -906,28 +906,28 @@ PBS_QueueOp(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[], s
 }
 
 int
-PBS_EnableQueue(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_EnableQueue(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	static struct attropl attr = {NULL, "enabled", NULL, "TRUE", SET};
 	return PBS_QueueOp(clientData, interp, argc, argv, &attr);
 }
 
 int
-PBS_DisableQueue(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_DisableQueue(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	static struct attropl attr = {NULL, "enabled", NULL, "FALSE", SET};
 	return PBS_QueueOp(clientData, interp, argc, argv, &attr);
 }
 
 int
-PBS_StartQueue(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_StartQueue(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	static struct attropl attr = {NULL, "started", NULL, "TRUE", SET};
 	return PBS_QueueOp(clientData, interp, argc, argv, &attr);
 }
 
 int
-PBS_StopQueue(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+PBS_StopQueue(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	static struct attropl attr = {NULL, "started", NULL, "FALSE", SET};
 	return PBS_QueueOp(clientData, interp, argc, argv, &attr);
@@ -1273,7 +1273,7 @@ PBS_RescRelease(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 }
 
 int
-PBS_ResvStatus(ClientData clientData, Tcl_Interp *interp, int argc, char *CONST argv[])
+PBS_ResvStatus(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg;
 	struct batch_status *bs;
@@ -1308,7 +1308,7 @@ PBS_ResvStatus(ClientData clientData, Tcl_Interp *interp, int argc, char *CONST 
 }
 
 int
-PBS_ResvConfirm(ClientData clientData, Tcl_Interp *interp, int argc, char *CONST argv[])
+PBS_ResvConfirm(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg = NULL;
 	unsigned long stime = 0;
@@ -1340,7 +1340,7 @@ PBS_ResvConfirm(ClientData clientData, Tcl_Interp *interp, int argc, char *CONST
 }
 
 int
-PBS_ResvDelete(ClientData clientData, Tcl_Interp *interp, int argc, char *CONST argv[])
+PBS_ResvDelete(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	char *msg = NULL;
 
@@ -1397,7 +1397,7 @@ LogMsg(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[
 }
 
 int
-DateTime(ClientData clientData, Tcl_Interp *interp, int argc, char *argv[])
+DateTime(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
 	time_t when;
 	struct tm tm, *t = NULL;
