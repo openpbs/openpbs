@@ -468,12 +468,10 @@ prt_attr(char *name, char *resource, char *value, int one_line, json_data * json
 						json_prev_resc = NULL;
 						prev_resc_name = NULL;
 					}
-					if (!strcmp(name,ATTR_N)) {
+					if (!strcmp(name, ATTR_N)) {
 					  if (pbs_json_insert_string(json_obj, name, value))
 					    exit_qstat("json error");
-
-					}
-					else {
+					} else {
 					  if (pbs_json_insert_parsed(json_obj, name, value, 0))
 					    exit_qstat("json error");
 					}
