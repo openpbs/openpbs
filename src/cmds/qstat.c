@@ -156,6 +156,53 @@ enum output_format_enum {
 	FORMAT_MAX
 };
 
+enum batch_status_item_type {
+	BATCH_ITEM_DEFAULT=0,
+	BATCH_ITEM_IS_STRING,
+	BATCH_ITEM_IS_NUMBER,
+	BATCH_ITEM_IS_ATTR_V,
+	BATCH_ITEM_IS_RESOURCE
+};
+
+/**
+ * @brief
+ *	triage the json_type of a batch_item, identify it's type
+ *
+ * @param[in] string - ( batch_item -> name )
+ * @param[in] string - ( batch_item -> resource ) 
+ *
+ * @return enum BATCH_ITEM_* 
+ * 
+ */
+
+int batch_item_json_type_triage (const char *name, const char *resource)
+{
+	if (resource)
+		return BATCH_ITEM_IS_RESOURCE; 
+	struct name_type_mappings {
+		char *name;
+		int type; 
+	};
+	typedef struct name_type_mappings name_map_t;
+	/* keep it local */ 
+	const name_map_t name_type_map[] = {
+		{ATTR_v, BATCH_ITEM_IS_ATTR_V},
+		{ATTR_N, BATCH_ITEM_IS_STRING},
+		{ATTR_project, BATCH_ITEM_IS_STRING},
+		{ATTR_A, BATCH_ITEM_IS_STRING}
+	};
+
+	for ( int i = 0 ; i < sizeof(name_type_map) / sizeof(name_type_map[0]); ++i ) {
+		if (!strcmp(name,name_type_map[i].name)) {
+			return name_type_map[i].type;
+		}
+	}
+  
+	return BATCH_ITEM_DEFAULT;
+}
+
+
+
 /* This array contains the names users may specify for output format. */
 static char *output_format_names[] = {"default", "dsv", "json", NULL};
 
@@ -418,66 +465,73 @@ prt_attr(char *name, char *resource, char *value, int one_line, json_data * json
 	if (value == NULL)
 		return;
 	switch (output_format) {
-		case FORMAT_JSON:
-			if (strcmp(name, ATTR_v) == 0) {
-				if ((json_attr = pbs_json_create_object()) == NULL)
-					exit_qstat("json error");
-				pbs_json_insert_item(json_obj, name, json_attr);
-				buf = strdup(value);
-				temp = buf;
-				if (buf == NULL)
-					exit_qstat("out of memory");
-				while (*value) {
-					/* value is split based on comma and each key-value is stored in keyvalpair.
+	case FORMAT_JSON:
+		int item_type = batch_item_json_type_triage (name, resource);
+		switch (item_type) {
+		case BATCH_ITEM_IS_ATTR_V:
+			if ((json_attr = pbs_json_create_object()) == NULL)
+				exit_qstat("json error");
+			pbs_json_insert_item(json_obj, name, json_attr);
+			buf = strdup(value);
+			temp = buf;
+			if (buf == NULL)
+				exit_qstat("out of memory");
+			while (*value) {
+				/* value is split based on comma and each key-value is stored in keyvalpair.
 				 * If the value contains an escaped comma, only the comma is copied to keyvalpair.
 				 * Then separated into key and value based on the first '=' */
-					key = buf;
-					val = NULL;
-					while (!(*value == *comma || *value == '\0')) {
-						if (*value == ESC_CHAR && *(value + 1) == *comma)
-							value++;
-						if (!val && *value == '=') {
-							*buf++ = '\0';
-							val = buf;
-							value++;
-						}
-						*buf++ = *value++;
-					}
-					*buf = '\0';
-					if (pbs_json_insert_parsed(json_attr, key, val, 0))
-						exit_qstat("json error");
-					if (*value != '\0')
+				key = buf;
+				val = NULL;
+				while (!(*value == *comma || *value == '\0')) {
+					if (*value == ESC_CHAR && *(value + 1) == *comma)
 						value++;
+					if (!val && *value == '=') {
+						*buf++ = '\0';
+						val = buf;
+						value++;
+					}
+					*buf++ = *value++;
 				}
-				free(temp);
-			} else {
-				if (resource) {
-					if (prev_resc_name && strcmp(prev_resc_name, name) != 0) {
-						prev_resc_name = NULL;
-					}
-					if (prev_resc_name == NULL || strcmp(prev_resc_name, name) != 0) {
-						if ((json_prev_resc = pbs_json_create_object()) == NULL)
-							exit_qstat("json error");
-						pbs_json_insert_item(json_obj, name, json_prev_resc);
-						prev_resc_name = name;
-					}
-					if (pbs_json_insert_parsed(json_prev_resc, resource, value, 0))
-						exit_qstat("json error");
-				} else { 
-					if (prev_resc_name) {
-						json_prev_resc = NULL;
-						prev_resc_name = NULL;
-					}
-					if (!strcmp(name, ATTR_N)) {
-					  if (pbs_json_insert_string(json_obj, name, value))
-					    exit_qstat("json error");
-					} else {
-					  if (pbs_json_insert_parsed(json_obj, name, value, 0))
-					    exit_qstat("json error");
-					}
-				}
+				*buf = '\0';
+				if (pbs_json_insert_parsed(json_attr, key, val, 0))
+					exit_qstat("json error");
+				if (*value != '\0')
+					value++;
 			}
+			free(temp);
 			break;
+		case BATCH_ITEM_IS_RESOURCE:
+			if (prev_resc_name && strcmp(prev_resc_name, name) != 0) {
+				prev_resc_name = NULL;
+			}
+			if (prev_resc_name == NULL || strcmp(prev_resc_name, name) != 0) {
+				if ((json_prev_resc = pbs_json_create_object()) == NULL)
+					exit_qstat("json error");
+				pbs_json_insert_item(json_obj, name, json_prev_resc);
+				prev_resc_name = name;
+			}
+			if (pbs_json_insert_parsed(json_prev_resc, resource, value, 0))
+				exit_qstat("json error");
+			break;
+		case BATCH_ITEM_IS_STRING:
+			if (prev_resc_name) {
+				json_prev_resc = NULL;
+				prev_resc_name = NULL;
+			}
+			if (pbs_json_insert_string(json_obj, name, value))
+				exit_qstat("json error");
+			break;
+		case BATCH_ITEM_IS_NUMBER:
+			/* skip to default parser */ 
+		default:
+			if (prev_resc_name) {
+				json_prev_resc = NULL;
+				prev_resc_name = NULL;
+			}
+			if (pbs_json_insert_parsed(json_obj, name, value, 0))
+				exit_qstat("json error");
+		}
+		break;
 
 		case FORMAT_DSV:
 			buf = escape_delimiter(value, delimiter, ESC_CHAR);
