@@ -185,14 +185,14 @@ int batch_item_json_type_triage (const char *name, const char *resource)
 	};
 	typedef struct name_type_mappings name_map_t;
 	/* keep it local */ 
-	const name_map_t name_type_map[] = {
+	const static name_map_t name_type_map[] = {
 		{ATTR_v, BATCH_ITEM_IS_ATTR_V},
 		{ATTR_N, BATCH_ITEM_IS_STRING},
 		{ATTR_project, BATCH_ITEM_IS_STRING},
 		{ATTR_A, BATCH_ITEM_IS_STRING}
 	};
 
-	for ( int i = 0 ; i < sizeof(name_type_map) / sizeof(name_type_map[0]); ++i ) {
+	for (int i = 0; i < sizeof(name_type_map) / sizeof(name_type_map[0]); ++i) {
 		if (!strcmp(name,name_type_map[i].name)) {
 			return name_type_map[i].type;
 		}
