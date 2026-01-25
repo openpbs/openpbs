@@ -764,7 +764,7 @@ is_request(int stream, int version)
 					if (!has_stage(pjob) && num_eligible_hooks(HOOK_EVENT_EXECJOB_END) == 0) {
 						mom_deljob(pjob);
 					} else {
-						set_job_state(pjob, JOB_SUBSTATE_EXITED);
+						set_job_substate(pjob, JOB_SUBSTATE_EXITED);
 						if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
 							/*
 							* if checkpointed, save state to disk, otherwise
