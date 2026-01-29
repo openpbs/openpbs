@@ -46,9 +46,10 @@ libauth_gss_la_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	@KRB5_CFLAGS@
 
-libauth_gss_la_LDFLAGS = -version-info 0:0:0
+libauth_gss_la_LDFLAGS = -version-info 0:0:0 -shared -fPIC
 
 libauth_gss_la_LIBADD= \
+	$(top_builddir)/src/lib/Libpbs/libpbs.la \
 	@KRB5_LIBS@ \
 	-lpthread
 
