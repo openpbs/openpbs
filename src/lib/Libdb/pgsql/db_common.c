@@ -451,6 +451,7 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 		 * try protect self from Linux OOM killer
 		 * but don't fail if can't update OOM score
 		 */
+#ifndef __FreeBSD__
 		if (access(oom_score_adj, F_OK) != -1) {
 			strcpy(oom_file, oom_score_adj);
 			oom_val = strdup("-1000");
@@ -467,6 +468,7 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 				ret = PBS_DB_OOM_ERR;
 			free(oom_val);
 		}
+#endif
 		sprintf(errfile, "%s/spool/pbs_ds_monitor_errfile", pbs_conf.pbs_home_path);
 		/* launch monitoring program which will fork to background */
 		sprintf(dbcmd, "%s/sbin/pbs_ds_monitor monitor > %s 2>&1", pbs_conf.pbs_exec_path, errfile);
@@ -605,8 +607,10 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 		}
 	} else if (rc == 0 && !(strcmp(cmd, PBS_DB_CONTROL_START))) {
 		/* launch systemd setup script */
+#ifndef __FreeBSD__
 		sprintf(dbcmd, "%s/sbin/pbs_ds_systemd", pbs_conf.pbs_exec_path);
 		rc = system(dbcmd);
+#endif
 		if (WIFEXITED(rc))
 			rc = WEXITSTATUS(rc);
 		if (rc != 0) {
