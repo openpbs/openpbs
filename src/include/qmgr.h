@@ -143,7 +143,7 @@ struct objname {
 /* prototypes */
 struct objname *commalist2objname(char *, int);
 struct server *find_server(char *);
-struct server *make_connection();
+struct server *make_connection(char *);
 struct server *new_server();
 struct objname *new_objname();
 struct objname *strings2objname(char **, int, int);

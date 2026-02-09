@@ -273,7 +273,7 @@ int
 GetREQ(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
 	int fd;
-	char *ret, *getreq();
+	char *ret;
 	char *cmd;
 
 	cmd = Tcl_GetStringFromObj(objv[0], NULL);
