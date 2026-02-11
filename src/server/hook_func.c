@@ -229,7 +229,7 @@ extern pbs_list_head svr_execjob_preresume_hooks;
 extern time_t time_now;
 extern struct python_interpreter_data svr_interp_data;
 extern pbs_list_head task_list_event;
-extern struct work_task *add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(), char *msgid, void *parm1, void *parm2);
+extern struct work_task *add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(struct work_task *), char *msgid, void *parm1, void *parm2);
 
 extern char *path_rescdef;
 extern char *path_hooks_rescdef;

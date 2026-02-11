@@ -122,7 +122,7 @@ extern time_t time_now;
 extern int svr_create_tmp_jobscript(job *pj, char *script_name);
 extern int scheduler_jobs_stat;
 extern char *path_hooks_workdir;
-extern struct work_task *add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(), char *msgid, void *parm1, void *parm2);
+extern struct work_task *add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(struct work_task *), char *msgid, void *parm1, void *parm2);
 
 /**
  * @brief
