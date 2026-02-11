@@ -89,6 +89,7 @@
 #include <assert.h>
 #include <sys/un.h>
 #include <syslog.h>
+#include <unistd.h>
 #include "pbs_ifl.h"
 #include "cmds.h"
 #include "libpbs.h"
@@ -1944,7 +1945,6 @@ job_env_basic(void)
 	struct utsname uns;
 #endif
 	int len = 0;
-	char *getcwd();
 
 	/* Calculate how big to make the variable string. */
 	len = 0;
