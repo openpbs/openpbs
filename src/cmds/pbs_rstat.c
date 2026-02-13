@@ -49,16 +49,45 @@
 #include <errno.h>
 #include "cmds.h"
 #include "pbs_ifl.h"
+#include "pbs_internal.h"
+#include "pbs_json.h"
 
 #define DISP_RESV_FULL 0x01    /* -F,-f option - full verbose description */
+#define DISP_RESV_JSON 0x10 	   /* -F option - JSON output */
 #define DISP_RESV_NAMES 0x02   /* -B option - Reservation names only */
 #define DISP_RESV_DEFAULT 0x04 /* -S option - Default, Short Description */
 #define DISP_INCR_WIDTH 0x08   /*  Increases the header width */
 
+enum output_format_enum {
+	FORMAT_DEFAULT = 0,
+	FORMAT_JSON,
+	FORMAT_MAX /* Add new formats before FORMAT_MAX */
+		   /* and update output_format_names[]  */
+};
+
+/* This array contains the names users may specify for output format. */
+static char *output_format_names[] = {"default", "json", NULL};
+
+static int output_format = FORMAT_DEFAULT;
+
+static json_data *json_nodes = NULL; /* json structure*/
 /* prototypes */
 char *convert_resv_state(char *pcode, int long_str);
 void handle_resv(char *resv_id, char *server, int how);
+static int encode_to_json(struct batch_status *bstat);
 static int check_width;
+
+/**
+ * @brief
+ *	print the exit message and die.
+ */
+void
+exit_pbs_rstat(char *msg)
+{
+	fprintf(stderr, "pbs_rstat: %s\n", msg);
+	exit(1);
+}
+
 
 /**
  * @brief
@@ -73,9 +102,10 @@ static int check_width;
  *
  */
 void
-display_single_reservation(struct batch_status *resv, int how)
+display_single_reservation(struct batch_status *resv, int how, json_data *json_out)
 {
 	char *queue_name = NULL;
+	json_data *json_resv = NULL;
 #ifdef NAS /* localmod 075 */
 	char *resv_name = NULL;
 #endif /* localmod 075 */
@@ -91,8 +121,19 @@ display_single_reservation(struct batch_status *resv, int how)
 	char *fmt = "%a %b %d %H:%M:%S %Y";
 	attrp = resv->attribs;
 
+	if (json_out != NULL && !(how & DISP_RESV_FULL)) {
+		if ((json_resv = pbs_json_create_object()) == NULL) {
+			exit_pbs_rstat("out of memory");
+		}
+		pbs_json_insert_item(json_out, resv->name, json_resv);
+
+	}
+
 	if (how & DISP_RESV_NAMES) { /* display just name of the reservation */
-		printf("Resv ID: %s\n", resv->name);
+		if (json_resv != NULL) /* if JSON*/
+			pbs_json_insert_string(json_resv, "Resv ID", resv->name);
+		else
+			printf("Resv ID: %s\n", resv->name);
 	} else if (how & DISP_RESV_DEFAULT) { /* display short form, default*/
 		while (attrp != NULL) {
 			if (strcmp(attrp->name, ATTR_queue) == 0)
@@ -111,10 +152,16 @@ display_single_reservation(struct batch_status *resv, int how)
 			else if (strcmp(attrp->name, ATTR_resv_name) == 0)
 				resv_name = attrp->value;
 #endif /* localmod 075 */
-
 			attrp = attrp->next;
 		}
-		if (how & DISP_INCR_WIDTH) {
+		if (json_resv != NULL) { /*if JSON*/
+				pbs_json_insert_string(json_resv, "Queue", queue_name ? queue_name : "");
+				pbs_json_insert_string(json_resv, "User", user ? user : "");
+				pbs_json_insert_string(json_resv, "State", resv_state ? resv_state : "");
+				pbs_json_insert_string(json_resv, "Start", resv_start ? convert_time(resv_start) : "");
+				pbs_json_insert_number(json_resv, "Duration", (double)resv_duration);
+				pbs_json_insert_string(json_resv, "End", resv_end ? convert_time(resv_end) : "");
+		} else if ((how & DISP_INCR_WIDTH) && !(how & DISP_RESV_JSON)) {
 			printf("%-15.15s %-13.13s %-8.8s %-5.5s ",
 #ifdef NAS /* localmod 075 */
 			       (resv_name ? resv_name : resv->name),
@@ -130,48 +177,56 @@ display_single_reservation(struct batch_status *resv, int how)
 #else
 			       resv->name, queue_name, user, resv_state);
 #endif /* localmod 075 */
+		} 
+		if (!(how & DISP_RESV_JSON)) {
+			printf("%17.17s / ", convert_time(resv_start));
+			printf("%ld / %-17.17s\n", (long) resv_duration, convert_time(resv_end));
 		}
-		printf("%17.17s / ", convert_time(resv_start));
-		printf("%ld / %-17.17s\n", (long) resv_duration, convert_time(resv_end));
 	} else { /*display long form (all reservation info)*/
-		printf("Resv ID: %s\n", resv->name);
-		while (attrp != NULL) {
-			if (attrp->resource != NULL)
-				printf("%s.%s = %s\n", attrp->name, attrp->resource, show_nonprint_chars(attrp->value));
-			else {
-				if (strcmp(attrp->name, ATTR_resv_state) == 0) {
-					str = convert_resv_state(attrp->value, 1); /* long state str */
-				} else if (strcmp(attrp->name, ATTR_resv_start) == 0 ||
-					   strcmp(attrp->name, ATTR_resv_end) == 0 ||
-					   strcmp(attrp->name, ATTR_ctime) == 0 ||
-					   strcmp(attrp->name, ATTR_mtime) == 0 ||
-					   strcmp(attrp->name, ATTR_resv_retry) == 0) {
-					tmp_time = atol(attrp->value);
-					strftime(tbuf, sizeof(tbuf), fmt, localtime((time_t *) &tmp_time));
-					str = tbuf;
-				} else if (!strcmp(attrp->name, ATTR_resv_execvnodes)) {
-					attrp = attrp->next;
-					continue;
-				} else if (!strcmp(attrp->name, ATTR_resv_standing)) {
-					attrp = attrp->next;
-					continue;
-				} else if (!strcmp(attrp->name, ATTR_resv_timezone)) {
-					attrp = attrp->next;
-					continue;
-				} else if (!strcmp(attrp->name, ATTR_resv_count)) {
-					str = attrp->value;
-				} else if (!strcmp(attrp->name, ATTR_resv_rrule)) {
-					str = attrp->value;
-				} else if (!strcmp(attrp->name, ATTR_resv_idx)) {
-					str = attrp->value;
-				} else {
-					str = attrp->value;
-				}
-				printf("%s = %s\n", attrp->name, show_nonprint_chars(str));
-			}
-			attrp = attrp->next;
+		if (how & DISP_RESV_JSON) {
+			encode_to_json(resv);
 		}
-		printf("\n");
+		else {
+			printf("Resv ID: %s\n", resv->name);
+			while (attrp != NULL) {
+				if (attrp->resource != NULL)
+					printf("%s.%s = %s\n", attrp->name, attrp->resource, show_nonprint_chars(attrp->value));
+				else {
+					if (strcmp(attrp->name, ATTR_resv_state) == 0) {
+						str = convert_resv_state(attrp->value, 1); /* long state str */
+					} else if (strcmp(attrp->name, ATTR_resv_start) == 0 ||
+						strcmp(attrp->name, ATTR_resv_end) == 0 ||
+						strcmp(attrp->name, ATTR_ctime) == 0 ||
+						strcmp(attrp->name, ATTR_mtime) == 0 ||
+						strcmp(attrp->name, ATTR_resv_retry) == 0) {
+						tmp_time = atol(attrp->value);
+						strftime(tbuf, sizeof(tbuf), fmt, localtime((time_t *) &tmp_time));
+						str = tbuf;
+					} else if (!strcmp(attrp->name, ATTR_resv_execvnodes)) {
+						attrp = attrp->next;
+						continue;
+					} else if (!strcmp(attrp->name, ATTR_resv_standing)) {
+						attrp = attrp->next;
+						continue;
+					} else if (!strcmp(attrp->name, ATTR_resv_timezone)) {
+						attrp = attrp->next;
+						continue;
+					} else if (!strcmp(attrp->name, ATTR_resv_count)) {
+						str = attrp->value;
+					} else if (!strcmp(attrp->name, ATTR_resv_rrule)) {
+						str = attrp->value;
+					} else if (!strcmp(attrp->name, ATTR_resv_idx)) {
+						str = attrp->value;
+					} else {
+						str = attrp->value;
+					}
+					printf("%s = %s\n", attrp->name, show_nonprint_chars(str));
+				}
+				attrp = attrp->next;
+			}
+		}
+		if (!(how & DISP_RESV_JSON))
+			printf("\n");
 	}
 }
 
@@ -189,7 +244,7 @@ display_single_reservation(struct batch_status *resv, int how)
  *
  */
 void
-display(struct batch_status *resv, int how)
+display(struct batch_status *resv, int how, json_data *json_out)
 {
 	struct batch_status *cur; /* loop var - current batch_status in loop */
 	static char no_display = 0;
@@ -199,7 +254,7 @@ display(struct batch_status *resv, int how)
 
 	cur = resv;
 
-	if ((how & DISP_RESV_DEFAULT) && (!no_display)) {
+	if ((how & DISP_RESV_DEFAULT) && (!no_display) && !(how & DISP_RESV_JSON)) {
 #ifdef NAS /* localmod 075 */
 		if (how & DISP_INCR_WIDTH)
 			printf("%-15.15s %-13.13s %-8.8s %-5.5s %17.17s / Duration / %s\n",
@@ -222,9 +277,79 @@ display(struct batch_status *resv, int how)
 	}
 
 	while (cur != NULL) {
-		display_single_reservation(cur, how);
+		display_single_reservation(cur, how, json_out);
 		cur = cur->next;
 	}
+}
+
+/**
+ * @brief
+ *	Encodes the information in batch_status structure to json format
+ *
+ * @param[in] *bstat - structure containing node information
+ *
+ * @return - Error code
+ * @retval   1 - Failure
+ * @retval   0 - Success
+ *
+ */
+static int
+encode_to_json(struct batch_status *bstat)
+{
+	struct attrl *next;
+	struct attrl *pattr;
+	char *str;
+	char *pc;
+	char *pc1;
+	char *prev_jobid = "";
+	json_data *json_attr;
+	json_data *json_resc = NULL;
+	time_t tmp_time;
+	char tbuf[64];
+	char *fmt = "%a %b %d %H:%M:%S %Y";
+
+	if ((json_attr = pbs_json_create_object()) == NULL)
+		return 1;
+	pbs_json_insert_item(json_nodes, bstat->name, json_attr);
+
+	for (pattr = bstat->attribs; pattr; pattr = pattr->next) {
+		/*note: skipped because they were also ommited in -f*/
+		if (!strcmp(pattr->name, ATTR_resv_execvnodes) ||
+			!strcmp(pattr->name, ATTR_resv_standing) ||
+			!strcmp(pattr->name, ATTR_resv_timezone)) {
+			continue;
+		}
+		if (strcmp(pattr->name, "Resource_List") == 0) {
+			/* create new key if not already created: */
+			if (json_resc == NULL) {
+				json_resc = pbs_json_create_object();
+				if (json_resc == NULL)
+					return 1;
+				pbs_json_insert_item(json_attr, pattr->name, json_resc);
+			}
+			
+			/* already exists, append: */
+			if (pattr->resource && pattr->value) {
+				if (pbs_json_insert_parsed(json_resc, pattr->resource, pattr->value, 0))
+					return 1;
+			}
+		} else if (strcmp(pattr->name, ATTR_resv_state) == 0) {
+			str = convert_resv_state(pattr->value, 1);
+			pbs_json_insert_string(json_attr, pattr->name, str);
+		} else if (strcmp(pattr->name, ATTR_resv_start) == 0 ||
+				   strcmp(pattr->name, ATTR_resv_end) == 0 || 
+				   strcmp(pattr->name, ATTR_ctime) == 0 ||
+				   strcmp(pattr->name, ATTR_mtime) == 0 ||
+				   strcmp(pattr->name, ATTR_resv_retry) == 0) {
+				tmp_time = atol(pattr->value);
+				strftime(tbuf, sizeof(tbuf), fmt, localtime((time_t *) &tmp_time));
+				pbs_json_insert_string(json_attr, pattr->name, tbuf);
+		} else {
+			if (pbs_json_insert_parsed(json_attr, pattr->name, pattr->value, 0))
+				return 1;
+		}
+	}
+	return 0;
 }
 
 int
@@ -237,6 +362,11 @@ main(int argc, char *argv[])
 	char *resv_id; /* reservation ID from the command line */
 	char resv_id_out[PBS_MAXCLTJOBID];
 	char server_out[MAXSERVERNAME];
+	time_t timenow;
+	char *def_server;
+	int format = 0;
+	json_data *json_root = NULL; /* root of json structure*/
+
 	/*test for real deal or just version and exit*/
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
@@ -244,10 +374,20 @@ main(int argc, char *argv[])
 	if (initsocketlib())
 		return 1;
 
-	while ((c = getopt(argc, argv, "fFBS")) != EOF) {
+	while ((c = getopt(argc, argv, "fF:BS")) != EOF) {
 		switch (c) {
-			case 'F': /* full verbose description */
-			case 'f':
+			case 'F': 
+				for (format = FORMAT_DEFAULT; format < FORMAT_MAX; format++) {
+					if (strcasecmp(optarg, output_format_names[format]) == 0) {
+						output_format = format;
+						how |= DISP_RESV_JSON; /* update here if extending to other formats*/
+						break;
+					}
+				}
+				if (format >= FORMAT_MAX)
+					errflg = 1;
+				break;
+			case 'f': /* full verbose description */
 				how = DISP_RESV_FULL;
 				break;
 
@@ -265,14 +405,42 @@ main(int argc, char *argv[])
 	}
 
 	if (errflg) {
-		fprintf(stderr, "Usage:\n\tpbs_rstat [-fFBS] [reservation-id]\n");
+		fprintf(stderr, "Usage:\n\tpbs_rstat [-B] [-f] [-S] [-F JSON] [reservation-id]\n");
 		fprintf(stderr, "\tpbs_rstat --version\n");
 		exit(1);
+	}
+
+	if (def_server == NULL) {
+		def_server = pbs_default();
+		if (def_server == NULL) {
+			def_server = "";
+		}
 	}
 
 	if (CS_client_init() != CS_SUCCESS) {
 		fprintf(stderr, "pbs_rstat: unable to initialize security library.\n");
 		exit(1);
+	}
+
+	/* adding prologue to json output. */
+	if (how & DISP_RESV_JSON) {
+		timenow = time(0);
+		if ((json_root = pbs_json_create_object()) == NULL) {
+			exit_pbs_rstat("json error");
+		}
+		if (pbs_json_insert_number(json_root, "timestamp", (double) timenow)) {
+			exit_pbs_rstat("json error");
+		}
+		if (pbs_json_insert_string(json_root, "pbs_version", PBS_VERSION)) {
+			exit_pbs_rstat("json error");
+		}
+		if (pbs_json_insert_string(json_root, "pbs_server", def_server)) {
+			exit_pbs_rstat("json error");
+		}
+		if ((json_nodes = pbs_json_create_object()) == NULL) {
+			exit_pbs_rstat("json error");
+		}
+		pbs_json_insert_item(json_root, "restrictions", json_nodes);
 	}
 
 	if (optind == argc)
@@ -300,6 +468,10 @@ main(int argc, char *argv[])
 #endif /* localmod 075 */
 			handle_resv(resv_id_out, server_out, how);
 		}
+	}
+	if (how & DISP_RESV_JSON) {
+		pbs_json_print(json_root, stdout);
+		pbs_json_delete(json_root);
 	}
 	CS_close_app();
 	exit(errflg);
@@ -365,7 +537,15 @@ handle_resv(char *resv_id, char *server, int how)
 		fprintf(stderr, "pbs_rstat: %s\n", errmsg);
 	}
 
-	display(bstat, how);
+	if (how & DISP_RESV_JSON) {
+		if (bstat == NULL) {
+			exit(1); /* no information */
+		}
+		display(bstat, how, json_nodes);
+	} else {
+		display(bstat, how, NULL);
+	}
+	
 	pbs_statfree(bstat);
 }
 
