@@ -460,12 +460,13 @@ prt_attr(char *name, char *resource, char *value, int one_line, json_data * json
 	char *buf = NULL;
 	char *temp = NULL;
 	json_data *json_attr = NULL;
+	int item_type = 0;
 
 	if (value == NULL)
 		return;
 	switch (output_format) {
 	case FORMAT_JSON:
-		int item_type = batch_item_json_type_triage (name, resource);
+		item_type = batch_item_json_type_triage (name, resource);
 		switch (item_type) {
 		case BATCH_ITEM_IS_ATTR_V:
 			if ((json_attr = pbs_json_create_object()) == NULL)
