@@ -91,6 +91,10 @@ AC_DEFUN([PBS_AC_WITH_TCL],
     [tcl_lib="$TCL_LIB_SPEC $TCL_LIBS"]
     [tk_inc="$TK_INCLUDE_SPEC"]
     [tk_lib=`echo "$TCL_LIB_SPEC $TK_LIB_SPEC $TK_LIBS" | ${SED} -e 's/-lXss //'`])
+  save_CPPFLAGS="$CPPFLAGS"
+  CPPFLAGS="$CPPFLAGS $tcl_inc"
+  AC_CHECK_TYPES([Tcl_Size], [], [], [[#include <tcl.h>]])
+  CPPFLAGS="$save_CPPFLAGS"
   AC_SUBST(tcl_inc)
   AC_SUBST(tcl_lib)
   AC_SUBST(tk_inc)

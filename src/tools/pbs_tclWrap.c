@@ -57,6 +57,14 @@
 #include "cmds.h"
 #include "attribute.h"
 
+#if !defined(CONST)
+#define CONST const
+#endif
+
+#if !defined(HAVE_TCL_SIZE)
+typedef int Tcl_Size;
+#endif
+
 char badparm[] = "%s: bad parameter";
 char missingfd[] = "%s: missing file descriptor";
 char not_connected[] = "not connected";
@@ -374,7 +382,7 @@ FullResp(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[]
 int
 PBS_Connect(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
-	char *server = NULL;
+	const char *server = NULL;
 
 	if (argc == 2)
 		server = argv[1];
@@ -938,7 +946,9 @@ PBS_AlterJob(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST
 {
 	static char id[] = "PBS_AlterJob";
 	char *msg;
-	int i, num, tre, ret;
+	int i, ret;
+	Tcl_Size num;
+	Tcl_Size tre;
 	Tcl_Obj **listp, **indp;
 	struct attrl *attrs, *atp = NULL;
 	char *cmd, *jobid;
@@ -1048,7 +1058,8 @@ PBS_RescQuery(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONS
 {
 	static char id[] = "PBS_RescQuery";
 	char *msg;
-	int i, num, ret;
+	int i, ret;
+	Tcl_Size num;
 	Tcl_Obj **listp, *fourl[4], *retl;
 	char *cmd;
 	char **res_array;
@@ -1173,7 +1184,8 @@ PBS_RescReserve(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 {
 	static char id[] = "PBS_RescReserve";
 	char *msg;
-	int i, num, ret;
+	int i, ret;
+	Tcl_Size num;
 	Tcl_Obj **listp;
 	char *cmd;
 	char **res_array;
@@ -1310,7 +1322,7 @@ PBS_ResvStatus(ClientData clientData, Tcl_Interp *interp, int argc, const char *
 int
 PBS_ResvConfirm(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
-	char *msg = NULL;
+	const char *msg = NULL;
 	unsigned long stime = 0;
 
 	if (argc < 2 || argc > 4) {
@@ -1342,7 +1354,7 @@ PBS_ResvConfirm(ClientData clientData, Tcl_Interp *interp, int argc, const char 
 int
 PBS_ResvDelete(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 {
-	char *msg = NULL;
+	const char *msg = NULL;
 
 	if (argc < 2 || argc > 3) {
 		sprintf(log_buffer,
