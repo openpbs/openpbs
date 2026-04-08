@@ -489,8 +489,9 @@ prt_attr(char *name, char *resource, char *value, int one_line, json_data * json
 						*buf++ = '\0';
 						val = buf;
 						value++;
+					} else {
+						*buf++ = *value++;
 					}
-					*buf++ = *value++;
 				}
 				*buf = '\0';
 				if (pbs_json_insert_parsed(json_attr, key, val, 0))
