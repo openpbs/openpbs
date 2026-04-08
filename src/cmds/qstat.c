@@ -1789,10 +1789,6 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 		type = "not defined";
 		prev_resc_name = NULL;
 
-		char *new_type_restr_acc = NULL;
-		size_t acc_len = 0;
-
-		char *new_type_attr_name = NULL;
 		char *attr_names[MAX_ATTRS] = {0};
 		char *attr_values[MAX_ATTRS] = {0};
 		int attr_count = 0;
@@ -1820,8 +1816,7 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 						}
 						else { /* new type but not a sub resource */
 							accumulate_restriction(attr_names, attr_values, &attr_count, MAX_ATTRS, a->name, a->value);
-							new_type_attr_name = a->name;
-						} 
+						}
 					} else { /* not new-type queue restriction */
 						prt_attr(a->name, a->resource, a->value,
 							alt_opt & ALT_DISPLAY_w, json_queue);
