@@ -57,10 +57,6 @@
 #include "cmds.h"
 #include "attribute.h"
 
-#if !defined(CONST)
-#define CONST const
-#endif
-
 #if !defined(HAVE_TCL_SIZE)
 typedef int Tcl_Size;
 #endif
@@ -110,7 +106,7 @@ int (*local_disconnect)(int connection) = __pbs_disconnect;
 #endif
 
 int
-OpenRM(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+OpenRM(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	int port = 0;
 	int fd;
@@ -139,7 +135,7 @@ OpenRM(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[
 }
 
 int
-CloseRM(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+CloseRM(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	int fd, ret;
 	char *cmd;
@@ -168,7 +164,7 @@ CloseRM(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
 }
 
 int
-DownRM(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+DownRM(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	int fd, ret;
 	char *cmd;
@@ -197,7 +193,7 @@ DownRM(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[
 }
 
 int
-ConfigRM(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+ConfigRM(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	int fd, ret;
 	char *cmd, *filename;
@@ -229,7 +225,7 @@ ConfigRM(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 }
 
 int
-AddREQ(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+AddREQ(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	int fd, ret;
 	char *cmd, *request;
@@ -278,7 +274,7 @@ AllREQ(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[])
 }
 
 int
-GetREQ(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+GetREQ(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	int fd;
 	char *ret;
@@ -653,7 +649,7 @@ PBS_StatQue(ClientData clientData, Tcl_Interp *interp, int argc, const char *arg
 }
 
 int
-PBS_StatNode(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+PBS_StatNode(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	char *msg, *cmd;
 	char *node = NULL;
@@ -942,7 +938,7 @@ PBS_StopQueue(ClientData clientData, Tcl_Interp *interp, int argc, const char *a
 }
 
 int
-PBS_AlterJob(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+PBS_AlterJob(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	static char id[] = "PBS_AlterJob";
 	char *msg;
@@ -1054,7 +1050,7 @@ done:
 }
 
 int
-PBS_RescQuery(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+PBS_RescQuery(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	static char id[] = "PBS_RescQuery";
 	char *msg;
@@ -1180,7 +1176,7 @@ PBS_RescQuery(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONS
 }
 
 int
-PBS_RescReserve(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+PBS_RescReserve(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	static char id[] = "PBS_RescReserve";
 	char *msg;
@@ -1244,7 +1240,7 @@ PBS_RescReserve(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 }
 
 int
-PBS_RescRelease(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+PBS_RescRelease(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	char *msg;
 	int ret;
@@ -1378,7 +1374,7 @@ PBS_ResvDelete(ClientData clientData, Tcl_Interp *interp, int argc, const char *
 }
 
 int
-LogMsg(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+LogMsg(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	char *tag = NULL;
 	char *msg = NULL;
@@ -1534,7 +1530,7 @@ DateTime(ClientData clientData, Tcl_Interp *interp, int argc, const char *argv[]
 }
 
 int
-StrFtime(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+StrFtime(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	struct tm *t;
 	long hold;
@@ -1561,7 +1557,7 @@ StrFtime(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 }
 
 int
-PBS_PbsPortInfoCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+PBS_PbsPortInfoCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	int index, result;
 	static const char *subCmds[] = {
