@@ -667,8 +667,6 @@ mom_writer_pkt(int s, int ptc)
 	while (1) {
 		c = read(ptc, buf, sizeof(buf));
 		if (c > 0) {
-			int wc;
-			char *p = buf;
 			transport_send_pkt(s, AUTH_ENCRYPTED_DATA, buf, c);
 		} else if (c == 0) {
 			return (0);

@@ -460,12 +460,13 @@ prt_attr(char *name, char *resource, char *value, int one_line, json_data * json
 	char *buf = NULL;
 	char *temp = NULL;
 	json_data *json_attr = NULL;
+	int item_type = 0;
 
 	if (value == NULL)
 		return;
 	switch (output_format) {
 	case FORMAT_JSON:
-		int item_type = batch_item_json_type_triage (name, resource);
+		item_type = batch_item_json_type_triage (name, resource);
 		switch (item_type) {
 		case BATCH_ITEM_IS_ATTR_V:
 			if ((json_attr = pbs_json_create_object()) == NULL)
@@ -488,8 +489,9 @@ prt_attr(char *name, char *resource, char *value, int one_line, json_data * json
 						*buf++ = '\0';
 						val = buf;
 						value++;
+					} else {
+						*buf++ = *value++;
 					}
-					*buf++ = *value++;
 				}
 				*buf = '\0';
 				if (pbs_json_insert_parsed(json_attr, key, val, 0))
@@ -1788,10 +1790,6 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 		type = "not defined";
 		prev_resc_name = NULL;
 
-		char *new_type_restr_acc = NULL;
-		size_t acc_len = 0;
-
-		char *new_type_attr_name = NULL;
 		char *attr_names[MAX_ATTRS] = {0};
 		char *attr_values[MAX_ATTRS] = {0};
 		int attr_count = 0;
@@ -1819,8 +1817,7 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 						}
 						else { /* new type but not a sub resource */
 							accumulate_restriction(attr_names, attr_values, &attr_count, MAX_ATTRS, a->name, a->value);
-							new_type_attr_name = a->name;
-						} 
+						}
 					} else { /* not new-type queue restriction */
 						prt_attr(a->name, a->resource, a->value,
 							alt_opt & ALT_DISPLAY_w, json_queue);
