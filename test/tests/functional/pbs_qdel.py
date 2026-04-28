@@ -544,6 +544,129 @@ class TestQdel(TestFunctional):
         rv = self.server.isUp()
         self.assertTrue(rv, "Server crashed")
 
+    def test_qdel_with_nonexistent_jobids_at_end(self):
+        """
+        Test if the server crashes when deleting a list of existing queued
+        jobs and job ids that are not yet in existence.  The reason the jobs
+        must be queued as opposed to running is that sending a signal message
+        to the running jobs creates a race condition.
+        """
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'false'})
+        stime = int(time.time())
+        j = Job(TEST_USER)
+        jid1 = self.server.submit(j)
+        jid2 = self.server.submit(j)
+        i_str, s = jid1.split('.', 1)
+        i = int(i_str)
+        ni = i + 10000
+        njid1 = "%d.%s" % (ni, s)
+        njid2 = "%d.%s" % (ni + 1, s)
+        jid_list = [jid1, jid2,  njid1, njid2]
+        # jid_short_list = [j.split('.')[0] for j in jid_list]
+        self.server.expect(JOB, {'job_state': 'Q'}, jid2)
+        try:
+            # self.server.delete(jid_short_list)
+            self.server.delete(jid_list)
+        except PbsDeleteError as e:
+            for msg in e.msg:
+                if "Unknown Job Id" not in msg:
+                    raise
+        rv = self.server.isUp()
+        self.assertTrue(rv, "Server crashed")
+        self.server.log_match("Job;%s;Job to be deleted" % (jid1), starttime=stime, max_attempts=1)
+        self.server.log_match("Job;%s;Job to be deleted" % (jid2), starttime=stime, max_attempts=1)
+        self.server.log_match("Job;%s;Unknown Job Id" % (njid1), starttime=stime, max_attempts=1)
+        self.server.log_match("Job;%s;Unknown Job Id" % (njid2), starttime=stime, max_attempts=1)
+
+    def test_qdel_with_nonexistent_array_jobids_at_begin_end(self):
+        """
+        Test if the server or qdel crashes when deleting a list of existing
+        jobs surrounded by array jobids that are not yet in existence.
+        """
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'false'})
+        stime = int(time.time())
+        j = Job(TEST_USER)
+        jid1 = self.server.submit(j)
+        jid2 = self.server.submit(j)
+        i_str, s = jid1.split('.', 1)
+        i = int(i_str)
+        ni = i + 10000
+        a = {ATTR_J: '1-20', 'Resource_List.select': 'ncpus=1'}
+        j = Job(TEST_USER, a)
+        ajid1 = self.server.submit(j)
+        ajid2 = self.server.submit(j)
+        najid1 = "%d[].%s" % (ni, s)
+        najid2 = "%d[].%s" % (ni + 1, s)
+        najid3 = "%d[].%s" % (ni + 2, s)
+        najid4 = "%d[].%s" % (ni + 3, s)
+        jid_list = [najid1, najid2, ajid1, jid1, jid2, ajid2, najid3, najid4]
+        # jid_short_list = [j.split('.')[0] for j in jid_list]
+        self.server.expect(JOB, {'job_state': 'Q'}, ajid2)
+        try:
+            # self.server.delete(jid_short_list)
+            self.server.delete(jid_list)
+        except PbsDeleteError as e:
+            for msg in e.msg:
+                if "Unknown Job Id" not in msg:
+                    raise
+        rv = self.server.isUp()
+        self.assertTrue(rv, "Server crashed")
+        self.server.log_match("Job;%s;Unknown Job Id" % (najid1), starttime=stime, max_attempts=1)
+        self.server.log_match("Job;%s;Unknown Job Id" % (najid2), starttime=stime, max_attempts=1)
+        self.server.log_match("Job;%s;Unknown Job Id" % (najid3), starttime=stime, max_attempts=1)
+        self.server.log_match("Job;%s;Unknown Job Id" % (najid4), starttime=stime, max_attempts=1)
+        self.server.log_match("Job;%s;Job to be deleted" % (ajid1), starttime=stime, max_attempts=1)
+        self.server.log_match("Job;%s;Job to be deleted" % (jid1), starttime=stime, max_attempts=1)
+        self.server.log_match("Job;%s;Job to be deleted" % (ajid2), starttime=stime, max_attempts=1)
+
+    def test_qdel_with_nonexistent_subjobids_at_begin_end(self):
+        """
+        Test if the server or qdel crashes when deleting a list of existing
+        jobs surrounded by array subjobids that are not yet in existence.
+        """
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'false'})
+        stime = int(time.time())
+        j = Job(TEST_USER)
+        jid1 = self.server.submit(j)
+        jid2 = self.server.submit(j)
+        i_str, s = jid1.split('.', 1)
+        i = int(i_str)
+        ni = i + 10000
+        a = {ATTR_J: '1-20', 'Resource_List.select': 'ncpus=1'}
+        j = Job(TEST_USER, a)
+        ajid1 = self.server.submit(j)
+        sjid1a = ajid1.replace("[]", "[3]")
+        sjid1b = ajid1.replace("[]", "[5]")
+        sjid1c = ajid1.replace("[]", "[7]")
+        ajid2 = self.server.submit(j)
+        sjid2a = ajid2.replace("[]", "[11]")
+        sjid2b = ajid2.replace("[]", "[13]")
+        sjid2c = ajid2.replace("[]", "[17]")
+        nsjid1a = "%d[10].%s" % (ni, s)
+        nsjid1b = "%d[20].%s" % (ni, s)
+        nsjid1c = "%d[30].%s" % (ni, s)
+        nsjid2a = "%d[40].%s" % (ni + 1, s)
+        nsjid2b = "%d[50].%s" % (ni + 1, s)
+        nsjid2c = "%d[60].%s" % (ni + 1, s)
+        jid_list = [
+            nsjid1a, nsjid1b, nsjid1c, jid1, sjid1a, sjid1b, sjid1c, sjid2a, sjid2b,
+              sjid2c, jid2, nsjid2a, nsjid2b, nsjid2c
+        ]
+        # jid_short_list = [j.split('.')[0] for j in jid_list]
+        self.server.expect(JOB, {'job_state': 'Q'}, ajid2)
+        try:
+            # self.server.delete(jid_short_list)
+            self.server.delete(jid_list)
+        except PbsDeleteError as e:
+            for msg in e.msg:
+                if "Unknown Job Id" not in msg:
+                    raise
+        rv = self.server.isUp()
+        self.assertTrue(rv, "Server crashed")
+        self.server.log_match("Job;%s;Job to be deleted" % (jid1), starttime=stime, max_attempts=1)
+        self.server.log_match("Job;%s;Job to be deleted" % (jid2), starttime=stime, max_attempts=1)
+        # TODO: add subjob state checks on deleted and non-deleted subjobs
+
     def test_qdel_with_overlaping_array_jobs(self):
         """
         Test server crash with overlaping array jobs

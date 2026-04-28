@@ -256,8 +256,8 @@ all_jobs_deleted(struct batch_reply *preply)
  * @param[in]	errcode - Job's error code 
  *
  * @return	bool
- * @retval	TRUE	- all jobs deleted
- * @retval	FALSE	- jobs remaining to be deleted
+ * @retval	TRUE	- all jobs in the preq have been processed and deleted
+ * @retval	FALSE	- jobs remaining to be processed or deleted
  */
 bool
 update_deljob_rply(struct batch_request *preq, char *jid, int errcode)
@@ -294,7 +294,8 @@ update_deljob_rply(struct batch_request *preq, char *jid, int errcode)
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 			  __func__, "update_deljob_rply invoked with empty job id");
 
-	return all_jobs_deleted(preply);
+	return all_jobs_deleted(preply) &&
+	       (preq->rq_ind.rq_deletejoblist.jobid_to_resume == preq->rq_ind.rq_deletejoblist.rq_count - 1);
 }
 
 /**
@@ -551,8 +552,8 @@ init_deljoblist(struct batch_request *preq)
  * @param[in] preq - request structure
  * 
  * @return bool
- * @retval TRUE: no more jobs to be deleted
- * @reval  FALSE: more jobs pending to be deleted
+ * @retval	TRUE	- all jobs in the preq have been processed and deleted
+ * @retval	FALSE	- jobs remaining to be processed or deleted
  */
 bool
 delete_pending_arrayjobs(struct batch_request *preq)
@@ -573,7 +574,8 @@ delete_pending_arrayjobs(struct batch_request *preq)
 
 	pbs_idx_free_ctx(idx_ctx);
 
-	return all_jobs_deleted(preply);
+	return all_jobs_deleted(preply) &&
+	       (preq->rq_ind.rq_deletejoblist.jobid_to_resume == preq->rq_ind.rq_deletejoblist.rq_count - 1);
 }
 
 /**
