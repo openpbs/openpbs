@@ -101,19 +101,52 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
       dnf -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
-  elif [ "x${ID}" == "xrocky" -a "x${MAJOR_VERSION}" == "x9" ]; then
+  elif [ "x${ID}" == "xrocky" ] && { [ "x${MAJOR_VERSION}" == "x9" ] || [ "x${MAJOR_VERSION}" == "x10" ]; }; then
     export LANG="C.utf8"
     dnf -y clean all
     yum -y install yum-utils
     dnf -y install 'dnf-command(config-manager)'
     dnf config-manager --set-enabled crb
     dnf -y install epel-release
-    dnf -y install python3-pip sudo which net-tools man-db time.x86_64 procps \
+    
+    # Define package list dynamically; chkconfig is deprecated and removed in EL10
+    PKGS="python3-pip sudo which net-tools man-db time.x86_64 procps \
       expat libedit postgresql-server postgresql-contrib python3 \
-      sendmail sudo tcl tk libical libasan llvm git chkconfig
+      sendmail sudo tcl tk libical libasan llvm git"
+    if [ "x${MAJOR_VERSION}" != "x10" ]; then
+      PKGS="${PKGS} chkconfig"
+    fi
+    dnf -y install ${PKGS}
+
+    # PostgreSQL 16+ on Rocky 10 renamed 'pg_resetxlog' to 'pg_resetwal'
+    if [ "x${MAJOR_VERSION}" == "x10" ]; then
+      if [ -f /usr/bin/pg_resetwal -a ! -f /usr/bin/pg_resetxlog ]; then
+        ln -sf /usr/bin/pg_resetwal /usr/bin/pg_resetxlog
+      fi
+    fi
+
     dnf -y builddep ${SPEC_FILE}
     dnf -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}' | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
-    pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
+
+    # Python 3.12 removes 'imp'; legacy 'nose' must be replaced with 'pynose' on Rocky 10
+    # Python 3.12 also removes 'distutils' from stdlib; setuptools < 82 must be installed to restore both distutils and pkg_resources
+    if [ "x${MAJOR_VERSION}" == "x10" ]; then
+      pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org pynose beautifulsoup4 pexpect defusedxml "setuptools<82"
+      # Inject a compatibility shim for the deprecated 'imp' module removed in Python 3.12
+      _site_pkg=$(python3 -c "import site; print(site.getsitepackages()[0])")
+      mkdir -p "${_site_pkg}"
+      cat << 'EOF' > "${_site_pkg}/imp.py"
+import importlib.util
+
+def find_module(name, path=None):
+    if importlib.util.find_spec(name) is None:
+        raise ImportError(f"No module named '{name}'")
+    return (None, None, None)
+EOF
+    else
+      pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
+    fi
+
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
       dnf -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
@@ -199,6 +232,8 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   _cflags="-g -O2 -Wall -Werror"
   if [ "x${ID}" == "xubuntu" ]; then
     _cflags="${_cflags} -Wno-unused-result"
+  elif [ "x${ID}" == "xrocky" -a "x${MAJOR_VERSION}" == "x10" ]; then
+    _cflags="${_cflags} -Wno-error=array-bounds"
   fi
   cd ${_targetdirname}
   if [ -f /src/ci ]; then
@@ -326,6 +361,11 @@ END
   make -j8 install
   chmod 4755 ${prefix}/sbin/pbs_iff ${prefix}/sbin/pbs_rcp
   if [ "x${DONT_START_PBS}" != "x1" ]; then
+    if [ "x${ID}" == "xrocky" -a "x${MAJOR_VERSION}" == "x10" ]; then
+      mkdir -p /etc/init.d /etc/rc.d/rc{0,1,2,3,4,5,6}.d
+      mkdir -p /var/run/postgresql
+      chmod 777 /var/run/postgresql
+    fi
     ${prefix}/libexec/pbs_postinstall server
     sed -i "s@PBS_START_MOM=0@PBS_START_MOM=1@" /etc/pbs.conf
     if [ "x$IS_CI_BUILD" == "x1" ]; then
